@@ -25,6 +25,7 @@ import java.time.OffsetDateTime;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.HexFormat;
+import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
@@ -1123,10 +1124,12 @@ public class ShopfrontIntegrationController {
                 WHERE store_key=? AND outlet_id=? AND business_date=? AND group_by=?
                 """, String.class, storeKey, outletId, java.sql.Date.valueOf(snapshotDate), groupBy);
         int readbackCount;
+        int readbackMismatchCount;
         try {
             JsonNode stored = objectMapper.readTree(storedRows);
             if (stored == null || !stored.isArray()) throw new IllegalStateException("Stored report rows are not an array");
             readbackCount = stored.size();
+            readbackMismatchCount = jsonArrayMismatchCount(rows, stored);
         } catch (Exception invalidStoredRows) {
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
                     "Stored purchase report snapshot could not be read back", invalidStoredRows);
@@ -1136,8 +1139,44 @@ public class ShopfrontIntegrationController {
         result.put("status", "IMPORTED");
         result.put("item_count", rows.size());
         result.put("readback_count", readbackCount);
+        result.put("readback_match", readbackMismatchCount == 0);
+        result.put("readback_mismatch_count", readbackMismatchCount);
         result.put("errors", List.of());
         return ApiResult.ok(result);
+    }
+
+    private static int jsonArrayMismatchCount(JsonNode expected, JsonNode actual) {
+        int mismatches = Math.abs(expected.size() - actual.size());
+        for (int i = 0; i < Math.min(expected.size(), actual.size()); i++) {
+            if (!jsonValuesMatch(expected.get(i), actual.get(i))) mismatches++;
+        }
+        return mismatches;
+    }
+
+    private static boolean jsonValuesMatch(JsonNode expected, JsonNode actual) {
+        if (expected == null || actual == null) return expected == actual;
+        if (expected.isNumber() && actual.isNumber()) {
+            return expected.decimalValue().compareTo(actual.decimalValue()) == 0;
+        }
+        if (expected.isObject()) {
+            if (!actual.isObject() || expected.size() != actual.size()) return false;
+            Iterator<Map.Entry<String, JsonNode>> fields = expected.fields();
+            while (fields.hasNext()) {
+                Map.Entry<String, JsonNode> field = fields.next();
+                if (!actual.has(field.getKey()) || !jsonValuesMatch(field.getValue(), actual.get(field.getKey()))) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        if (expected.isArray()) {
+            if (!actual.isArray() || expected.size() != actual.size()) return false;
+            for (int i = 0; i < expected.size(); i++) {
+                if (!jsonValuesMatch(expected.get(i), actual.get(i))) return false;
+            }
+            return true;
+        }
+        return expected.equals(actual);
     }
 
     private static boolean allObjects(JsonNode rows) {

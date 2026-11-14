@@ -83,7 +83,7 @@ class ShopfrontIntegrationControllerTest {
     }
 
     @Test
-    void purchaseReportSnapshotUpsertUsesMappedOutletAndVerifiesStoredRows() throws Exception {
+    void purchaseReportSnapshotUpsertAttestsMatchingStoredContent() throws Exception {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
         DataSource dataSource = mock(DataSource.class);
         Connection connection = mock(Connection.class);
@@ -95,7 +95,39 @@ class ShopfrontIntegrationControllerTest {
         when(jdbc.queryForList(contains("SELECT outlet_id FROM shopfront_store_mapping"), any(Object[].class)))
                 .thenReturn(List.of(Map.of("outlet_id", 87L)));
         when(jdbc.queryForObject(contains("SELECT rows_json FROM shopfront_purchase_report_snapshot"),
-                eq(String.class), any(Object[].class))).thenReturn("[{\"Name\":\"Supplier A\",\"Orders\":1}]");
+                eq(String.class), any(Object[].class))).thenReturn("[{\"Name\":\"Supplier A\",\"Orders\":1,\"Total Cost\":12.3}]");
+        var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true);
+        JsonNode body = new ObjectMapper().readTree("""
+                {"store_key":"skr","business_date":"2026-11-14","group_by":"supplier",
+                 "fetched_at":"2026-11-14T17:00:00Z","rows":[{"Name":"Supplier A","Orders":1,"Total Cost":12.30}]}
+                """);
+
+        var response = controller.purchaseReportSnapshots("token", body);
+
+        assertEquals("IMPORTED", response.data().get("status"));
+        assertEquals(1, response.data().get("item_count"));
+        assertEquals(1, response.data().get("readback_count"));
+        assertEquals(true, response.data().get("readback_match"));
+        assertEquals(0, response.data().get("readback_mismatch_count"));
+        verify(jdbc).update(contains("ON CONFLICT (store_key, outlet_id, business_date, group_by)"),
+                any(Object[].class));
+        verify(jdbc).queryForList(contains("SELECT outlet_id FROM shopfront_store_mapping"), any(Object[].class));
+    }
+
+    @Test
+    void purchaseReportSnapshotRejectsSameCountWithDifferentStoredContent() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        DataSource dataSource = mock(DataSource.class);
+        Connection connection = mock(Connection.class);
+        DatabaseMetaData metadata = mock(DatabaseMetaData.class);
+        when(jdbc.getDataSource()).thenReturn(dataSource);
+        when(dataSource.getConnection()).thenReturn(connection);
+        when(connection.getMetaData()).thenReturn(metadata);
+        when(metadata.getDatabaseProductName()).thenReturn("PostgreSQL");
+        when(jdbc.queryForList(contains("SELECT outlet_id FROM shopfront_store_mapping"), any(Object[].class)))
+                .thenReturn(List.of(Map.of("outlet_id", 87L)));
+        when(jdbc.queryForObject(contains("SELECT rows_json FROM shopfront_purchase_report_snapshot"),
+                eq(String.class), any(Object[].class))).thenReturn("[{\"Name\":\"Different supplier\",\"Orders\":1}]");
         var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true);
         JsonNode body = new ObjectMapper().readTree("""
                 {"store_key":"skr","business_date":"2026-11-14","group_by":"supplier",
@@ -104,12 +136,10 @@ class ShopfrontIntegrationControllerTest {
 
         var response = controller.purchaseReportSnapshots("token", body);
 
-        assertEquals("IMPORTED", response.data().get("status"));
         assertEquals(1, response.data().get("item_count"));
         assertEquals(1, response.data().get("readback_count"));
-        verify(jdbc).update(contains("ON CONFLICT (store_key, outlet_id, business_date, group_by)"),
-                any(Object[].class));
-        verify(jdbc).queryForList(contains("SELECT outlet_id FROM shopfront_store_mapping"), any(Object[].class));
+        assertEquals(false, response.data().get("readback_match"));
+        assertEquals(1, response.data().get("readback_mismatch_count"));
     }
 
     @Test
