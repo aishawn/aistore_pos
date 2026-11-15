@@ -1,9 +1,13 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { ageOperationsPreviewSnapshot, clearOperationsPreviewSnapshots } from "./assistant-operations-snapshot-cache.ts";
 import { assistantRequestTimeoutMs, assistantTimeoutMessage, operationsPreviewIntent, readOperationsPreview } from "./assistant-operations-preview.ts";
 import { storeWeekStart } from "./assistant-business-period.ts";
 
 const question = "Analyse low stock items and suggest what to reorder";
+test.beforeEach(() => {
+  clearOperationsPreviewSnapshots();
+});
 test("complete replenishment reads have a bounded independent budget and actionable timeout", () => {
   assert.equal(assistantRequestTimeoutMs(question), 120_000);
   assert.equal(assistantRequestTimeoutMs("低库存补货建议"), 120_000);
@@ -92,12 +96,16 @@ test("no sales history does not generate replenishment quantities", async () => 
 
 test("missing data and provider failures never invent zero", async () => {
   for (const [payload, status] of [[{}, 200], [{ message: "unavailable" }, 503]] as const) {
-    for (const text of [question, "Show me this week's sales performance"]) {
-      const result = await readOperationsPreview(text, null, undefined, mockFetch(payload, status));
-      assert.equal(result?.cards?.[0].status, "unavailable");
-      assert.match(result?.answer ?? "", /No figures were generated/);
-      assert.deepEqual(result?.writeRequests, []);
-    }
+    const replenishment = await readOperationsPreview(question, null, undefined, mockFetch(payload, status));
+    assert.equal(replenishment?.cards?.[0].status, "unavailable");
+    assert.match(replenishment?.answer ?? "", /replenishment query service|补货查询服务/);
+    assert.doesNotMatch(replenishment?.answer ?? "", /sales dashboard|销售报表/);
+    assert.deepEqual(replenishment?.writeRequests, []);
+    const sales = await readOperationsPreview("Show me this week's sales performance", null, undefined, mockFetch(payload, status));
+    assert.equal(sales?.cards?.[0].status, "unavailable");
+    assert.match(sales?.answer ?? "", /sales query service|销售查询服务/);
+    assert.doesNotMatch(sales?.answer ?? "", /replenishment query service|补货查询服务/);
+    assert.deepEqual(sales?.writeRequests, []);
   }
 });
 
@@ -121,6 +129,22 @@ test("expired sessions and temporary query failures have distinct messages", asy
   assert.match(unavailable?.answer ?? "", /temporarily/);
   assert.deepEqual(forbidden?.writeRequests, []);
   assert.deepEqual(unavailable?.writeRequests, []);
+});
+
+test("stale fallback when live read fails after warm window", async () => {
+  const good = await readOperationsPreview("Show me this week's sales performance", null, undefined, mockFetch({
+    data: {
+      dataSource: "orithos_ledger", storeScope: "current_authenticated_store",
+      revenue: 42, transactions: 3, reportPeriodFrom: "2026-11-09", reportPeriodTo: "2026-11-12",
+      reportTimeZone: "Australia/Adelaide", reportDataStatus: "available", dataAsOf: "2026-11-13T01:00:00Z",
+    },
+  }));
+  assert.equal(good?.cards?.[0].status, "ready");
+  ageOperationsPreviewSnapshot("sales_week", 91_000);
+  const failed = await readOperationsPreview("Show me this week's sales performance", null, undefined, mockFetch({}, 503));
+  assert.equal(failed?.cards?.[0].status, "partial");
+  assert.match(failed?.answer ?? "", /Live query failed/);
+  assert.match(failed?.answer ?? "", /\$42\.00/);
 });
 
 test("sales are read from the calendar week endpoint, preserving currency/refunds", async () => {

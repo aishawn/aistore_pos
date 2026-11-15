@@ -188,3 +188,20 @@ export function assistantDataTimestampLabel(
     ? formatAssistantDataAsOf(value)
     : chinese ? "数据时间未提供" : "Data timestamp unavailable";
 }
+
+const INTERNAL_DATA_SOURCES = new Set([
+  "session_warm_cache",
+  "stale_card_cache",
+]);
+
+export function assistantDisplayDataSource(
+  value: string | null | undefined,
+  chinese: boolean,
+): string | null {
+  const trimmed = value?.trim();
+  if (!trimmed) return null;
+  if (INTERNAL_DATA_SOURCES.has(trimmed)) {
+    return chinese ? "门店账本（会话缓存）" : "Orithos ledger (session cache)";
+  }
+  return trimmed;
+}

@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   assistantDataAsOf,
   assistantDataTimestampLabel,
+  assistantDisplayDataSource,
   assistantCardDisplayStatus,
   assistantProvenanceFields,
   assistantReturnedSalesDateSummary,
@@ -170,4 +171,9 @@ test("states when the backend does not provide a trusted data timestamp", () => 
   assert.equal(assistantDataTimestampLabel(null, true), "数据时间未提供");
   assert.equal(assistantDataTimestampLabel(undefined, false), "Data timestamp unavailable");
   assert.equal(assistantDataTimestampLabel("2026-11-02", true), "2026-11-02");
+});
+
+test("hides internal assistant cache markers from data source labels", () => {
+  assert.equal(assistantDisplayDataSource("stale_card_cache", false), "Orithos ledger (session cache)");
+  assert.equal(assistantDisplayDataSource("orithos_ledger", false), "orithos_ledger");
 });

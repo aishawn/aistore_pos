@@ -1,6 +1,8 @@
 "use client";
 
-import { assistantRequestTimeoutMs, assistantTimeoutMessage, operationsPreviewIntent, readOperationsPreview } from "@/lib/assistant-operations-preview";
+import { assistantRequestTimeoutMs, assistantTimeoutMessage, operationsPreviewIntent, prefetchOperationsPreviewSnapshots, readOperationsPreview } from "@/lib/assistant-operations-preview";
+import { clearOperationsPreviewSnapshots } from "@/lib/assistant-operations-snapshot-cache";
+import { fallbackHrefForQuickAction, questionForQuickAction, shortcutForQuickAction, WORKSPACE_HERO_SHORTCUTS } from "@/lib/assistant-shortcuts";
 import { looksLikeAssistantWriteCommand } from "@/lib/assistant-command-routing";
 
 import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
@@ -32,7 +34,7 @@ import { entityActionPage, isReadOnlyEntityOperation } from "@/lib/ai-entity-rou
 import { assistantCardCtaLabel, assistantCardTitle, assistantSaleActionHref, normalizeAssistantHref, resolveAssistantCardCta } from "@/lib/assistant-card-cta";
 import { assistantCardMetadataValue, restoredAssistantCardFields, retryQuestionForAssistantCards } from "@/lib/assistant-chat-history";
 import { assistantAbortOutcome, type AssistantAbortReason } from "@/lib/assistant-request-state";
-import { assistantCardDisplayStatus, assistantDataTimestampLabel, assistantProvenanceFields, assistantReportDataStatus, assistantReportDateRange, assistantReturnedSalesDateSummary, assistantRouteLabel, requestedSalesDateRange } from "@/lib/assistant-provenance";
+import { assistantCardDisplayStatus, assistantDataTimestampLabel, assistantDisplayDataSource, assistantProvenanceFields, assistantReportDataStatus, assistantReportDateRange, assistantReturnedSalesDateSummary, assistantRouteLabel, requestedSalesDateRange } from "@/lib/assistant-provenance";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
 import { AiFabIcon } from "@/components/AiFabIcon";
@@ -902,6 +904,7 @@ export function SellAiPanel({
     threadLoadRef.current += 1;
     setHistoryLoading(false);
     setHistoryError(null);
+    clearOperationsPreviewSnapshots();
     updateChatUrl(null);
     setMessages([{ role: "assistant", text: greetingText(aiEnabled) }]);
     setThreadId(null);
@@ -1006,6 +1009,13 @@ export function SellAiPanel({
       window.removeEventListener("popstate", onPopState);
     };
   }, [workspace, pagePresentation, clientConfigReady]);
+
+  useEffect(() => {
+    if (!workspace || !pagePresentation || !clientConfigReady || aiEnabled !== true) return;
+    const controller = new AbortController();
+    prefetchOperationsPreviewSnapshots(controller.signal);
+    return () => controller.abort();
+  }, [workspace, pagePresentation, clientConfigReady, aiEnabled]);
 
   function lockAndClearInput() {
     setInput("");
@@ -1399,75 +1409,27 @@ export function SellAiPanel({
     if (busy || busyRef.current) return;
     setHistoryOpen(false);
     setQuickActionsOpen(false);
-    if (workspace && (action === "Check stock" || action === "Today's sales")) {
-      if (aiEnabled === false) {
-        openWorkspace(action === "Check stock" ? "/stock/replenishment" : "/reports/last-week-sales", "Open the report when you are ready.", { immediate: true });
-      } else {
-        void runIntent(action === "Check stock" ? "Analyse low stock items and suggest what to reorder" : "Show me this week's sales performance");
-      }
-      return;
-    }
-    // Route sample questions through the assistant; keep direct navigation available when chat is off.
-    if (action === "Today's sales") {
-      if (aiEnabled === false) {
-        openWorkspace("/history", "Opened sales history.", { immediate: true });
-        return;
-      }
-      void runIntent("Today's sales");
-      return;
-    }
-    const workflows: Record<string, { question: string; href: string; note: string }> = {
-      "Create purchase order": {
-        question: "Create a purchase order for low stock items",
-        href: "/orders/new",
-        note: "Open a new purchase order when you are ready.",
-      },
-      "Top selling products": {
-        question: "Show me the top selling products",
-        href: "/reports/sales",
-        note: "Open sales reports when you are ready.",
-      },
-      "Customer insights": {
-        question: "Show me customer insights",
-        href: "/customers",
-        note: "Open customer insights when you are ready.",
-      },
-      "What should I restock?": {
-        question: "What should I restock?",
-        href: "/stock/replenishment",
-        note: "Open replenishment when you are ready.",
-      },
-      "Which prices should I review?": {
-        question: "Which prices should I review?",
-        href: "/stock/capped-pricing",
-        note: "Open price review when you are ready.",
-      },
-      "Recommend a red wine under $30": {
-        question: "Recommend a red wine under $30",
-        href: "/sommelier",
-        note: "Open wine recommendations when you are ready.",
-      },
-      "Something in stock for a BBQ under $20": {
-        question: "Something in stock for a BBQ under $20",
-        href: "/recommend/grocery",
-        note: "Open grocery recommendations when you are ready.",
-      },
-    };
-    const workflow = workflows[action];
-    if (workflow) {
-      if (aiEnabled === false) {
-        openWorkspace(workflow.href, workflow.note, { immediate: true });
-        return;
-      }
-      void runIntent(workflow.question);
-      return;
-    }
     if (action === "Products") {
       openWorkspace("/products", "Open products when you are ready.");
       return;
     }
-    if (action === "Check stock") {
+    if (action === "Check stock" && !workspace) {
       openStockLookup("");
+      return;
+    }
+    const shortcut = shortcutForQuickAction(action)
+      ?? WORKSPACE_HERO_SHORTCUTS.find((item) => item.quickActionKey === action)
+      ?? null;
+    const fallbackHref = shortcut?.fallbackHref ?? fallbackHrefForQuickAction(action);
+    const question = questionForQuickAction(action, workspace);
+    if (question) {
+      if (aiEnabled === false) {
+        if (fallbackHref) {
+          openWorkspace(fallbackHref, "Open the report when you are ready.", { immediate: true });
+        }
+        return;
+      }
+      void runIntent(question);
       return;
     }
     runSellAction(action);
@@ -1508,12 +1470,12 @@ export function SellAiPanel({
     }} />
   );
 
-  const workspaceActions = [
-    { title: "Check stock levels", description: "Find low stock items and reorder suggestions", icon: BarChart3, tone: "orange", action: "Check stock" },
-    { title: "Analyse sales", description: "Show me this week’s performance", icon: BarChart3, tone: "blue", action: "Today's sales" },
-    { title: "Review purchase needs", description: "Preview suggestions before ordering", icon: Boxes, tone: "green", action: "What should I restock?" },
-    { title: "Find opportunities", description: "Suggest ways to grow my store", icon: Lightbulb, tone: "amber", action: "What should I restock?" },
-  ] as const;
+  const workspaceHeroUi = {
+    hero_stock: { icon: BarChart3, tone: "orange" as const },
+    hero_sales: { icon: BarChart3, tone: "blue" as const },
+    hero_restock: { icon: Boxes, tone: "green" as const },
+    hero_opportunities: { icon: Lightbulb, tone: "amber" as const },
+  };
   const sidebarWorkflows = [
     { label: "Low stock analysis", icon: PackageSearch },
     { label: "Create purchase order", icon: ShoppingCart },
@@ -1576,7 +1538,11 @@ export function SellAiPanel({
           {historyOpen ? <HistoryView loading={historyLoading || busy} error={historyError} threads={historyThreads} onBack={() => setHistoryOpen(false)} onSelect={(id) => void loadHistoryThread(id)} onRefresh={() => void openHistory()} /> : (
             <div className={cn("mx-auto flex min-h-full w-full max-w-[1080px] flex-col py-6", messages.length > 1 ? "justify-start" : "justify-center sm:py-12")}>
               {messages.length <= 1 && <div className="mb-5 text-center sm:mb-10"><div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full border border-white/80 bg-[var(--oh-surface-elevated)]/55 text-[#ef681b] shadow-[0_12px_40px_rgba(245,120,55,.16)] backdrop-blur sm:mb-5 sm:h-20 sm:w-20"><Sparkles size={32} strokeWidth={1.7} /></div><h1 className="text-[28px] font-semibold tracking-[-0.04em] text-[#142239] dark:text-[var(--oh-text)] sm:text-[42px]">Hello, I’m <span className="text-[var(--oh-primary)]">Orithos AI</span></h1><p className="mt-1.5 text-[16px] text-[#52627a] dark:text-[var(--oh-text-secondary)] sm:mt-2 sm:text-[22px]">How can I help with your store today?</p></div>}
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{workspaceActions.map((item) => { const Icon = item.icon; return <button key={item.title} type="button" onClick={() => runQuickAction(item.action)} disabled={busy} className="group min-h-[80px] disabled:cursor-wait disabled:opacity-60 rounded-2xl border border-white/85 bg-[var(--oh-surface-elevated)]/70 p-3 text-left shadow-[0_8px_24px_rgba(77,101,145,.08)] backdrop-blur transition hover:-translate-y-0.5 hover:bg-[var(--oh-surface-elevated)]/90 hover:shadow-[0_14px_32px_rgba(77,101,145,.14)] sm:p-4"><span className={cn("mb-2 flex h-8 w-8 items-center justify-center rounded-xl sm:mb-2 sm:h-9 sm:w-9", item.tone === "orange" && "bg-[var(--oh-orange-light)] text-[var(--oh-primary)]", item.tone === "blue" && "bg-[#eaf1ff] text-[#3973dc]", item.tone === "green" && "bg-[#e7f8f3] text-[#209b7d]")}><Icon size={19} /></span><span className="flex items-start justify-between gap-2"><span><span className="block text-[15px] font-semibold text-[#18263b] dark:text-[var(--oh-text)]">{item.title}</span><span className="mt-1 block text-[13px] leading-5 text-[var(--oh-muted)]">{item.description}</span></span><span className="text-xl text-[#7c8796] dark:text-[var(--oh-muted)] transition group-hover:translate-x-0.5">›</span></span></button>; })}</div>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{WORKSPACE_HERO_SHORTCUTS.map((item) => {
+                const ui = workspaceHeroUi[item.id as keyof typeof workspaceHeroUi];
+                const Icon = ui.icon;
+                return <button key={item.id} type="button" onClick={() => runQuickAction(item.quickActionKey)} disabled={busy} className="group min-h-[80px] disabled:cursor-wait disabled:opacity-60 rounded-2xl border border-white/85 bg-[var(--oh-surface-elevated)]/70 p-3 text-left shadow-[0_8px_24px_rgba(77,101,145,.08)] backdrop-blur transition hover:-translate-y-0.5 hover:bg-[var(--oh-surface-elevated)]/90 hover:shadow-[0_14px_32px_rgba(77,101,145,.14)] sm:p-4"><span className={cn("mb-2 flex h-8 w-8 items-center justify-center rounded-xl sm:mb-2 sm:h-9 sm:w-9", ui.tone === "orange" && "bg-[var(--oh-orange-light)] text-[var(--oh-primary)]", ui.tone === "blue" && "bg-[#eaf1ff] text-[#3973dc]", ui.tone === "green" && "bg-[#e7f8f3] text-[#209b7d]", ui.tone === "amber" && "bg-[#fff5e8] text-[#c76a16]")}><Icon size={19} /></span><span className="flex items-start justify-between gap-2"><span><span className="block text-[15px] font-semibold text-[#18263b] dark:text-[var(--oh-text)]">{item.title}</span><span className="mt-1 block text-[13px] leading-5 text-[var(--oh-muted)]">{item.description}</span></span><span className="text-xl text-[#7c8796] dark:text-[var(--oh-muted)] transition group-hover:translate-x-0.5">›</span></span></button>;
+              })}</div>
               {messages.length > 1 && <div className="mt-8"><DialogueView messages={messages} onOpenLink={followChatLink} onRetry={(question) => void runIntent(question, true)} onClear={clearChat} onCommandChange={updateCommandMessage} busy={busy} thinkingHint={thinkingHint} compact /></div>}
             </div>
           )}
@@ -2072,7 +2038,7 @@ function DialogueView({
                     ) : null}
                     {(cardDataSource || periodLabel || cardTimeZone || cardDataStatus || cardDataAsOf) ? (
                       <p className="mt-1 text-[11px] text-[var(--oh-muted)]">
-                        {cardDataSource ? `${chineseCard ? "数据来源" : "Source"}: ${cardDataSource}` : ""}
+                        {cardDataSource ? `${chineseCard ? "数据来源" : "Source"}: ${assistantDisplayDataSource(cardDataSource, chineseCard) ?? cardDataSource}` : ""}
                         {periodLabel ? `${cardDataSource ? " · " : ""}${chineseCard ? "期间" : "Period"}: ${periodLabel}` : ""}
                         {cardTimeZone ? `${cardDataSource || periodLabel ? " · " : ""}${chineseCard ? "时区" : "Timezone"}: ${cardTimeZone}` : ""}
                         {cardDataStatus ? `${cardDataSource || periodLabel || cardTimeZone ? " · " : ""}${chineseCard ? "数据状态" : "Data status"}: ${assistantReportDataStatus(cardDataStatus, chineseCard)}` : ""}
@@ -2201,8 +2167,8 @@ function DialogueView({
               <p className="mt-1.5 text-[11px] text-[var(--oh-muted)]">
                 {msg.dataSource
                   ? /[\u3400-\u9fff]/.test(msg.question ?? msg.text)
-                    ? `数据来源：${msg.dataSource}`
-                    : `Data source: ${msg.dataSource}`
+                    ? `数据来源：${assistantDisplayDataSource(msg.dataSource, true) ?? msg.dataSource}`
+                    : `Data source: ${assistantDisplayDataSource(msg.dataSource, false) ?? msg.dataSource}`
                   : ""}
                 {msg.source && assistantRouteLabel(msg.source)
                   ? `${msg.dataSource ? " · " : ""}${/[\u3400-\u9fff]/.test(msg.question ?? msg.text) ? "查询路由" : "Query route"}: ${assistantRouteLabel(msg.source)}`

@@ -1,7 +1,16 @@
 import type { AssistantResponse, AssistantCard } from "./api";
 import { storeWeekStart } from "./assistant-business-period.ts";
+import {
+  awaitOperationsPreviewInflight,
+  prefetchOperationsPreviews as prefetchSnapshots,
+  registerOperationsPreviewInflight,
+  staleOperationsPreviewSnapshot,
+  storeOperationsPreviewSnapshot,
+  warmOperationsPreviewSnapshot,
+} from "./assistant-operations-snapshot-cache.ts";
+import { OPERATIONS_PREVIEW_CANONICAL, type OperationsPreview } from "./assistant-operations-constants.ts";
 
-export type OperationsPreview = "replenishment" | "sales_week";
+export type { OperationsPreview } from "./assistant-operations-constants.ts";
 
 /** Complete catalogue/history reads have a different latency budget from a model reply. */
 export function assistantRequestTimeoutMs(question: string): number {
@@ -9,8 +18,12 @@ export function assistantRequestTimeoutMs(question: string): number {
 }
 
 export function assistantTimeoutMessage(question: string): string {
-  if (operationsPreviewIntent(question) === "replenishment") {
+  const intent = operationsPreviewIntent(question);
+  if (intent === "replenishment") {
     return "The store's replenishment data took too long to load. No quantities were generated and no purchase order was created. Open Replenishment to review the full plan, or retry.";
+  }
+  if (intent === "sales_week") {
+    return "This week's sales data took too long to load. No figures were generated. Open the sales dashboard or retry.";
   }
   return "The assistant timed out. Please retry, or open the relevant business page to check the data.";
 }
@@ -137,12 +150,73 @@ async function readWeekSales(fetcher: typeof fetch, signal?: AbortSignal): Promi
   };
 }
 
-/** Uses the same tenant/session-scoped read endpoints as the business pages. Never sends a write. */
-export async function readOperationsPreview(
-  question: string, threadId?: string | null, signal?: AbortSignal, fetcher: typeof fetch = fetch,
-): Promise<AssistantResponse | null> {
+function previewUnavailableSummary(
+  intent: OperationsPreview,
+  error: unknown,
+  chinese: boolean,
+): string {
+  if (error instanceof PreviewReadError && error.status === 401) {
+    return chinese
+      ? intent === "sales_week"
+        ? "登录已过期，请重新登录后再查看销售数据。"
+        : "登录已过期，请重新登录后再查看补货数据。"
+      : intent === "sales_week"
+        ? "Your session has expired. Sign in again to view sales data."
+        : "Your session has expired. Sign in again to view replenishment data.";
+  }
+  if (error instanceof PreviewReadError && error.status === 403) {
+    return chinese
+      ? intent === "sales_week"
+        ? "当前账号没有权限查看销售报表，请联系管理员检查门店权限。"
+        : "当前账号没有权限查看补货数据，请联系管理员检查门店权限。"
+      : intent === "sales_week"
+        ? "You do not have permission to view sales reports. Ask an administrator to check store access."
+        : "You do not have permission to view replenishment data. Ask an administrator to check store access.";
+  }
+  return chinese
+    ? intent === "sales_week"
+      ? "销售查询服务暂时不可用，未生成金额。请稍后重试或打开销售报表核查。"
+      : "补货查询服务暂时不可用，未生成数量或金额。请稍后重试或打开补货页面核查。"
+    : intent === "sales_week"
+      ? "The sales query service is temporarily unavailable. No figures were generated. Retry shortly or open the sales dashboard to check."
+      : "The replenishment query service is temporarily unavailable. No figures were generated. Retry shortly or open Replenishment to check.";
+}
+
+function withThreadId(response: AssistantResponse, threadId?: string | null): AssistantResponse {
+  return threadId ? { ...response, threadId } : response;
+}
+
+function backgroundRefreshOperationsPreview(
+  question: string,
+  threadId: string | null | undefined,
+  fetcher: typeof fetch,
+) {
   const intent = operationsPreviewIntent(question);
-  if (!intent) return null;
+  if (!intent) return;
+  const task = buildLiveOperationsPreview(question, threadId, undefined, fetcher).then((result) => {
+    storeOperationsPreviewSnapshot(intent, result);
+    return result;
+  });
+  registerOperationsPreviewInflight(intent, task);
+}
+
+/** Warms replenishment and sales-week snapshots for the authenticated store session. */
+export function prefetchOperationsPreviewSnapshots(
+  signal?: AbortSignal,
+  fetcher: typeof fetch = fetch,
+) {
+  prefetchSnapshots(
+    (question, prefetchSignal) => buildLiveOperationsPreview(question, null, prefetchSignal ?? signal, fetcher),
+    signal,
+  );
+}
+
+/** Uses the same tenant/session-scoped read endpoints as the business pages. Never sends a write. */
+async function buildLiveOperationsPreview(
+  question: string, threadId?: string | null, signal?: AbortSignal, fetcher: typeof fetch = fetch,
+): Promise<AssistantResponse> {
+  const intent = operationsPreviewIntent(question);
+  if (!intent) throw new Error("preview intent required");
   const chinese = /[\u3400-\u9fff]/.test(question);
   const route = intent === "replenishment" ? "/purchases?tab=replenishment" : "/reports/dashboard";
   const title = intent === "replenishment" ? "Replenishment suggestions" : "This week's sales";
@@ -257,13 +331,7 @@ export async function readOperationsPreview(
     card.status = "unavailable";
     const retryable = error instanceof PreviewReadError ? error.retryable : true;
     card.retryable ??= retryable;
-    card.summary ??= error instanceof PreviewReadError && error.status === 401
-      ? chinese ? "登录已过期，请重新登录后再查看补货数据。" : "Your session has expired. Sign in again to view replenishment data."
-      : error instanceof PreviewReadError && error.status === 403
-        ? chinese ? "当前账号没有权限查看补货数据，请联系管理员检查门店权限。" : "You do not have permission to view replenishment data. Ask an administrator to check store access."
-      : chinese
-        ? "补货查询服务暂时不可用，未生成数量或金额。请稍后重试或打开补货页面核查。"
-        : "The replenishment query service is temporarily unavailable. No figures were generated. Retry shortly or open Replenishment to check.";
+    card.summary ??= previewUnavailableSummary(intent, error, chinese);
   }
   return {
     threadId: threadId ?? "", intent: intent === "sales_week" ? "report_sales" : "navigate",
@@ -272,4 +340,30 @@ export async function readOperationsPreview(
     storeScope, reportPeriodFrom, reportPeriodTo, reportTimeZone, reportDataStatus,
     fastPathId: `operations_${intent}`, llmFallback: false,
   };
+}
+
+/** Uses the same tenant/session-scoped read endpoints as the business pages. Never sends a write. */
+export async function readOperationsPreview(
+  question: string, threadId?: string | null, signal?: AbortSignal, fetcher: typeof fetch = fetch,
+): Promise<AssistantResponse | null> {
+  const intent = operationsPreviewIntent(question);
+  if (!intent) return null;
+  const chinese = /[\u3400-\u9fff]/.test(question);
+  const warm = warmOperationsPreviewSnapshot(intent);
+  if (warm && !signal?.aborted) {
+    backgroundRefreshOperationsPreview(OPERATIONS_PREVIEW_CANONICAL[intent], threadId, fetcher);
+    return withThreadId(warm, threadId);
+  }
+  await awaitOperationsPreviewInflight(intent);
+  const live = await buildLiveOperationsPreview(question, threadId, signal, fetcher);
+  if (live.cards?.[0]?.status !== "unavailable") {
+    storeOperationsPreviewSnapshot(intent, live);
+    return live;
+  }
+  const stale = staleOperationsPreviewSnapshot(intent, chinese);
+  return stale ? withThreadId(stale, threadId) : live;
+}
+
+export function operationsPreviewCanonicalQuestion(intent: OperationsPreview): string {
+  return OPERATIONS_PREVIEW_CANONICAL[intent];
 }
