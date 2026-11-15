@@ -156,6 +156,32 @@ class ShopfrontIntegrationControllerTest {
     }
 
     @Test
+    void releasesExistingProductNamesBeforeApplyingBatchNames() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true, true);
+        Class<?> batchType = Class.forName(ShopfrontIntegrationController.class.getName() + "$ProductImportBatch");
+        Constructor<?> constructor = batchType.getDeclaredConstructor();
+        constructor.setAccessible(true);
+        Object batch = constructor.newInstance();
+        var updatesField = batchType.getDeclaredField("productUpdates");
+        updatesField.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        Map<Long, Object[]> updates = (Map<Long, Object[]>) updatesField.get(batch);
+        updates.put(101L, new Object[]{"Duplicate", null, null, null, null, null, null, null, null, null,
+                null, false, true, false, false, false, false, false, null, null, null, "[]", null, 48L, 101L});
+        updates.put(102L, new Object[]{"Duplicate [source-2]", null, null, null, null, null, null, null, null,
+                null, null, false, true, false, false, false, false, false, null, null, null, "[]", null, 48L, 102L});
+        Method flush = ShopfrontIntegrationController.class.getDeclaredMethod("flushBusinessProductBatch", batchType, long.class);
+        flush.setAccessible(true);
+
+        flush.invoke(controller, batch, 48L);
+
+        org.mockito.InOrder order = org.mockito.Mockito.inOrder(jdbc);
+        order.verify(jdbc).batchUpdate(contains("UPDATE product SET name=? WHERE outlet_id=? AND id=?"), any(List.class));
+        order.verify(jdbc).batchUpdate(contains("UPDATE product SET name=?,type=?"), any(List.class));
+    }
+
+    @Test
     void matchStatusAggregatesProductAndSaleItemCounts() throws Exception {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
         var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true);
