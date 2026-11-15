@@ -835,6 +835,21 @@ class ShopfrontIntegrationControllerTest {
     }
 
     @Test
+    void packagePriceDoesNotCountAsAnIndividualUnitPrice() throws Exception {
+        var controller = new ShopfrontIntegrationController(mock(JdbcTemplate.class), new ObjectMapper(), "token", true, true);
+        Method hasUnitPrice = ShopfrontIntegrationController.class.getDeclaredMethod(
+                "hasValidUnitCataloguePrice", com.fasterxml.jackson.databind.JsonNode.class);
+        hasUnitPrice.setAccessible(true);
+        ObjectMapper mapper = new ObjectMapper();
+
+        assertFalse((boolean) hasUnitPrice.invoke(controller, mapper.readTree(
+                "{\"price\":null,\"prices\":[{\"quantity\":10,\"price\":64.99}]}")));
+        assertTrue((boolean) hasUnitPrice.invoke(controller, mapper.readTree(
+                "{\"price\":null,\"prices\":[{\"quantity\":1,\"price\":6.99}]}")));
+        assertTrue((boolean) hasUnitPrice.invoke(controller, mapper.readTree("{\"price\":6.99}")));
+    }
+
+    @Test
     void packagePriceTierIsConvertedToPosUnitPriceOnlyForMatchingBarcodeQuantity() throws Exception {
         var controller = new ShopfrontIntegrationController(mock(JdbcTemplate.class), new ObjectMapper(), "token", true, true);
         Class<?> batchType = Class.forName(ShopfrontIntegrationController.class.getName() + "$ProductImportBatch");

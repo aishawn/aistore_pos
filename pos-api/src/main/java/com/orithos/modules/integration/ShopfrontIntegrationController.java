@@ -2198,6 +2198,7 @@ public class ShopfrontIntegrationController {
         int updated = 0;
         int skipped = 0;
         int unpriced = 0;
+        int unitUnpriced = 0;
         if ("products".equals(type)) {
             com.fasterxml.jackson.databind.node.ArrayNode eligible = objectMapper.createArrayNode();
             for (JsonNode item : items) {
@@ -2236,6 +2237,7 @@ public class ShopfrontIntegrationController {
                     String sourceId = text(item, "source_id");
                     try {
                         if (!hasValidCataloguePrice(item)) unpriced++;
+                        if (!hasValidUnitCataloguePrice(item)) unitUnpriced++;
                         Long resolvedProductId = plan.productIds().get(sourceId);
                         String productName = reserveUniqueProductName(
                                 text(item, "name"), sourceId, resolvedProductId, batch.reservedProductNames);
@@ -2318,7 +2320,10 @@ public class ShopfrontIntegrationController {
         result.put("created", created);
         result.put("updated", updated);
         result.put("skipped", skipped);
-        if ("products".equals(type)) result.put("unpriced", unpriced);
+        if ("products".equals(type)) {
+            result.put("unpriced", unpriced);
+            result.put("unit_unpriced", unitUnpriced);
+        }
         result.put("errors", errors);
         return result;
     }
@@ -3330,6 +3335,22 @@ public class ShopfrontIntegrationController {
             BigDecimal quantity = decimal(price, "quantity");
             BigDecimal value = decimal(price, "price");
             if (quantity != null && quantity.signum() > 0 && value != null && value.signum() >= 0) return true;
+        }
+        return false;
+    }
+
+    private boolean hasValidUnitCataloguePrice(JsonNode item) {
+        BigDecimal shelfPrice = decimal(item, "price");
+        if (shelfPrice != null && shelfPrice.signum() >= 0) return true;
+        JsonNode prices = item.path("prices");
+        if (!prices.isArray()) return false;
+        for (JsonNode price : prices) {
+            BigDecimal quantity = decimal(price, "quantity");
+            BigDecimal value = decimal(price, "price");
+            if (quantity != null && quantity.compareTo(BigDecimal.ONE) == 0
+                    && value != null && value.signum() >= 0) {
+                return true;
+            }
         }
         return false;
     }
