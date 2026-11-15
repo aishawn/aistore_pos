@@ -4104,7 +4104,10 @@ async def _stage_pos_import(store_key: str, import_type: str, db: Session) -> Po
 async def import_products_to_pos(store: str, db: Session = Depends(get_db)) -> dict:
     require_store(store, db)
     run = await _stage_pos_import(store, "products", db)
-    products = db.scalars(select(Product).where(Product.store_key == store)).all()
+    products = db.scalars(select(Product).where(
+        Product.store_key == store,
+        Product.catalog_last_seen_at.is_not(None),
+    )).all()
     def import_product_item(p: Product) -> dict:
         raw = p.raw_payload if isinstance(p.raw_payload, dict) else {}
         category = raw.get("category") if isinstance(raw.get("category"), dict) else {}

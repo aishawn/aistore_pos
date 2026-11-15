@@ -341,14 +341,16 @@ def _upsert_sale_product(
         incoming["barcode"] = barcode
     if not incoming.get("prices") and _non_empty(first(sale_item, "basePrice", "unitPrice")):
         incoming["prices"] = [{"quantity": 1, "price": first(sale_item, "basePrice", "unitPrice")}]
-    if not _non_empty(first(incoming, "cost", "Cost")) and _non_empty(sale_item.get("cost")):
-        incoming["cost"] = sale_item.get("cost")
-
     existing_raw = dict(product.raw_payload) if isinstance(product.raw_payload, dict) else {}
     merged_raw = dict(existing_raw)
     for key, value in incoming.items():
         if _non_empty(value) or key not in merged_raw:
             merged_raw[key] = value
+    if product.catalog_last_seen_at is None:
+        # Sale history is not authoritative evidence for the current product cost.
+        merged_raw.pop("cost", None)
+        merged_raw.pop("Cost", None)
+        product.cost = None
     product.raw_payload = merged_raw
     # Older imports created ``Shopfront <source_id>`` placeholders before the
     # complete SaleItem query was enabled. Replace those placeholders when a
@@ -361,9 +363,6 @@ def _upsert_sale_product(
         product.sku = str(incoming_sku)
     if barcode and not product.barcode:
         product.barcode = str(barcode)
-    incoming_cost = parse_decimal(first(incoming, "cost", "Cost"))
-    if incoming_cost is not None and product.cost is None:
-        product.cost = incoming_cost
     incoming_price = parse_decimal(first(incoming, "price", "Price", "retailPrice", "basePrice"))
     if incoming_price is None:
         incoming_price = shelf_unit_price(incoming)

@@ -6,6 +6,7 @@ import { PackageSearch, Search } from "lucide-react";
 import { useApiList, useDebouncedValue } from "@/hooks/useApi";
 import { useAuth } from "@/lib/auth";
 import { naturalSortRows } from "@/lib/natural-sort";
+import { productCostDisplay } from "@/lib/product-cost-display";
 
 type ProductRow = {
   id: number | string;
@@ -13,6 +14,8 @@ type ProductRow = {
   status?: string;
   categoryName?: string;
   brandName?: string;
+  cost?: number | null;
+  caseQuantity?: number | null;
   price?: number | null;
   stockQuantity?: number | null;
 };
@@ -57,21 +60,27 @@ export function NativeProductCataloguePage() {
       ) : (
         <>
           <div className="overflow-x-auto rounded-md border border-[var(--oh-border)] bg-white">
-            <table className="w-full min-w-[720px] text-left text-sm">
+            <table className="w-full min-w-[880px] text-left text-sm">
               <thead className="border-b bg-[var(--oh-surface)] text-xs uppercase text-[var(--oh-muted)]">
-                <tr><th className="px-4 py-3">Product</th><th className="px-4 py-3">Category</th><th className="px-4 py-3">Brand</th><th className="px-4 py-3 text-right">Price</th><th className="px-4 py-3 text-right">Stock</th><th className="px-4 py-3" /></tr>
+                <tr><th className="px-4 py-3">Product</th><th className="px-4 py-3">Category</th><th className="px-4 py-3">Brand</th><th className="px-4 py-3 text-right">Price</th><th className="px-4 py-3 text-right">Cost</th><th className="px-4 py-3 text-right">Stock</th><th className="px-4 py-3" /></tr>
               </thead>
               <tbody className="divide-y divide-[var(--oh-border)]">
-                {sortedItems.map((product) => (
-                  <tr key={String(product.id)} className="hover:bg-[var(--oh-surface)]">
-                    <td className="px-4 py-3"><Link href={`/products/${product.id}/view`} className="font-semibold text-[var(--oh-primary)] hover:underline">{product.name}</Link></td>
-                    <td className="px-4 py-3 text-[var(--oh-muted)]">{product.categoryName || "—"}</td>
-                    <td className="px-4 py-3 text-[var(--oh-muted)]">{product.brandName || "—"}</td>
-                    <td className="px-4 py-3 text-right tabular-nums">{product.price == null ? "—" : `$${Number(product.price).toFixed(2)}`}</td>
-                    <td className="px-4 py-3 text-right tabular-nums">{product.stockQuantity == null ? "—" : Number(product.stockQuantity).toLocaleString("en-AU")}</td>
-                    <td className="px-4 py-3 text-right"><Link href={`/products/${product.id}/view`} className="font-semibold text-[var(--oh-primary)] hover:underline">View</Link></td>
-                  </tr>
-                ))}
+                {sortedItems.map((product) => {
+                  const cost = productCostDisplay(product.cost, product.caseQuantity, product.status);
+                  return (
+                    <tr key={String(product.id)} className="hover:bg-[var(--oh-surface)]">
+                      <td className="px-4 py-3"><Link href={`/products/${product.id}/view`} className="font-semibold text-[var(--oh-primary)] hover:underline">{product.name}</Link></td>
+                      <td className="px-4 py-3 text-[var(--oh-muted)]">{product.categoryName || "—"}</td>
+                      <td className="px-4 py-3 text-[var(--oh-muted)]">{product.brandName || "—"}</td>
+                      <td className="px-4 py-3 text-right tabular-nums">{product.price == null ? "—" : `$${Number(product.price).toFixed(2)}`}</td>
+                      <td className="px-4 py-3 text-right tabular-nums" aria-label="Cost from Shopfront">
+                        {cost ? <span className="inline-flex flex-col items-end"><span>{cost.caseCost}</span>{cost.itemCost && <span className="text-xs text-[var(--oh-muted)]">{cost.itemCost}</span>}</span> : "—"}
+                      </td>
+                      <td className="px-4 py-3 text-right tabular-nums">{product.stockQuantity == null ? "—" : Number(product.stockQuantity).toLocaleString("en-AU")}</td>
+                      <td className="px-4 py-3 text-right"><Link href={`/products/${product.id}/view`} className="font-semibold text-[var(--oh-primary)] hover:underline">View</Link></td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

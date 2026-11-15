@@ -161,7 +161,8 @@ def test_sale_product_replaces_placeholder_name_and_keeps_source_metadata(db_ses
         store_key="skr",
         shopfront_product_id="source-old",
         name="Shopfront source-old",
-        raw_payload={"id": "source-old", "name": "Shopfront source-old"},
+        cost=Decimal("4.00"),
+        raw_payload={"id": "source-old", "name": "Shopfront source-old", "cost": 4.0},
     )
     db_session.add(product)
     db_session.commit()
@@ -186,8 +187,54 @@ def test_sale_product_replaces_placeholder_name_and_keeps_source_metadata(db_ses
     assert updated.name == "REAL PRODUCT NAME"
     assert updated.barcode == "12345"
     assert updated.price == Decimal("9.99")
+    assert updated.cost is None
+    assert "cost" not in updated.raw_payload
     assert updated.raw_payload["description"] == "source description"
     assert updated.raw_payload["barcodes"][0]["code"] == "12345"
+
+
+@pytest.mark.asyncio
+async def test_pos_product_reimport_excludes_products_without_current_catalog_evidence(db_session, monkeypatch):
+    store = Store(store_key="skr", vendor="skr", active=True)
+    current = Product(
+        store_key="skr",
+        shopfront_product_id="current-product",
+        name="Current product",
+        cost=Decimal("72.00"),
+        raw_payload={"caseQuantity": 12},
+        catalog_last_seen_at=datetime(2026, 11, 15, tzinfo=timezone.utc),
+    )
+    history_only = Product(
+        store_key="skr",
+        shopfront_product_id="history-product",
+        name="Historical product",
+        cost=Decimal("4.41"),
+        raw_payload={"cost": 4.41},
+        catalog_last_seen_at=None,
+    )
+    db_session.add_all([store, current, history_only])
+    db_session.commit()
+    captured = []
+
+    class FakePosClient:
+        def __init__(self, *args):
+            pass
+
+        async def upsert_products(self, payload):
+            captured.append(payload)
+            return {"status": "completed", "item_count": len(payload["items"])}
+
+        async def close(self):
+            pass
+
+    monkeypatch.setattr(main, "OrithosClient", FakePosClient)
+    monkeypatch.setattr(main.settings, "pos_import_enabled", True)
+    monkeypatch.setattr(main.settings, "pos_api_secondary_store_key", "")
+
+    result = await main.import_products_to_pos("skr", db_session)
+
+    assert result["status"] == "completed"
+    assert [item["source_id"] for item in captured[0]["items"]] == ["current-product"]
 
 
 @pytest.mark.asyncio
