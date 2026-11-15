@@ -74,9 +74,8 @@ services:
       AI_FORECAST_ENABLED: ${AI_FORECAST_ENABLED:-false}
       AI_FORECAST_BASE_URL: ${AI_FORECAST_BASE_URL:-https://ai.orithos.com.au}
       # Draft RFQs are a separate write gate from AI command execution.
-      # Controlled Demo-only draft RFQs are enabled by default; the route still
-      # requires the explicit host allowlist, so SKR remains read-only.
       AI_PURCHASE_DRAFT_ENABLED: "true"
+      AI_PURCHASE_DRAFT_ALLOWED_HOSTS: "demo.orithos.com.au,skr.orithos.com.au"
       AI_PURCHASE_CONFIRM_ENABLED: ${AI_PURCHASE_CONFIRM_ENABLED:-false}
       AI_FORECAST_READ_TIMEOUT_MS: ${AI_FORECAST_READ_TIMEOUT_MS:-190000}
       AI_FORECAST_MAX_HISTORY_DAYS: ${AI_FORECAST_MAX_HISTORY_DAYS:-365}
@@ -136,9 +135,9 @@ services:
       NEXT_PUBLIC_TENANT_BASE_DOMAIN: ${APP_TENANT_BASE_DOMAIN:-orithos.com.au}
       NEXT_PUBLIC_TENANT_SCHEME: ${APP_TENANT_SCHEME:-https}
       # Controlled Demo-only draft RFQs are enabled by default; the route still
-      # requires the explicit host allowlist, so SKR remains read-only.
+      # requires the explicit host allowlist (Demo + SKR after replenishment acceptance).
       AI_PURCHASE_DRAFT_ENABLED: "true"
-      AI_PURCHASE_DRAFT_ALLOWED_HOSTS: "demo.orithos.com.au"
+      AI_PURCHASE_DRAFT_ALLOWED_HOSTS: "demo.orithos.com.au,skr.orithos.com.au"
       AI_FORECAST_ENABLED: ${AI_FORECAST_ENABLED:-false}
       AI_SERVICE_BASE_URL: ${AI_SERVICE_BASE_URL:-https://ai.orithos.com.au}
       AI_FORECAST_BASE_URL: ${AI_FORECAST_BASE_URL:-https://ai.orithos.com.au}

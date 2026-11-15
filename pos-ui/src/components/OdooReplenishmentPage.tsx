@@ -259,82 +259,29 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
   const load = useCallback(async (refresh = false) => {
     const revision = ++requestRevision.current;
     const controller = new AbortController();
-    const timeout = window.setTimeout(() => controller.abort(), 45_000);
+    const timeout = window.setTimeout(() => controller.abort(), 120_000);
     if (refresh) setRefreshing(true);
     else setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`/api/supply-chain/plan`, { credentials: "same-origin", cache: "no-store", signal: controller.signal });
-      const body = await response.json().catch(() => null) as {
-        data?: {
-          weekStart?: string;
-          weekEnd?: string;
-          productCount?: number;
-          lines?: Array<{
-            productId?: number;
-            productName?: string;
-            supplierName?: string;
-            lastWeekSales?: number;
-            currentStock?: number;
-            expectedDemand?: number;
-            orderQty?: number;
-            unitCost?: number;
-            reason?: string;
-            confidenceLabel?: string;
-            status?: string;
-          }>;
-        };
-        message?: string;
-      } | null;
+      const params = new URLSearchParams({ coverageDays: String(coverageDays) });
+      if (exceptionOnly) params.set("mode", "exceptions");
+      if (refresh) params.set("refresh", "true");
+      const response = await fetch(`/api/replenishment/plan?${params}`, { credentials: "same-origin", cache: "no-store", signal: controller.signal });
+      const body = await response.json().catch(() => null) as { code?: number; data?: ReplenishmentData; message?: string } | null;
       if (revision !== requestRevision.current) return;
-      if (!response.ok || !body?.data) {
+      if (!response.ok || body?.code !== 0 || !body?.data) {
         setNeedsConnection(response.status === 401);
         throw new Error(body?.message || `Could not load the replenishment plan (${response.status}).`);
       }
-      const lines = Array.isArray(body.data.lines) ? body.data.lines : [];
-      const products: ReplenishmentProduct[] = lines
-        .filter((line) => line.productId != null)
-        .map((line) => {
-          const onHand = Number(line.currentStock ?? 0);
-          const suggested = Math.max(0, Number(line.orderQty ?? 0));
-          const sold = Number(line.lastWeekSales ?? 0);
-          return {
-            id: Number(line.productId),
-            name: line.productName || `Product ${line.productId}`,
-            sku: "",
-            unit: "Units",
-            soldUnits: sold,
-            recentUnits: sold,
-            previousUnits: 0,
-            unitsPerDay: sold / 7,
-            trendPercent: null,
-            trend: null,
-            onHand,
-            forecastStock: onHand,
-            daysOfStock: sold > 0 ? onHand / (sold / 7) : null,
-            suggestedQuantity: suggested,
-            reason: line.reason || line.supplierName || undefined,
-            unitCost: line.unitCost == null ? null : Number(line.unitCost),
-            recommendationStatus: (suggested > 0 ? "READY" : "NO_DEMAND") as ReplenishmentProduct["recommendationStatus"],
-            confidence: (line.confidenceLabel as ReplenishmentProduct["confidence"]) || "MEDIUM",
-          };
-        })
-        .filter((product) => !exceptionOnly || product.suggestedQuantity > 0 || product.onHand <= 0);
-      const payload: ReplenishmentData = {
-        company: "Orithos",
-        historyDays: 7,
-        periodDays: coverageDays,
-        coverageDays,
-        products,
-        truncated: false,
-        generatedAt: new Date().toISOString(),
-        salesHistory: { timezone: "Australia/Adelaide", timezoneVerified: true },
-      };
+      const payload = body.data;
       setNeedsConnection(false);
       setData(payload);
-      setStoreTimezone("Australia/Adelaide");
+      setStoreTimezone(payload.salesHistory?.timezone ?? "Australia/Adelaide");
       try { window.localStorage.setItem(cacheKey, JSON.stringify({ savedAt: Date.now(), data: payload })); } catch { /* Storage is optional. */ }
-      setSelectedIds(new Set(payload.products.filter((product) => product.suggestedQuantity > 0).map((product) => product.id)));
+      setSelectedIds(new Set(payload.products
+        .filter((product) => product.suggestedQuantity > 0 && product.recommendationStatus !== "REVIEW_DATA")
+        .map((product) => product.id)));
     } catch (cause) {
       if (revision === requestRevision.current) {
       setError(cause instanceof DOMException && cause.name === "AbortError"
@@ -423,7 +370,9 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
   const canCreateRfq = draftRfqEnabled && planReady && selectedSuggested.length > 0;
 
   const visibleSelectableIds = useMemo(
-    () => pageItems.filter((product) => product.suggestedQuantity > 0).map((product) => product.id),
+    () => pageItems
+      .filter((product) => product.suggestedQuantity > 0 && product.recommendationStatus !== "REVIEW_DATA")
+      .map((product) => product.id),
     [pageItems],
   );
   const allVisibleSelected = visibleSelectableIds.length > 0 && visibleSelectableIds.every((id) => selectedIds.has(id));
@@ -699,6 +648,15 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
         <p><span className="font-semibold tabular-nums text-[var(--oh-text)]">{number.format(outOfStockWithDemand)}</span> <span className="text-[var(--oh-muted)]">out of stock with demand</span></p>
         <p className="text-[var(--oh-muted)]">{number.format(data?.products.length ?? 0)} POS products in plan</p>
         {(data?.reviewRequiredCount ?? 0) > 0 && <p className="text-amber-900">{number.format(data?.reviewRequiredCount ?? 0)} need data review; excluded from order value and forecast-risk totals.</p>}
+        {!draftRfqEnabled && (
+          <p className="text-[var(--oh-muted)]">
+            To order: open{" "}
+            <Link href="/purchases" className="font-semibold text-[var(--oh-primary)] underline-offset-2 hover:underline">
+              Purchase Orders
+            </Link>
+            {" "}or use exceptions first — totals are suggestions, not mandatory order quantities.
+          </p>
+        )}
          {data?.businessMetrics?.suggestedOrderValue !== null && data?.businessMetrics?.suggestedOrderValue !== undefined && <p><span className="font-semibold tabular-nums text-[var(--oh-text)]">{data.businessMetrics.suggestedOrderValue.toLocaleString("en-AU", { style: "currency", currency: "AUD", minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span> <span className="text-[var(--oh-muted)]">estimated at current cost</span></p>}
          {data?.businessMetrics?.productsWithExpectedStockout !== undefined && <p><span className="font-semibold tabular-nums text-red-700">{number.format(data.businessMetrics.productsWithExpectedStockout)}</span> <span className="text-[var(--oh-muted)]">risks among eligible products</span></p>}
       </section>
@@ -791,7 +749,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
           ) : pageItems.map((product) => {
             const label = friendlyProductName(product.name);
             const skuShort = truncateSku(product.sku);
-            const selectable = product.suggestedQuantity > 0;
+            const selectable = product.suggestedQuantity > 0 && product.recommendationStatus !== "REVIEW_DATA";
             const checked = selectedIds.has(product.id);
             return (
               <article key={product.id} className="p-4">
@@ -925,7 +883,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
               ) : pageItems.map((product) => {
                 const label = friendlyProductName(product.name);
                 const skuShort = truncateSku(product.sku);
-                const selectable = product.suggestedQuantity > 0;
+                const selectable = product.suggestedQuantity > 0 && product.recommendationStatus !== "REVIEW_DATA";
                 return (
                   <tr key={product.id} className="hover:bg-sky-50/40">
                     <td className="px-3 py-3">

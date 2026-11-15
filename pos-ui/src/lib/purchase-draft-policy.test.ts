@@ -7,10 +7,10 @@ test("draft RFQs stay disabled unless both the feature and host allowlist are en
   const oldHosts = process.env.AI_PURCHASE_DRAFT_ALLOWED_HOSTS;
   try {
     process.env.AI_PURCHASE_DRAFT_ENABLED = "true";
-    process.env.AI_PURCHASE_DRAFT_ALLOWED_HOSTS = "demo.orithos.com.au";
+    process.env.AI_PURCHASE_DRAFT_ALLOWED_HOSTS = "demo.orithos.com.au,skr.orithos.com.au";
     assert.equal(isPurchaseDraftEnabled("demo.orithos.com.au"), true);
     assert.equal(isPurchaseDraftEnabled("demo.orithos.com.au."), true);
-    assert.equal(isPurchaseDraftEnabled("skr.orithos.com.au"), false);
+    assert.equal(isPurchaseDraftEnabled("skr.orithos.com.au"), true);
     assert.equal(isPurchaseDraftEnabled("evil.example"), false);
     process.env.AI_PURCHASE_DRAFT_ENABLED = "false";
     assert.equal(isPurchaseDraftEnabled("demo.orithos.com.au"), false);

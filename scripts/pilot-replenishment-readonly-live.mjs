@@ -84,7 +84,7 @@ for (const target of targets) {
     cookies = [cookies, cookieHeader(response)].filter(Boolean).join("; ");
     await response.arrayBuffer();
     const refresh = process.env.PILOT_FORCE_REPLENISHMENT_REFRESH === "true" ? "&refresh=true" : "";
-    response = await request(`${base}/api/odoo/replenishment?coverageDays=21&mode=exceptions${refresh}`, {
+    response = await request(`${base}/api/replenishment/plan?coverageDays=21&mode=exceptions${refresh}`, {
       headers: { Origin: base, Cookie: cookies },
     }, refresh ? 120000 : 60000);
     const body = await readJson(response);
