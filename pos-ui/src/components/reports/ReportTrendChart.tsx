@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { reportMoney, reportNumber, shortDayLabel } from "@/components/reports/report-format";
 
 export type ReportTrendPoint = {
@@ -30,22 +30,33 @@ export function ReportTrendChart({
   title = "Daily sales",
   emptyMessage = "No Orithos sales for this period.",
   comparison,
+  breakdownAnchorId,
 }: {
   points: ReportTrendPoint[];
   loading?: boolean;
   title?: string;
   emptyMessage?: string;
   comparison?: { current: ReportComparisonSnapshot; previous: ReportComparisonSnapshot } | null;
+  /** When set, shows a control that scrolls to the element with this id (e.g. daily breakdown table). */
+  breakdownAnchorId?: string;
 }) {
   const gradientId = useId();
   const [hover, setHover] = useState<number | null>(null);
   const singleDay = points.length === 1;
+  const defaultHighlightIndex = useMemo(() => {
+    if (!points.length) return 0;
+    let best = 0;
+    for (let i = 1; i < points.length; i++) {
+      if (String(points[i].date) > String(points[best].date)) best = i;
+    }
+    return best;
+  }, [points]);
 
   if (loading) {
     return (
       <section className="rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-4">
         <h2 className="text-sm font-semibold text-[var(--oh-text)]">{title}</h2>
-        <div className="mt-4 h-48 animate-pulse rounded-md bg-[var(--oh-border)]" aria-busy="true" />
+        <div className="mt-4 h-56 animate-pulse rounded-md bg-[var(--oh-border)] md:h-64" aria-busy="true" />
       </section>
     );
   }
@@ -84,17 +95,27 @@ export function ReportTrendChart({
                   Prev {previous == null ? "—" : metric.format(previous)}
                   {delta == null ? "" : ` · ${delta >= 0 ? "+" : ""}${delta.toFixed(1)}%`}
                 </p>
-                <div className="mt-3 flex h-16 items-end gap-2">
-                  <div
-                    className="w-1/2 rounded-t bg-[var(--oh-border-strong,#cbd3df)]"
-                    style={{ height: `${Math.max(8, ((Number(previous) || 0) / max) * 100)}%` }}
-                    title={`Previous: ${previous == null ? "—" : metric.format(previous)}`}
-                  />
-                  <div
-                    className="w-1/2 rounded-t bg-[var(--oh-primary)]"
-                    style={{ height: `${Math.max(8, ((Number(current) || 0) / max) * 100)}%` }}
-                    title={`Current: ${current == null ? "—" : metric.format(current)}`}
-                  />
+                <div className="mt-3 flex h-28 gap-2">
+                  <div className="flex h-full w-1/2 flex-col justify-end gap-1">
+                    <div className="flex h-20 items-end">
+                      <div
+                        className="w-full rounded-t bg-[var(--oh-border-strong,#cbd3df)]"
+                        style={{ height: `${Math.max(8, ((Number(previous) || 0) / max) * 100)}%` }}
+                        title={`Previous: ${previous == null ? "—" : metric.format(previous)}`}
+                      />
+                    </div>
+                    <span className="text-center text-[10px] font-medium text-[var(--oh-muted)]">Prev</span>
+                  </div>
+                  <div className="flex h-full w-1/2 flex-col justify-end gap-1">
+                    <div className="flex h-20 items-end">
+                      <div
+                        className="w-full rounded-t bg-[var(--oh-primary)]"
+                        style={{ height: `${Math.max(8, ((Number(current) || 0) / max) * 100)}%` }}
+                        title={`Current: ${current == null ? "—" : metric.format(current)}`}
+                      />
+                    </div>
+                    <span className="text-center text-[10px] font-medium text-[var(--oh-muted)]">Current</span>
+                  </div>
                 </div>
               </div>
             );
@@ -114,7 +135,7 @@ export function ReportTrendChart({
   }
 
   const width = 640;
-  const height = 220;
+  const height = 260;
   const pad = { top: 16, right: 12, bottom: 36, left: 52 };
   const innerW = width - pad.left - pad.right;
   const innerH = height - pad.top - pad.bottom;
@@ -122,27 +143,42 @@ export function ReportTrendChart({
   const barGap = points.length > 20 ? 2 : 6;
   const barWidth = Math.max(4, (innerW - barGap * (points.length - 1)) / points.length);
   const ticks = [0, 0.5, 1].map((ratio) => maxRevenue * ratio);
-  const active = hover == null ? null : points[hover];
+  const highlightIndex = hover ?? defaultHighlightIndex;
+  const active = points[highlightIndex];
+
+  function scrollToBreakdown() {
+    if (!breakdownAnchorId) return;
+    document.getElementById(breakdownAnchorId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 
   return (
     <section className="rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-sm font-semibold text-[var(--oh-text)]">{title}</h2>
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <h2 className="text-sm font-semibold text-[var(--oh-text)]">{title}</h2>
+          {breakdownAnchorId ? (
+            <button
+              type="button"
+              onClick={scrollToBreakdown}
+              className="text-xs font-semibold text-[var(--oh-primary)] hover:underline"
+            >
+              View daily breakdown
+            </button>
+          ) : null}
+        </div>
         {active ? (
           <p className="text-xs tabular-nums text-[var(--oh-muted)]">
             {active.date}: {reportMoney(Number(active.revenue))}
             {active.transaction_count != null ? ` · ${reportNumber(Number(active.transaction_count))} tx` : ""}
           </p>
-        ) : (
-          <p className="text-xs text-[var(--oh-muted)]">Hover a day for detail</p>
-        )}
+        ) : null}
       </div>
       <div className="mt-3 overflow-x-auto">
         <svg
           role="img"
           aria-label={`${title} bar chart`}
           viewBox={`0 0 ${width} ${height}`}
-          className="h-52 w-full min-w-[320px]"
+          className="h-56 w-full min-w-[320px] md:h-64"
         >
           <defs>
             <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
@@ -185,7 +221,7 @@ export function ReportTrendChart({
                   height={barH}
                   rx={3}
                   fill={`url(#${gradientId})`}
-                  opacity={hover == null || hover === index ? 1 : 0.35}
+                  opacity={highlightIndex === index ? 1 : 0.35}
                 />
                 {showLabel ? (
                   <text

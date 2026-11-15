@@ -61,7 +61,7 @@ export function ReportPeriodToolbar({
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex w-full min-w-0 flex-col items-stretch gap-2 lg:w-auto lg:max-w-none lg:flex-row lg:items-center">
       <div
         role="group"
         aria-label="Reporting period"
@@ -84,19 +84,21 @@ export function ReportPeriodToolbar({
           </button>
         ))}
       </div>
-      <FilterDateRangePicker label="Date range" start={draft.start} end={draft.end} onChange={changeRange} />
-      {onRefresh ? (
-        <button
-          type="button"
-          onClick={onRefresh}
-          disabled={loading}
-          aria-label="Refresh report"
-          title="Refresh report"
-          className="grid size-11 place-items-center rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] disabled:opacity-50"
-        >
-          <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
-        </button>
-      ) : null}
+      <div className="flex flex-wrap items-center gap-2">
+        <FilterDateRangePicker label="Date range" start={draft.start} end={draft.end} onChange={changeRange} />
+        {onRefresh ? (
+          <button
+            type="button"
+            onClick={onRefresh}
+            disabled={loading}
+            aria-label="Refresh report"
+            title="Refresh report"
+            className="grid size-10 place-items-center rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] disabled:opacity-50 sm:size-11"
+          >
+            <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
+          </button>
+        ) : null}
+      </div>
     </div>
   );
 }

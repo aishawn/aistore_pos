@@ -15,6 +15,7 @@ import {
   syncReportRangeToUrl,
   type ReportDatePreset,
 } from "@/lib/report-date-selection";
+import { compareIsoDateDesc } from "@/lib/natural-sort";
 import { formatShopfrontProfitPercent, shopfrontAlignedMarginRatio } from "@/lib/shopfront-aligned-margin";
 
 type Report = {
@@ -62,6 +63,10 @@ export function NativeSalesReportPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [revision, setRevision] = useState(0);
+  const dailyRows = useMemo(
+    () => [...(report?.dailyTrend ?? [])].sort((a, b) => compareIsoDateDesc(String(a.date), String(b.date))),
+    [report?.dailyTrend],
+  );
 
   useEffect(() => {
     const selection = readReportRangeFromSearch(window.location.search);
@@ -137,52 +142,68 @@ export function NativeSalesReportPage() {
       ) : null}
 
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <section aria-busy={loading} className="grid grid-cols-2 gap-3 p-4 md:grid-cols-4 md:px-6 xl:grid-cols-7">
-          <ReportMetricCard label="Revenue" value={report ? reportMoney(report.revenue) : "—"} loading={loading} />
+        <section aria-busy={loading} className="grid grid-cols-2 gap-3 p-4 md:grid-cols-4 md:px-6">
+          <ReportMetricCard label="Sales" value={report ? reportMoney(report.revenue) : "—"} loading={loading} />
           <ReportMetricCard
-            label="COGS"
-            value={report?.costAvailable && report.cost !== null ? reportMoney(report.cost) : "—"}
-            tone={report && !report.costAvailable ? "warning" : "neutral"}
+            label="Profit"
+            value={report?.grossProfit != null ? reportMoney(report.grossProfit) : "—"}
             loading={loading}
           />
-          <ReportMetricCard label="Profit" value={report?.grossProfit != null ? reportMoney(report.grossProfit) : "—"} loading={loading} />
           <ReportMetricCard
             label="Profit %"
             value={report?.profitMargin != null ? `${Number(report.profitMargin).toFixed(2)}%` : "—"}
-            loading={loading}
-          />
-          <ReportMetricCard
-            label="Tax"
-            value={report?.taxAvailable && report.tax !== null ? reportMoney(report.tax) : "—"}
-            loading={loading}
-          />
-          <ReportMetricCard
-            label="Avg sale"
-            value={report?.averageSale != null ? reportMoney(report.averageSale) : "—"}
+            detail="Gross margin"
             loading={loading}
           />
           <ReportMetricCard
             label="Transactions"
             value={report ? reportNumber(report.transactions) : "—"}
             loading={loading}
-            className="col-span-2 md:col-span-1 xl:col-span-1"
           />
         </section>
 
-        <section className="grid gap-4 px-4 pb-4 md:px-6 xl:grid-cols-[1.35fr_1fr]">
+        <section aria-busy={loading} className="grid grid-cols-3 gap-3 px-4 md:px-6">
+          <ReportMetricCard
+            label="COGS"
+            value={report?.costAvailable && report.cost !== null ? reportMoney(report.cost) : "—"}
+            tone={report && !report.costAvailable ? "warning" : "neutral"}
+            size="secondary"
+            loading={loading}
+          />
+          <ReportMetricCard
+            label="Tax"
+            value={report?.taxAvailable && report.tax !== null ? reportMoney(report.tax) : "—"}
+            size="secondary"
+            loading={loading}
+          />
+          <ReportMetricCard
+            label="Avg sale"
+            value={report?.averageSale != null ? reportMoney(report.averageSale) : "—"}
+            size="secondary"
+            loading={loading}
+          />
+        </section>
+
+        <section className="grid gap-4 px-4 pb-4 pt-1 md:px-6 xl:grid-cols-[1.35fr_1fr] xl:items-stretch">
           <ReportTrendChart
             points={report?.dailyTrend ?? []}
             loading={loading}
             emptyMessage="No Orithos sales in this range."
+            breakdownAnchorId="sales-daily-breakdown"
           />
           <ReportTopProducts
             products={report?.topProducts ?? []}
             loading={loading}
             emptyMessage="Product detail unavailable."
+            className="xl:min-h-full"
           />
         </section>
 
-        <section className="border-t border-[var(--oh-border)] bg-[var(--oh-surface-elevated)]">
+        <section
+          id="sales-daily-breakdown"
+          className="scroll-mt-4 border-t border-[var(--oh-border)] bg-[var(--oh-surface-elevated)]"
+        >
+          <h2 className="px-4 pt-4 text-sm font-semibold text-[var(--oh-text)] md:px-6">Daily breakdown</h2>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[780px] border-collapse text-left text-sm">
               <thead className="sticky top-0 bg-[var(--oh-surface-muted)] text-xs uppercase tracking-wide text-[var(--oh-muted)]">
@@ -195,7 +216,7 @@ export function NativeSalesReportPage() {
                 </tr>
               </thead>
               <tbody>
-                {[...(report?.dailyTrend ?? [])].sort((a, b) => a.date.localeCompare(b.date)).map((row, index) => (
+                {dailyRows.map((row, index) => (
                   <tr
                     key={String(row.date)}
                     className={index % 2 === 0 ? "bg-[var(--oh-surface-elevated)]" : "bg-[var(--oh-surface)]"}

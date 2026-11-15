@@ -1,4 +1,5 @@
 import { reportMoney, reportNumber } from "@/components/reports/report-format";
+import { cn } from "@/lib/utils";
 
 export type ReportTopProduct = {
   id?: number | string;
@@ -12,16 +13,23 @@ export function ReportTopProducts({
   loading = false,
   emptyMessage = "Product detail unavailable.",
   title = "Top products",
+  className,
 }: {
   products: ReportTopProduct[];
   loading?: boolean;
   emptyMessage?: string;
   title?: string;
+  className?: string;
 }) {
   const maxRevenue = Math.max(1, ...products.map((row) => Number(row.revenue) || 0));
 
   return (
-    <section className="flex min-h-0 flex-col rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-4">
+    <section
+      className={cn(
+        "flex min-h-0 flex-col rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-4",
+        className,
+      )}
+    >
       <h2 className="text-sm font-semibold text-[var(--oh-text)]">{title}</h2>
       {loading ? (
         <div className="mt-4 space-y-3" aria-busy="true">
@@ -39,14 +47,14 @@ export function ReportTopProducts({
             return (
               <li key={row.id ?? `${row.name}-${index}`} className="grid gap-1">
                 <div className="flex items-baseline justify-between gap-3 text-sm">
-                  <span className="min-w-0 truncate font-medium text-[var(--oh-text)]" title={row.name}>
+                  <span className="line-clamp-2 min-w-0 font-medium text-[var(--oh-text)]" title={row.name}>
                     <span className="mr-2 text-xs text-[var(--oh-muted)]">{index + 1}.</span>
                     {row.name}
                   </span>
                   <strong className="shrink-0 tabular-nums">{reportMoney(revenue)}</strong>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-[var(--oh-surface-muted)]">
+                  <div className="h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-[var(--oh-surface-muted)]">
                     <div className="h-full rounded-full bg-[var(--oh-primary)]" style={{ width: `${width}%` }} />
                   </div>
                   <span className="shrink-0 text-xs tabular-nums text-[var(--oh-muted)]">

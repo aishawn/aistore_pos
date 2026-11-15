@@ -27,6 +27,8 @@ export function ReportMetricCard({
   href,
   loading = false,
   className,
+  detailClassName,
+  size = "primary",
 }: {
   label: string;
   value: string;
@@ -35,6 +37,8 @@ export function ReportMetricCard({
   href?: string;
   loading?: boolean;
   className?: string;
+  detailClassName?: string;
+  size?: "primary" | "secondary";
 }) {
   const body = (
     <>
@@ -42,9 +46,19 @@ export function ReportMetricCard({
       {loading ? (
         <div className="mt-2 h-7 w-24 animate-pulse rounded bg-[var(--oh-border)]" aria-hidden="true" />
       ) : (
-        <p className={cn("mt-1 text-2xl font-semibold tracking-tight", valueTone[tone])}>{value}</p>
+        <p
+          className={cn(
+            "mt-1 font-semibold tracking-tight",
+            size === "secondary" ? "text-lg" : "text-2xl",
+            valueTone[tone],
+          )}
+        >
+          {value}
+        </p>
       )}
-      {detail ? <p className="mt-1 text-xs leading-snug text-[var(--oh-muted)]">{detail}</p> : null}
+      {detail ? (
+        <p className={cn("mt-1 text-xs leading-snug text-[var(--oh-muted)]", detailClassName)}>{detail}</p>
+      ) : null}
     </>
   );
 
