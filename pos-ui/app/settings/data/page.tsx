@@ -6,7 +6,7 @@ import { AlertCircle, Download, FileUp, LoaderCircle, Trash2 } from "lucide-reac
 import { SettingsPage } from "@/components/admin/SettingsPage";
 import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { exportOdooProductsCsv } from "@/lib/odoo-api";
+import { exportStoreProductsCsv } from "@/lib/product-export";
 
 type SampleDataStatus = {
   dummyDataRequested: boolean;
@@ -93,7 +93,7 @@ export default function SettingsDataPage() {
     setExportBusy(true);
     setError(null);
     try {
-      await exportOdooProductsCsv();
+      await exportStoreProductsCsv();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not export products.");
     } finally {

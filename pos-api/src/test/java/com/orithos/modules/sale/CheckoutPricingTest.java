@@ -40,7 +40,7 @@ class CheckoutPricingTest {
 
     @BeforeEach
     void authenticateOutlet() {
-        when(companySettings.cashRoundTo()).thenReturn(new BigDecimal("0.05"));
+        when(companySettings.cashRoundTo(3L)).thenReturn(new BigDecimal("0.05"));
         SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
                 new AuthUser(7L, "cashier", false, 12L, 3L), null, List.of()));
     }

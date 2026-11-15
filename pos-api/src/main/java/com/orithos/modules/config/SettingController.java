@@ -1,11 +1,18 @@
 package com.orithos.modules.config;
 
 import com.orithos.common.ApiResult;
+import com.orithos.security.CurrentUser;
 import com.orithos.security.PermissionAccess;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/api/settings")
@@ -27,7 +34,23 @@ public class SettingController {
     public ApiResult<List<Setting>> list(@RequestParam(required = false) String scopeType,
                                          @RequestParam(required = false) Long scopeId) {
         permissions.requirePermission("settings.view");
-        return ApiResult.ok(mapper.findAll(scopeType, scopeId));
+        String requestedType = scopeType == null || scopeType.isBlank()
+                ? "vendor" : scopeType.trim().toLowerCase(Locale.ROOT);
+        if ("vendor".equals(requestedType)) {
+            Long vendorId = requireVendor();
+            List<Setting> scoped = mapper.findAll("vendor", vendorId);
+            Set<String> names = new HashSet<>();
+            for (Setting row : scoped) names.add(row.getName());
+            List<Setting> visible = new ArrayList<>(scoped);
+            for (Setting legacy : mapper.findAllGlobal("vendor")) {
+                if (names.add(legacy.getName())) visible.add(legacy);
+            }
+            return ApiResult.ok(visible);
+        }
+        if ("outlet".equals(requestedType)) {
+            return ApiResult.ok(mapper.findAll("outlet", requireOutlet()));
+        }
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unsupported settings scope");
     }
 
     @GetMapping("/company")
@@ -56,9 +79,17 @@ public class SettingController {
         if (s.getName() != null && (s.getName().startsWith("company.")
                 || s.getName().startsWith("enterprise.")
                 || s.getName().startsWith("push."))) {
+            s.setScopeType("vendor");
+            s.setScopeId(requireVendor());
             companySettings.putOwned(s.getName(), s.getValue(), s.getDatatype());
             return ApiResult.ok(s);
         }
+        String scopeType = s.getScopeType() == null || s.getScopeType().isBlank()
+                ? "vendor" : s.getScopeType().trim().toLowerCase(Locale.ROOT);
+        s.setScopeType(scopeType);
+        if ("vendor".equals(scopeType)) s.setScopeId(requireVendor());
+        else if ("outlet".equals(scopeType)) s.setScopeId(requireOutlet());
+        else throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unsupported settings scope");
         mapper.upsert(s);
         return ApiResult.ok(s);
     }
@@ -69,7 +100,7 @@ public class SettingController {
         permissions.requirePermission("settings.store");
         Setting s = new Setting();
         s.setScopeType("vendor");
-        s.setScopeId(null);
+        s.setScopeId(requireVendor());
         s.setName("loyalty");
         s.setValue(body.loyalty());
         s.setDatatype("json");
@@ -78,4 +109,16 @@ public class SettingController {
     }
 
     public record LoyaltyRequest(String loyalty) {}
+
+    private Long requireVendor() {
+        Long vendorId = CurrentUser.vendorId();
+        if (vendorId == null) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "A vendor is required");
+        return vendorId;
+    }
+
+    private Long requireOutlet() {
+        Long outletId = CurrentUser.outletId();
+        if (outletId == null) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "An outlet is required");
+        return outletId;
+    }
 }

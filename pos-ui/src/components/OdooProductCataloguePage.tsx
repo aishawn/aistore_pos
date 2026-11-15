@@ -10,7 +10,6 @@ import { AlertCircle, ArrowDown, ArrowUp, ArrowUpDown, Check, Download, Eye, Fil
 import {
   createOdooProduct,
   deleteOdooProduct,
-  exportOdooProductsCsv,
   getOdooPosBootstrap,
   getProductFilterOptions,
   getOrithosSession,
@@ -26,6 +25,7 @@ import {
 } from "@/lib/odoo-api";
 import { formatStoreEpoch } from "@/lib/odoo-date";
 import { ReportColumnChooser } from "@/components/admin/ReportColumnChooser";
+import { exportStoreProductsCsv } from "@/lib/product-export";
 import { parseProductCsv, type ProductImportRow } from "@/lib/product-csv";
 import { useAuth } from "@/lib/auth";
 import { StockWorkspaceDialog } from "@/components/admin/StockWorkspaceDialog";
@@ -475,7 +475,7 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
         downloadInventoryCsv(await loadAllInventoryMatches());
         return;
       }
-      await exportOdooProductsCsv();
+      await exportStoreProductsCsv();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not export products.");
     } finally {

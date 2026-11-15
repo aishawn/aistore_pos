@@ -1191,34 +1191,6 @@ export async function searchOdooDailySales(options: {
   };
 }
 
-/** Download the current store product catalogue from the Odoo source of truth. */
-export async function exportOdooProductsCsv(): Promise<void> {
-  const rows: Array<{ id: number; name: string; price?: number | null; stockQuantity?: number | null; categoryName?: string | null }> = [];
-  let pageNumber = 1;
-  for (;;) {
-    const page = await api.get<Page<{ id: number; name: string; price?: number | null; stockQuantity?: number | null; categoryName?: string | null }>>("/api/products", {
-      page: pageNumber,
-      size: 200,
-      status: "ACTIVE",
-    });
-    rows.push(...page.items);
-    if (pageNumber * 200 >= page.total || !page.items.length) break;
-    pageNumber += 1;
-    if (pageNumber > 100) break;
-  }
-  const csv = [
-    "id,name,category,price,stock",
-    ...rows.map((row) => [row.id, JSON.stringify(row.name), JSON.stringify(row.categoryName || ""), row.price ?? "", row.stockQuantity ?? ""].join(",")),
-  ].join("\n");
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = "orithos-products.csv";
-  anchor.click();
-  URL.revokeObjectURL(url);
-}
-
 export async function getOdooPriceRules(query?: string, offset = 0, limit = 30): Promise<{ items: OdooPriceRuleRecord[]; hasNext: boolean }> {
   const lists = await api.get<Page<{ id: number; name: string }>>("/api/price-lists", {
     name: query?.trim() || undefined,

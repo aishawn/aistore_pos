@@ -42,7 +42,7 @@ class CheckoutServiceFlowTest {
 
     @BeforeEach
     void setUp() {
-        when(companySettings.cashRoundTo()).thenReturn(new BigDecimal("0.05"));
+        when(companySettings.cashRoundTo(3L)).thenReturn(new BigDecimal("0.05"));
         service = new CheckoutService(sales, payments, paymentMethods, products, registers, sessions,
                 new ObjectMapper().registerModule(new JavaTimeModule()), companySettings);
         SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(

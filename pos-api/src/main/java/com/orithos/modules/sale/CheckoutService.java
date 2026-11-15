@@ -176,7 +176,7 @@ public class CheckoutService {
         BigDecimal rounding = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
         BigDecimal cashDue = null;
         if (cash) {
-            BigDecimal rounded = CashRounding.roundTo(outstanding, companySettings.cashRoundTo());
+            BigDecimal rounded = CashRounding.roundTo(outstanding, companySettings.cashRoundTo(vendorId));
             rounding = rounded.subtract(outstanding).setScale(2, RoundingMode.HALF_UP);
             BigDecimal required = rounded.add(cashout);
             boolean exactUnrounded = tendered.compareTo(outstanding.add(cashout)) == 0;

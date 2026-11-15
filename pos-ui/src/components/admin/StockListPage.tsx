@@ -12,7 +12,8 @@ import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
 import { friendlyProductName } from "@/lib/product-display-name";
 import { useDebouncedValue } from "@/hooks/useApi";
 import { useShopfrontSyncRefresh } from "@/hooks/useShopfrontSyncRefresh";
-import { exportOdooProductsCsv, searchOdooRecords, updateOdooProduct, type OdooProductCategoryRecord, type OdooProductRecord } from "@/lib/odoo-api";
+import { exportStoreProductsCsv } from "@/lib/product-export";
+import { searchOdooRecords, updateOdooProduct, type OdooProductCategoryRecord, type OdooProductRecord } from "@/lib/odoo-api";
 import { validatePositiveMoney } from "@/lib/quantity";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
@@ -356,7 +357,7 @@ function StockListPageInner() {
     setExporting(true);
     setExportError(null);
     try {
-      await exportOdooProductsCsv();
+      await exportStoreProductsCsv();
     } catch (cause) {
       setExportError(cause instanceof Error ? cause.message : "Could not export the stock list.");
     } finally {

@@ -1,8 +1,11 @@
 package com.orithos.modules.config;
 
+import com.orithos.common.BusinessException;
+import com.orithos.security.CurrentUser;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -18,7 +21,7 @@ public class CompanySettingsService {
 
     public Map<String, SettingView> companyBundle() {
         Map<String, String> defaults = CompanySettingsKeys.defaults();
-        List<Setting> rows = mapper.findAll("vendor", null);
+        List<Setting> rows = scopedRows();
         Map<String, Setting> byName = new LinkedHashMap<>();
         for (Setting row : rows) {
             if (row.getName() != null) {
@@ -53,16 +56,17 @@ public class CompanySettingsService {
         if (name == null || name.isBlank()) {
             throw new IllegalArgumentException("setting name is required");
         }
+        Long vendorId = requireVendor();
         Setting s = new Setting();
         s.setScopeType("vendor");
-        s.setScopeId(null);
+        s.setScopeId(vendorId);
         s.setName(name.trim());
         s.setValue(value);
         s.setDatatype(datatype == null || datatype.isBlank() ? inferDatatype(value) : datatype);
         mapper.upsert(s);
         Setting owned = new Setting();
         owned.setScopeType("vendor");
-        owned.setScopeId(null);
+        owned.setScopeId(vendorId);
         owned.setName(CompanySettingsKeys.ownedKey(name.trim()));
         owned.setValue("orithos");
         owned.setDatatype("string");
@@ -82,7 +86,7 @@ public class CompanySettingsService {
      * Returns whether the value was written.
      */
     public boolean importIfEmpty(String name, String value, String datatype) {
-        List<Setting> rows = mapper.findAll("vendor", null);
+        List<Setting> rows = scopedRows();
         Map<String, Setting> byName = new LinkedHashMap<>();
         for (Setting row : rows) {
             if (row.getName() != null) byName.put(row.getName(), row);
@@ -96,7 +100,7 @@ public class CompanySettingsService {
         }
         Setting s = new Setting();
         s.setScopeType("vendor");
-        s.setScopeId(null);
+        s.setScopeId(CurrentUser.vendorId());
         s.setName(name);
         s.setValue(value);
         s.setDatatype(datatype == null || datatype.isBlank() ? inferDatatype(value) : datatype);
@@ -105,7 +109,13 @@ public class CompanySettingsService {
     }
 
     public String getString(String name, String fallback) {
-        Setting row = mapper.findByName("vendor", null, name);
+        return getString(name, CurrentUser.vendorId(), fallback);
+    }
+
+    public String getString(String name, Long vendorId, String fallback) {
+        if (vendorId == null) throw new BusinessException(40100, "Authenticated vendor is required");
+        Setting row = mapper.findByName("vendor", vendorId, name);
+        if (row == null) row = mapper.findByName("vendor", null, name);
         if (row == null || row.getValue() == null || row.getValue().isBlank()) {
             return CompanySettingsKeys.defaults().getOrDefault(name, fallback);
         }
@@ -114,6 +124,14 @@ public class CompanySettingsService {
 
     public BigDecimal cashRoundTo() {
         String raw = getString(CompanySettingsKeys.ROUND_TO, "0.05");
+        return parseCashRoundTo(raw);
+    }
+
+    public BigDecimal cashRoundTo(Long vendorId) {
+        return parseCashRoundTo(getString(CompanySettingsKeys.ROUND_TO, vendorId, "0.05"));
+    }
+
+    private static BigDecimal parseCashRoundTo(String raw) {
         try {
             BigDecimal value = new BigDecimal(raw.trim());
             if (value.signum() <= 0) return new BigDecimal("0.05");
@@ -131,6 +149,19 @@ public class CompanySettingsService {
     private static boolean isOwned(Map<String, Setting> byName, String name) {
         Setting marker = byName.get(CompanySettingsKeys.ownedKey(name));
         return marker != null && marker.getValue() != null && !marker.getValue().isBlank();
+    }
+
+    private List<Setting> scopedRows() {
+        List<Setting> rows = new ArrayList<>(mapper.findAllGlobal("vendor"));
+        Long vendorId = requireVendor();
+        rows.addAll(mapper.findAll("vendor", vendorId));
+        return rows;
+    }
+
+    private static Long requireVendor() {
+        Long vendorId = CurrentUser.vendorId();
+        if (vendorId == null) throw new BusinessException(40100, "Authenticated vendor is required");
+        return vendorId;
     }
 
     private static String inferDatatype(String value) {

@@ -32,6 +32,10 @@ public interface TaxRateMapper {
     @Select("SELECT * FROM tax_rate WHERE outlet_id = #{outletId} AND LOWER(TRIM(name)) = LOWER(TRIM(#{name})) AND deleted_at IS NULL ORDER BY id LIMIT 1")
     TaxRate findByNameIgnoreCase(@Param("name") String name, @Param("outletId") Long outletId);
 
+    @Select("SELECT EXISTS (SELECT 1 FROM tax_rate WHERE outlet_id = #{outletId} AND LOWER(TRIM(name)) = LOWER(TRIM(#{name})) AND id <> #{id} AND deleted_at IS NULL)")
+    boolean existsOtherByNameIgnoreCase(@Param("name") String name, @Param("id") Long id,
+                                        @Param("outletId") Long outletId);
+
     @Options(useGeneratedKeys = true, keyProperty = "id")
     @Insert("INSERT INTO tax_rate (name, amount, mdb_id, is_default, outlet_id) "
             + "VALUES (#{name}, #{amount}, #{mdbId}, CASE WHEN #{isDefault} THEN 1 ELSE 0 END, #{outletId})")

@@ -18,6 +18,9 @@ public interface PaymentMethodMapper {
     @Select("SELECT * FROM payment_method WHERE outlet_id=#{outletId} AND LOWER(TRIM(name)) = LOWER(TRIM(#{name})) AND deleted_at IS NULL ORDER BY id LIMIT 1")
     PaymentMethod findByName(@Param("name") String name, @Param("outletId") Long outletId);
 
+    @Select("SELECT EXISTS (SELECT 1 FROM payment_method WHERE outlet_id=#{outletId} AND LOWER(TRIM(name)) = LOWER(TRIM(#{name})) AND id <> #{id} AND deleted_at IS NULL)")
+    boolean existsOtherByName(@Param("name") String name, @Param("id") Long id, @Param("outletId") Long outletId);
+
     @Select("SELECT * FROM payment_method WHERE outlet_id=#{outletId} AND deleted_at IS NULL ORDER BY id ASC")
     List<PaymentMethod> findAllActiveAsc(@Param("outletId") Long outletId);
 

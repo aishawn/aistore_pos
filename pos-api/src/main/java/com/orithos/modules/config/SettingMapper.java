@@ -14,6 +14,9 @@ public interface SettingMapper {
             + " ORDER BY scope_type, name</script>")
     List<Setting> findAll(@Param("scopeType") String scopeType, @Param("scopeId") Long scopeId);
 
+    @Select("SELECT * FROM settings WHERE scope_type = #{scopeType} AND scope_id IS NULL ORDER BY name, id")
+    List<Setting> findAllGlobal(@Param("scopeType") String scopeType);
+
     @Select("<script>SELECT * FROM settings WHERE scope_type = #{scopeType} AND name = #{name}"
             + "<choose>"
             + "<when test='scopeId == null'> AND scope_id IS NULL</when>"

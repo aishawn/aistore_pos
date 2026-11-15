@@ -51,6 +51,9 @@ public class PaymentMethodController {
         Long outletId = requireOutlet();
         p.setId(id);
         p.setOutletId(outletId);
+        if (p.getName() != null && !p.getName().isBlank() && mapper.existsOtherByName(p.getName(), id, outletId)) {
+            throw new IllegalArgumentException("payment_method_name_exists");
+        }
         if (mapper.update(p, outletId) != 1) throw notFound();
         return ApiResult.ok(p);
     }

@@ -34,6 +34,7 @@ public class TaxRateController {
     }
 
     @PostMapping
+    @Transactional
     public ApiResult<TaxRate> create(@RequestBody TaxRate t) {
         permissions.requirePermission("settings.store");
         Long outletId = requireOutlet();
@@ -43,16 +44,23 @@ public class TaxRateController {
         }
         if (t.getIsDefault() == null) t.setIsDefault(false);
         t.setOutletId(outletId);
+        if (Boolean.TRUE.equals(t.getIsDefault())) mapper.clearDefaults(outletId);
         mapper.insert(t);
         return ApiResult.ok(t);
     }
 
     @PutMapping("/{id}")
+    @Transactional
     public ApiResult<TaxRate> update(@PathVariable Long id, @RequestBody TaxRate t) {
         permissions.requirePermission("settings.store");
         Long outletId = requireOutlet();
         t.setId(id);
         t.setOutletId(outletId);
+        if (t.getName() != null && !t.getName().isBlank()
+                && mapper.existsOtherByNameIgnoreCase(t.getName(), id, outletId)) {
+            throw new IllegalArgumentException("tax_rate_name_exists");
+        }
+        if (Boolean.TRUE.equals(t.getIsDefault())) mapper.clearDefaults(outletId);
         if (mapper.update(t, outletId) != 1) throw notFound();
         return ApiResult.ok(t);
     }
