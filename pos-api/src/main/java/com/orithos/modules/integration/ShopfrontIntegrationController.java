@@ -1619,9 +1619,15 @@ public class ShopfrontIntegrationController {
             countSql = "SELECT COUNT(*) FROM shopfront_product_mapping m JOIN product p "
                     + "ON p.id=m.pos_product_id AND p.outlet_id=? AND p.deleted_at IS NULL "
                     + "WHERE m.store_key=? AND m.status='MAPPED'";
-            rowsSql = "SELECT m.source_product_id AS source_id,p.name,p.mdb_id AS sku,p.status "
+            rowsSql = "SELECT m.source_product_id AS source_id,p.name,p.mdb_id AS sku,p.status, "
+                    + "p.cost,p.case_quantity,p.tax_rate_id,product_tax.name AS tax_rate_name, "
+                    + "p.cost_tax_rate_id,cost_tax.name AS cost_tax_rate_name,p.updated_at AS pos_updated_at "
                     + "FROM shopfront_product_mapping m JOIN product p "
                     + "ON p.id=m.pos_product_id AND p.outlet_id=? AND p.deleted_at IS NULL "
+                    + "LEFT JOIN tax_rate product_tax ON product_tax.id=p.tax_rate_id "
+                    + "AND product_tax.outlet_id=p.outlet_id AND product_tax.deleted_at IS NULL "
+                    + "LEFT JOIN tax_rate cost_tax ON cost_tax.id=p.cost_tax_rate_id "
+                    + "AND cost_tax.outlet_id=p.outlet_id AND cost_tax.deleted_at IS NULL "
                     + "WHERE m.store_key=? AND m.status='MAPPED' "
                     + "ORDER BY m.source_product_id LIMIT ? OFFSET ?";
             countArgs = new Object[]{outletId, storeKey};
