@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.math.BigDecimal;
 import java.util.LinkedHashSet;
 import java.util.List;
 
@@ -38,6 +39,7 @@ public class TaxRateController {
     @Transactional
     public ApiResult<TaxRate> create(@RequestBody TaxRate t) {
         permissions.requirePermission("settings.store");
+        validateAmount(t);
         Long outletId = requireOutlet();
         if (t.getName() != null && !t.getName().isBlank()
                 && mapper.findByNameIgnoreCase(t.getName(), outletId) != null) {
@@ -55,6 +57,8 @@ public class TaxRateController {
     public ApiResult<TaxRate> update(@PathVariable Long id, @RequestBody TaxRate t) {
         permissions.requirePermission("settings.store");
         Long outletId = requireOutlet();
+        requireRate(id, outletId);
+        validateAmount(t);
         t.setId(id);
         t.setOutletId(outletId);
         if (t.getName() != null && !t.getName().isBlank()
@@ -111,6 +115,14 @@ public class TaxRateController {
         Long outletId = CurrentUser.outletId();
         if (outletId == null) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "An outlet is required");
         return outletId;
+    }
+
+    private void validateAmount(TaxRate rate) {
+        BigDecimal amount = rate == null ? null : rate.getAmount();
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) < 0
+                || amount.compareTo(new BigDecimal("100")) > 0) {
+            throw new BusinessException("tax_rate_amount_invalid");
+        }
     }
 
     private TaxRate requireRate(Long id, Long outletId) {

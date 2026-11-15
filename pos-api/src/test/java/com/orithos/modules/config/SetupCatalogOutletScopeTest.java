@@ -63,7 +63,6 @@ class SetupCatalogOutletScopeTest {
         TaxRateController taxController = new TaxRateController(taxRates, permissions);
         PaymentMethodController paymentController = new PaymentMethodController(paymentMethods, permissions);
         when(taxRates.findById(200L, OUTLET_ID)).thenReturn(null);
-        when(taxRates.update(any(TaxRate.class), eq(OUTLET_ID))).thenReturn(0);
         when(paymentMethods.findById(300L, OUTLET_ID)).thenReturn(null);
         when(paymentMethods.softDelete(300L, OUTLET_ID)).thenReturn(0);
 
@@ -80,8 +79,8 @@ class SetupCatalogOutletScopeTest {
                 () -> paymentController.delete(300L));
         assertEquals(HttpStatus.NOT_FOUND, paymentWrite.getStatusCode());
 
-        verify(taxRates).findById(200L, OUTLET_ID);
-        verify(taxRates).update(any(TaxRate.class), eq(OUTLET_ID));
+        verify(taxRates, org.mockito.Mockito.times(2)).findById(200L, OUTLET_ID);
+        verify(taxRates, never()).update(any(TaxRate.class), eq(OUTLET_ID));
         verify(paymentMethods).findById(300L, OUTLET_ID);
         verify(paymentMethods).softDelete(300L, OUTLET_ID);
         verify(taxRates, never()).softDelete(200L, OUTLET_ID);
