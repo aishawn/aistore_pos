@@ -1,6 +1,7 @@
 package com.orithos.modules.tax;
 
 import com.orithos.security.AuthUser;
+import com.orithos.common.BusinessException;
 import com.orithos.security.PermissionAccess;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -11,6 +12,7 @@ import java.math.BigDecimal;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.*;
 
 class TaxRateControllerTest {
@@ -30,9 +32,22 @@ class TaxRateControllerTest {
         when(mapper.existsOtherByNameIgnoreCase("gst", 11L, 12L)).thenReturn(true);
         TaxRate update = rate(null, "gst", false);
 
-        assertThrows(IllegalArgumentException.class, () -> controller.update(11L, update));
+        BusinessException error = assertThrows(BusinessException.class, () -> controller.update(11L, update));
 
+        assertEquals("tax_rate_name_exists", error.getMessage());
         verify(mapper, never()).update(any(), anyLong());
+    }
+
+    @Test
+    void createRejectsAnotherRateWithTheSameNameIgnoringCase() {
+        authenticate();
+        when(mapper.findByNameIgnoreCase("gst", 12L)).thenReturn(rate(10L, "GST", false));
+        TaxRate create = rate(null, "gst", false);
+
+        BusinessException error = assertThrows(BusinessException.class, () -> controller.create(create));
+
+        assertEquals("tax_rate_name_exists", error.getMessage());
+        verify(mapper, never()).insert(any());
     }
 
     @Test

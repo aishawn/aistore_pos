@@ -1,6 +1,7 @@
 package com.orithos.modules.tax;
 
 import com.orithos.common.ApiResult;
+import com.orithos.common.BusinessException;
 import com.orithos.security.CurrentUser;
 import com.orithos.security.PermissionAccess;
 import org.springframework.http.HttpStatus;
@@ -40,7 +41,7 @@ public class TaxRateController {
         Long outletId = requireOutlet();
         if (t.getName() != null && !t.getName().isBlank()
                 && mapper.findByNameIgnoreCase(t.getName(), outletId) != null) {
-            throw new IllegalArgumentException("tax_rate_name_exists");
+            throw new BusinessException("tax_rate_name_exists");
         }
         if (t.getIsDefault() == null) t.setIsDefault(false);
         t.setOutletId(outletId);
@@ -58,7 +59,7 @@ public class TaxRateController {
         t.setOutletId(outletId);
         if (t.getName() != null && !t.getName().isBlank()
                 && mapper.existsOtherByNameIgnoreCase(t.getName(), id, outletId)) {
-            throw new IllegalArgumentException("tax_rate_name_exists");
+            throw new BusinessException("tax_rate_name_exists");
         }
         if (Boolean.TRUE.equals(t.getIsDefault())) mapper.clearDefaults(outletId);
         if (mapper.update(t, outletId) != 1) throw notFound();

@@ -1,6 +1,7 @@
 package com.orithos.modules.payment;
 
 import com.orithos.common.ApiResult;
+import com.orithos.common.BusinessException;
 import com.orithos.security.CurrentUser;
 import com.orithos.security.PermissionAccess;
 import org.springframework.http.HttpStatus;
@@ -38,7 +39,7 @@ public class PaymentMethodController {
         permissions.requirePermission("settings.store");
         Long outletId = requireOutlet();
         if (p.getName() != null && !p.getName().isBlank() && mapper.findByName(p.getName(), outletId) != null) {
-            throw new IllegalArgumentException("payment_method_name_exists");
+            throw new BusinessException("payment_method_name_exists");
         }
         p.setOutletId(outletId);
         mapper.insert(p);
@@ -52,7 +53,7 @@ public class PaymentMethodController {
         p.setId(id);
         p.setOutletId(outletId);
         if (p.getName() != null && !p.getName().isBlank() && mapper.existsOtherByName(p.getName(), id, outletId)) {
-            throw new IllegalArgumentException("payment_method_name_exists");
+            throw new BusinessException("payment_method_name_exists");
         }
         if (mapper.update(p, outletId) != 1) throw notFound();
         return ApiResult.ok(p);
