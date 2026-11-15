@@ -55,12 +55,19 @@ export function naturalCompare(left: SortValue, right: SortValue): number {
   return collator.compare(String(left), String(right));
 }
 
+/** ISO business days (`YYYY-MM-DD`) — newest first. */
+export function compareIsoDateDesc(left: string, right: string): number {
+  return right.localeCompare(left);
+}
+
 export function naturalSortRows<T>(
   rows: readonly T[],
   value: (row: T) => SortValue,
   stableKey: (row: T) => SortValue,
+  direction: "asc" | "desc" = "asc",
 ): T[] {
+  const factor = direction === "asc" ? 1 : -1;
   return [...rows].sort((left, right) =>
-    naturalCompare(value(left), value(right)) || naturalCompare(stableKey(left), stableKey(right)),
+    factor * naturalCompare(value(left), value(right)) || naturalCompare(stableKey(left), stableKey(right)),
   );
 }

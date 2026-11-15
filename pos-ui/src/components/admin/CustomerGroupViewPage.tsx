@@ -198,6 +198,7 @@ function CustomerRevisionPanel({
           display(r.action),
           display(r.summary),
         ])}
+        defaultSort={{ column: 0, direction: "desc" }}
       />
     </AsyncState>
   );

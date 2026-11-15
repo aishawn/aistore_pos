@@ -291,7 +291,7 @@ function ActivityTable({
 }) {
   return (
     <AsyncState loading={loading} error={error} empty={empty} emptyText={emptyText} onRetry={onRetry}>
-      <ListTable columns={columns} rows={rows} />
+      <ListTable columns={columns} rows={rows} defaultSort={{ column: 0, direction: "desc" }} />
     </AsyncState>
   );
 }
@@ -328,6 +328,7 @@ function ProductRevisionPanel({
           display(r.action),
           display(r.summary),
         ])}
+        defaultSort={{ column: 0, direction: "desc" }}
       />
     </AsyncState>
   );

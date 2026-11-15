@@ -102,6 +102,9 @@ function formatTimestamp(ts?: string) {
   return time ? `${date} ${time}` : date;
 }
 
+const RECENT_DATE_FIRST = { column: 0, direction: "desc" as const };
+const RECENT_DATE_SECOND = { column: 1, direction: "desc" as const };
+
 function availableCredit(customer: CustomerDetail) {
   const limit = Number(customer.accountLimit ?? 0);
   const owing = Number(customer.currentOwing ?? 0);
@@ -171,6 +174,7 @@ function CustomerHomePanel({
               display(line.item),
               money(line.price),
             ])}
+            defaultSort={RECENT_DATE_FIRST}
           />
         </AsyncState>
       </div>
@@ -230,6 +234,7 @@ function CustomerStatementModal({
             row.label,
             row.type === "payment" ? `-${money(row.amount)}` : money(row.amount),
           ])}
+          defaultSort={RECENT_DATE_FIRST}
         />
       </div>
     </Modal>
@@ -343,6 +348,7 @@ function CustomerBalancePanel({
               money(s.totalPrice),
               money(s.outstanding),
             ])}
+            defaultSort={RECENT_DATE_SECOND}
           />
         </AsyncState>
       </div>
@@ -386,6 +392,7 @@ function CustomerBalancePanel({
                 "—"
               ),
             ])}
+            defaultSort={RECENT_DATE_FIRST}
           />
         </AsyncState>
       </div>
@@ -425,6 +432,7 @@ function CustomerRevisionPanel({
           display(r.action),
           display(r.summary),
         ])}
+        defaultSort={RECENT_DATE_FIRST}
       />
     </AsyncState>
   );
@@ -569,6 +577,7 @@ export function CustomerViewPage({ customerId, onClose }: { customerId: string; 
                       money(s.totalPrice),
                       money(s.outstanding),
                     ])}
+                    defaultSort={RECENT_DATE_SECOND}
                   />
                 </AsyncState>
               )}

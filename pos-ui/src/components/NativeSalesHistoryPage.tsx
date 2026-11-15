@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { AlertCircle, RefreshCw } from "lucide-react";
 import { FilterDateRangePicker } from "@/components/admin/FilterDateRangePicker";
+import { compareIsoDateDesc } from "@/lib/natural-sort";
 
 type HistoryDay = {
   date: string;
@@ -92,7 +93,7 @@ export function NativeSalesHistoryPage({
     return () => controller.abort();
   }, [from, to, revision]);
 
-  const sortedRows = useMemo(() => [...rows].sort((a, b) => a.date.localeCompare(b.date)), [rows]);
+  const sortedRows = useMemo(() => [...rows].sort((a, b) => compareIsoDateDesc(a.date, b.date)), [rows]);
 
   const totals = useMemo(() => rows.reduce((acc, row) => ({
     salesAmount: acc.salesAmount + Number(row.salesAmount),

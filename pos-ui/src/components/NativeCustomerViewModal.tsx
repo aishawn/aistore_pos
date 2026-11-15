@@ -72,6 +72,7 @@ export function NativeCustomerViewModal({
     sales,
     (line) => line.timestamp ? Date.parse(line.timestamp) : null,
     (line) => `${line.timestamp ?? ""}-${line.item ?? ""}-${line.userName ?? ""}`,
+    "desc",
   );
 
   useDialogFocus(open, onClose, customerId);

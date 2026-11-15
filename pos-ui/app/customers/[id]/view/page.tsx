@@ -1,11 +1,12 @@
 "use client";
 
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, LoaderCircle, RefreshCw } from "lucide-react";
 import { api, type Page } from "@/lib/api";
 import { formatStoreEpoch } from "@/lib/odoo-date";
+import { naturalSortRows } from "@/lib/natural-sort";
 
 type CustomerDetail = {
   id: number;
@@ -83,6 +84,20 @@ export default function CustomerViewRoute() {
     router.replace(`/customers/${id}/view?tab=${next}`);
   }
 
+  const sortedSales = useMemo(
+    () => naturalSortRows(
+      sales,
+      (line) => (line.timestamp ? Date.parse(line.timestamp) : null),
+      (line) => `${line.timestamp ?? ""}-${line.item ?? ""}`,
+      "desc",
+    ),
+    [sales],
+  );
+  const sortedRevisions = useMemo(
+    () => naturalSortRows(revisions, (item) => item.createdAt ?? null, (item) => item.id, "desc"),
+    [revisions],
+  );
+
   return (
     <main className="min-h-full overflow-y-auto bg-[var(--oh-surface)] px-4 py-5 md:px-8">
       <div className="mx-auto max-w-5xl">
@@ -141,7 +156,7 @@ export default function CustomerViewRoute() {
                   </dl>
                 </div>
                 <h2 className="text-lg font-semibold">Recent Orithos sales</h2>
-                {sales.length === 0 ? <p className="text-sm text-[var(--oh-muted)]">No recent sales for this customer.</p> : sales.map((line, index) => (
+                {sortedSales.length === 0 ? <p className="text-sm text-[var(--oh-muted)]">No recent sales for this customer.</p> : sortedSales.map((line, index) => (
                   <article key={`${line.timestamp ?? "sale"}-${index}`} className="rounded-lg border border-[var(--oh-border)] bg-white p-4 text-sm">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <strong>{line.item || "Sale line"}</strong>
@@ -157,7 +172,7 @@ export default function CustomerViewRoute() {
               </>
             )}
             {tab === "history" && (
-              sales.length === 0 ? <p className="text-sm text-[var(--oh-muted)]">No Orithos sales history for this customer.</p> : sales.map((line, index) => (
+              sortedSales.length === 0 ? <p className="text-sm text-[var(--oh-muted)]">No Orithos sales history for this customer.</p> : sortedSales.map((line, index) => (
                 <article key={`${line.timestamp ?? "history"}-${index}`} className="rounded-lg border border-[var(--oh-border)] bg-white p-4 text-sm">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <strong>{line.item || "Sale line"}</strong>
@@ -179,9 +194,9 @@ export default function CustomerViewRoute() {
               </div>
             )}
             {tab === "activity" && (
-              revisions.length === 0 ? <p className="text-sm text-[var(--oh-muted)]">No revision history yet.</p> : (
+              sortedRevisions.length === 0 ? <p className="text-sm text-[var(--oh-muted)]">No revision history yet.</p> : (
                 <div className="space-y-2">
-                  {revisions.map((item) => (
+                  {sortedRevisions.map((item) => (
                     <article key={item.id} className="rounded-lg border bg-white p-4 text-sm">
                       <strong>{item.kind || "Revision"}</strong> · {item.summary || "Updated"}
                       <p className="mt-1 text-xs text-[var(--oh-muted)]">
