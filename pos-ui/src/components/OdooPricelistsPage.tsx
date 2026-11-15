@@ -15,6 +15,8 @@ import {
 } from "@/components/admin/AdminPageLayout";
 import {
   AlertCircle,
+  ChevronLeft,
+  ChevronRight,
   Eye,
   LoaderCircle,
   Pencil,
