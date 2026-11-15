@@ -183,13 +183,18 @@ export function OdooPricelistsPage({ embedded = false }: { embedded?: boolean } 
         </div>
       )}
 
-      <section className="overflow-hidden rounded-xl border border-[var(--oh-border)] bg-white">
-        <table className="hidden w-full text-left text-sm md:table">
-          <thead className="bg-[var(--oh-primary)] text-xs font-semibold uppercase tracking-wide text-white">
+      <section className="overflow-hidden rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] shadow-[var(--oh-shadow-card)]">
+        <table aria-label="Price lists" className="hidden w-full table-fixed border-collapse text-left text-sm md:table">
+          <colgroup>
+            <col />
+            <col className="w-[8.5rem]" />
+            <col className={canManage ? "w-[8.75rem]" : "w-[3rem]"} />
+          </colgroup>
+          <thead className="bg-[var(--oh-surface)] text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)] shadow-[0_1px_0_var(--oh-border)]">
             <tr>
-              <th className="px-4 py-3">Name</th>
-              <th className="px-4 py-3">Customer Count</th>
-              <th className="px-4 py-3 text-right">Actions</th>
+              <th scope="col" className="px-4 py-3">Name</th>
+              <th scope="col" className="px-4 py-3 text-right">Customers</th>
+              <th scope="col" className="px-4 py-3 text-right">{canManage ? "Actions" : "View"}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[var(--oh-border)]">
@@ -207,35 +212,41 @@ export function OdooPricelistsPage({ embedded = false }: { embedded?: boolean } 
               </tr>
             ) : items.map((list) => (
               <tr key={list.id} className="hover:bg-[var(--oh-surface)]/70">
-                <td className="px-4 py-3 font-medium text-[var(--oh-text)]">{list.name}</td>
-                <td className="px-4 py-3 tabular-nums text-[var(--oh-text)]">{list.customerCount}</td>
+                <td className="truncate px-4 py-3 font-medium text-[var(--oh-text)]" title={list.name}>{list.name}</td>
+                <td className="px-4 py-3 text-right tabular-nums text-[var(--oh-text-secondary)]">{list.customerCount}</td>
                 <td className="px-4 py-3">
-                  <div className="flex flex-wrap items-center justify-end gap-3 text-[13px] font-semibold">
+                  <div className="flex items-center justify-end gap-1.5">
                     <button
                       type="button"
+                      title="View price list"
+                      aria-label={`View ${list.name}`}
                       disabled={rowBusy}
                       onClick={() => setSelected(list)}
-                      className="inline-flex min-h-11 items-center gap-1.5 text-sky-700 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-50"
+                      className="grid size-10 place-items-center rounded-md border border-[var(--oh-border)] text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-50"
                     >
-                      <Eye size={15} /> View
+                      <Eye size={15} />
                     </button>
                     {canManage && (
                       <>
                         <button
                           type="button"
+                          title="Edit price list"
+                          aria-label={`Edit ${list.name}`}
                           disabled={rowBusy || list.companyId === null}
                           onClick={() => openEdit(list)}
-                          className="inline-flex min-h-11 items-center gap-1.5 text-emerald-700 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-50"
+                          className="grid size-10 place-items-center rounded-md border border-[var(--oh-border)] text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-50"
                         >
-                          <Pencil size={14} /> Edit
+                          <Pencil size={15} />
                         </button>
                         <button
                           type="button"
+                          title="Delete price list"
+                          aria-label={`Delete ${list.name}`}
                           disabled={rowBusy || list.companyId === null || !list.active}
                           onClick={() => { setArchiving(list); setFormError(null); }}
-                          className="inline-flex min-h-11 items-center gap-1.5 text-rose-700 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-700 disabled:opacity-50"
+                          className="grid size-10 place-items-center rounded-md border border-[var(--oh-border)] text-rose-700 hover:bg-rose-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-700 disabled:opacity-50"
                         >
-                          <Trash2 size={14} /> Delete
+                          <Trash2 size={15} />
                         </button>
                       </>
                     )}
@@ -246,57 +257,62 @@ export function OdooPricelistsPage({ embedded = false }: { embedded?: boolean } 
           </tbody>
         </table>
 
-        <div className="divide-y divide-[var(--oh-border)] md:hidden">
+        <ul className="divide-y divide-[var(--oh-border)] md:hidden">
           {loading && items.length === 0 && (
-            <p role="status" className="px-4 py-8 text-center text-sm text-[var(--oh-muted)]">Loading price lists…</p>
+            <li role="status" className="px-4 py-8 text-center text-sm text-[var(--oh-muted)]">Loading price lists…</li>
           )}
           {!loading && items.length === 0 && (
-            <p role="status" className="px-4 py-8 text-center text-sm text-[var(--oh-muted)]">No price lists found</p>
+            <li role="status" className="px-4 py-8 text-center text-sm text-[var(--oh-muted)]">No price lists found</li>
           )}
           {items.map((list) => (
-            <article key={list.id} className="px-4 py-3">
-              <p className="font-semibold text-[var(--oh-text)]">{list.name}</p>
-              <p className="mt-1 text-xs text-[var(--oh-muted)]">{list.customerCount} customers</p>
-              <div className="mt-3 flex flex-wrap gap-2">
+            <li key={list.id} className="flex items-start justify-between gap-3 px-4 py-3.5">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-[var(--oh-text)]">{list.name}</p>
+                <p className="mt-0.5 text-xs text-[var(--oh-muted)]">{list.customerCount} customers</p>
+              </div>
+              <div className="flex shrink-0 gap-1.5">
                 <button
                   type="button"
+                  aria-label={`View ${list.name}`}
                   disabled={rowBusy}
                   onClick={() => setSelected(list)}
-                  className="inline-flex h-11 flex-1 items-center justify-center gap-1.5 rounded-lg border border-[var(--oh-border)] text-sky-700 disabled:opacity-50"
+                  className="grid size-10 place-items-center rounded-md border border-[var(--oh-border)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-50"
                 >
-                  <Eye size={15} /> View
+                  <Eye size={15} />
                 </button>
                 {canManage && (
                   <>
                     <button
                       type="button"
+                      aria-label={`Edit ${list.name}`}
                       disabled={rowBusy || list.companyId === null}
                       onClick={() => openEdit(list)}
-                      className="inline-flex h-11 flex-1 items-center justify-center gap-1.5 rounded-lg border border-[var(--oh-border)] text-emerald-700 disabled:opacity-50"
+                      className="grid size-10 place-items-center rounded-md border border-[var(--oh-border)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-50"
                     >
-                      <Pencil size={14} /> Edit
+                      <Pencil size={15} />
                     </button>
                     <button
                       type="button"
+                      aria-label={`Delete ${list.name}`}
                       disabled={rowBusy || list.companyId === null || !list.active}
                       onClick={() => { setArchiving(list); setFormError(null); }}
-                      className="inline-flex h-11 flex-1 items-center justify-center gap-1.5 rounded-lg border border-[var(--oh-border)] text-rose-700 disabled:opacity-50"
+                      className="grid size-10 place-items-center rounded-md border border-[var(--oh-border)] text-rose-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-700 disabled:opacity-50"
                     >
-                      <Trash2 size={14} /> Delete
+                      <Trash2 size={15} />
                     </button>
                   </>
                 )}
               </div>
-            </article>
+            </li>
           ))}
-        </div>
+        </ul>
       </section>
 
       <footer className="mt-4 flex flex-wrap items-center justify-between gap-2 text-sm text-[var(--oh-muted)]">
         <span>{items.length ? `Showing ${offset + 1}–${offset + items.length} of ${total}` : "No records"}</span>
         <div className="flex gap-2">
-          <button type="button" disabled={offset === 0 || loading} onClick={() => setOffset((value) => Math.max(0, value - PAGE_SIZE))} className="inline-flex h-11 items-center rounded-lg border border-[var(--oh-border)] bg-white px-3 disabled:opacity-40">Previous</button>
-          <button type="button" disabled={!hasNext || loading} onClick={() => setOffset((value) => value + PAGE_SIZE)} className="inline-flex h-11 items-center rounded-lg border border-[var(--oh-border)] bg-white px-3 disabled:opacity-40">Next</button>
+          <button type="button" disabled={offset === 0 || loading} onClick={() => setOffset((value) => Math.max(0, value - PAGE_SIZE))} aria-label="Previous page" className="grid size-10 place-items-center rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] disabled:opacity-40"><ChevronLeft size={16} /></button>
+          <button type="button" disabled={!hasNext || loading} onClick={() => setOffset((value) => value + PAGE_SIZE)} aria-label="Next page" className="grid size-10 place-items-center rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] disabled:opacity-40"><ChevronRight size={16} /></button>
         </div>
       </footer>
 
