@@ -138,10 +138,10 @@ public class ReplenishmentWorkspaceService {
                 Instant.now().toString(),
                 inventoryMeta.history(),
                 new ReplenishmentWorkspaceView.Forecast(
-                        forecastEnabled,
+                        false,
                         RULES_METHOD,
-                        forecastEnabled ? "UNAVAILABLE" : "UNAVAILABLE",
-                        forecastEnabled ? "native_rules_pending" : null),
+                        "UNAVAILABLE",
+                        null),
                 new ReplenishmentWorkspaceView.PurchaseWorkflow(
                         draftEnabled,
                         draftEnabled ? "DRAFT_RFQ" : "READ_ONLY_PREVIEW"),
@@ -191,7 +191,7 @@ public class ReplenishmentWorkspaceService {
             status = "NO_DEMAND";
             reason = demand > 0 ? "Stock covers the coverage target." : "No verifiable demand in the sales window.";
         } else if (!dataIssues.isEmpty()) {
-            if (dataIssues.contains("NEGATIVE_STOCK") || dataIssues.contains("REVIEW_COST_PRICE")) {
+            if (dataIssues.contains("REVIEW_COST_PRICE")) {
                 status = "REVIEW_DATA";
             }
             reason = buildReason(demand, cover, lead, onHand, row.onOrder(), quantity);

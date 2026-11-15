@@ -316,7 +316,15 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
     void load(true);
   }, [data, error, load, loading, refreshing]);
 
-  const suggestedItems = useMemo(() => data?.products.filter((product) => product.suggestedQuantity > 0) ?? [], [data]);
+  const orderReadyItems = useMemo(
+    () => (data?.products ?? []).filter((product) => product.suggestedQuantity > 0 && product.recommendationStatus === "READY"),
+    [data],
+  );
+  const suggestedItems = useMemo(
+    () => (data?.products ?? []).filter((product) => product.suggestedQuantity > 0) ?? [],
+    [data],
+  );
+  const totalOrderReadyUnits = orderReadyItems.reduce((sum, product) => sum + product.suggestedQuantity, 0);
   const totalSuggestedUnits = suggestedItems.reduce((sum, product) => sum + product.suggestedQuantity, 0);
   const outOfStockWithDemand = (data?.products ?? []).filter((product) => product.onHand <= 0 && product.soldUnits > 0).length;
   const urgentRiskCount = (data?.products ?? []).filter((product) => product.risk === "HIGH" || (product.onHand <= 0 && product.soldUnits > 0)).length;
@@ -330,7 +338,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
   const filteredItems = useMemo(() => {
     const base = data?.products ?? [];
     const byFilter = listFilter === "suggestions"
-      ? base.filter((product) => product.suggestedQuantity > 0)
+      ? base.filter((product) => product.suggestedQuantity > 0 && product.recommendationStatus === "READY")
       : listFilter === "urgent"
         ? base.filter((product) => product.risk === "HIGH" || (product.onHand <= 0 && product.soldUnits > 0))
       : listFilter === "review" ? base.filter((product) => product.recommendationStatus === "REVIEW_DATA")
@@ -359,8 +367,8 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
   const pageItems = useMemo(() => filteredItems.slice((currentPage - 1) * 100, currentPage * 100), [filteredItems, currentPage]);
 
   const selectedSuggested = useMemo(
-    () => suggestedItems.filter((product) => selectedIds.has(product.id)),
-    [suggestedItems, selectedIds],
+    () => orderReadyItems.filter((product) => selectedIds.has(product.id)),
+    [orderReadyItems, selectedIds],
   );
   const selectedCount = Math.min(selectedSuggested.length, MAX_RFQ_LINES);
   const selectedRfqLines = rfqLines.filter((line) => line.quantity > 0);
@@ -547,29 +555,35 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
             </button>
           </div>
           <p className="mt-1 text-sm text-[var(--oh-muted)]">
-            {data?.forecast?.enabled ? "Per-product forecast with rolling model selection" : "Rule-based reorder suggestions"} · {draftRfqEnabled ? "draft RFQs enabled" : "read-only preview"} · nothing auto-orders.
-            {data?.generatedAt && <span className="ml-2">Generated {formatOdooDateTime(data.generatedAt, storeTimezone)}.</span>}
+            Rule-based reorder suggestions for {planCoverageDays} days of coverage · {draftRfqEnabled ? "you can create draft RFQs" : "read-only preview"} · nothing auto-orders.
+            {data?.generatedAt && <span className="ml-2">Updated {formatOdooDateTime(data.generatedAt, storeTimezone)}.</span>}
           </p>
-          {data?.forecast?.enabled && (
+          {data?.forecast?.enabled && data?.forecast?.status === "AVAILABLE" && (
             <p className="mt-1 text-xs text-[var(--oh-muted)]">
               Forecast service {data.forecast.status.toLowerCase()} · model version {data.forecast.modelVersion ?? "unknown"}. Products with insufficient history remain explicitly marked for human review and are excluded from automatic purchase quantities.
             </p>
           )}
-          {data?.forecast?.enabled && (
+          {data?.forecast?.enabled && data?.forecast?.status === "AVAILABLE" && (
             <p className="mt-1 text-xs text-[var(--oh-muted)]" role="status">
               Sales input: {data.forecast.sourceVersion?.startsWith("odoo_pos_order_line_local_complete_days") ? "Odoo POS order lines" : "source unavailable"} · {data.salesHistory?.startDate ?? "start date unavailable"} to before {data.salesHistory?.endDateExclusive ?? "end date unavailable"} · {data.historyDays} {data.salesHistory?.completeDaysOnly ? "complete days" : "days"} · {data.salesHistory?.timezone ?? "timezone unavailable"}
               {data.salesHistory?.refunds === "SIGNED_NET_UNITS" ? " · refunds netted" : ""}.
             </p>
           )}
-          {data?.forecast?.enabled && data.products.length > 0 && (
+          {data?.forecast?.enabled && data?.forecast?.status === "AVAILABLE" && data.products.length > 0 && (
             <p className="mt-1 text-xs text-[var(--oh-muted)]" role="status">
               History readiness: {number.format(forecastReadinessSummary.valid)} valid · {number.format(forecastReadinessSummary.insufficientHistory)} need more history · {number.format(forecastReadinessSummary.lowConfidence)} low confidence. These counts are informational; review gates remain active.
             </p>
           )}
           {data?.forecast?.costPolicy && <p className="mt-1 text-xs text-[var(--oh-muted)]">Planning assumptions to review: holding {number.format(data.forecast.costPolicy.annualHoldingRate * 100)}% / year · slow-stock risk {number.format(data.forecast.costPolicy.annualObsolescenceRate * 100)}% / year · target service {number.format(data.forecast.costPolicy.serviceLevel * 100)}%.</p>}
           <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold">
-            <span className={`rounded-full px-2.5 py-1 ${data?.forecast?.status === "AVAILABLE" ? "bg-emerald-50 text-emerald-800" : "bg-amber-50 text-amber-900"}`}>Forecast {data?.forecast?.status === "AVAILABLE" ? "available" : "unavailable"}</span>
-            <span className={`rounded-full px-2.5 py-1 ${data?.inventoryHistory?.status === "FRESH" ? "bg-emerald-50 text-emerald-800" : "bg-amber-50 text-amber-900"}`}>Data {data?.inventoryHistory?.status === "FRESH" ? "ready" : "needs review"}</span>
+            <span className={`rounded-full px-2.5 py-1 ${data?.inventoryHistory?.status === "FRESH" ? "bg-emerald-50 text-emerald-800" : "bg-amber-50 text-amber-900"}`}>
+              Inventory snapshot {data?.inventoryHistory?.status === "FRESH" ? "OK" : "check"}
+            </span>
+            {(data?.reviewRequiredCount ?? 0) > 0 && (
+              <span className="rounded-full bg-amber-50 px-2.5 py-1 text-amber-900">
+                {number.format(data?.reviewRequiredCount ?? 0)} lines need review first
+              </span>
+            )}
             <span className={`rounded-full px-2.5 py-1 ${draftRfqEnabled ? "bg-sky-50 text-sky-800" : "bg-slate-100 text-slate-700"}`}>{draftRfqEnabled ? "Draft RFQ enabled" : "Read-only preview"}</span>
           </div>
         </div>
@@ -598,10 +612,10 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
 
       {data?.exceptionMode && <p role="status" className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">Showing {data.exceptionCount ?? data.products.length} exception items requiring attention. Purchase actions remain subject to manual review.</p>}
 
-      {data && <section aria-label="Daily inventory history" className={`rounded-md border px-4 py-3 text-sm ${data.inventoryHistory?.status === "FRESH" ? "border-emerald-200 bg-emerald-50 text-emerald-950" : "border-amber-200 bg-amber-50 text-amber-950"}`}>
+      {data && data.inventoryHistory?.status !== "FRESH" && <section aria-label="Daily inventory history" className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
         <p className="font-semibold">Daily inventory history · {({ FRESH: "Up to date", STALE: "Capture overdue", REVIEW: "Needs review", UNAVAILABLE: "Not verified" })[data.inventoryHistory?.status ?? "UNAVAILABLE"]}</p>
         {data.inventoryHistory?.lastSuccessAt ? <>
-          <p className="mt-1">Last successful capture {formatStoreEpoch(Date.parse(data.inventoryHistory.lastSuccessAt), data.inventoryHistory.businessTimezone ?? storeTimezone)} · {data.inventoryHistory.capturedProducts?.toLocaleString("en-AU")} / {data.inventoryHistory.expectedProducts?.toLocaleString("en-AU")} products ({Math.round((data.inventoryHistory.productCoverage ?? 0) * 100)}%) · {data.inventoryHistory.capturedWarehouses} / {data.inventoryHistory.expectedWarehouses} warehouses.</p>
+          <p className="mt-1">Last successful capture {formatStoreEpoch(Date.parse(data.inventoryHistory.lastSuccessAt), data.inventoryHistory.businessTimezone ?? storeTimezone)} · {data.inventoryHistory.capturedProducts?.toLocaleString("en-AU")} / {data.inventoryHistory.expectedProducts?.toLocaleString("en-AU")} products ({Math.round((data.inventoryHistory.productCoverage ?? 0) * 100)}%).</p>
           <details className="mt-2">
             <summary className="cursor-pointer font-medium underline underline-offset-2">Capture details and missing fields</summary>
             <p className="mt-2">Latest business date {data.inventoryHistory.latestBusinessDate ?? "unknown"}; {data.inventoryHistory.observedDays} observed daily captures from {data.inventoryHistory.firstBusinessDate ?? "unknown"} · {data.inventoryHistory.gapDays} missing dates · {data.inventoryHistory.invalidSnapshots ?? 0} invalid snapshots. Collection is building an inventory history; this does not establish forecast accuracy.</p>
@@ -642,12 +656,31 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
         </div>
       )}
 
-      <section aria-label="Replenishment summary" className="flex flex-wrap items-baseline gap-x-5 gap-y-1 rounded-lg border border-[var(--oh-border)] bg-white px-4 py-3 text-sm shadow-[var(--oh-shadow-card)]">
-        <p><span className="font-semibold tabular-nums text-[var(--oh-text)]">{number.format(suggestedItems.length)}</span> <span className="text-[var(--oh-muted)]">to replenish</span></p>
-        <p><span className="font-semibold tabular-nums text-[var(--oh-text)]">{number.format(totalSuggestedUnits)}</span> <span className="text-[var(--oh-muted)]">suggested units · {planCoverageDays}d</span></p>
-        <p><span className="font-semibold tabular-nums text-[var(--oh-text)]">{number.format(outOfStockWithDemand)}</span> <span className="text-[var(--oh-muted)]">out of stock with demand</span></p>
-        <p className="text-[var(--oh-muted)]">{number.format(data?.products.length ?? 0)} POS products in plan</p>
-        {(data?.reviewRequiredCount ?? 0) > 0 && <p className="text-amber-900">{number.format(data?.reviewRequiredCount ?? 0)} need data review; excluded from order value and forecast-risk totals.</p>}
+      {(data?.reviewRequiredCount ?? 0) > 0 && (
+        <div role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+          <p>
+            <strong>Start with Urgent or Review data</strong> — {number.format(data?.reviewRequiredCount ?? 0)} lines are inventory or cost fixes, not demand-based orders.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={() => setListFilter("urgent")} className="rounded-md border border-amber-300 bg-white px-3 py-1.5 text-sm font-semibold">Urgent ({number.format(urgentRiskCount)})</button>
+            <button type="button" onClick={() => setListFilter("review")} className="rounded-md border border-amber-300 bg-white px-3 py-1.5 text-sm font-semibold">Review data</button>
+          </div>
+        </div>
+      )}
+
+      <section aria-label="Replenishment summary" className="grid gap-3 rounded-lg border border-[var(--oh-border)] bg-white px-4 py-3 text-sm shadow-[var(--oh-shadow-card)] md:grid-cols-3">
+        <p>
+          <span className="block text-2xl font-semibold tabular-nums text-[var(--oh-text)]">{number.format(orderReadyItems.length)}</span>
+          <span className="text-[var(--oh-muted)]">ready to order · {number.format(totalOrderReadyUnits)} units</span>
+        </p>
+        <p>
+          <span className="block text-2xl font-semibold tabular-nums text-red-700">{number.format(outOfStockWithDemand)}</span>
+          <span className="text-[var(--oh-muted)]">out of stock with recent sales</span>
+        </p>
+        <p>
+          <span className="block text-2xl font-semibold tabular-nums text-amber-900">{number.format(data?.reviewRequiredCount ?? 0)}</span>
+          <span className="text-[var(--oh-muted)]">review before ordering · {number.format(suggestedItems.length - orderReadyItems.length)} with raw suggestions only</span>
+        </p>
         {!draftRfqEnabled && (
           <p className="text-[var(--oh-muted)]">
             To order: open{" "}
@@ -707,7 +740,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
                 aria-label="Filter replenishment list"
                 className="h-11 rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm font-normal text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15"
               >
-                <option value="suggestions">Suggestions only</option>
+                <option value="suggestions">Ready to order</option>
                 <option value="urgent">Urgent risks ({number.format(urgentRiskCount)})</option>
                 <option value="out_of_stock">Out of stock with demand</option>
                 <option value="review">Review data ({data?.reviewRequiredCount ?? 0})</option>
@@ -778,7 +811,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
                         : <span className="shrink-0 rounded-full bg-[var(--oh-surface)] px-2.5 py-1 text-xs font-medium text-[var(--oh-muted)]">{product.recommendationStatus === "REVIEW_DATA" ? "Review data" : "No order"}</span>}
                     </div>
                     <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 rounded-md bg-[var(--oh-surface)] p-3 text-sm">
-                      <Metric label={`Sold · ${data?.historyDays}d`} value={number.format(product.soldUnits)} />
+                      <Metric label="Sold · 7d" value={number.format(product.soldUnits)} />
                       <Metric label="On hand" value={number.format(product.onHand)} danger={product.onHand <= 0 && product.soldUnits > 0} />
                       {showMoreColumns && (
                         <>
@@ -843,7 +876,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
                   />
                 </th>
                 <th scope="col" className="px-4 py-3">Product</th>
-                <th scope="col" className="px-4 py-3 text-right">Sold · {data?.historyDays}d</th>
+                <th scope="col" className="px-4 py-3 text-right">Sold · 7d</th>
                 {showMoreColumns && (
                   <>
                     <th scope="col" className="px-4 py-3 text-right">Forecast / day</th>
