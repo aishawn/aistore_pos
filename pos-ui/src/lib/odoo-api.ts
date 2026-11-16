@@ -924,7 +924,8 @@ type NativeProductRow = {
 
 function mapNativeProduct(product: NativeProductRow): OdooProductRecord {
   const barcode = product.barcodes?.find((row) => row.code)?.code || false;
-  const price = Number(product.price ?? 0);
+  const priceKnown = product.price != null && Number.isFinite(Number(product.price));
+  const price = priceKnown ? Number(product.price) : 0;
   const cost = product.cost == null ? null : Number(product.cost);
   const qty = product.stockQuantity == null ? 0 : Number(product.stockQuantity);
   const categoryId = product.categoryId == null ? null : Number(product.categoryId);
@@ -955,7 +956,7 @@ function mapNativeProduct(product: NativeProductRow): OdooProductRecord {
     performance_30d: performance30d,
     performance_source: performance30d ? "Odoo" : undefined,
     taxes_id: [],
-    price_included: null,
+    price_included: priceKnown ? price : null,
     price_tax: null,
     qty_available: qty,
     free_qty: qty,
@@ -968,7 +969,7 @@ function mapNativeProduct(product: NativeProductRow): OdooProductRecord {
 /** Read a named dataset. Prefer Orithos ledger APIs after the native cutover. */
 export async function searchOdooRecords<T>(
   type: OdooRecordType,
-  options: { groupId?: number; groupIds?: string; pricelistId?: number | string; query?: string; limit?: number; offset?: number; categoryId?: number; categoryIds?: number[]; stockOnly?: boolean; catalogueView?: import("./product-catalogue").CatalogueView; productFilters?: ProductCatalogueFilters; status?: OdooSalesStatusFilter; period?: OdooSalesPeriodFilter; inventoryReport?: boolean; inventoryFilter?: "all" | "zero" | "negative"; sortBy?: import("./inventory-report").InventorySort; sortDirection?: import("./inventory-report").InventoryDirection; snapshotId?: string; refresh?: boolean } = {},
+  options: { groupId?: number; groupIds?: string; pricelistId?: number | string; query?: string; limit?: number; offset?: number; categoryId?: number; categoryIds?: number[]; stockOnly?: boolean; /** POS register catalogue: only ACTIVE and NOT_PURCHASING. */ sellCatalogue?: boolean; catalogueView?: import("./product-catalogue").CatalogueView; productFilters?: ProductCatalogueFilters; status?: OdooSalesStatusFilter; period?: OdooSalesPeriodFilter; inventoryReport?: boolean; inventoryFilter?: "all" | "zero" | "negative"; sortBy?: import("./inventory-report").InventorySort; sortDirection?: import("./inventory-report").InventoryDirection; snapshotId?: string; refresh?: boolean } = {},
 ): Promise<OdooPage<T>> {
   if (type === "customers") {
     const pageNumber = Math.floor((options.offset ?? 0) / (options.limit ?? 40)) + 1;
@@ -1003,11 +1004,14 @@ export async function searchOdooRecords<T>(
     const size = options.limit ?? 40;
     const pageNumber = Math.floor((options.offset ?? 0) / size) + 1;
     const productFilters = options.productFilters;
+    const productStatuses = productFilters?.statuses ?? (options.sellCatalogue ? "ACTIVE,NOT_PURCHASING" : undefined);
     const page = await api.get<Page<NativeProductRow>>("/api/products", {
       name: options.query,
       categoryId: options.categoryId ?? options.categoryIds?.[0],
       page: pageNumber,
       size,
+      ...(options.stockOnly ? { inventoryLevel: "on-hand" } : {}),
+      ...(productStatuses ? { statuses: productStatuses } : {}),
       // Shopfront Products default: name ascending (symbol → digit → letter).
       sortBy: "name",
       sortDirection: options.sortDirection === "desc" ? "desc" : "asc",
@@ -1018,7 +1022,6 @@ export async function searchOdooRecords<T>(
       ...(productFilters?.type ? { type: productFilters.type } : {}),
       ...(productFilters?.taxRateIds ? { taxRateIds: productFilters.taxRateIds } : productFilters?.taxRateId != null ? { taxRateId: productFilters.taxRateId } : {}),
       ...(productFilters?.costTaxRateIds ? { costTaxRateIds: productFilters.costTaxRateIds } : productFilters?.costTaxRateId != null ? { costTaxRateId: productFilters.costTaxRateId } : {}),
-      ...(productFilters?.statuses ? { statuses: productFilters.statuses } : {}),
       ...(productFilters?.viiGiftCard != null ? { viiGiftCard: productFilters.viiGiftCard } : {}),
     });
     const items = page.items.map(mapNativeProduct);

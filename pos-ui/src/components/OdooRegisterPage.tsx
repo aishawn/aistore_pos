@@ -15,6 +15,7 @@ import {
   CASE_PACK_OPTIONS,
   money,
   provisionalLineUnit,
+  shelfUnitPrice,
   type CartLine,
   type CatalogDensity,
   type ParkedOdooSale,
@@ -440,6 +441,7 @@ export function OdooRegisterPage() {
           offset: 0,
           categoryId: categoryId ?? undefined,
           stockOnly: hideOutOfStock || undefined,
+          sellCatalogue: true,
         });
         if (revision === searchRevision.current) {
           setProducts(result.items);
@@ -672,6 +674,7 @@ export function OdooRegisterPage() {
         offset: products.length,
         categoryId: categoryId ?? undefined,
         stockOnly: hideOutOfStock || undefined,
+        sellCatalogue: true,
       });
       if (revision !== searchRevision.current) return;
       setProducts((current) => {
@@ -689,6 +692,15 @@ export function OdooRegisterPage() {
   }
 
   function addProduct(product: OdooProductRecord, packFactor = 1) {
+    const label = friendlyProductName(product.display_name || product.name);
+    if (!product.available_in_pos) {
+      setError(`${label} is not available for POS sale.`);
+      return;
+    }
+    if (shelfUnitPrice(product) === null) {
+      setError(`${label} has no catalogue price. Set a price before selling.`);
+      return;
+    }
     const requested = lines.filter((line) => line.product.id === product.id).reduce((sum, line) => sum + line.quantity * (line.packFactor || 1), 0) + packFactor;
     if (requested > product.free_qty + 1e-9) {
       setError(`Only ${product.free_qty} units of ${friendlyProductName(product.display_name || product.name)} are available.`);
@@ -738,7 +750,7 @@ export function OdooRegisterPage() {
       const product = products[productActiveIndex];
       if (!product) return;
       event.preventDefault();
-      if (selectedConfig?.session && product.free_qty > 0) {
+      if (selectedConfig?.session && product.free_qty > 0 && product.available_in_pos && shelfUnitPrice(product) !== null) {
         addProduct(product);
         setQuery("");
         setProductActiveIndex(-1);
@@ -752,7 +764,11 @@ export function OdooRegisterPage() {
     try {
       // Barcode scanners usually send Enter after the final character. Search
       // immediately instead of relying on the debounced text search response.
-      const result = await searchOdooRecords<OdooProductRecord>("products", { query: query.trim(), limit: PRODUCT_PAGE_SIZE });
+      const result = await searchOdooRecords<OdooProductRecord>("products", {
+        query: query.trim(),
+        limit: PRODUCT_PAGE_SIZE,
+        sellCatalogue: true,
+      });
       const needle = query.trim().toLocaleLowerCase();
       const matches = result.items.filter((product) =>
         [product.barcode, product.default_code]

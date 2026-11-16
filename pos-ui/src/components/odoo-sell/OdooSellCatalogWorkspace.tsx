@@ -350,7 +350,7 @@ export function OdooSellCatalogWorkspace({
                 const label = friendlyProductName(fullName);
                 const shelfPrice = shelfUnitPrice(product);
                 const inStock = product.free_qty > 0;
-                const disabled = !sessionOpen || !inStock;
+                const disabled = !sessionOpen || !inStock || !product.available_in_pos || shelfPrice === null;
                 const selected = index === productActiveIndex;
                 if (catalogDensity === "list") {
                   return (
