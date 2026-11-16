@@ -21,6 +21,7 @@ public class Product {
     private BigDecimal caseQuantity;
     private Boolean costPercentage;
     private Boolean shopfrontCatalogConfirmed;
+    private String shopfrontSourceUpdatedAt;
     private Boolean preventManualDiscounts;
     private Boolean requestPrice;
     private Boolean requestQuantity;

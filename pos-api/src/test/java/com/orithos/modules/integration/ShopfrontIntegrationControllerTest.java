@@ -169,9 +169,9 @@ class ShopfrontIntegrationControllerTest {
         @SuppressWarnings("unchecked")
         Map<Long, Object[]> updates = (Map<Long, Object[]>) updatesField.get(batch);
         updates.put(101L, new Object[]{"Duplicate", null, null, null, null, null, null, null, null, true,
-                null, null, false, true, true, false, false, false, false, false, null, null, null, "[]", null, 48L, 101L});
+                null, null, false, true, null, true, false, false, false, false, false, null, null, null, "[]", null, 48L, 101L});
         updates.put(102L, new Object[]{"Duplicate [source-2]", null, null, null, null, null, null, null, null, true,
-                null, null, false, true, true, false, false, false, false, false, null, null, null, "[]", null, 48L, 102L});
+                null, null, false, true, null, true, false, false, false, false, false, null, null, null, "[]", null, 48L, 102L});
         Method flush = ShopfrontIntegrationController.class.getDeclaredMethod("flushBusinessProductBatch", batchType, long.class);
         flush.setAccessible(true);
 
@@ -199,7 +199,8 @@ class ShopfrontIntegrationControllerTest {
         upsert.setAccessible(true);
 
         upsert.invoke(controller, new ObjectMapper().readTree("""
-                {"source_id":"current-1","name":"Current item","catalog_confirmed":true}
+                {"source_id":"current-1","name":"Current item","sku":"123456","catalog_confirmed":true,
+                 "source_updated_at":"2026-10-29T13:19:56+08:00"}
                 """), "skr", 87L, new java.util.HashMap<>(), 123L, batch);
 
         var updatesField = batchType.getDeclaredField("productUpdates");
@@ -207,6 +208,8 @@ class ShopfrontIntegrationControllerTest {
         @SuppressWarnings("unchecked")
         Map<Long, Object[]> updates = (Map<Long, Object[]>) updatesField.get(batch);
         assertEquals(Boolean.TRUE, updates.get(123L)[13]);
+        assertEquals("2026-10-29T13:19:56+08:00", updates.get(123L)[14]);
+        assertEquals(123456, updates.get(123L)[25]);
 
         upsert.invoke(controller, new ObjectMapper().readTree("""
                 {"source_id":"historical-1","name":"Historical item"}
@@ -251,6 +254,8 @@ class ShopfrontIntegrationControllerTest {
         verify(jdbc).queryForList(contains("p.cost,p.case_quantity,p.tax_rate_id"), any(Object[].class));
         verify(jdbc).queryForList(contains("cost_tax.name AS cost_tax_rate_name"), any(Object[].class));
         verify(jdbc).queryForList(contains("p.updated_at AS pos_updated_at"), any(Object[].class));
+        verify(jdbc).queryForList(contains("p.cost_percentage"), any(Object[].class));
+        verify(jdbc).queryForList(contains("p.shopfront_source_updated_at AS source_updated_at"), any(Object[].class));
         verify(jdbc, never()).queryForList(contains("p.sku"), any(Object[].class));
     }
 

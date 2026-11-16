@@ -1621,7 +1621,8 @@ public class ShopfrontIntegrationController {
                     + "WHERE m.store_key=? AND m.status='MAPPED'";
             rowsSql = "SELECT m.source_product_id AS source_id,p.name,p.mdb_id AS sku,p.status, "
                     + "p.cost,p.case_quantity,p.tax_rate_id,product_tax.name AS tax_rate_name, "
-                    + "p.cost_tax_rate_id,cost_tax.name AS cost_tax_rate_name,p.updated_at AS pos_updated_at "
+                    + "p.cost_tax_rate_id,cost_tax.name AS cost_tax_rate_name,p.cost_percentage, "
+                    + "p.updated_at AS pos_updated_at,p.shopfront_source_updated_at AS source_updated_at "
                     + "FROM shopfront_product_mapping m JOIN product p "
                     + "ON p.id=m.pos_product_id AND p.outlet_id=? AND p.deleted_at IS NULL "
                     + "LEFT JOIN tax_rate product_tax ON product_tax.id=p.tax_rate_id "
@@ -3389,7 +3390,7 @@ public class ShopfrontIntegrationController {
         String name = text(item, "name");
         if (sourceId == null || sourceId.isBlank() || name == null || name.isBlank()) return 0;
         Long productId = resolvedProductId;
-        Integer mdbId = integerValue(item.get("sku"));
+        Integer mdbId = integerValue(item.path("sku").asText(null));
         Long categoryId = ensureLookup("category", lookupName(item.get("category")), outletId, batch.lookupIds);
         Long brandId = ensureLookup("brand", lookupName(item.get("brand")), outletId, batch.lookupIds);
         Long familyId = ensureLookup("family", lookupName(item.get("family")), outletId, batch.lookupIds);
@@ -3414,10 +3415,10 @@ public class ShopfrontIntegrationController {
             // Shopfront allows duplicate display names across distinct source_ids.
             // Orithos keeps a unique active name per outlet, so disambiguate on create.
             String insertName = disambiguateProductName(name, outletId, firstBarcode(item), sourceId);
-            String sql = "INSERT INTO product (name,type,status,description,category_id,brand_id,family_id,tax_rate_id,cost_tax_rate_id,cost,case_quantity,cost_percentage,shopfront_catalog_confirmed,track_inventory,use_scales,use_barcode_templates,prevent_manual_discounts,request_price,request_quantity,order_notes,invoice_notes,image,alternate_images,mdb_id,outlet_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?::jsonb,?,?) RETURNING id";
-            productId = jdbc.queryForObject(sql, Long.class, insertName, type, productStatus, description, categoryId, brandId, familyId, taxRateId, costTaxRateId, costIsVerified ? cost : null, caseQuantity, flag(item, "cost_percentage", false), item.path("catalog_confirmed").asBoolean(false), flag(item, "track_inventory", true), flag(item, "use_scales", false), flag(item, "use_barcode_templates", false), flag(item, "prevent_manual_discounts", false), flag(item, "request_price", false), flag(item, "request_quantity", false), text(item, "order_notes"), text(item, "invoice_notes"), image, alternateImages, mdbId, outletId);
+            String sql = "INSERT INTO product (name,type,status,description,category_id,brand_id,family_id,tax_rate_id,cost_tax_rate_id,cost,case_quantity,cost_percentage,shopfront_catalog_confirmed,shopfront_source_updated_at,track_inventory,use_scales,use_barcode_templates,prevent_manual_discounts,request_price,request_quantity,order_notes,invoice_notes,image,alternate_images,mdb_id,outlet_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?::jsonb,?,?) RETURNING id";
+            productId = jdbc.queryForObject(sql, Long.class, insertName, type, productStatus, description, categoryId, brandId, familyId, taxRateId, costTaxRateId, costIsVerified ? cost : null, caseQuantity, flag(item, "cost_percentage", false), item.path("catalog_confirmed").asBoolean(false), text(item, "source_updated_at"), flag(item, "track_inventory", true), flag(item, "use_scales", false), flag(item, "use_barcode_templates", false), flag(item, "prevent_manual_discounts", false), flag(item, "request_price", false), flag(item, "request_quantity", false), text(item, "order_notes"), text(item, "invoice_notes"), image, alternateImages, mdbId, outletId);
         } else {
-            batch.productUpdates.put(productId, new Object[]{name, type, productStatus, description, categoryId, brandId, familyId, taxRateId, costTaxRateId, costIsVerified, cost, caseQuantity, flag(item, "cost_percentage", false), item.path("catalog_confirmed").asBoolean(false), flag(item, "track_inventory", true), flag(item, "use_scales", false), flag(item, "use_barcode_templates", false), flag(item, "prevent_manual_discounts", false), flag(item, "request_price", false), flag(item, "request_quantity", false), text(item, "order_notes"), text(item, "invoice_notes"), image, alternateImages, mdbId, outletId, productId});
+            batch.productUpdates.put(productId, new Object[]{name, type, productStatus, description, categoryId, brandId, familyId, taxRateId, costTaxRateId, costIsVerified, cost, caseQuantity, flag(item, "cost_percentage", false), item.path("catalog_confirmed").asBoolean(false), text(item, "source_updated_at"), flag(item, "track_inventory", true), flag(item, "use_scales", false), flag(item, "use_barcode_templates", false), flag(item, "prevent_manual_discounts", false), flag(item, "request_price", false), flag(item, "request_quantity", false), text(item, "order_notes"), text(item, "invoice_notes"), image, alternateImages, mdbId, outletId, productId});
         }
         collectProductPrices(productId, item, outletId, batch);
         collectProductBarcodes(productId, item, batch);
@@ -3435,7 +3436,7 @@ public class ShopfrontIntegrationController {
                 temporaryNames.add(new Object[]{"__sf_sync_" + reservation + "_" + index++, outletId, productId});
             }
             jdbc.batchUpdate("UPDATE product SET name=? WHERE outlet_id=? AND id=?", temporaryNames);
-            jdbc.batchUpdate("UPDATE product SET name=?,type=?,status=?,description=?,category_id=?,brand_id=?,family_id=?,tax_rate_id=?,cost_tax_rate_id=?,cost=CASE WHEN ? THEN ? ELSE cost END,case_quantity=?,cost_percentage=?,shopfront_catalog_confirmed=?,track_inventory=?,use_scales=?,use_barcode_templates=?,prevent_manual_discounts=?,request_price=?,request_quantity=?,order_notes=?,invoice_notes=?,image=COALESCE(?,image),alternate_images=?::jsonb,mdb_id=?,outlet_id=? WHERE id=?",
+            jdbc.batchUpdate("UPDATE product SET name=?,type=?,status=?,description=?,category_id=?,brand_id=?,family_id=?,tax_rate_id=?,cost_tax_rate_id=?,cost=CASE WHEN ? THEN ? ELSE cost END,case_quantity=?,cost_percentage=?,shopfront_catalog_confirmed=?,shopfront_source_updated_at=?,track_inventory=?,use_scales=?,use_barcode_templates=?,prevent_manual_discounts=?,request_price=?,request_quantity=?,order_notes=?,invoice_notes=?,image=COALESCE(?,image),alternate_images=?::jsonb,mdb_id=?,outlet_id=? WHERE id=?",
                     new ArrayList<>(batch.productUpdates.values()));
         }
 
