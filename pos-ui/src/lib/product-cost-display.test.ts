@@ -2,10 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { productCostDisplay } from "./product-cost-display.ts";
 
-test("shows Shopfront case cost and the case-size-derived item cost", () => {
+test("shows POS item cost and derives Shopfront case cost from pack size", () => {
   assert.deepEqual(productCostDisplay(71.01, 12), {
-    caseCost: "A$ 71.01 / case",
-    itemCost: "A$ 5.9175 / item",
+    caseCost: "A$ 852.12 / case",
+    itemCost: "A$ 71.01 / item",
   });
 });
 
@@ -17,10 +17,10 @@ test("keeps a source zero distinct from a missing cost", () => {
   assert.equal(productCostDisplay(null, 6), null);
 });
 
-test("does not invent an item cost when Shopfront case size is invalid", () => {
+test("shows item cost but does not invent case cost when pack size is invalid", () => {
   assert.deepEqual(productCostDisplay(24, 0), {
-    caseCost: "A$ 24.00 / case",
-    itemCost: null,
+    caseCost: null,
+    itemCost: "A$ 24.00 / item",
   });
 });
 

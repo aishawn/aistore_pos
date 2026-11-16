@@ -11,7 +11,7 @@ export function productCostDisplay(
   cost: number | null | undefined,
   caseQuantity: number | null | undefined,
   status?: string | null,
-): { caseCost: string; itemCost: string | null } | null {
+): { caseCost: string | null; itemCost: string } | null {
   if (status?.trim().toUpperCase() === "NOT_ACTIVE") {
     return {
       caseCost: "Unavailable",
@@ -19,12 +19,12 @@ export function productCostDisplay(
     };
   }
   if (cost == null || !Number.isFinite(cost)) return null;
-  const itemCost = caseQuantity != null && Number.isFinite(caseQuantity) && caseQuantity > 0
-    ? `${money(cost / caseQuantity)} / item`
+  const caseCost = caseQuantity != null && Number.isFinite(caseQuantity) && caseQuantity > 0
+    ? `${money(cost * caseQuantity)} / case`
     : null;
 
   return {
-    caseCost: `${money(cost)} / case`,
-    itemCost,
+    caseCost,
+    itemCost: `${money(cost)} / item`,
   };
 }
