@@ -2163,7 +2163,7 @@ function DialogueView({
                 ))}
               </div>
             ) : null}
-            {msg.role === "assistant" && (msg.dataSource || msg.source || msg.dataAsOf || msg.requestedDateRange || msg.reportPeriodRange || msg.reportTimeZone || msg.reportDataStatus || msg.diagnostics?.intent === "report_sales") ? (
+            {msg.role === "assistant" && (msg.dataSource || msg.source || msg.dataAsOf || msg.requestedDateRange || msg.reportPeriodRange || msg.reportTimeZone || msg.reportDataStatus || msg.storeScope) ? (
               <p className="mt-1.5 text-[11px] text-[var(--oh-muted)]">
                 {msg.dataSource
                   ? /[\u3400-\u9fff]/.test(msg.question ?? msg.text)
@@ -2182,18 +2182,20 @@ function DialogueView({
                 {msg.storeScope
                   ? ` · ${/[\u3400-\u9fff]/.test(msg.question ?? msg.text) ? "门店范围" : "Store scope"}: ${msg.storeScope}`
                   : ""}
-                {msg.diagnostics?.intent === "report_sales" ? (
+                {msg.diagnostics?.intent === "report_sales" && msg.table?.rows?.length ? (
                   <>
                     {(msg.dataSource || msg.source || msg.requestedDateRange || msg.reportPeriodRange) ? " · " : ""}
-                    {assistantReturnedSalesDateSummary(msg.table?.rows, /[\u3400-\u9fff]/.test(msg.question ?? msg.text))}
+                    {assistantReturnedSalesDateSummary(msg.table.rows, /[\u3400-\u9fff]/.test(msg.question ?? msg.text))}
                   </>
                 ) : null}
-                {(msg.dataSource || msg.source || msg.requestedDateRange || msg.reportPeriodRange || msg.diagnostics?.intent === "report_sales") ? " · " : ""}
-                {(msg.dataSource || msg.source || msg.requestedDateRange || msg.reportPeriodRange || msg.diagnostics?.intent === "report_sales")
-                  ? /[\u3400-\u9fff]/.test(msg.question ?? msg.text)
-                    ? `数据时间：${assistantDataTimestampLabel(msg.dataAsOf, true)}`
-                    : `Data timestamp: ${assistantDataTimestampLabel(msg.dataAsOf, false)}`
-                  : ""}
+                {(msg.dataAsOf || msg.dataSource || msg.reportPeriodRange) ? (
+                  <>
+                    {(msg.dataSource || msg.source || msg.requestedDateRange || msg.reportPeriodRange) ? " · " : ""}
+                    {/[\u3400-\u9fff]/.test(msg.question ?? msg.text)
+                      ? `数据时间：${assistantDataTimestampLabel(msg.dataAsOf, true)}`
+                      : `Data timestamp: ${assistantDataTimestampLabel(msg.dataAsOf, false)}`}
+                  </>
+                ) : null}
                 {msg.reportTimeZone
                   ? ` · ${/[\u3400-\u9fff]/.test(msg.question ?? msg.text) ? "时区" : "Timezone"}: ${msg.reportTimeZone}`
                   : ""}

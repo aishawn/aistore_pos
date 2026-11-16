@@ -147,6 +147,59 @@ test("stale fallback when live read fails after warm window", async () => {
   assert.match(failed?.answer ?? "", /\$42\.00/);
 });
 
+test("sales week accepts legacy source field without dataSource", async () => {
+  const result = await readOperationsPreview("Show me this week's sales performance", null, undefined, mockFetch({
+    data: {
+      source: "orithos_ledger",
+      revenue: "88.25",
+      transactions: "4",
+      from: "2026-11-10",
+      to: "2026-11-16",
+      timeZone: "Australia/Adelaide",
+      reportDataStatus: "available",
+    },
+  }));
+  assert.equal(result?.cards?.[0].status, "ready");
+  assert.match(result?.answer ?? "", /\$88\.25/);
+});
+
+test("replenishment preview defaults store scope when omitted", async () => {
+  const result = await readOperationsPreview(question, null, undefined, mockFetch({
+    data: {
+      dataSource: "orithos_ledger",
+      reportPeriodFrom: "2026-10-01",
+      reportPeriodTo: "2026-11-13",
+      reportTimeZone: "Australia/Adelaide",
+      reportDataStatus: "available",
+      coverageDays: 21,
+      itemsNeedingOrder: 0,
+      dataGapCount: 0,
+      dataGaps: [],
+      top: [],
+    },
+  }));
+  assert.equal(result?.storeScope, "current_authenticated_store");
+  assert.equal(result?.cards?.[0].status, "empty");
+});
+
+test("sales week reads native overview without storeScope on the payload", async () => {
+  const result = await readOperationsPreview("Show me this week's sales performance", null, undefined, mockFetch({
+    data: {
+      dataSource: "orithos_ledger",
+      revenue: 1200.5,
+      transactions: 18,
+      reportPeriodFrom: "2026-11-10",
+      reportPeriodTo: "2026-11-16",
+      reportTimeZone: "Australia/Adelaide",
+      reportDataStatus: "available",
+      dataAsOf: "2026-11-16T02:00:00+10:30",
+    },
+  }));
+  assert.equal(result?.cards?.[0].status, "ready");
+  assert.equal(result?.storeScope, "current_authenticated_store");
+  assert.match(result?.answer ?? "", /\$1,200\.50/);
+});
+
 test("sales are read from the calendar week endpoint, preserving currency/refunds", async () => {
   const result = await readOperationsPreview("Show me this week's sales performance", null, undefined, async (url, init) => {
     assert.ok(String(url).startsWith("/api/reports/native-overview?"));

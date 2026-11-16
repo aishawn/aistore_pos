@@ -65,7 +65,16 @@ class PreviewReadError extends Error {
 }
 
 function finite(value: unknown): value is number {
-  return typeof value === "number" && Number.isFinite(value);
+  if (typeof value === "number") return Number.isFinite(value);
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed);
+  }
+  return false;
+}
+
+function asNumber(value: unknown): number {
+  return typeof value === "number" ? value : Number(value);
 }
 
 function storeDay(timezone: string) {
@@ -106,11 +115,17 @@ async function readReplenishmentPlan(fetcher: typeof fetch, signal?: AbortSignal
   }
   const plan = body.data;
   if (!plan || !Array.isArray(plan.top) || !finite(plan.itemsNeedingOrder) || !finite(plan.dataGapCount)
-    || !finite(plan.coverageDays) || !plan.dataSource || !plan.storeScope || !plan.reportPeriodFrom
+    || !finite(plan.coverageDays) || !plan.dataSource || !plan.reportPeriodFrom
     || !plan.reportPeriodTo || !plan.reportTimeZone || !plan.reportDataStatus || !Array.isArray(plan.dataGaps)) {
     throw new Error("Incomplete replenishment response");
   }
-  return plan as Plan;
+  return {
+    ...plan,
+    itemsNeedingOrder: asNumber(plan.itemsNeedingOrder),
+    dataGapCount: asNumber(plan.dataGapCount),
+    coverageDays: asNumber(plan.coverageDays),
+    storeScope: plan.storeScope ?? "current_authenticated_store",
+  } as Plan;
 }
 
 async function readWeekSales(fetcher: typeof fetch, signal?: AbortSignal): Promise<Sales> {
@@ -125,28 +140,33 @@ async function readWeekSales(fetcher: typeof fetch, signal?: AbortSignal): Promi
   if (!response.ok) throw new PreviewReadError("Business data unavailable", response.status);
   const body = await response.json() as {
     data?: {
-      source?: string; revenue?: number; transactions?: number; from?: string; to?: string;
+      source?: string; revenue?: unknown; transactions?: unknown; from?: string; to?: string;
       timeZone?: string; dataAsOf?: string | null; dataSource?: string; storeScope?: string;
       reportPeriodFrom?: string; reportPeriodTo?: string; reportTimeZone?: string; reportDataStatus?: string;
     };
   };
-  if (!body.data || body.data.dataSource !== "orithos_ledger" || !finite(body.data.revenue) || !finite(body.data.transactions)
-    || !body.data.reportPeriodFrom || !body.data.reportPeriodTo || !body.data.reportTimeZone
-    || !body.data.storeScope || !body.data.reportDataStatus) {
+  const row = body.data;
+  const dataSource = row?.dataSource ?? row?.source;
+  const reportPeriodFrom = row?.reportPeriodFrom ?? row?.from;
+  const reportPeriodTo = row?.reportPeriodTo ?? row?.to;
+  const reportTimeZone = row?.reportTimeZone ?? row?.timeZone ?? timezone;
+  const reportDataStatus = row?.reportDataStatus;
+  if (!row || dataSource !== "orithos_ledger" || !finite(row.revenue) || !finite(row.transactions)
+    || !reportPeriodFrom || !reportPeriodTo || !reportTimeZone || !reportDataStatus) {
     throw new Error("Incomplete sales response");
   }
   return {
     period: "this_week",
-    revenue: Number(body.data.revenue),
-    transactions: Number(body.data.transactions),
+    revenue: asNumber(row.revenue),
+    transactions: asNumber(row.transactions),
     currency: "AUD",
-    from: body.data.reportPeriodFrom,
-    to: body.data.reportPeriodTo,
-    timezone: body.data.reportTimeZone,
-    dataSource: body.data.dataSource,
-    storeScope: body.data.storeScope,
-    reportDataStatus: body.data.reportDataStatus,
-    dataAsOf: body.data.dataAsOf,
+    from: reportPeriodFrom,
+    to: reportPeriodTo,
+    timezone: reportTimeZone,
+    dataSource,
+    storeScope: row.storeScope ?? "current_authenticated_store",
+    reportDataStatus,
+    dataAsOf: row.dataAsOf,
   };
 }
 
