@@ -54,4 +54,31 @@ describe("mapNativeProduct cost provenance", () => {
     assert.equal(product.shopfront_cost, null);
     assert.equal(product.shopfront_cost_status, "unavailable");
   });
+
+  it("does not present discontinued products as having a current Shopfront cost", () => {
+    for (const status of ["NOT_SELLING", "NOT_ACTIVE"]) {
+      const product = mapNativeProduct({
+        id: 3,
+        name: "Discontinued wine",
+        status,
+        cost: 62.07,
+        caseQuantity: 6,
+        shopfrontSourceUpdatedAt: "2026-11-12T05:13:22+0000",
+      });
+      assert.equal(product.active, false);
+      assert.equal(product.shopfront_cost, null);
+      assert.equal(product.shopfront_cost_status, "unavailable");
+    }
+
+    const notPurchasing = mapNativeProduct({
+      id: 4,
+      name: "Still saleable",
+      status: "NOT_PURCHASING",
+      cost: 62.07,
+      shopfrontSourceUpdatedAt: "2026-11-12T05:13:22+0000",
+    });
+    assert.equal(notPurchasing.active, true);
+    assert.equal(notPurchasing.shopfront_cost, 62.07);
+    assert.equal(notPurchasing.shopfront_cost_status, "available");
+  });
 });

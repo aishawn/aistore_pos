@@ -27,10 +27,13 @@ export function mapNativeProduct(product: NativeProductRow): OdooProductRecord {
   const price = priceKnown ? Number(product.price) : 0;
   const cost = product.cost == null ? null : Number(product.cost);
   const sourceUpdatedAt = product.shopfrontSourceUpdatedAt?.trim() || null;
-  const sourceCostStatus = sourceUpdatedAt ? cost === null ? "missing" : "available" : "unavailable";
+  const status = (product.status || "ACTIVE").toUpperCase();
+  const currentCatalogProduct = status === "ACTIVE" || status === "NOT_PURCHASING";
+  const sourceCostStatus = !currentCatalogProduct || !sourceUpdatedAt
+    ? "unavailable"
+    : cost === null ? "missing" : "available";
   const qty = product.stockQuantity == null ? 0 : Number(product.stockQuantity);
   const categoryId = product.categoryId == null ? null : Number(product.categoryId);
-  const status = (product.status || "ACTIVE").toUpperCase();
   // Shopfront: NOT_PURCHASING remains sellable; NOT_SELLING / NOT_ACTIVE do not.
   const sellable = status === "ACTIVE" || status === "NOT_PURCHASING";
   const performance30d = product.performance30d?.map((point) => Number(point)).filter((point) => Number.isFinite(point)) ?? null;
