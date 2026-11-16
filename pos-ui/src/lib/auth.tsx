@@ -3,6 +3,7 @@
 import { setNativeReadIdentity, clearNativeReadCache } from "./native-read-cache";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { api, isLocalPreviewSession, refreshAccessToken, registerAuthFailureHandler } from "@/lib/api";
+import type { WorkContextSelection } from "@/lib/work-context";
 export type StoreRoleCode = "ADMIN" | "MANAGER" | "CLERK" | "NONE" | string;
 
 export interface AuthUser {
@@ -55,6 +56,7 @@ interface AuthState {
   login: (username: string, password: string, subdomain?: string) => Promise<LoginResponse>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   logout: () => Promise<void>;
+  setWorkContext: (selection: WorkContextSelection) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -220,9 +222,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return (user.permissions ?? []).includes(safeName);
   }, [user]);
 
+  const setWorkContext = useCallback(async (selection: WorkContextSelection) => {
+    await api.post("/api/auth/work-context", {
+      outletId: selection.outletId,
+      registerId: selection.registerId,
+      globalMode: selection.globalMode,
+    });
+    const current = await api.get<CurrentUserResponse>("/api/auth/me");
+    const normalized = normalizeUser(current);
+    setUser(normalized);
+    if (typeof localStorage !== "undefined") localStorage.setItem(USER_KEY, JSON.stringify(normalized));
+  }, []);
+
   const value = useMemo(
-    () => ({ user, ready, hasPermission, recoverSession, login, changePassword, logout }),
-    [user, ready, hasPermission, recoverSession, login, changePassword, logout],
+    () => ({ user, ready, hasPermission, recoverSession, login, changePassword, logout, setWorkContext }),
+    [user, ready, hasPermission, recoverSession, login, changePassword, logout, setWorkContext],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

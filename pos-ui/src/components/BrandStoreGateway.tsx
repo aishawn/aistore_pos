@@ -20,7 +20,7 @@ export function BrandStoreGateway({ className = "" }: { className?: string }) {
   return (
     <div className={`flex flex-col gap-4 ${className}`}>
       <InternalSignupLink />
-      <motionDivider />
+      <MotionDivider />
       <div>
         <p className="text-sm font-medium text-[var(--oh-text)]">Already have a store?</p>
         <p className="mt-1 text-sm text-[var(--oh-muted)]">
@@ -63,7 +63,7 @@ export function BrandStoreGateway({ className = "" }: { className?: string }) {
 
 function InternalSignupLink() {
   return (
-    <motionRow
+    <MotionRow
       title="Start a free trial"
       description="Create your store, outlets, and registers in one guided flow."
       href={brandSignupUrl()}
@@ -72,7 +72,7 @@ function InternalSignupLink() {
   );
 }
 
-function motionRow({
+function MotionRow({
   title,
   description,
   href,
@@ -99,6 +99,6 @@ function motionRow({
   );
 }
 
-function motionDivider() {
+function MotionDivider() {
   return <div className="h-px bg-[var(--oh-border)]" aria-hidden />;
 }

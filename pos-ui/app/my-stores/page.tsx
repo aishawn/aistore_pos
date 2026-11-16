@@ -98,9 +98,9 @@ export default function MyStoresPage() {
           <p className="mt-4 text-xs text-[var(--oh-muted)]">Multi-vendor membership is active for this account.</p>
         )}
 
-        <motionDiv className="mt-10">
+        <MotionDiv className="mt-10">
           <BrandStoreGateway />
-        </motionDiv>
+        </MotionDiv>
 
         <p className="mt-8 text-center text-sm text-[var(--oh-muted)]">
           New business?{" "}
@@ -113,6 +113,6 @@ export default function MyStoresPage() {
   );
 }
 
-function motionDiv({ children, className }: { children: React.ReactNode; className?: string }) {
+function MotionDiv({ children, className }: { children: React.ReactNode; className?: string }) {
   return <div className={className}>{children}</div>;
 }
