@@ -7,6 +7,8 @@ export type ReportTrendPoint = {
   date: string;
   revenue: number;
   transaction_count?: number;
+  grossProfit?: number | null;
+  costAvailable?: boolean;
 };
 
 export type ReportComparisonSnapshot = {
@@ -31,6 +33,7 @@ export function ReportTrendChart({
   emptyMessage = "No Orithos sales for this period.",
   comparison,
   breakdownAnchorId,
+  overlayProfit = false,
 }: {
   points: ReportTrendPoint[];
   loading?: boolean;
@@ -39,6 +42,8 @@ export function ReportTrendChart({
   comparison?: { current: ReportComparisonSnapshot; previous: ReportComparisonSnapshot } | null;
   /** When set, shows a control that scrolls to the element with this id (e.g. daily breakdown table). */
   breakdownAnchorId?: string;
+  /** Draw gross profit line when day rows include cost-backed profit. */
+  overlayProfit?: boolean;
 }) {
   const gradientId = useId();
   const [hover, setHover] = useState<number | null>(null);
@@ -139,7 +144,13 @@ export function ReportTrendChart({
   const pad = { top: 16, right: 12, bottom: 36, left: 52 };
   const innerW = width - pad.left - pad.right;
   const innerH = height - pad.top - pad.bottom;
-  const maxRevenue = niceMax(Math.max(...points.map((row) => Number(row.revenue) || 0)));
+  const profitEligible =
+    overlayProfit && points.some((row) => row.costAvailable && row.grossProfit != null && Number(row.grossProfit) >= 0);
+  const maxRevenue = niceMax(
+    Math.max(
+      ...points.map((row) => Math.max(Number(row.revenue) || 0, profitEligible ? Number(row.grossProfit) || 0 : 0)),
+    ),
+  );
   const barGap = points.length > 20 ? 2 : 6;
   const barWidth = Math.max(4, (innerW - barGap * (points.length - 1)) / points.length);
   const ticks = [0, 0.5, 1].map((ratio) => maxRevenue * ratio);
@@ -166,12 +177,16 @@ export function ReportTrendChart({
             </button>
           ) : null}
         </div>
-        {active ? (
-          <p className="text-xs tabular-nums text-[var(--oh-muted)]">
-            {active.date}: {reportMoney(Number(active.revenue))}
-            {active.transaction_count != null ? ` · ${reportNumber(Number(active.transaction_count))} tx` : ""}
-          </p>
-        ) : null}
+        <div className="text-right text-xs tabular-nums text-[var(--oh-muted)]">
+          {active ? (
+            <p>
+              {active.date}: {reportMoney(Number(active.revenue))}
+              {active.transaction_count != null ? ` · ${reportNumber(Number(active.transaction_count))} tx` : ""}
+              {profitEligible && active.grossProfit != null ? ` · Profit ${reportMoney(Number(active.grossProfit))}` : ""}
+            </p>
+          ) : null}
+          {profitEligible ? <p className="text-[10px]">Bars: sales · Line: gross profit (tax inclusive)</p> : null}
+        </div>
       </div>
       <div className="mt-3 overflow-x-auto">
         <svg
@@ -236,6 +251,31 @@ export function ReportTrendChart({
               </g>
             );
           })}
+          {profitEligible
+            ? (() => {
+                const coords = points
+                  .map((row, index) => {
+                    if (!row.costAvailable || row.grossProfit == null) return null;
+                    const profit = Number(row.grossProfit) || 0;
+                    const x = pad.left + index * (barWidth + barGap) + barWidth / 2;
+                    const y = pad.top + innerH - Math.max(2, (profit / maxRevenue) * innerH);
+                    return `${x},${y}`;
+                  })
+                  .filter(Boolean)
+                  .join(" ");
+                return coords ? (
+                  <polyline
+                    points={coords}
+                    fill="none"
+                    stroke="var(--oh-text)"
+                    strokeWidth={2}
+                    strokeLinejoin="round"
+                    strokeLinecap="round"
+                    opacity={0.85}
+                  />
+                ) : null;
+              })()
+            : null}
         </svg>
       </div>
       <table className="sr-only">
