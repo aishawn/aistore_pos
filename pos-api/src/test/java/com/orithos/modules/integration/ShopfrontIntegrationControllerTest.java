@@ -144,6 +144,42 @@ class ShopfrontIntegrationControllerTest {
     }
 
     @Test
+    void catalogReconciliationUnconfirmsOnlyProductsAbsentFromVerifiedSnapshot() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        when(jdbc.queryForList(contains("SELECT company_id, outlet_id, enabled FROM shopfront_store_mapping"), any(Object[].class)))
+                .thenReturn(List.of(Map.of("company_id", 55L, "outlet_id", 87L, "enabled", true)));
+        when(jdbc.queryForObject(contains("COUNT(DISTINCT m.source_product_id)"), eq(Long.class), any(Object[].class)))
+                .thenReturn(2L);
+        when(jdbc.update(contains("UPDATE product p SET shopfront_catalog_confirmed=FALSE"), any(Object[].class)))
+                .thenReturn(641);
+
+        var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true, true);
+        var response = controller.reconcileProductCatalog("token", new ObjectMapper().readTree("""
+                {"store_key":"skr","snapshot_complete":true,"expected_count":2,"source_ids":["p-1","p-2"]}
+                """));
+
+        assertEquals(2, response.data().get("source_count"));
+        assertEquals(2L, response.data().get("mapped_count"));
+        assertEquals(641, response.data().get("unconfirmed_count"));
+        assertEquals("RECONCILED", response.data().get("status"));
+        verify(jdbc).update(contains("NOT EXISTS"), any(Object[].class));
+    }
+
+    @Test
+    void catalogReconciliationRejectsIncompleteSnapshotBeforeChangingProducts() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true, true);
+
+        var error = assertThrows(ResponseStatusException.class, () -> controller.reconcileProductCatalog(
+                "token", new ObjectMapper().readTree("""
+                        {"store_key":"skr","snapshot_complete":false,"expected_count":1,"source_ids":["p-1"]}
+                        """)));
+
+        assertEquals(HttpStatus.CONFLICT, error.getStatusCode());
+        verify(jdbc, never()).update(contains("shopfront_catalog_confirmed=FALSE"), any(Object[].class));
+    }
+
+    @Test
     void reservesStableNamesForDuplicateShopfrontProducts() {
         Map<String, Long> reserved = new java.util.LinkedHashMap<>();
 

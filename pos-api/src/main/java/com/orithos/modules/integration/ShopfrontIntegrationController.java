@@ -177,6 +177,100 @@ public class ShopfrontIntegrationController {
         return stage(supplied, "products", body);
     }
 
+    @PostMapping("/products:reconcile-catalog")
+    @Transactional
+    public ApiResult<Map<String, Object>> reconcileProductCatalog(
+            @RequestHeader("X-Shopfront-Integration-Token") String supplied,
+            @RequestBody JsonNode body) {
+        authorize(supplied);
+        if (!businessWriteEnabled) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "SHOPFRONT_BUSINESS_WRITE_ENABLED is false");
+        }
+        String store = body.path("store_key").asText("").trim();
+        if (!STORE_KEY.matcher(store).matches()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Valid store_key is required");
+        }
+        JsonNode sourceIdsNode = body.path("source_ids");
+        int expectedCount = body.path("expected_count").asInt(-1);
+        if (!body.path("snapshot_complete").asBoolean(false)
+                || !sourceIdsNode.isArray()
+                || expectedCount <= 0
+                || expectedCount != sourceIdsNode.size()
+                || expectedCount > 50_000) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "A non-empty complete catalog snapshot with a matching expected_count is required");
+        }
+        LinkedHashSet<String> sourceIds = new LinkedHashSet<>();
+        for (JsonNode sourceId : sourceIdsNode) {
+            String value = sourceId.asText("").trim();
+            if (value.isBlank() || !sourceIds.add(value)) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "source_ids must contain unique non-empty IDs");
+            }
+        }
+        if (sourceIds.size() != expectedCount) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "source_ids must contain unique non-empty IDs");
+        }
+
+        ensureMappingTable();
+        var mappingRows = jdbc.queryForList(
+                "SELECT company_id, outlet_id, enabled FROM shopfront_store_mapping WHERE store_key = ?", store);
+        Map<String, Object> mapping = mappingRows.stream()
+                .filter(row -> isEnabled(row.get("enabled")))
+                .findFirst()
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT,
+                        "No enabled shopfront_store_mapping for store_key=" + store));
+        long outletId = longValue(mapping.get("outlet_id"));
+        if (outletId <= 0) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Shopfront mapping has no numeric POS outlet_id");
+        }
+
+        String placeholders = String.join(",", java.util.Collections.nCopies(sourceIds.size(), "?"));
+        List<Object> mappedArgs = new ArrayList<>();
+        mappedArgs.add(store);
+        mappedArgs.add(outletId);
+        mappedArgs.addAll(sourceIds);
+        Long mappedCount = jdbc.queryForObject("""
+                SELECT COUNT(DISTINCT m.source_product_id)
+                FROM shopfront_product_mapping m
+                JOIN product p ON p.id=m.pos_product_id
+                WHERE m.store_key=? AND m.status='MAPPED' AND p.outlet_id=? AND p.deleted_at IS NULL
+                  AND m.source_product_id IN (%s)
+                """.formatted(placeholders), Long.class, mappedArgs.toArray());
+        if (mappedCount == null || mappedCount != sourceIds.size()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Catalog snapshot IDs must all be mapped before reconciliation");
+        }
+
+        List<Object> updateArgs = new ArrayList<>();
+        updateArgs.add(outletId);
+        updateArgs.add(store);
+        updateArgs.add(store);
+        updateArgs.addAll(sourceIds);
+        int unconfirmed = jdbc.update("""
+                UPDATE product p SET shopfront_catalog_confirmed=FALSE
+                WHERE p.outlet_id=? AND p.deleted_at IS NULL
+                  AND p.shopfront_catalog_confirmed IS DISTINCT FROM FALSE
+                  AND EXISTS (
+                    SELECT 1 FROM shopfront_product_mapping m
+                    WHERE m.store_key=? AND m.status='MAPPED' AND m.pos_product_id=p.id
+                  )
+                  AND NOT EXISTS (
+                    SELECT 1 FROM shopfront_product_mapping m
+                    WHERE m.store_key=? AND m.status='MAPPED' AND m.pos_product_id=p.id
+                      AND m.source_product_id IN (%s)
+                  )
+                """.formatted(placeholders), updateArgs.toArray());
+        return ApiResult.ok(Map.of(
+                "store_key", store,
+                "status", "RECONCILED",
+                "source_count", sourceIds.size(),
+                "mapped_count", mappedCount,
+                "unconfirmed_count", unconfirmed));
+    }
+
     /**
      * Split many-to-one Shopfront→Orithos product aliases so each source_id owns
      * its own POS product. Keeps one mapping per shared pos_product_id, unmaps the
