@@ -150,8 +150,12 @@ class ShopfrontIntegrationControllerTest {
                 .thenReturn(List.of(Map.of("company_id", 55L, "outlet_id", 87L, "enabled", true)));
         when(jdbc.queryForObject(contains("COUNT(DISTINCT m.source_product_id)"), eq(Long.class), any(Object[].class)))
                 .thenReturn(2L);
+        when(jdbc.update(contains("UPDATE product p SET shopfront_catalog_confirmed=TRUE"), any(Object[].class)))
+                .thenReturn(2);
         when(jdbc.update(contains("UPDATE product p SET shopfront_catalog_confirmed=FALSE,cost=NULL"), any(Object[].class)))
                 .thenReturn(641);
+        when(jdbc.queryForObject(contains("COUNT(DISTINCT m.pos_product_id)"), eq(Long.class), any(Object[].class)))
+                .thenReturn(2L, 641L, 641L);
 
         var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true, true);
         var response = controller.reconcileProductCatalog("token", new ObjectMapper().readTree("""
@@ -160,9 +164,29 @@ class ShopfrontIntegrationControllerTest {
 
         assertEquals(2, response.data().get("source_count"));
         assertEquals(2L, response.data().get("mapped_count"));
+        assertEquals(2, response.data().get("confirmed_count"));
+        assertEquals(2L, response.data().get("confirmed_total_count"));
         assertEquals(641, response.data().get("unconfirmed_count"));
+        assertEquals(641L, response.data().get("unconfirmed_total_count"));
+        assertEquals(641L, response.data().get("outside_snapshot_count"));
         assertEquals("RECONCILED", response.data().get("status"));
+        verify(jdbc).update(contains("SET shopfront_catalog_confirmed=TRUE"), any(Object[].class));
         verify(jdbc).update(contains("SET shopfront_catalog_confirmed=FALSE,cost=NULL"), any(Object[].class));
+    }
+
+    @Test
+    void catalogReconciliationRejectsConfirmedIdsOutsideSnapshotBeforeChangingProducts() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true, true);
+
+        var error = assertThrows(ResponseStatusException.class, () -> controller.reconcileProductCatalog(
+                "token", new ObjectMapper().readTree("""
+                        {"store_key":"skr","snapshot_complete":true,"expected_count":1,
+                         "source_ids":["p-1"],"confirmed_source_ids":["p-2"]}
+                        """)));
+
+        assertEquals(HttpStatus.BAD_REQUEST, error.getStatusCode());
+        verify(jdbc, never()).update(anyString(), any(Object[].class));
     }
 
     @Test

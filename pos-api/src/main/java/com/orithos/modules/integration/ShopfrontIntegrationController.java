@@ -212,6 +212,22 @@ public class ShopfrontIntegrationController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "source_ids must contain unique non-empty IDs");
         }
+        JsonNode confirmedIdsNode = body.path("confirmed_source_ids");
+        LinkedHashSet<String> confirmedSourceIds = new LinkedHashSet<>();
+        if (confirmedIdsNode.isMissingNode()) {
+            confirmedSourceIds.addAll(sourceIds);
+        } else if (confirmedIdsNode.isArray()) {
+            for (JsonNode sourceId : confirmedIdsNode) {
+                String value = sourceId.asText("").trim();
+                if (value.isBlank() || !confirmedSourceIds.add(value) || !sourceIds.contains(value)) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                            "confirmed_source_ids must be unique non-empty IDs contained in source_ids");
+                }
+            }
+        } else {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "confirmed_source_ids must be an array");
+        }
 
         ensureMappingTable();
         var mappingRows = jdbc.queryForList(
@@ -244,12 +260,40 @@ public class ShopfrontIntegrationController {
                     "Catalog snapshot IDs must all be mapped before reconciliation");
         }
 
+        int confirmed = 0;
+        if (!confirmedSourceIds.isEmpty()) {
+            String confirmedPlaceholders = String.join(",", java.util.Collections.nCopies(confirmedSourceIds.size(), "?"));
+            List<Object> confirmArgs = new ArrayList<>();
+            confirmArgs.add(outletId);
+            confirmArgs.add(store);
+            confirmArgs.addAll(confirmedSourceIds);
+            confirmed = jdbc.update("""
+                    UPDATE product p SET shopfront_catalog_confirmed=TRUE
+                    WHERE p.outlet_id=? AND p.deleted_at IS NULL
+                      AND p.shopfront_catalog_confirmed IS DISTINCT FROM TRUE
+                      AND EXISTS (
+                        SELECT 1 FROM shopfront_product_mapping m
+                        WHERE m.store_key=? AND m.status='MAPPED' AND m.pos_product_id=p.id
+                          AND m.source_product_id IN (%s)
+                      )
+                    """.formatted(confirmedPlaceholders), confirmArgs.toArray());
+        }
+
         List<Object> updateArgs = new ArrayList<>();
         updateArgs.add(outletId);
         updateArgs.add(store);
-        updateArgs.add(store);
-        updateArgs.addAll(sourceIds);
-        int unconfirmed = jdbc.update("""
+        String notConfirmedPredicate = "";
+        if (!confirmedSourceIds.isEmpty()) {
+            String confirmedPlaceholders = String.join(",", java.util.Collections.nCopies(confirmedSourceIds.size(), "?"));
+            notConfirmedPredicate = """
+                    AND NOT EXISTS (
+                      SELECT 1 FROM shopfront_product_mapping m
+                      WHERE m.store_key=? AND m.status='MAPPED' AND m.pos_product_id=p.id
+                        AND m.source_product_id IN (%s)
+                    )
+                    """.formatted(confirmedPlaceholders);
+        }
+        String updateSql = """
                 UPDATE product p SET shopfront_catalog_confirmed=FALSE,cost=NULL
                 WHERE p.outlet_id=? AND p.deleted_at IS NULL
                   AND (p.shopfront_catalog_confirmed IS DISTINCT FROM FALSE OR p.cost IS NOT NULL)
@@ -257,18 +301,48 @@ public class ShopfrontIntegrationController {
                     SELECT 1 FROM shopfront_product_mapping m
                     WHERE m.store_key=? AND m.status='MAPPED' AND m.pos_product_id=p.id
                   )
-                  AND NOT EXISTS (
-                    SELECT 1 FROM shopfront_product_mapping m
-                    WHERE m.store_key=? AND m.status='MAPPED' AND m.pos_product_id=p.id
-                      AND m.source_product_id IN (%s)
-                  )
-                """.formatted(placeholders), updateArgs.toArray());
+                """ + notConfirmedPredicate;
+        if (!confirmedSourceIds.isEmpty()) {
+            updateArgs.add(store);
+            updateArgs.addAll(confirmedSourceIds);
+        }
+        int unconfirmed = jdbc.update(updateSql, updateArgs.toArray());
+
+        Long confirmedTotal = jdbc.queryForObject("""
+                SELECT COUNT(DISTINCT m.pos_product_id)
+                FROM shopfront_product_mapping m
+                JOIN product p ON p.id=m.pos_product_id
+                WHERE m.store_key=? AND m.status='MAPPED' AND p.outlet_id=?
+                  AND p.deleted_at IS NULL AND p.shopfront_catalog_confirmed IS TRUE
+                """, Long.class, store, outletId);
+        Long unconfirmedTotal = jdbc.queryForObject("""
+                SELECT COUNT(DISTINCT m.pos_product_id)
+                FROM shopfront_product_mapping m
+                JOIN product p ON p.id=m.pos_product_id
+                WHERE m.store_key=? AND m.status='MAPPED' AND p.outlet_id=?
+                  AND p.deleted_at IS NULL AND p.shopfront_catalog_confirmed IS DISTINCT FROM TRUE
+                """, Long.class, store, outletId);
+        List<Object> outsideSnapshotArgs = new ArrayList<>();
+        outsideSnapshotArgs.add(store);
+        outsideSnapshotArgs.add(outletId);
+        outsideSnapshotArgs.addAll(sourceIds);
+        Long outsideSnapshotCount = jdbc.queryForObject("""
+                SELECT COUNT(DISTINCT m.pos_product_id)
+                FROM shopfront_product_mapping m
+                JOIN product p ON p.id=m.pos_product_id
+                WHERE m.store_key=? AND m.status='MAPPED' AND p.outlet_id=?
+                  AND p.deleted_at IS NULL AND m.source_product_id NOT IN (%s)
+                """.formatted(placeholders), Long.class, outsideSnapshotArgs.toArray());
         return ApiResult.ok(Map.of(
                 "store_key", store,
                 "status", "RECONCILED",
                 "source_count", sourceIds.size(),
                 "mapped_count", mappedCount,
-                "unconfirmed_count", unconfirmed));
+                "confirmed_count", confirmed,
+                "confirmed_total_count", confirmedTotal == null ? 0L : confirmedTotal,
+                "unconfirmed_count", unconfirmed,
+                "unconfirmed_total_count", unconfirmedTotal == null ? 0L : unconfirmedTotal,
+                "outside_snapshot_count", outsideSnapshotCount == null ? 0L : outsideSnapshotCount));
     }
 
     /**
