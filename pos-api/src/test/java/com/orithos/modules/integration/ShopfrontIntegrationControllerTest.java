@@ -150,7 +150,7 @@ class ShopfrontIntegrationControllerTest {
                 .thenReturn(List.of(Map.of("company_id", 55L, "outlet_id", 87L, "enabled", true)));
         when(jdbc.queryForObject(contains("COUNT(DISTINCT m.source_product_id)"), eq(Long.class), any(Object[].class)))
                 .thenReturn(2L);
-        when(jdbc.update(contains("UPDATE product p SET shopfront_catalog_confirmed=FALSE"), any(Object[].class)))
+        when(jdbc.update(contains("UPDATE product p SET shopfront_catalog_confirmed=FALSE,cost=NULL"), any(Object[].class)))
                 .thenReturn(641);
 
         var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true, true);
@@ -162,7 +162,7 @@ class ShopfrontIntegrationControllerTest {
         assertEquals(2L, response.data().get("mapped_count"));
         assertEquals(641, response.data().get("unconfirmed_count"));
         assertEquals("RECONCILED", response.data().get("status"));
-        verify(jdbc).update(contains("NOT EXISTS"), any(Object[].class));
+        verify(jdbc).update(contains("SET shopfront_catalog_confirmed=FALSE,cost=NULL"), any(Object[].class));
     }
 
     @Test
@@ -216,7 +216,7 @@ class ShopfrontIntegrationControllerTest {
         org.mockito.InOrder order = org.mockito.Mockito.inOrder(jdbc);
         order.verify(jdbc).batchUpdate(contains("UPDATE product SET name=? WHERE outlet_id=? AND id=?"), any(List.class));
         order.verify(jdbc).batchUpdate(contains("UPDATE product SET name=?,type=?"), any(List.class));
-        verify(jdbc).batchUpdate(contains("cost=CASE WHEN ? THEN ? ELSE cost END"), any(List.class));
+        verify(jdbc).batchUpdate(contains("cost=CASE WHEN ? THEN ? ELSE NULL END"), any(List.class));
     }
 
     @Test
