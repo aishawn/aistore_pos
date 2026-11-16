@@ -44,7 +44,7 @@ function isAssistantPath(pathname: string): boolean {
   return pathname === "/assistant" || pathname.startsWith("/assistant/");
 }
 const SIDEBAR_OPEN_KEY = "orithos-sidebar-open";
-const ODOO_REGISTER_PATHS = new Set(["/", "/register"]);
+const ODOO_REGISTER_PATHS = new Set(["/", "/register", "/sell"]);
 const subscribeToHost = () => () => {};
 
 /**
