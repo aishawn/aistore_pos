@@ -169,9 +169,9 @@ class ShopfrontIntegrationControllerTest {
         @SuppressWarnings("unchecked")
         Map<Long, Object[]> updates = (Map<Long, Object[]>) updatesField.get(batch);
         updates.put(101L, new Object[]{"Duplicate", null, null, null, null, null, null, null, null, true,
-                null, null, false, true, false, false, false, false, false, null, null, null, "[]", null, 48L, 101L});
+                null, null, false, true, true, false, false, false, false, false, null, null, null, "[]", null, 48L, 101L});
         updates.put(102L, new Object[]{"Duplicate [source-2]", null, null, null, null, null, null, null, null, true,
-                null, null, false, true, false, false, false, false, false, null, null, null, "[]", null, 48L, 102L});
+                null, null, false, true, true, false, false, false, false, false, null, null, null, "[]", null, 48L, 102L});
         Method flush = ShopfrontIntegrationController.class.getDeclaredMethod("flushBusinessProductBatch", batchType, long.class);
         flush.setAccessible(true);
 
@@ -181,6 +181,37 @@ class ShopfrontIntegrationControllerTest {
         order.verify(jdbc).batchUpdate(contains("UPDATE product SET name=? WHERE outlet_id=? AND id=?"), any(List.class));
         order.verify(jdbc).batchUpdate(contains("UPDATE product SET name=?,type=?"), any(List.class));
         verify(jdbc).batchUpdate(contains("cost=CASE WHEN ? THEN ? ELSE cost END"), any(List.class));
+    }
+
+    @Test
+    void productImportCarriesCatalogConfirmationIntoBatchUpdate() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        when(jdbc.queryForList(contains("SELECT id FROM tax_rate"), eq(Long.class), any(Object[].class)))
+                .thenReturn(List.of(7L));
+        var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true, true);
+        Class<?> batchType = Class.forName(ShopfrontIntegrationController.class.getName() + "$ProductImportBatch");
+        Constructor<?> constructor = batchType.getDeclaredConstructor();
+        constructor.setAccessible(true);
+        Object batch = constructor.newInstance();
+        Method upsert = ShopfrontIntegrationController.class.getDeclaredMethod(
+                "upsertBusinessProduct", JsonNode.class, String.class, long.class, Map.class,
+                Long.class, batchType);
+        upsert.setAccessible(true);
+
+        upsert.invoke(controller, new ObjectMapper().readTree("""
+                {"source_id":"current-1","name":"Current item","catalog_confirmed":true}
+                """), "skr", 87L, new java.util.HashMap<>(), 123L, batch);
+
+        var updatesField = batchType.getDeclaredField("productUpdates");
+        updatesField.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        Map<Long, Object[]> updates = (Map<Long, Object[]>) updatesField.get(batch);
+        assertEquals(Boolean.TRUE, updates.get(123L)[13]);
+
+        upsert.invoke(controller, new ObjectMapper().readTree("""
+                {"source_id":"historical-1","name":"Historical item"}
+                """), "skr", 87L, new java.util.HashMap<>(), 124L, batch);
+        assertEquals(Boolean.FALSE, updates.get(124L)[13]);
     }
 
     @Test

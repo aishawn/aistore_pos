@@ -15,7 +15,14 @@ export function productCostDisplay(
   caseQuantity: number | null | undefined,
   status?: string | null,
   costPercentage = false,
+  shopfrontCatalogConfirmed?: boolean | null,
 ): { caseCost: string; itemCost: string } {
+  if (shopfrontCatalogConfirmed === false) {
+    return {
+      caseCost: "Unavailable",
+      itemCost: "Not confirmed in current Shopfront catalogue",
+    };
+  }
   const normalizedStatus = status?.trim().toUpperCase();
   if (!normalizedStatus) {
     return {

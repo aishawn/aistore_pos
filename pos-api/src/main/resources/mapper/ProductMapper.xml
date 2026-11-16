@@ -17,6 +17,7 @@
         <result property="cost" column="cost"/>
         <result property="caseQuantity" column="case_quantity"/>
         <result property="costPercentage" column="cost_percentage"/>
+        <result property="shopfrontCatalogConfirmed" column="shopfront_catalog_confirmed"/>
         <result property="preventManualDiscounts" column="prevent_manual_discounts"/>
         <result property="requestPrice" column="request_price"/>
         <result property="requestQuantity" column="request_quantity"/>

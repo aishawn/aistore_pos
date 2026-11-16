@@ -20,6 +20,7 @@ public class Product {
     private BigDecimal cost;
     private BigDecimal caseQuantity;
     private Boolean costPercentage;
+    private Boolean shopfrontCatalogConfirmed;
     private Boolean preventManualDiscounts;
     private Boolean requestPrice;
     private Boolean requestQuantity;

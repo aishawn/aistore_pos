@@ -57,3 +57,10 @@ test("does not show an unclassified product cost as current", () => {
     itemCost: "Shopfront status is unverified",
   });
 });
+
+test("does not show cached cost when the Shopfront catalog has not confirmed the product", () => {
+  assert.deepEqual(productCostDisplay(237.09, 50, "ACTIVE", false, false), {
+    caseCost: "Unavailable",
+    itemCost: "Not confirmed in current Shopfront catalogue",
+  });
+});
