@@ -25,6 +25,8 @@ import {
   XIcon,
 } from "@/components/icons";
 import { FormDatePicker } from "@/components/admin/FormDatePicker";
+import { ModalOverlay } from "@/components/ModalOverlay";
+import { useDialogFocus } from "@/hooks/useDialogFocus";
 import { cn } from "@/lib/utils";
 import {
   CUSTOMER_FIELD_LIMITS,
@@ -650,11 +652,25 @@ function customerFormSnapshot(form: CustomerFormData): string {
   return JSON.stringify(form);
 }
 
-/** Full-page customer create/edit form with sidebar navigation and accordion sections. */
-export function CreateCustomerPage({ customerId }: { customerId?: string } = {}) {
+/** Customer create/edit dialog with sidebar navigation and accordion sections. */
+export function CreateCustomerPage({
+  customerId,
+  onClose,
+  onSaved,
+}: {
+  customerId?: string;
+  onClose?: () => void;
+  onSaved?: () => void;
+} = {}) {
   const router = useRouter();
   const { setDirty, confirmNavigation, registerDirtyChecker } = useUnsavedChanges();
   const isEdit = Boolean(customerId);
+
+  function dismiss() {
+    if (onClose) onClose();
+    else router.push("/customers");
+  }
+
   const [form, setForm] = useState<CustomerFormData>(() =>
     isEdit ? EMPTY_CUSTOMER_FORM : mergeWizardData(EMPTY_CUSTOMER_FORM),
   );
@@ -751,8 +767,12 @@ export function CreateCustomerPage({ customerId }: { customerId?: string } = {})
   }, [checkDirty, registerDirtyChecker, setDirty]);
 
   function leavePage() {
-    confirmNavigation(() => router.push("/customers"), checkDirty());
+    confirmNavigation(dismiss, checkDirty());
   }
+
+  useDialogFocus(true, () => {
+    leavePage();
+  }, customerId);
 
   function set<K extends keyof CustomerFormData>(key: K, value: CustomerFormData[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -799,7 +819,8 @@ export function CreateCustomerPage({ customerId }: { customerId?: string } = {})
       } else {
         await api.post("/api/customers", body);
       }
-      router.push("/customers");
+      onSaved?.();
+      dismiss();
     } catch (e) {
       setError(
         e instanceof Error
@@ -840,11 +861,21 @@ export function CreateCustomerPage({ customerId }: { customerId?: string } = {})
   };
 
   return (
-    <div className="absolute inset-0 z-50 flex items-stretch justify-center bg-black/50 p-2 font-sans sm:p-4 md:p-6">
-      <div className="flex min-h-0 w-full max-w-[1100px] flex-col overflow-hidden rounded-[var(--oh-radius)] bg-[var(--oh-surface-elevated)] shadow-2xl">
+    <ModalOverlay
+      className="fixed inset-0 z-[90] grid place-items-center overflow-y-auto bg-slate-950/40 p-2 font-sans sm:p-4 md:p-6"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget && !busy) leavePage();
+      }}
+    >
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="customer-form-title"
+        className="my-auto flex max-h-[calc(100dvh-1rem)] min-h-0 w-full max-w-[1100px] flex-col overflow-hidden rounded-[var(--oh-radius)] bg-[var(--oh-surface-elevated)] shadow-2xl"
+      >
         {/* Header */}
         <div className="relative shrink-0 border-b border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-4 py-3 sm:px-6 sm:py-4">
-          <h1 className="break-words px-10 text-center text-lg font-semibold leading-6 text-[var(--oh-text)] md:text-xl">
+          <h1 id="customer-form-title" className="break-words px-10 text-center text-lg font-semibold leading-6 text-[var(--oh-text)] md:text-xl">
             {displayName}
           </h1>
           <button
@@ -1231,7 +1262,7 @@ export function CreateCustomerPage({ customerId }: { customerId?: string } = {})
             {busy ? "Saving…" : "Save"}
           </button>
         </div>
-      </div>
-    </div>
+      </section>
+    </ModalOverlay>
   );
 }

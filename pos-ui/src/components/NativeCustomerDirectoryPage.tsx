@@ -1,8 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
 import { Eye, Search, UserRound } from "lucide-react";
+import { CreateCustomerPage } from "@/components/admin/CreateCustomerPage";
 import { useApiList, useDebouncedValue } from "@/hooks/useApi";
 import { useAuth } from "@/lib/auth";
 import { naturalSortRows } from "@/lib/natural-sort";
@@ -41,6 +41,7 @@ export function NativeCustomerDirectoryPage() {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerListItem | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
   const search = useDebouncedValue(query.trim(), 250);
   const { items, total, loading, error, reload } = useApiList<CustomerListItem>(
     "/api/customers",
@@ -66,7 +67,7 @@ export function NativeCustomerDirectoryPage() {
           <p className="mt-1 text-sm text-[var(--oh-muted)]">{total} customers</p>
         </div>
         {hasPermission("customers.edit") && (
-          <Link href="/customers/new" className="inline-flex min-h-11 items-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)]">New customer</Link>
+          <button type="button" onClick={() => setCreateOpen(true)} className="inline-flex min-h-11 items-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)]">New customer</button>
         )}
       </header>
 
@@ -99,6 +100,15 @@ export function NativeCustomerDirectoryPage() {
         </>
       )}
       <NativeCustomerViewModal customerId={selectedCustomer?.id ?? null} onClose={() => setSelectedCustomer(null)} />
+      {createOpen && (
+        <CreateCustomerPage
+          onClose={() => setCreateOpen(false)}
+          onSaved={() => {
+            setCreateOpen(false);
+            reload();
+          }}
+        />
+      )}
     </main>
   );
 }
