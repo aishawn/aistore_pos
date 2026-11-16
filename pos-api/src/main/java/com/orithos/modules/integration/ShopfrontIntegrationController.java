@@ -2940,13 +2940,12 @@ public class ShopfrontIntegrationController {
         if (caseQuantity == null || caseQuantity.signum() <= 0) {
             throw new IllegalArgumentException("Product " + sourceId + " has no valid case quantity");
         }
-        if (taxRateName == null || taxRateName.isBlank()) {
-            throw new IllegalArgumentException("Product " + sourceId + " has no mapped GST rate");
-        }
         if (sourceStatus == null || sourceStatus.isBlank()) {
             throw new IllegalArgumentException("Product " + sourceId + " has no source status");
         }
-        requireTaxRate(taxRateName, outletId, sourceId, taxRates);
+        if (taxRateName != null && !taxRateName.isBlank()) {
+            requireTaxRate(taxRateName, outletId, sourceId, taxRates);
+        }
         String costTaxRateName = effectiveTaxRateName(item, "cost_tax_rate_name");
         if (costTaxRateName != null && !costTaxRateName.isBlank()) {
             requireTaxRate(costTaxRateName, outletId, sourceId, taxRates);
@@ -3822,17 +3821,20 @@ public class ShopfrontIntegrationController {
     }
 
     private String effectiveTaxRateName(JsonNode item, String field) {
+        if (item.has(field) && item.get(field).isNull()) return null;
         String value = text(item, field);
         if (value != null && !value.isBlank()) return normalizeTaxRateName(value);
         JsonNode raw = item.path("raw_payload");
         if (raw.isObject()) {
             String nestedField = "tax_rate_name".equals(field) ? "taxRate" : "costTaxRate";
             JsonNode nested = raw.path(nestedField);
+            if (raw.has(nestedField) && nested.isNull()) return null;
             if (nested.isObject() && nested.has("name")) {
                 String nestedName = normalizeTaxRateName(nested.path("name").asText());
                 if (nestedName != null && !nestedName.isBlank()) return nestedName;
             }
             String camel = "tax_rate_name".equals(field) ? "tax_rate_name" : "cost_tax_rate_name";
+            if (raw.has(camel) && raw.get(camel).isNull()) return null;
             String fromRaw = text(raw, camel);
             if (fromRaw != null && !fromRaw.isBlank()) return normalizeTaxRateName(fromRaw);
         }

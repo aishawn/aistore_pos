@@ -24,6 +24,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Stream;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -795,6 +796,28 @@ class ShopfrontIntegrationControllerTest {
         validate.invoke(controller, mapper.readTree(
                 "{\"source_id\":\"p1\",\"name\":\"Product\",\"case_quantity\":6,\"tax_rate_name\":\"GST\",\"source_status\":\"ACTIVE\"}"),
                 48L, new java.util.HashMap<>());
+    }
+
+    @Test
+    void explicitNullProductTaxRatesMeanNoTaxWhileOmittedRatesKeepGstDefault() throws Exception {
+        var controller = new ShopfrontIntegrationController(mock(JdbcTemplate.class), new ObjectMapper(), "token", true, true);
+        ObjectMapper mapper = new ObjectMapper();
+        Method resolve = ShopfrontIntegrationController.class.getDeclaredMethod(
+                "effectiveTaxRateName", com.fasterxml.jackson.databind.JsonNode.class, String.class);
+        resolve.setAccessible(true);
+        var noTaxProduct = mapper.readTree("""
+                {"source_id":"no-tax","name":"Gift Card","case_quantity":1,
+                 "tax_rate_name":null,"cost_tax_rate_name":null,"source_status":"ACTIVE"}
+                """);
+
+        assertNull(resolve.invoke(controller, noTaxProduct, "tax_rate_name"));
+        assertNull(resolve.invoke(controller, noTaxProduct, "cost_tax_rate_name"));
+        assertEquals("GST", resolve.invoke(controller, mapper.readTree("{}"), "tax_rate_name"));
+
+        Method validate = ShopfrontIntegrationController.class.getDeclaredMethod(
+                "validateProductBusinessFields", com.fasterxml.jackson.databind.JsonNode.class, long.class, Map.class);
+        validate.setAccessible(true);
+        assertDoesNotThrow(() -> validate.invoke(controller, noTaxProduct, 48L, new java.util.HashMap<>()));
     }
 
     @Test
