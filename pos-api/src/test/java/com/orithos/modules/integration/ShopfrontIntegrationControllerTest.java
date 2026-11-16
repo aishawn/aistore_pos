@@ -1249,6 +1249,45 @@ class ShopfrontIntegrationControllerTest {
     }
 
     @Test
+    void productBarcodeConflictIsReportedWithoutReassigningTheBarcode() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        when(jdbc.queryForList(contains("SELECT code, product_id FROM product_barcode"), any(Object[].class)))
+                .thenReturn(List.of(Map.of("code", "9300001", "product_id", 101L)));
+        var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true, true);
+        Class<?> batchType = Class.forName(ShopfrontIntegrationController.class.getName() + "$ProductImportBatch");
+        Constructor<?> constructor = batchType.getDeclaredConstructor();
+        constructor.setAccessible(true);
+        Object batch = constructor.newInstance();
+        Method collect = ShopfrontIntegrationController.class.getDeclaredMethod(
+                "collectProductBarcodes", long.class, JsonNode.class, batchType);
+        collect.setAccessible(true);
+        collect.invoke(controller, 102L, new ObjectMapper().readTree(
+                "{\"source_id\":\"shopfront-product-2\",\"barcodes\":[{\"code\":\"9300001\"}]}"), batch);
+        Method flush = ShopfrontIntegrationController.class.getDeclaredMethod("flushBusinessProductBatch", batchType, long.class);
+        flush.setAccessible(true);
+
+        flush.invoke(controller, batch, 87L);
+
+        var conflictCount = batchType.getDeclaredField("barcodeConflictCount");
+        conflictCount.setAccessible(true);
+        assertEquals(1, conflictCount.get(batch));
+        var conflictsField = batchType.getDeclaredField("barcodeConflicts");
+        conflictsField.setAccessible(true);
+        List<?> conflicts = (List<?>) conflictsField.get(batch);
+        assertEquals(1, conflicts.size());
+        assertTrue(String.valueOf(conflicts.get(0)).contains("shopfront-product-2"));
+        assertTrue(String.valueOf(conflicts.get(0)).contains("9300001"));
+        List<String> errors = new ArrayList<>();
+        Method appendErrors = ShopfrontIntegrationController.class.getDeclaredMethod(
+                "appendBarcodeConflictErrors", batchType, List.class);
+        appendErrors.setAccessible(true);
+        appendErrors.invoke(controller, batch, errors);
+        assertEquals(1, errors.size());
+        assertTrue(errors.get(0).contains("shopfront-product-2"));
+        verify(jdbc, never()).batchUpdate(contains("INSERT INTO product_barcode"), any(List.class));
+    }
+
+    @Test
     void catalogSupplierLinksAreWrittenThroughTheBatchImportPath() throws Exception {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
         var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true, true);

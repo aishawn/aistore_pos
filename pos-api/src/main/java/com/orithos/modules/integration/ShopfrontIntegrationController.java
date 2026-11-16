@@ -59,7 +59,8 @@ public class ShopfrontIntegrationController {
     );
     private record ShopfrontMirrorTable(String name, String columns) {}
     private record BusinessImportPlan(Map<String, Long> productIds, Set<String> existingProductMappings) {}
-    private record BarcodeWrite(long productId, String code, BigDecimal quantity) {}
+    private record BarcodeWrite(long productId, String sourceId, String code, BigDecimal quantity) {}
+    private record BarcodeConflict(String sourceId, String code, long existingProductId, long requestedProductId) {}
 
     private static final class ProductImportBatch {
         private final Map<String, Long> lookupIds = new HashMap<>();
@@ -68,6 +69,8 @@ public class ShopfrontIntegrationController {
         private final Map<Long, Object[]> productUpdates = new LinkedHashMap<>();
         private final Map<Long, List<Object[]>> pricesByProduct = new LinkedHashMap<>();
         private final List<BarcodeWrite> barcodes = new ArrayList<>();
+        private int barcodeConflictCount;
+        private final List<BarcodeConflict> barcodeConflicts = new ArrayList<>();
         private final Set<Long> productsWithTags = new LinkedHashSet<>();
         private final Map<Long, Map<Long, Object[]>> tagsByProduct = new LinkedHashMap<>();
         private final Map<String, Object[]> sourceMappings = new LinkedHashMap<>();
@@ -2500,6 +2503,8 @@ public class ShopfrontIntegrationController {
         int skipped = 0;
         int unpriced = 0;
         int unitUnpriced = 0;
+        int barcodeConflictCount = 0;
+        List<BarcodeConflict> barcodeConflicts = new ArrayList<>();
         if ("products".equals(type)) {
             com.fasterxml.jackson.databind.node.ArrayNode eligible = objectMapper.createArrayNode();
             for (JsonNode item : items) {
@@ -2566,6 +2571,9 @@ public class ShopfrontIntegrationController {
                     }
                 }
                 flushBusinessProductBatch(batch, outletId);
+                barcodeConflictCount += batch.barcodeConflictCount;
+                barcodeConflicts.addAll(batch.barcodeConflicts);
+                appendBarcodeConflictErrors(batch, errors);
             }
         } else if ("inventory".equals(type)) {
             if (snapshotComplete && items.isEmpty()) {
@@ -2624,6 +2632,8 @@ public class ShopfrontIntegrationController {
         if ("products".equals(type)) {
             result.put("unpriced", unpriced);
             result.put("unit_unpriced", unitUnpriced);
+            result.put("barcode_conflict_count", barcodeConflictCount);
+            result.put("barcode_conflicts", barcodeConflicts);
         }
         result.put("errors", errors);
         return result;
@@ -3761,7 +3771,14 @@ public class ShopfrontIntegrationController {
             Map<String, BarcodeWrite> updates = new LinkedHashMap<>();
             for (BarcodeWrite barcode : batch.barcodes) {
                 Long owner = owners.get(barcode.code());
-                if (owner != null && owner != barcode.productId()) continue;
+                if (owner != null && owner != barcode.productId()) {
+                    batch.barcodeConflictCount++;
+                    if (batch.barcodeConflicts.size() < 25) {
+                        batch.barcodeConflicts.add(new BarcodeConflict(
+                                barcode.sourceId(), barcode.code(), owner, barcode.productId()));
+                    }
+                    continue;
+                }
                 if (owner == null) {
                     owners.put(barcode.code(), barcode.productId());
                     inserts.put(barcode.code(), barcode);
@@ -3807,6 +3824,19 @@ public class ShopfrontIntegrationController {
         if (!batch.sourceMappings.isEmpty()) {
             jdbc.batchUpdate("INSERT INTO shopfront_product_mapping (store_key,source_product_id,pos_product_id,match_type,status) VALUES (?,?,?,'SHOPFRONT','MAPPED') ON CONFLICT (store_key,source_product_id) DO UPDATE SET pos_product_id=EXCLUDED.pos_product_id,match_type='SHOPFRONT',status='MAPPED',updated_at=CURRENT_TIMESTAMP",
                     new ArrayList<>(batch.sourceMappings.values()));
+        }
+    }
+
+    private void appendBarcodeConflictErrors(ProductImportBatch batch, List<String> errors) {
+        for (BarcodeConflict conflict : batch.barcodeConflicts) {
+            if (errors.size() >= 25) break;
+            errors.add("Barcode " + conflict.code() + " for Shopfront product " + conflict.sourceId()
+                    + " is already assigned to POS product " + conflict.existingProductId()
+                    + "; association to POS product " + conflict.requestedProductId() + " was skipped");
+        }
+        if (batch.barcodeConflictCount > batch.barcodeConflicts.size() && errors.size() < 25) {
+            errors.add("Additional Shopfront barcode conflicts omitted: "
+                    + (batch.barcodeConflictCount - batch.barcodeConflicts.size()));
         }
     }
 
@@ -3926,7 +3956,8 @@ public class ShopfrontIntegrationController {
         for (JsonNode barcode : barcodes) {
             String code = text(barcode, "code");
             if (code != null && !code.isBlank()) {
-                batch.barcodes.add(new BarcodeWrite(productId, code, decimal(barcode, "quantity", BigDecimal.ONE)));
+                batch.barcodes.add(new BarcodeWrite(productId, text(item, "source_id"), code,
+                        decimal(barcode, "quantity", BigDecimal.ONE)));
             }
         }
     }
