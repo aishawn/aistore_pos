@@ -30,6 +30,7 @@ describe("mapNativeProduct cost provenance", () => {
       cost: 10.35,
       costPercentage: false,
       caseQuantity: 6,
+      shopfrontCatalogConfirmed: true,
       shopfrontSourceUpdatedAt: "2026-10-29T13:19:56+08:00",
     });
     assert.equal(product.shopfront_cost, 10.35);
@@ -42,6 +43,7 @@ describe("mapNativeProduct cost provenance", () => {
       name: "Gift card",
       cost: 20,
       costPercentage: true,
+      shopfrontCatalogConfirmed: true,
       shopfrontSourceUpdatedAt: "2026-10-29T13:19:56+08:00",
     });
     assert.equal(percentage.shopfront_cost, 20);
@@ -75,6 +77,7 @@ describe("mapNativeProduct cost provenance", () => {
       name: "Still saleable",
       status: "NOT_PURCHASING",
       cost: 62.07,
+      shopfrontCatalogConfirmed: true,
       shopfrontSourceUpdatedAt: "2026-11-12T05:13:22+0000",
     });
     assert.equal(notPurchasing.active, true);

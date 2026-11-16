@@ -1,6 +1,35 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { mapNativeProduct } from "./native-product-mapping.ts";
 import { shopfrontCostDisplayState, shopfrontCostPresentation, shopfrontCostValue } from "./shopfront-cost.ts";
+
+test("requires a confirmed Shopfront catalog before exposing a source cost", () => {
+  const mapped = mapNativeProduct({
+    id: 1,
+    name: "Historical product",
+    status: "ACTIVE",
+    cost: 10.35,
+    shopfrontSourceUpdatedAt: "2026-11-16T10:00:00Z",
+    shopfrontCatalogConfirmed: false,
+  });
+
+  assert.equal(mapped.shopfront_cost_status, "unavailable");
+  assert.equal(mapped.shopfront_cost, null);
+});
+
+test("only exposes confirmed costs while preserving confirmed zero and missing values", () => {
+  const base = {
+    id: 1,
+    name: "Confirmed product",
+    status: "ACTIVE",
+    shopfrontCatalogConfirmed: true,
+    shopfrontSourceUpdatedAt: "2026-11-16T10:00:00Z",
+  };
+
+  assert.equal(mapNativeProduct({ ...base, cost: 0 }).shopfront_cost_status, "available");
+  assert.equal(mapNativeProduct({ ...base, cost: 0 }).shopfront_cost, 0);
+  assert.equal(mapNativeProduct({ ...base, cost: null }).shopfront_cost_status, "missing");
+});
 
 test("keeps a verified zero Shopfront cost distinct from missing cost", () => {
   assert.equal(shopfrontCostValue(0), 0);

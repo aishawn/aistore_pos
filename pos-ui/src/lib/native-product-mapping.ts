@@ -14,6 +14,7 @@ export type NativeProductRow = {
   cost?: number | null;
   costPercentage?: boolean | null;
   caseQuantity?: number | null;
+  shopfrontCatalogConfirmed?: boolean | null;
   shopfrontSourceUpdatedAt?: string | null;
   stockQuantity?: number | null;
   trackInventory?: boolean | null;
@@ -29,7 +30,7 @@ export function mapNativeProduct(product: NativeProductRow): OdooProductRecord {
   const sourceUpdatedAt = product.shopfrontSourceUpdatedAt?.trim() || null;
   const status = (product.status || "ACTIVE").toUpperCase();
   const currentCatalogProduct = status === "ACTIVE" || status === "NOT_PURCHASING";
-  const sourceCostStatus = !currentCatalogProduct || !sourceUpdatedAt
+  const sourceCostStatus = !currentCatalogProduct || product.shopfrontCatalogConfirmed !== true || !sourceUpdatedAt
     ? "unavailable"
     : cost === null ? "missing" : "available";
   const qty = product.stockQuantity == null ? 0 : Number(product.stockQuantity);
