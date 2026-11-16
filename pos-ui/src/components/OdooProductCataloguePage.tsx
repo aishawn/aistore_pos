@@ -48,7 +48,7 @@ import {
   truncateSku,
 } from "@/lib/product-display-name";
 import { type InventorySort, type InventoryDirection, type InventoryTotals } from "@/lib/inventory-report";
-import { shopfrontCostPresentation, shopfrontCostValue } from "@/lib/shopfront-cost";
+import { shopfrontCostDisplayState, shopfrontCostPresentation, shopfrontCostValue } from "@/lib/shopfront-cost";
 
 const PAGE_SIZE = 40;
 const PRODUCT_STATUS_OPTIONS = [
@@ -95,17 +95,18 @@ function ShopfrontCostDetails({ product, showOdooCost = true, compact = false }:
   const sourceCost = shopfrontCostValue(product.shopfront_cost);
   const caseQuantity = typeof product.shopfront_case_quantity === "number" && product.shopfront_case_quantity > 0 ? product.shopfront_case_quantity : null;
   const status = product.shopfront_cost_status ?? (product.shopfront_data_status !== "available" ? "unavailable" : sourceCost === null ? "missing" : "available");
+  const displayState = shopfrontCostDisplayState(status, sourceCost);
   const percentageCost = product.shopfront_cost_percentage === true;
   const presentation = shopfrontCostPresentation(sourceCost, caseQuantity, percentageCost);
-  const odooCost = typeof product.standard_price === "number" && Number.isFinite(product.standard_price) ? product.standard_price : null;
-  const mainCost = status === "restricted" ? "Cost access restricted" : status === "unavailable" ? odooCost === null ? "Cost unavailable" : `Orithos recorded ${money(odooCost)}` : sourceCost === null ? "No cost recorded" : percentageCost ? `${quantity(sourceCost)}% of sell price` : caseQuantity && caseQuantity > 1 ? `${money(sourceCost)} / pack ${quantity(caseQuantity)}` : money(sourceCost);
+  const hasOrithosCost = typeof product.standard_price === "number" && Number.isFinite(product.standard_price);
+  const mainCost = displayState === "restricted" ? "Cost access restricted" : displayState === "unavailable" ? "Cost unavailable" : displayState === "missing" ? "No cost recorded" : percentageCost ? `${quantity(sourceCost!)}% of sell price` : caseQuantity && caseQuantity > 1 ? `${money(sourceCost!)} / pack ${quantity(caseQuantity)}` : money(sourceCost!);
   return <>
     <span className="block font-medium text-[var(--oh-text)]" title={compact && sourceCost !== null ? percentageCost ? `${quantity(sourceCost)}% of sell price` : `${money(sourceCost)}${caseQuantity ? ` / pack ${quantity(caseQuantity)}` : " · pack size unavailable"}` : undefined}>{mainCost}</span>
     {!compact && sourceCost !== null && <span className="mt-0.5 block text-[11px] text-[var(--oh-text-secondary)]" title={percentageCost ? "Shopfront cost percentage of sell price" : "Shopfront current local case cost; tax basis from store records"}>{percentageCost ? "Shopfront percentage cost" : "Shopfront source cost"}</span>}
     {!compact && product.shopfront_source_updated_at && <span className="mt-0.5 block text-[11px] text-[var(--oh-muted)]">Shopfront updated {product.shopfront_source_updated_at}</span>}
     {!compact && product.shopfront_data_status === "available" && <span className="mt-0.5 block text-[11px] text-[var(--oh-text-secondary)]">Purchase tax (effective) {product.shopfront_purchase_tax_rate || "Unavailable"} · Retail tax {product.shopfront_retail_tax_rate || "Unavailable"}</span>}
     {!compact && presentation.unitEstimate !== null && <span className="block text-[11px] text-[var(--oh-muted)]">Derived estimate {money(presentation.unitEstimate)} / item</span>}
-    {!compact && showOdooCost && <span className="mt-1 block text-[11px] text-[var(--oh-muted)]">Orithos recorded {odooCost === null ? "unavailable" : money(odooCost)}</span>}
+    {!compact && showOdooCost && status === "unavailable" && hasOrithosCost && <span className="mt-1 block text-[11px] text-[var(--oh-muted)]">Orithos cost is not verified against Shopfront</span>}
   </>;
 }
 

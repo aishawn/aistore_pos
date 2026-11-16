@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { shopfrontCostPresentation, shopfrontCostValue } from "./shopfront-cost.ts";
+import { shopfrontCostDisplayState, shopfrontCostPresentation, shopfrontCostValue } from "./shopfront-cost.ts";
 
 test("keeps a verified zero Shopfront cost distinct from missing cost", () => {
   assert.equal(shopfrontCostValue(0), 0);
@@ -9,6 +9,13 @@ test("keeps a verified zero Shopfront cost distinct from missing cost", () => {
   assert.equal(shopfrontCostValue(undefined), null);
   assert.equal(shopfrontCostValue(Number.NaN), null);
   assert.equal(shopfrontCostValue(Number.POSITIVE_INFINITY), null);
+});
+
+test("does not display an unverified local cost as an available Shopfront cost", () => {
+  assert.equal(shopfrontCostDisplayState("unavailable", 10.35), "unavailable");
+  assert.equal(shopfrontCostDisplayState("restricted", 10.35), "restricted");
+  assert.equal(shopfrontCostDisplayState("available", 0), "available");
+  assert.equal(shopfrontCostDisplayState("available", null), "missing");
 });
 
 test("keeps the Shopfront pack cost primary and derives an optional unit estimate", () => {
