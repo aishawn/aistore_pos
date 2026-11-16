@@ -6,7 +6,6 @@ import { Eye, EyeOff, LogIn } from "lucide-react";
 import { OrithosLogo } from "@/components/OrithosLogo";
 import { useAuth } from "@/lib/auth";
 import { setUiMode } from "@/lib/ui-mode";
-import { BrandStoreGateway } from "@/components/BrandStoreGateway";
 import {
   brandSignupUrl,
   controlPlaneLandingPath,
@@ -135,6 +134,7 @@ export default function LoginPage() {
   }
 
   // Keep the SSR and browser markup identical across local HTTP and production HTTPS.
+  const demoStoreLogin = `//demo.${tenantBaseDomain()}/login`;
 
   return (
     <main className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden bg-[var(--oh-surface)] px-4 py-8 font-sans text-[var(--oh-text)]">

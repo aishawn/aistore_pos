@@ -22,6 +22,8 @@ import {
   controlPlaneLandingPath,
   isControlPlaneHost,
   isControlPlanePageAllowed,
+  loginQueryReturnPath,
+  normalizeAuthReturnPath,
   storeLandingPath,
   STORE_WEB_LANDING_PATH,
 } from "@/lib/tenant-host";
@@ -44,24 +46,6 @@ function isAssistantPath(pathname: string): boolean {
 const SIDEBAR_OPEN_KEY = "orithos-sidebar-open";
 const ODOO_REGISTER_PATHS = new Set(["/", "/register"]);
 const subscribeToHost = () => () => {};
-
-function safeInternalPath(value: string | null): string | null {
-  if (!value || !value.startsWith("/") || value.startsWith("//") || value.includes("\\")) return null;
-  try {
-    const target = new URL(value, window.location.origin);
-    if (
-      target.origin !== window.location.origin
-      || target.pathname === "/login"
-      || target.pathname === "/signup"
-      || target.pathname.startsWith("/auth/")
-      || target.pathname === "/forgot-password"
-      || target.pathname === "/reset-password"
-    ) return null;
-    return `${target.pathname}${target.search}${target.hash}`;
-  } catch {
-    return null;
-  }
-}
 
 /**
  * Orithos application shell — persistent sidebar + white header + content area.
@@ -130,7 +114,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       void recoverSession().then((recovered) => {
         setSessionRecovering(false);
         if (recovered) return;
-        const next = onControlPlane ? "/platform/stores" : `${pathname}${window.location.search}`;
+        const next = onControlPlane ? "/platform/stores" : loginQueryReturnPath(pathname, window.location.search);
         router.replace(`/login?next=${encodeURIComponent(next)}`);
       });
       return;
@@ -141,12 +125,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     }
     if (user && (pathname === "/login" || pathname === "/signup" || pathname === "/auth/bootstrap"
         || pathname === "/forgot-password" || pathname === "/reset-password")) {
-      const next = safeInternalPath(new URLSearchParams(window.location.search).get("next"));
+      const next = normalizeAuthReturnPath(new URLSearchParams(window.location.search).get("next"));
       if (onControlPlane) {
         router.replace(controlPlaneLandingPath(next));
         return;
       }
-      router.replace(storeLandingPath(next, mode));
+      router.replace(storeLandingPath(next, mode, user));
       return;
     }
     if (onControlPlane) {
@@ -172,7 +156,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   async function onLogout() {
     await logout();
     clearUiMode();
-    router.replace("/login");
+    window.location.replace("/login");
   }
 
   function toggleNavigation() {

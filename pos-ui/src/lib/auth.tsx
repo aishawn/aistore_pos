@@ -3,8 +3,6 @@
 import { setNativeReadIdentity, clearNativeReadCache } from "./native-read-cache";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { api, isLocalPreviewSession, refreshAccessToken, registerAuthFailureHandler } from "@/lib/api";
-import type { WorkContextSelection } from "@/lib/work-context";
-
 export type StoreRoleCode = "ADMIN" | "MANAGER" | "CLERK" | "NONE" | string;
 
 export interface AuthUser {
@@ -57,7 +55,6 @@ interface AuthState {
   login: (username: string, password: string, subdomain?: string) => Promise<LoginResponse>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   logout: () => Promise<void>;
-  setWorkContext: (selection: WorkContextSelection) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -202,19 +199,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (typeof localStorage !== "undefined") localStorage.setItem(USER_KEY, JSON.stringify(normalized));
   }, []);
 
-  const setWorkContext = useCallback(async (selection: WorkContextSelection) => {
-    const res = await api.post<LoginResponse>("/api/auth/work-context", {
-      outletId: selection.outletId,
-      registerId: selection.registerId ?? undefined,
-      globalMode: selection.globalMode,
-    });
-    const normalized = normalizeUser(res.user);
-    setUser(normalized);
-    if (typeof localStorage !== "undefined") {
-      localStorage.setItem(USER_KEY, JSON.stringify(normalized));
-    }
-  }, []);
-
   const logout = useCallback(async () => {
     sessionEpoch += 1;
     setNativeReadIdentity(null);
@@ -237,8 +221,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [user]);
 
   const value = useMemo(
-    () => ({ user, ready, hasPermission, recoverSession, login, changePassword, setWorkContext, logout }),
-    [user, ready, hasPermission, recoverSession, login, changePassword, setWorkContext, logout],
+    () => ({ user, ready, hasPermission, recoverSession, login, changePassword, logout }),
+    [user, ready, hasPermission, recoverSession, login, changePassword, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

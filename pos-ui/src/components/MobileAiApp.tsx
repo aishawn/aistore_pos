@@ -13,7 +13,7 @@ export function MobileTopBar({ backHref }: { backHref?: string }) {
   async function onLogout() {
     await logout();
     clearUiMode();
-    router.replace("/login");
+    window.location.replace("/login");
   }
 
   return (

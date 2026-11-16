@@ -34,7 +34,7 @@ export function PlatformShell({ children }: { children: React.ReactNode }) {
 
   async function onLogout() {
     await logout();
-    router.replace("/login");
+    window.location.replace("/login");
   }
 
   if (!ready) {

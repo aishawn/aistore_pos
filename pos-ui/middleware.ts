@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isControlPlanePageAllowed, parseTenantSlugFromHost } from "@/lib/tenant-host";
+import { isControlPlanePageAllowed, loginQueryReturnPath, parseTenantSlugFromHost } from "@/lib/tenant-host";
 
 const ACCESS_COOKIE = "orithos_access_token";
 const REFRESH_COOKIE = "orithos_refresh_token";
@@ -161,7 +161,7 @@ export async function middleware(request: NextRequest) {
     login.pathname = "/login";
     const nextPath = onControlPlane
       ? "/platform/stores"
-      : `${pathname}${request.nextUrl.search}`;
+      : loginQueryReturnPath(pathname, request.nextUrl.search);
     login.search = `?next=${encodeURIComponent(nextPath)}`;
     return withHeaders(NextResponse.redirect(login), tenantSlug, pathname, correlationId);
   }

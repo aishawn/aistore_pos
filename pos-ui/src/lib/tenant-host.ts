@@ -68,7 +68,6 @@ export function isControlPlanePageAllowed(pathname: string): boolean {
   }
   if (pathname === "/auth" || pathname.startsWith("/auth/")) return true;
   if (pathname === "/platform" || pathname.startsWith("/platform/")) return true;
-  if (pathname === "/my-stores") return true;
   return false;
 }
 
