@@ -168,9 +168,9 @@ class ShopfrontIntegrationControllerTest {
         updatesField.setAccessible(true);
         @SuppressWarnings("unchecked")
         Map<Long, Object[]> updates = (Map<Long, Object[]>) updatesField.get(batch);
-        updates.put(101L, new Object[]{"Duplicate", null, null, null, null, null, null, null, null, null,
-                null, false, true, false, false, false, false, false, null, null, null, "[]", null, 48L, 101L});
-        updates.put(102L, new Object[]{"Duplicate [source-2]", null, null, null, null, null, null, null, null,
+        updates.put(101L, new Object[]{"Duplicate", null, null, null, null, null, null, null, null, true,
+                null, null, false, true, false, false, false, false, false, null, null, null, "[]", null, 48L, 101L});
+        updates.put(102L, new Object[]{"Duplicate [source-2]", null, null, null, null, null, null, null, null, true,
                 null, null, false, true, false, false, false, false, false, null, null, null, "[]", null, 48L, 102L});
         Method flush = ShopfrontIntegrationController.class.getDeclaredMethod("flushBusinessProductBatch", batchType, long.class);
         flush.setAccessible(true);
@@ -180,6 +180,7 @@ class ShopfrontIntegrationControllerTest {
         org.mockito.InOrder order = org.mockito.Mockito.inOrder(jdbc);
         order.verify(jdbc).batchUpdate(contains("UPDATE product SET name=? WHERE outlet_id=? AND id=?"), any(List.class));
         order.verify(jdbc).batchUpdate(contains("UPDATE product SET name=?,type=?"), any(List.class));
+        verify(jdbc).batchUpdate(contains("cost=CASE WHEN ? THEN ? ELSE cost END"), any(List.class));
     }
 
     @Test
@@ -920,6 +921,17 @@ class ShopfrontIntegrationControllerTest {
         assertEquals("NOT_PURCHASING", ShopfrontIntegrationController.normalizeShopfrontProductStatus("Not Purchasing", false));
         assertEquals("NOT_ACTIVE", ShopfrontIntegrationController.normalizeShopfrontProductStatus("INACTIVE", false));
         assertEquals("NOT_ACTIVE", ShopfrontIntegrationController.normalizeShopfrontProductStatus("ACTIVE", true));
+    }
+
+    @Test
+    void onlyHistoricalUnverifiedCostIsExcludedFromCurrentProductCostUpdates() throws Exception {
+        ObjectMapper mapper = new ObjectMapper();
+
+        assertFalse(ShopfrontIntegrationController.sourceCostIsAuthoritative(
+                mapper.readTree("{\"cost_authority\":\"historical_unverified\"}")));
+        assertTrue(ShopfrontIntegrationController.sourceCostIsAuthoritative(
+                mapper.readTree("{\"cost_authority\":\"catalog_verified\"}")));
+        assertTrue(ShopfrontIntegrationController.sourceCostIsAuthoritative(mapper.readTree("{}")));
     }
 
     @Test
