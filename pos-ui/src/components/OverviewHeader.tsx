@@ -3,6 +3,7 @@
 import { OrithosLogo } from "@/components/OrithosLogo";
 import { OverviewAccountControl } from "@/components/OverviewAccountControl";
 import { OverviewLayoutSwitcher } from "@/components/OverviewLayoutSwitcher";
+import { LocationHeaderControl } from "@/components/LocationHeaderControl";
 
 export function OverviewHeader({
   company,
@@ -23,6 +24,7 @@ export function OverviewHeader({
         {active === "radial" ? <p className="ov-tagline">Sell smarter. Manage better. Grow further with Orithos AI.</p> : null}
       </div>
       <div className="ov-toolbar">
+        <LocationHeaderControl />
         <OverviewLayoutSwitcher active={active} />
         <OverviewAccountControl showLogo={false} />
 

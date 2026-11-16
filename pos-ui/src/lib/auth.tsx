@@ -3,6 +3,7 @@
 import { setNativeReadIdentity, clearNativeReadCache } from "./native-read-cache";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { api, isLocalPreviewSession, refreshAccessToken, registerAuthFailureHandler } from "@/lib/api";
+import type { WorkContextSelection } from "@/lib/work-context";
 
 export type StoreRoleCode = "ADMIN" | "MANAGER" | "CLERK" | "NONE" | string;
 
@@ -56,20 +57,26 @@ interface AuthState {
   login: (username: string, password: string, subdomain?: string) => Promise<LoginResponse>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   logout: () => Promise<void>;
+  setWorkContext: (selection: WorkContextSelection) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthState | null>(null);
 const USER_KEY = "sf_user";
+/** Set on explicit sign-out so `/login` does not immediately bounce back in. */
+export const SKIP_SESSION_RECOVER_KEY = "orithos_skip_session_recover";
+let sessionEpoch = 0;
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [ready, setReady] = useState(false);
 
   const recoverSession = useCallback(async () => {
+    const epoch = sessionEpoch;
     const refreshed = await refreshAccessToken();
-    if (refreshed !== "ok") return false;
+    if (refreshed !== "ok" || epoch !== sessionEpoch) return false;
     try {
       const current = await api.get<CurrentUserResponse>("/api/auth/me");
+      if (epoch !== sessionEpoch) return false;
       const normalized = normalizeUser(current);
       setUser(normalized);
       if (typeof localStorage !== "undefined") localStorage.setItem(USER_KEY, JSON.stringify(normalized));
@@ -195,7 +202,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (typeof localStorage !== "undefined") localStorage.setItem(USER_KEY, JSON.stringify(normalized));
   }, []);
 
+  const setWorkContext = useCallback(async (selection: WorkContextSelection) => {
+    const res = await api.post<LoginResponse>("/api/auth/work-context", {
+      outletId: selection.outletId,
+      registerId: selection.registerId ?? undefined,
+      globalMode: selection.globalMode,
+    });
+    const normalized = normalizeUser(res.user);
+    setUser(normalized);
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem(USER_KEY, JSON.stringify(normalized));
+    }
+  }, []);
+
   const logout = useCallback(async () => {
+    sessionEpoch += 1;
     setNativeReadIdentity(null);
     clearNativeReadCache();
     try {
@@ -205,6 +226,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     setUser(null);
     if (typeof localStorage !== "undefined") localStorage.removeItem(USER_KEY);
+    if (typeof sessionStorage !== "undefined") sessionStorage.setItem(SKIP_SESSION_RECOVER_KEY, "1");
     if (typeof document !== "undefined") document.cookie = "orithos_local_preview=;path=/;max-age=0;samesite=lax";
   }, []);
 
@@ -215,8 +237,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [user]);
 
   const value = useMemo(
-    () => ({ user, ready, hasPermission, recoverSession, login, changePassword, logout }),
-    [user, ready, hasPermission, recoverSession, login, changePassword, logout],
+    () => ({ user, ready, hasPermission, recoverSession, login, changePassword, setWorkContext, logout }),
+    [user, ready, hasPermission, recoverSession, login, changePassword, setWorkContext, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

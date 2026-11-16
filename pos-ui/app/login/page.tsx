@@ -6,35 +6,20 @@ import { Eye, EyeOff, LogIn } from "lucide-react";
 import { OrithosLogo } from "@/components/OrithosLogo";
 import { useAuth } from "@/lib/auth";
 import { setUiMode } from "@/lib/ui-mode";
+import { BrandStoreGateway } from "@/components/BrandStoreGateway";
 import {
   brandSignupUrl,
   controlPlaneLandingPath,
   isControlPlaneHost,
+  normalizeAuthReturnPath,
   parseTenantSlugFromHost,
   storeLandingPath,
   tenantBaseDomain,
 } from "@/lib/tenant-host";
+import { SKIP_SESSION_RECOVER_KEY } from "@/lib/auth";
 
 type UiMode = "web" | "mobile";
 const REMEMBERED_USERNAME_KEY = "orithos-remembered-username";
-
-function safeReturnPath(value: string | null): string | null {
-  if (!value || !value.startsWith("/") || value.startsWith("//") || value.includes("\\")) return null;
-  try {
-    const parsed = new URL(value, window.location.origin);
-    if (
-      parsed.origin !== window.location.origin
-      || parsed.pathname === "/login"
-      || parsed.pathname === "/signup"
-      || parsed.pathname === "/forgot-password"
-      || parsed.pathname === "/reset-password"
-      || parsed.pathname.startsWith("/auth/")
-    ) return null;
-    return `${parsed.pathname}${parsed.search}${parsed.hash}`;
-  } catch {
-    return null;
-  }
-}
 
 export default function LoginPage() {
   const { login, recoverSession } = useAuth();
@@ -69,10 +54,31 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (isControlPlaneHost(window.location.host)) return;
+    try {
+      if (sessionStorage.getItem(SKIP_SESSION_RECOVER_KEY)) {
+        sessionStorage.removeItem(SKIP_SESSION_RECOVER_KEY);
+        return;
+      }
+    } catch {
+      // sessionStorage may be unavailable; continue with normal recovery.
+    }
     void recoverSession().then((recovered) => {
       if (!recovered) return;
-      const returnPath = safeReturnPath(new URLSearchParams(window.location.search).get("next"));
-      window.location.assign(storeLandingPath(returnPath, "web"));
+      const returnPath = normalizeAuthReturnPath(new URLSearchParams(window.location.search).get("next"));
+      let sessionUser: { isAdmin: boolean; roleCode?: string } | undefined;
+      try {
+        const cached = localStorage.getItem("sf_user");
+        if (cached) {
+          const parsed = JSON.parse(cached) as { isAdmin?: boolean; roleCode?: string };
+          sessionUser = {
+            isAdmin: parsed.isAdmin === true,
+            roleCode: parsed.roleCode,
+          };
+        }
+      } catch {
+        // Fall back to leadership default when cache is unreadable.
+      }
+      window.location.assign(storeLandingPath(returnPath, "web", sessionUser));
     });
   }, [recoverSession]);
 
@@ -103,7 +109,7 @@ export default function LoginPage() {
         return;
       }
 
-      const returnPath = safeReturnPath(new URLSearchParams(window.location.search).get("next"));
+      const returnPath = normalizeAuthReturnPath(new URLSearchParams(window.location.search).get("next"));
       if (controlPlane) {
         window.location.assign(controlPlaneLandingPath(returnPath));
         return;
@@ -124,12 +130,11 @@ export default function LoginPage() {
   function enterLocalPreview() {
     if (process.env.NODE_ENV !== "development") return;
     document.cookie = "orithos_local_preview=1;path=/;max-age=3600;samesite=lax";
-    const returnPath = safeReturnPath(new URLSearchParams(window.location.search).get("next"));
+    const returnPath = normalizeAuthReturnPath(new URLSearchParams(window.location.search).get("next"));
     window.location.assign(returnPath || "/dashboard");
   }
 
   // Keep the SSR and browser markup identical across local HTTP and production HTTPS.
-  const demoStoreLogin = `//demo.${tenantBaseDomain()}/login`;
 
   return (
     <main className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden bg-[var(--oh-surface)] px-4 py-8 font-sans text-[var(--oh-text)]">

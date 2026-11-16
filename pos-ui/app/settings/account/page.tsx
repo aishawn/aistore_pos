@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { KeyRound, LoaderCircle, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { StoreConnectionStatus } from "@/components/admin/StoreConnectionStatus";
+import { StoreOutletsSummary } from "@/components/StoreOutletsSummary";
 import { SettingsPage, SettingsSubTabs } from "@/components/admin/SettingsPage";
 
 export default function AccountSecurityPage() {
@@ -51,11 +52,15 @@ export default function AccountSecurityPage() {
 
   const tabs = [
     ["security", "Security"],
+    ["stores", "Stores & outlets"],
     ["billing", "Billing"],
     ["developer", "Developer & API"],
     ["connection", "Connection status"],
   ] as const;
-  const activeTab = requestedTab === "developer" || requestedTab === "connection" || requestedTab === "billing" ? requestedTab : "security";
+  const activeTab = requestedTab === "developer" || requestedTab === "connection" || requestedTab === "billing"
+    || requestedTab === "stores"
+    ? requestedTab
+    : "security";
   return (
     <SettingsPage title="Account" subtitle="Manage your Orithos profile, security and service access." activeHref="/settings/account" subTabs={<SettingsSubTabs label="Account sections" tabs={tabs.map(([key, label]) => ({ label, href: `/settings/account?tab=${key}`, active: activeTab === key }))} />}>
 
@@ -72,6 +77,8 @@ export default function AccountSecurityPage() {
       )}
       {activeTab === "developer" && <section className="rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-5 shadow-[var(--oh-shadow-card)] sm:p-6"><h2 className="text-base font-semibold text-[var(--oh-text)]">Developer &amp; API</h2><p className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">External API key management is not available in this release. Contact your store administrator about supported data import and export options.</p><div className="mt-4 rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 py-3 text-sm text-[var(--oh-muted)]">API key creation is unavailable.</div></section>}
       {activeTab === "connection" && <StoreConnectionStatus />}
+
+      {activeTab === "stores" && <StoreOutletsSummary />}
 
       {activeTab !== "security" ? null : <>
 

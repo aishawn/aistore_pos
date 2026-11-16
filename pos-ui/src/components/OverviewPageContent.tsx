@@ -29,6 +29,7 @@ import { money, useOverview } from "./useOverview";
 import { useAiAssistant } from "@/lib/ai-assistant";
 import type { SidebarGroupItem, SidebarSubGroup } from "@/lib/sidebar-navigation";
 import { DashboardIntroAnimation } from "./AiTransitionOverlay";
+import { StoreOutletsSummary } from "@/components/StoreOutletsSummary";
 
 const modules = [
   {
@@ -200,6 +201,7 @@ export function OverviewPageContent({
           active={active}
           company={data?.company || "Your store"}
         />
+        {hasPermission("settings.view") && <StoreOutletsSummary className="mb-5" />}
         {error ? (
           <section role="alert" className="ov-error">
             <div>

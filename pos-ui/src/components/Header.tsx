@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { PanelLeft, PanelLeftClose } from "lucide-react";
 import { UserIcon } from "@/components/icons";
 import { OrithosLogo } from "@/components/OrithosLogo";
+import { LocationHeaderControl } from "@/components/LocationHeaderControl";
 
 /**
  * Orithos top bar — light chrome (50px) shared by Sell and admin pages.
@@ -17,12 +18,14 @@ export function Header({
   userMenuOpen = false,
   onSidebarToggle,
   onUserClick,
+  showLocation = true,
 }: {
   userName?: string;
   sidebarOpen?: boolean;
   userMenuOpen?: boolean;
   onSidebarToggle?: () => void;
   onUserClick?: () => void;
+  showLocation?: boolean;
 }) {
   const pathname = usePathname();
   const checkoutKeyboard = pathname === "/" || pathname === "/finalise";
@@ -46,6 +49,7 @@ export function Header({
         <div className="mr-auto min-w-0 pl-1 md:hidden" aria-hidden="true"><OrithosLogo /></div>
 
         <div className="flex items-center gap-2 pr-3 sm:pr-6">
+          {showLocation && <LocationHeaderControl />}
           <button
             type="button"
             tabIndex={tabIndex}

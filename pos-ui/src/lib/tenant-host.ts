@@ -68,24 +68,42 @@ export function isControlPlanePageAllowed(pathname: string): boolean {
   }
   if (pathname === "/auth" || pathname.startsWith("/auth/")) return true;
   if (pathname === "/platform" || pathname.startsWith("/platform/")) return true;
+  if (pathname === "/my-stores") return true;
   return false;
+}
+
+/** Parse and sanitize internal post-login return URLs (strip nested `next`, block auth routes). */
+export function normalizeAuthReturnPath(value: string | null | undefined): string | null {
+  if (!value || !value.startsWith("/") || value.startsWith("//") || value.includes("\\")) return null;
+  try {
+    const parsed = new URL(value, "https://orithos.invalid");
+    if (
+      parsed.pathname === "/login"
+      || parsed.pathname === "/signup"
+      || parsed.pathname === "/forgot-password"
+      || parsed.pathname === "/reset-password"
+      || parsed.pathname.startsWith("/auth/")
+    ) {
+      return null;
+    }
+    parsed.searchParams.delete("next");
+    const search = parsed.searchParams.toString();
+    return `${parsed.pathname}${search ? `?${search}` : ""}${parsed.hash}`;
+  } catch {
+    return null;
+  }
+}
+
+/** Build the value for `?next=` when sending an unauthenticated user to `/login`. */
+export function loginQueryReturnPath(pathname: string, search = ""): string {
+  return normalizeAuthReturnPath(`${pathname}${search}`) ?? pathname;
 }
 
 /** Safe post-login path on the control plane (never land on store Sell `/`). */
 export function controlPlaneLandingPath(next: string | null | undefined): string {
-  if (
-    next
-    && next.startsWith("/")
-    && !next.startsWith("//")
-    && !next.includes("\\")
-    && isControlPlanePageAllowed(next.split("?")[0] || next)
-    && next !== "/login"
-    && next !== "/signup"
-    && !next.startsWith("/auth/")
-    && next !== "/forgot-password"
-    && next !== "/reset-password"
-  ) {
-    return next;
+  const safeNext = normalizeAuthReturnPath(next);
+  if (safeNext && isControlPlanePageAllowed(safeNext.split("?")[0] || safeNext)) {
+    return safeNext;
   }
   return "/platform/stores";
 }
@@ -93,28 +111,28 @@ export function controlPlaneLandingPath(next: string | null | undefined): string
 /** Default store web landing for administrators and managers. */
 export const STORE_WEB_LANDING_PATH = "/dashboard";
 
+/** Default store web landing for front-line staff (Sell register). */
+export const STORE_STAFF_LANDING_PATH = "/sell";
+
+function isStoreLeadership(user?: { isAdmin: boolean; roleCode?: string }): boolean {
+  if (!user) return false;
+  if (user.isAdmin) return true;
+  const code = (user.roleCode ?? "").trim().toUpperCase();
+  return code === "ADMIN" || code === "MANAGER";
+}
+
 /** Safe post-login path on a store host. */
 export function storeLandingPath(
   next: string | null | undefined,
   mode: "web" | "mobile" = "web",
   user?: { isAdmin: boolean; roleCode?: string },
 ): string {
-  if (
-    next
-    && next !== "/"
-    && next.startsWith("/")
-    && !next.startsWith("//")
-    && !next.includes("\\")
-    && next !== "/login"
-    && next !== "/signup"
-    && !next.startsWith("/auth/")
-    && next !== "/forgot-password"
-    && next !== "/reset-password"
-  ) {
-    return next;
+  const safeNext = normalizeAuthReturnPath(next);
+  if (safeNext && safeNext !== "/") {
+    return safeNext;
   }
   if (mode === "mobile") return "/m";
-  if (user?.roleCode === "CLERK" && !user.isAdmin) return "/";
+  if (user && !isStoreLeadership(user)) return STORE_STAFF_LANDING_PATH;
   return STORE_WEB_LANDING_PATH;
 }
 

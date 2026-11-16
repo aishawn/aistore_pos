@@ -8,6 +8,7 @@ import com.orithos.modules.auth.dto.InviteUserRequest;
 import com.orithos.modules.auth.dto.LoginRequest;
 import com.orithos.modules.auth.dto.ResetPasswordRequest;
 import com.orithos.modules.auth.dto.TokenResponse;
+import com.orithos.modules.auth.dto.WorkContextRequest;
 import com.orithos.modules.user.UserService;
 import com.orithos.modules.user.entity.User;
 import com.orithos.modules.vendor.Vendor;
@@ -49,6 +50,7 @@ public class AuthController {
     private final AccountTokenStore accountTokenStore;
     private final PlatformAccessService platformAccess;
     private final PermissionAccess permissionAccess;
+    private final OutletAccessService outletAccess;
     private TenantShardRegistry tenantShardRegistry;
 
     public AuthController(UserService userService, JwtService jwtService,
@@ -58,7 +60,8 @@ public class AuthController {
                           TenantProperties tenantProperties,
                           AccountTokenStore accountTokenStore,
                           PlatformAccessService platformAccess,
-                          PermissionAccess permissionAccess) {
+                          PermissionAccess permissionAccess,
+                          OutletAccessService outletAccess) {
         this.userService = userService;
         this.jwtService = jwtService;
         this.tokenStore = tokenStore;
@@ -70,6 +73,7 @@ public class AuthController {
         this.accountTokenStore = accountTokenStore;
         this.platformAccess = platformAccess;
         this.permissionAccess = permissionAccess;
+        this.outletAccess = outletAccess;
     }
 
     @Autowired(required = false)
@@ -249,6 +253,20 @@ public class AuthController {
         return ApiResult.ok();
     }
 
+  /** Switch outlet/register work context (re-issues JWT with the selected outlet). */
+    @PostMapping("/work-context")
+    public ApiResult<TokenResponse> workContext(@Valid @RequestBody WorkContextRequest req) {
+        Long userId = CurrentUser.id();
+        if (userId == null) {
+            throw new BusinessException(40100, "Unauthorized");
+        }
+        User u = userService.require(userId);
+        Long vendorId = outletAccess.requireVendor();
+        outletAccess.requireOutletAccess(req.outletId(), u, vendorId);
+        outletAccess.requireRegisterForOutlet(req.registerId(), req.outletId(), vendorId);
+        return ApiResult.ok(issueTokens(u, req.outletId()));
+    }
+
     /** Current user info — mirrors the live /user/info shape. */
     @GetMapping("/me")
     public ApiResult<Map<String, Object>> me() {
@@ -319,26 +337,40 @@ public class AuthController {
     }
 
     private TokenResponse issueTokens(User u) {
+        return issueTokens(u, u.getOutletId());
+    }
+
+    private TokenResponse issueTokens(User u, Long sessionOutletId) {
         List<String> authorities = userService.authorities(u);
+        Long outletId = sessionOutletId != null ? sessionOutletId : u.getOutletId();
         var access = jwtService.issueAccess(u.getId(), u.getUsername(),
-                Boolean.TRUE.equals(u.getIsAdmin()), u.getOutletId(), u.getVendorId(), authorities);
+                Boolean.TRUE.equals(u.getIsAdmin()), outletId, u.getVendorId(), authorities);
         var refresh = jwtService.issueRefresh(u.getId(), u.getUsername());
         tokenStore.saveRefresh(u.getId(), refresh.jti(), refresh.expiry());
-        return toResponse(u, access.token(), refresh.token());
+        return toResponse(u, access.token(), refresh.token(), outletId);
     }
 
     private TokenResponse toResponse(User u, String access, String refresh) {
-        return new TokenResponse(access, refresh, props.getAccessTokenTtlMinutes() * 60L, userInfo(u));
+        return toResponse(u, access, refresh, u.getOutletId());
+    }
+
+    private TokenResponse toResponse(User u, String access, String refresh, Long sessionOutletId) {
+        return new TokenResponse(access, refresh, props.getAccessTokenTtlMinutes() * 60L,
+                userInfo(u, sessionOutletId));
     }
 
     private TokenResponse.UserInfo userInfo(User u) {
+        return userInfo(u, u.getOutletId());
+    }
+
+    private TokenResponse.UserInfo userInfo(User u, Long sessionOutletId) {
         boolean admin = Boolean.TRUE.equals(u.getIsAdmin());
         return new TokenResponse.UserInfo(
                 u.getId(),
                 u.getName(),
                 u.getUsername(),
                 admin,
-                u.getOutletId(),
+                sessionOutletId,
                 u.getVendorId(),
                 u.getEmail(),
                 Boolean.TRUE.equals(u.getPendingPasswordReset()),
