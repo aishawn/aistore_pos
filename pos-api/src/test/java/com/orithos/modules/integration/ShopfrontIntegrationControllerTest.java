@@ -311,7 +311,9 @@ class ShopfrontIntegrationControllerTest {
         controller.nativeData("token", "skr", "products", 1, 2500);
 
         verify(jdbc).queryForList(contains("p.mdb_id AS sku"), any(Object[].class));
-        verify(jdbc).queryForList(contains("p.cost,p.case_quantity,p.tax_rate_id"), any(Object[].class));
+        verify(jdbc).queryForList(contains("p.cost,"), any(Object[].class));
+        verify(jdbc).queryForList(contains("p.case_quantity,p.tax_rate_id"), any(Object[].class));
+        verify(jdbc).queryForList(contains("p.shopfront_catalog_confirmed AS catalog_confirmed"), any(Object[].class));
         verify(jdbc).queryForList(contains("cost_tax.name AS cost_tax_rate_name"), any(Object[].class));
         verify(jdbc).queryForList(contains("p.updated_at AS pos_updated_at"), any(Object[].class));
         verify(jdbc).queryForList(contains("p.cost_percentage"), any(Object[].class));
