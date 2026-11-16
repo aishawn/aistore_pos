@@ -2,6 +2,9 @@ const numberFormat = new Intl.NumberFormat("en-AU", {
   minimumFractionDigits: 2,
   maximumFractionDigits: 4,
 });
+const percentageFormat = new Intl.NumberFormat("en-AU", {
+  maximumFractionDigits: 4,
+});
 
 function money(value: number): string {
   return `A$ ${numberFormat.format(value)}`;
@@ -11,20 +14,42 @@ export function productCostDisplay(
   cost: number | null | undefined,
   caseQuantity: number | null | undefined,
   status?: string | null,
-): { caseCost: string | null; itemCost: string } | null {
-  if (status?.trim().toUpperCase() === "NOT_ACTIVE") {
+  costPercentage = false,
+): { caseCost: string; itemCost: string } {
+  const normalizedStatus = status?.trim().toUpperCase();
+  if (!normalizedStatus) {
     return {
       caseCost: "Unavailable",
-      itemCost: "Not in current Shopfront catalogue",
+      itemCost: "Shopfront status is unverified",
     };
   }
-  if (cost == null || !Number.isFinite(cost)) return null;
-  const caseCost = caseQuantity != null && Number.isFinite(caseQuantity) && caseQuantity > 0
-    ? `${money(cost * caseQuantity)} / case`
-    : null;
+  if (normalizedStatus !== "ACTIVE") {
+    return {
+      caseCost: "Unavailable",
+      itemCost: "Not current in Shopfront catalogue",
+    };
+  }
+  if (cost == null || !Number.isFinite(cost)) {
+    return {
+      caseCost: "Unavailable",
+      itemCost: "Shopfront cost is missing",
+    };
+  }
+  if (costPercentage) {
+    return {
+      caseCost: `${percentageFormat.format(cost)}%`,
+      itemCost: "Percentage cost; no currency amount",
+    };
+  }
+  if (caseQuantity == null || !Number.isFinite(caseQuantity) || caseQuantity <= 0) {
+    return {
+      caseCost: `${money(cost)} / case`,
+      itemCost: "Unavailable: invalid case quantity",
+    };
+  }
 
   return {
-    caseCost,
-    itemCost: `${money(cost)} / item`,
+    caseCost: `${money(cost)} / case`,
+    itemCost: `${money(cost / caseQuantity)} / item`,
   };
 }
