@@ -996,14 +996,16 @@ class ShopfrontIntegrationControllerTest {
     }
 
     @Test
-    void onlyHistoricalUnverifiedCostIsExcludedFromCurrentProductCostUpdates() throws Exception {
+    void onlyExplicitlyVerifiedCatalogueCostCanUpdateCurrentProductCost() throws Exception {
         ObjectMapper mapper = new ObjectMapper();
 
         assertFalse(ShopfrontIntegrationController.sourceCostIsAuthoritative(
                 mapper.readTree("{\"cost_authority\":\"historical_unverified\"}")));
+        assertFalse(ShopfrontIntegrationController.sourceCostIsAuthoritative(mapper.readTree("{}")));
+        assertFalse(ShopfrontIntegrationController.sourceCostIsAuthoritative(
+                mapper.readTree("{\"cost_authority\":\"unknown\"}")));
         assertTrue(ShopfrontIntegrationController.sourceCostIsAuthoritative(
                 mapper.readTree("{\"cost_authority\":\"catalog_verified\"}")));
-        assertTrue(ShopfrontIntegrationController.sourceCostIsAuthoritative(mapper.readTree("{}")));
     }
 
     @Test

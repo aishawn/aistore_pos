@@ -67,6 +67,11 @@ def should_include_catalog(job_type: str | None, existing_products: int, existin
     return job_type == "daily_sync" or existing_products == 0 or existing_inventory == 0
 
 
+def shopfront_cost_authority(*, catalog_seen: bool) -> str:
+    """Only current catalogue or direct source reads can authorize product cost updates."""
+    return "catalog_verified" if catalog_seen else "historical_unverified"
+
+
 def _normalized_supplier_pos_item(item: ShopfrontSupplier) -> dict[str, Any]:
     """Flatten crawler supplier rows for POS upsert (raw_payload is rejected)."""
     raw = dict(item.raw_payload) if isinstance(item.raw_payload, dict) else {}
@@ -2849,6 +2854,8 @@ async def push_pos_snapshot(
             "source_created_at": raw.get("createdAt"),
             "source_updated_at": raw.get("updatedAt"),
             "cost": product.cost if product.cost is not None else raw.get("cost"),
+            "cost_authority": shopfront_cost_authority(catalog_seen=product.catalog_last_seen_at is not None),
+            "catalog_confirmed": product.catalog_last_seen_at is not None,
             "price": product.price if product.price is not None else ((raw.get("prices") or [{}])[0].get("price") if isinstance((raw.get("prices") or [{}])[0], dict) else None),
             "prices": raw.get("prices") or [],
             "raw_payload": raw,
@@ -2906,6 +2913,8 @@ async def push_pos_snapshot(
             "tax_rate_name": (source.get("taxRate") or {}).get("name") if isinstance(source.get("taxRate"), dict) else None,
             "cost_tax_rate_name": (source.get("costTaxRate") or {}).get("name") if isinstance(source.get("costTaxRate"), dict) else None,
             "cost": cost,
+            "cost_authority": "historical_unverified",
+            "catalog_confirmed": False,
             "price": price,
             "prices": prices or ([{"quantity": 1, "price": price}] if price is not None else []),
             "source_status": source.get("status"),
@@ -3009,6 +3018,8 @@ async def push_pos_snapshot(
                         "source_created_at": item.get("createdAt"),
                         "source_updated_at": item.get("updatedAt"),
                         "cost": item.get("cost"),
+                        "cost_authority": "catalog_verified",
+                        "catalog_confirmed": False,
                         "price": item.get("price") or ((item.get("prices") or [{}])[0].get("price") if isinstance((item.get("prices") or [{}])[0], dict) else None),
                         "prices": item.get("prices") or [],
                         "raw_payload": item,
@@ -4143,6 +4154,8 @@ async def import_products_to_pos(store: str, db: Session = Depends(get_db)) -> d
             "source_created_at": raw.get("createdAt"),
             "source_updated_at": raw.get("updatedAt"),
             "cost": p.cost,
+            "cost_authority": "catalog_verified",
+            "catalog_confirmed": True,
             "price": p.price if p.price is not None else shelf_unit_price(raw),
             "prices": prices,
             "raw_payload": raw,

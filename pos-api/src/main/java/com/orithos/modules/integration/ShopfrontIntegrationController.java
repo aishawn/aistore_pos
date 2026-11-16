@@ -3896,7 +3896,7 @@ public class ShopfrontIntegrationController {
 
     static boolean sourceCostIsAuthoritative(JsonNode item) {
         JsonNode authority = item == null ? null : item.get("cost_authority");
-        return authority == null || authority.isNull() || "catalog_verified".equalsIgnoreCase(authority.asText());
+        return authority != null && !authority.isNull() && "catalog_verified".equalsIgnoreCase(authority.asText());
     }
 
     /**

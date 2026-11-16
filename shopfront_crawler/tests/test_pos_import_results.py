@@ -235,6 +235,8 @@ async def test_pos_product_reimport_excludes_products_without_current_catalog_ev
 
     assert result["status"] == "completed"
     assert [item["source_id"] for item in captured[0]["items"]] == ["current-product"]
+    assert captured[0]["items"][0]["cost_authority"] == "catalog_verified"
+    assert captured[0]["items"][0]["catalog_confirmed"] is True
 
 
 @pytest.mark.asyncio
