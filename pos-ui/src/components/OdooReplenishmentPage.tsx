@@ -7,7 +7,6 @@ import {
   CalendarRange,
   Check,
   CircleHelp,
-  Clock3,
   ExternalLink,
   LoaderCircle,
   RefreshCw,
@@ -554,9 +553,9 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
               <CircleHelp size={18} aria-hidden="true" />
             </button>
           </div>
-          <p className="mt-1 text-sm text-[var(--oh-muted)]">
-            Rule-based reorder suggestions for {planCoverageDays} days of coverage · {draftRfqEnabled ? "you can create draft RFQs" : "read-only preview"} · nothing auto-orders.
-            {data?.generatedAt && <span className="ml-2">Updated {formatOdooDateTime(data.generatedAt, storeTimezone)}.</span>}
+          <p className="mt-1 text-xs text-[var(--oh-muted)]">
+            {planCoverageDays}-day coverage
+            {data?.generatedAt ? ` · Updated ${formatOdooDateTime(data.generatedAt, storeTimezone)}` : ""}
           </p>
           {data?.forecast?.enabled && data?.forecast?.status === "AVAILABLE" && (
             <p className="mt-1 text-xs text-[var(--oh-muted)]">
@@ -579,12 +578,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
             <span className={`rounded-full px-2.5 py-1 ${data?.inventoryHistory?.status === "FRESH" ? "bg-emerald-50 text-emerald-800" : "bg-amber-50 text-amber-900"}`}>
               Inventory snapshot {data?.inventoryHistory?.status === "FRESH" ? "OK" : "check"}
             </span>
-            {(data?.reviewRequiredCount ?? 0) > 0 && (
-              <span className="rounded-full bg-amber-50 px-2.5 py-1 text-amber-900">
-                {number.format(data?.reviewRequiredCount ?? 0)} lines need review first
-              </span>
-            )}
-            <span className={`rounded-full px-2.5 py-1 ${draftRfqEnabled ? "bg-sky-50 text-sky-800" : "bg-slate-100 text-slate-700"}`}>{draftRfqEnabled ? "Draft RFQ enabled" : "Read-only preview"}</span>
+            <span className={`rounded-full px-2.5 py-1 ${draftRfqEnabled ? "bg-sky-50 text-sky-800" : "bg-slate-100 text-slate-700"}`}>{draftRfqEnabled ? "Draft RFQ" : "Preview"}</span>
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -656,42 +650,46 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
         </div>
       )}
 
-      {(data?.reviewRequiredCount ?? 0) > 0 && (
-        <div role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
-          <p>
-            <strong>Start with Urgent or Review data</strong> — {number.format(data?.reviewRequiredCount ?? 0)} lines are inventory or cost fixes, not demand-based orders.
-          </p>
-          <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={() => setListFilter("urgent")} className="rounded-md border border-amber-300 bg-white px-3 py-1.5 text-sm font-semibold">Urgent ({number.format(urgentRiskCount)})</button>
-            <button type="button" onClick={() => setListFilter("review")} className="rounded-md border border-amber-300 bg-white px-3 py-1.5 text-sm font-semibold">Review data</button>
-          </div>
+      <section aria-label="Replenishment summary" className="grid gap-4 rounded-lg border border-[var(--oh-border)] bg-white px-4 py-4 text-sm shadow-[var(--oh-shadow-card)] md:grid-cols-3">
+        <div>
+          <p className="text-xs font-medium uppercase tracking-wide text-[var(--oh-muted)]">Ready to order</p>
+          <p className="mt-1 text-3xl font-semibold tabular-nums leading-none text-[var(--oh-text)]">{number.format(orderReadyItems.length)}</p>
+          <p className="mt-1 text-xs text-[var(--oh-muted)]">{number.format(totalOrderReadyUnits)} units suggested</p>
+          {data?.businessMetrics?.suggestedOrderValue != null && (
+            <p className="mt-1 text-xs tabular-nums text-[var(--oh-text-secondary)]">
+              {data.businessMetrics.suggestedOrderValue.toLocaleString("en-AU", { style: "currency", currency: "AUD", minimumFractionDigits: 0, maximumFractionDigits: 0 })}{" "}
+              <span className="text-[var(--oh-muted)]">est. cost</span>
+            </p>
+          )}
         </div>
-      )}
-
-      <section aria-label="Replenishment summary" className="grid gap-3 rounded-lg border border-[var(--oh-border)] bg-white px-4 py-3 text-sm shadow-[var(--oh-shadow-card)] md:grid-cols-3">
-        <p>
-          <span className="block text-2xl font-semibold tabular-nums text-[var(--oh-text)]">{number.format(orderReadyItems.length)}</span>
-          <span className="text-[var(--oh-muted)]">ready to order · {number.format(totalOrderReadyUnits)} units</span>
-        </p>
-        <p>
-          <span className="block text-2xl font-semibold tabular-nums text-red-700">{number.format(outOfStockWithDemand)}</span>
-          <span className="text-[var(--oh-muted)]">out of stock with recent sales</span>
-        </p>
-        <p>
-          <span className="block text-2xl font-semibold tabular-nums text-amber-900">{number.format(data?.reviewRequiredCount ?? 0)}</span>
-          <span className="text-[var(--oh-muted)]">review before ordering · {number.format(suggestedItems.length - orderReadyItems.length)} with raw suggestions only</span>
-        </p>
-        {!draftRfqEnabled && (
-          <p className="text-[var(--oh-muted)]">
-            To order: open{" "}
-            <Link href="/purchases" className="font-semibold text-[var(--oh-primary)] underline-offset-2 hover:underline">
-              Purchase Orders
-            </Link>
-            {" "}or use exceptions first — totals are suggestions, not mandatory order quantities.
-          </p>
-        )}
-         {data?.businessMetrics?.suggestedOrderValue !== null && data?.businessMetrics?.suggestedOrderValue !== undefined && <p><span className="font-semibold tabular-nums text-[var(--oh-text)]">{data.businessMetrics.suggestedOrderValue.toLocaleString("en-AU", { style: "currency", currency: "AUD", minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span> <span className="text-[var(--oh-muted)]">estimated at current cost</span></p>}
-         {data?.businessMetrics?.productsWithExpectedStockout !== undefined && <p><span className="font-semibold tabular-nums text-red-700">{number.format(data.businessMetrics.productsWithExpectedStockout)}</span> <span className="text-[var(--oh-muted)]">risks among eligible products</span></p>}
+        <button
+          type="button"
+          onClick={() => setListFilter("out_of_stock")}
+          className="rounded-md text-left outline-none transition hover:bg-[var(--oh-surface)] focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)] md:-mx-2 md:px-2 md:py-1"
+        >
+          <p className="text-xs font-medium uppercase tracking-wide text-[var(--oh-muted)]">OOS with sales</p>
+          <p className="mt-1 text-3xl font-semibold tabular-nums leading-none text-red-700">{number.format(outOfStockWithDemand)}</p>
+          <p className="mt-1 text-xs text-[var(--oh-muted)]">Tap to filter list</p>
+        </button>
+        <div>
+          <p className="text-xs font-medium uppercase tracking-wide text-[var(--oh-muted)]">Needs review</p>
+          <p className="mt-1 text-3xl font-semibold tabular-nums leading-none text-amber-900">{number.format(data?.reviewRequiredCount ?? 0)}</p>
+          <p className="mt-1 text-xs text-[var(--oh-muted)]">Stock, cost, or data fixes — not in RFQ totals</p>
+          {(data?.reviewRequiredCount ?? 0) > 0 && (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              <button type="button" onClick={() => setListFilter("urgent")} className="rounded-md border border-[var(--oh-border)] bg-white px-2 py-1 text-xs font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)]">Urgent · {number.format(urgentRiskCount)}</button>
+              <button type="button" onClick={() => setListFilter("review")} className="rounded-md border border-[var(--oh-border)] bg-white px-2 py-1 text-xs font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)]">Review data</button>
+            </div>
+          )}
+          {Object.keys(data?.reviewIssueCounts ?? {}).length > 0 && (
+            <details className="mt-2 text-xs text-[var(--oh-muted)]">
+              <summary className="cursor-pointer font-medium text-[var(--oh-text-secondary)]">Issue breakdown</summary>
+              <p className="mt-1 leading-5">
+                {Object.entries(data?.reviewIssueCounts ?? {}).map(([issue, count]) => `${issue.replaceAll("_", " ").toLowerCase()} ${count}`).join(" · ")}
+              </p>
+            </details>
+          )}
+        </div>
       </section>
 
       <section className="flex shrink-0 flex-col rounded-lg border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)] xl:min-h-0 xl:flex-1 xl:overflow-hidden">
@@ -699,11 +697,12 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
           <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
             <div>
               <h2 className="text-sm font-semibold text-[var(--oh-text)]">
-                {listFilter === "all" ? "All POS products" : listFilter === "urgent" ? "Urgent stock risks" : listFilter === "out_of_stock" ? "Out of stock with demand" : listFilter === "missing_data" ? "Missing cost or lead time" : "Replenishment suggestions"}
+                {listFilter === "all" ? "All products" : listFilter === "urgent" ? "Urgent" : listFilter === "out_of_stock" ? "Out of stock with sales" : listFilter === "missing_data" ? "Missing cost or lead time" : listFilter === "review" ? "Review data" : "Ready to order"}
               </h2>
-              <p className="mt-1 text-xs text-[var(--oh-muted)]">
-                {filteredItems.length} matching · {selectedSuggested.length} selected for RFQ
-                {selectedSuggested.length > MAX_RFQ_LINES ? ` (first ${MAX_RFQ_LINES} used)` : ""}
+              <p className="mt-0.5 text-xs text-[var(--oh-muted)]">
+                {number.format(filteredItems.length)} lines
+                {selectedSuggested.length > 0 ? ` · ${number.format(selectedSuggested.length)} selected` : ""}
+                {selectedSuggested.length > MAX_RFQ_LINES ? ` (max ${MAX_RFQ_LINES})` : ""}
               </p>
             </div>
             <button
@@ -997,10 +996,8 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
             <button type="button" disabled={currentPage >= pageCount} onClick={() => setPagination({ key: pageKey, page: currentPage + 1 })} className="min-h-11 rounded border px-3 disabled:opacity-40">Next</button>
           </div>
         </nav>}
-        {data?.catalogueCoverage?.status === "COMPLETE" && <p role="status" className="border-t border-[var(--oh-border)] px-4 py-2 text-xs text-[var(--oh-muted)]">Complete catalogue: {data.catalogueCoverage.loadedProducts} POS products checked · {data.catalogueCoverage.eligibleProducts} eligible for replenishment. Search and totals include every page.</p>}
-        {data?.salesHistory && !data.salesHistory.timezoneVerified && <p role="status" className="border-t border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-950">Store timezone uses {data.salesHistory.timezone} as a fallback. Verify the store state in Orithos; forecast confidence is reduced.</p>}
-         {(data?.reviewRequiredCount ?? 0) > 0 && <div role="status" className="border-t border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-950"><p>{data?.reviewRequiredCount} products are excluded from purchase suggestions until stock, cost, purchase unit or demand confidence is checked. These products are also excluded from order value and forecast-risk totals.</p><p className="mt-1 text-xs">Reasons: {Object.entries(data?.reviewIssueCounts ?? {}).map(([issue, count]) => `${issue.replaceAll("_", " ").toLowerCase()} ${count}`).join(" · ") || "details unavailable"}.</p></div>}
-         {!draftRfqEnabled && <div role="status" className="border-t border-sky-200 bg-sky-50 px-4 py-2 text-sm text-sky-950"><p className="font-semibold">Read-only preview mode</p><p className="mt-1">Draft RFQ creation is disabled in this environment. Review the quantities here; no purchase record can be created from this page.</p></div>}
+        {data?.salesHistory && !data.salesHistory.timezoneVerified && <p role="status" className="border-t border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-950">Timezone fallback: {data.salesHistory.timezone}. Verify store settings.</p>}
+         {!draftRfqEnabled && <p role="status" className="border-t border-[var(--oh-border)] px-4 py-2 text-xs text-[var(--oh-muted)]">Preview only — create orders from <Link href="/purchases" className="font-semibold text-[var(--oh-primary)] underline-offset-2 hover:underline">Purchase Orders</Link>.</p>}
         {data?.truncated && <p role="status" className="border-t border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-950">This plan has incomplete catalogue coverage. Refresh before relying on store totals.</p>}
       </section>
 
@@ -1031,8 +1028,6 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
           </ul>
         </section>
       )}
-
-      <p className="inline-flex items-center gap-2 text-xs text-[var(--oh-muted)]"><Clock3 size={14} />Generated {data ? formatOdooDateTime(data.generatedAt, storeTimezone) : "—"}.</p>
 
       {methodOpen && (
         <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-slate-950/50 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) setMethodOpen(false); }}>
