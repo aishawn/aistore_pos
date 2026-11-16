@@ -16,6 +16,7 @@ import {
   type RetailRegisterSession,
 } from "./api";
 import { getOdooQuoteTimeoutMessage, ODOO_QUOTE_TIMEOUT_MS } from "./odoo-quote-timeout";
+import { mapNativeProduct, type NativeProductRow } from "./native-product-mapping";
 
 export type OdooRecordType =
   | "products"
@@ -97,8 +98,10 @@ export interface OdooProductRecord {
   standard_price?: number | false;
   shopfront_cost?: number | null;
   shopfront_cost_status?: "available" | "missing" | "unavailable" | "restricted";
+  shopfront_cost_percentage?: boolean;
   shopfront_case_quantity?: number | null;
   shopfront_cost_synced_at?: string | null;
+  shopfront_source_updated_at?: string | null;
   shopfront_price?: number | null;
   shopfront_quantity?: number | null;
   shopfront_single_level?: number | null;
@@ -901,69 +904,6 @@ export interface ProductCatalogueFilters {
   /** Comma-separated status values; omit when all statuses are selected. */
   statuses?: string | null;
   viiGiftCard?: boolean | null;
-}
-
-type NativeProductRow = {
-  id: number;
-  name: string;
-  status?: string | null;
-  type?: string | null;
-  categoryId?: number | null;
-  categoryName?: string | null;
-  brandId?: number | null;
-  brandName?: string | null;
-  familyId?: number | null;
-  price?: number | null;
-  cost?: number | null;
-  caseQuantity?: number | null;
-  stockQuantity?: number | null;
-  trackInventory?: boolean | null;
-  barcodes?: Array<{ code?: string | null }> | null;
-  performance30d?: Array<number | string> | null;
-};
-
-function mapNativeProduct(product: NativeProductRow): OdooProductRecord {
-  const barcode = product.barcodes?.find((row) => row.code)?.code || false;
-  const priceKnown = product.price != null && Number.isFinite(Number(product.price));
-  const price = priceKnown ? Number(product.price) : 0;
-  const cost = product.cost == null ? null : Number(product.cost);
-  const qty = product.stockQuantity == null ? 0 : Number(product.stockQuantity);
-  const categoryId = product.categoryId == null ? null : Number(product.categoryId);
-  const status = (product.status || "ACTIVE").toUpperCase();
-  // Shopfront: NOT_PURCHASING remains sellable; NOT_SELLING / NOT_ACTIVE do not.
-  const sellable = status === "ACTIVE" || status === "NOT_PURCHASING";
-  const performance30d = product.performance30d?.map((point) => Number(point)).filter((point) => Number.isFinite(point)) ?? null;
-  return {
-    id: Number(product.id),
-    name: product.name,
-    display_name: product.name,
-    active: sellable,
-    barcode,
-    default_code: false,
-    list_price: price,
-    standard_price: cost ?? false,
-    shopfront_cost: cost,
-    shopfront_cost_status: cost == null ? "missing" : "available",
-    shopfront_case_quantity: product.caseQuantity == null ? null : Number(product.caseQuantity),
-    shopfront_price: price,
-    shopfront_quantity: qty,
-    shopfront_inventory_status: product.stockQuantity == null ? "missing" : "available",
-    shopfront_data_status: product.stockQuantity == null ? "missing" : "available",
-    shopfront_source_name: product.name,
-    shopfront_source_category: product.categoryName || false,
-    shopfront_source_status: product.status || null,
-    shopfront_track_inventory: product.trackInventory ?? true,
-    performance_30d: performance30d,
-    performance_source: performance30d ? "Odoo" : undefined,
-    taxes_id: [],
-    price_included: priceKnown ? price : null,
-    price_tax: null,
-    qty_available: qty,
-    free_qty: qty,
-    uom_id: false,
-    pos_categ_ids: categoryId ? [categoryId] : [],
-    available_in_pos: sellable,
-  };
 }
 
 /** Read a named dataset. Prefer Orithos ledger APIs after the native cutover. */
