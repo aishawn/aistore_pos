@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { MapPin } from "lucide-react";
 import { LocationSelector } from "@/components/LocationSelector";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { isGlobalWorkMode, readRegisterId } from "@/lib/work-context";
+import { readContextOutletId, readRegisterId, WORK_CONTEXT_EVENT } from "@/lib/work-context";
 
 type OutletRow = { id: number; name: string };
 type RegisterRow = { id: number; name: string; outletId?: number };
@@ -14,9 +14,15 @@ export function LocationHeaderControl() {
   const { user, ready } = useAuth();
   const [open, setOpen] = useState(false);
   const [label, setLabel] = useState("Location");
+  const [contextRevision, setContextRevision] = useState(0);
+  const promptedUser = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!ready || !user?.outletId) return;
+    if (!ready) return;
+    if (!user?.outletId) {
+      promptedUser.current = null;
+      return;
+    }
     let cancelled = false;
     void (async () => {
       try {
@@ -25,14 +31,17 @@ export function LocationHeaderControl() {
           api.get<RegisterRow[]>("/api/registers"),
         ]);
         if (cancelled) return;
+        if (outlets.length > 1 && readContextOutletId() !== user.outletId
+            && promptedUser.current !== user.id) {
+          promptedUser.current = user.id;
+          setOpen(true);
+        }
         const outlet = outlets.find((row) => row.id === user.outletId);
         const registerId = readRegisterId();
         const register = registerId
           ? registers.find((row) => row.id === registerId)
           : undefined;
-        if (isGlobalWorkMode()) {
-          setLabel("Global mode");
-        } else if (outlet && register) {
+        if (outlet && register) {
           setLabel(`${outlet.name} · ${register.name}`);
         } else if (outlet) {
           setLabel(outlet.name);
@@ -42,7 +51,17 @@ export function LocationHeaderControl() {
       }
     })();
     return () => { cancelled = true; };
-  }, [ready, user?.outletId]);
+  }, [ready, user?.id, user?.outletId, contextRevision]);
+
+  useEffect(() => {
+    const refreshLabel = () => setContextRevision((revision) => revision + 1);
+    window.addEventListener(WORK_CONTEXT_EVENT, refreshLabel);
+    window.addEventListener("storage", refreshLabel);
+    return () => {
+      window.removeEventListener(WORK_CONTEXT_EVENT, refreshLabel);
+      window.removeEventListener("storage", refreshLabel);
+    };
+  }, []);
 
   if (!ready) return null;
 

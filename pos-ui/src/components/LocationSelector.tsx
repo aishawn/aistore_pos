@@ -3,14 +3,14 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   MapPinIcon,
-  GlobeIcon,
   RegisterIcon,
   ArrowLeftIcon,
 } from "@/components/icons";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
 import { api, apiFailureMessage } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { writeRegisterContext } from "@/lib/work-context";
+import { hasBlockingWorkActivityInCurrentTab, hasWorkActivityInOtherTab, readContextOutletId, readRegisterId, readWorkActivityInCurrentTab, writeRegisterContext } from "@/lib/work-context";
+import { PENDING_REGISTER_OPEN_KEY } from "@/lib/register-open-attempt";
 
 type OutletRow = { id: number; name: string };
 type RegisterRow = { id: number; name: string; outletId?: number };
@@ -27,7 +27,6 @@ export function LocationSelector({
   const [outlets, setOutlets] = useState<OutletRow[]>([]);
   const [registers, setRegisters] = useState<RegisterRow[]>([]);
   const [selectedOutletId, setSelectedOutletId] = useState<number | null>(null);
-  const [globalMode, setGlobalMode] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -64,16 +63,41 @@ export function LocationSelector({
     return () => { cancelled = true; };
   }, [open]);
 
-  async function applyContext(outletId: number, registerId: number | null, isGlobal: boolean) {
+  async function applyContext(outletId: number, registerId: number | null) {
+    const hasUnresolvedOperation = typeof sessionStorage !== "undefined" && [
+      "orithos.native-checkout.pending.v1",
+      "orithos.native-refund.pending.v1",
+      "orithos.native-register-close.pending.v1",
+      PENDING_REGISTER_OPEN_KEY,
+    ].some((key) => sessionStorage.getItem(key) != null);
+    if (hasUnresolvedOperation) {
+      setError("Finish or recover the pending register operation before changing location.");
+      return;
+    }
+    if (user?.id && hasWorkActivityInOtherTab(user.id)) {
+      setError("Finish the active register work in the other tab before changing location.");
+      return;
+    }
+    const currentActivity = user?.id ? readWorkActivityInCurrentTab(user.id) : null;
+    if (user?.id && hasBlockingWorkActivityInCurrentTab(user.id)) {
+      setError("Finish or recover the active register operation before changing location.");
+      return;
+    }
+    const hasCart = typeof sessionStorage !== "undefined" && sessionStorage.getItem("orithos.native-cart-active.v1") === "1";
+    const contextChanged = readContextOutletId() !== outletId || readRegisterId() !== registerId;
+    if (contextChanged && (hasCart || currentActivity === "cart")
+        && !window.confirm("Changing location will clear the current cart. Continue?")) return;
+    if (contextChanged && currentActivity === "unsaved"
+        && !window.confirm("Changing location will discard the unsaved register count or refund details. Continue?")) return;
     setBusy(true);
     setError(null);
     try {
       await setWorkContext({
         outletId,
         registerId,
-        globalMode: isGlobal,
+        globalMode: false,
       });
-      writeRegisterContext(registerId, isGlobal);
+      writeRegisterContext(outletId, registerId);
       close();
     } catch (cause) {
       setError(apiFailureMessage(cause, "Could not update your location.", "Session expired"));
@@ -82,16 +106,8 @@ export function LocationSelector({
     }
   }
 
-  async function pickOutlet(outletId: number, isGlobal: boolean) {
-    if (isGlobal) {
-      const fallback = user?.outletId ?? outlets[0]?.id;
-      if (fallback) {
-        await applyContext(fallback, null, true);
-      }
-      return;
-    }
+  async function pickOutlet(outletId: number) {
     setSelectedOutletId(outletId);
-    setGlobalMode(false);
     setStep("register");
   }
 
@@ -99,8 +115,7 @@ export function LocationSelector({
     ? []
     : registers.filter((row) => Number(row.outletId) === selectedOutletId);
 
-  const selectedOutletName = outlets.find((row) => row.id === selectedOutletId)?.name
-    ?? (globalMode ? "Global" : "Outlet");
+  const selectedOutletName = outlets.find((row) => row.id === selectedOutletId)?.name ?? "Outlet";
 
   if (!open) return null;
 
@@ -139,18 +154,9 @@ export function LocationSelector({
                     label={outlet.name}
                     sublabel={user?.outletId === outlet.id ? "(Current session outlet)" : undefined}
                     disabled={busy}
-                    onClick={() => void pickOutlet(outlet.id, false)}
+                    onClick={() => void pickOutlet(outlet.id)}
                   />
                 ))}
-                {outlets.length > 1 && (
-                  <OptionCard
-                    icon={<GlobeIcon size={22} strokeWidth={1.5} />}
-                    label="Not at an Outlet"
-                    sublabel="(Global Mode)"
-                    disabled={busy}
-                    onClick={() => void pickOutlet(0, true)}
-                  />
-                )}
               </>
             ) : (
               <>
@@ -165,7 +171,7 @@ export function LocationSelector({
                     disabled={busy}
                     onClick={() => {
                       if (selectedOutletId != null) {
-                        void applyContext(selectedOutletId, register.id, false);
+                        void applyContext(selectedOutletId, register.id);
                       }
                     }}
                   />
@@ -176,7 +182,7 @@ export function LocationSelector({
                   disabled={busy}
                   onClick={() => {
                     if (selectedOutletId != null) {
-                      void applyContext(selectedOutletId, null, globalMode);
+                      void applyContext(selectedOutletId, null);
                     }
                   }}
                 />

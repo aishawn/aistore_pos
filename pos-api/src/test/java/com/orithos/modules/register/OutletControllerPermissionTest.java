@@ -2,6 +2,8 @@ package com.orithos.modules.register;
 
 import com.orithos.security.AuthUser;
 import com.orithos.security.PermissionAccess;
+import com.orithos.modules.auth.OutletAccessService;
+import com.orithos.modules.user.UserService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -13,7 +15,8 @@ import static org.mockito.Mockito.*;
 class OutletControllerPermissionTest {
     private final OutletMapper mapper = mock(OutletMapper.class);
     private final PermissionAccess permissions = mock(PermissionAccess.class);
-    private final OutletController controller = new OutletController(mapper, permissions);
+    private final OutletController controller = new OutletController(
+            mapper, permissions, mock(OutletAccessService.class), mock(UserService.class));
 
     @BeforeEach
     void authenticate() {

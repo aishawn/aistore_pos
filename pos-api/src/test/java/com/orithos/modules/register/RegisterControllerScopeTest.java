@@ -3,6 +3,9 @@ package com.orithos.modules.register;
 import com.orithos.common.BusinessException;
 import com.orithos.security.AuthUser;
 import com.orithos.security.PermissionAccess;
+import com.orithos.modules.auth.OutletAccessService;
+import com.orithos.modules.user.UserService;
+import com.orithos.modules.user.entity.User;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -16,10 +19,18 @@ class RegisterControllerScopeTest {
     private final RegisterMapper registers = mock(RegisterMapper.class);
     private final OutletMapper outlets = mock(OutletMapper.class);
     private final PermissionAccess permissions = mock(PermissionAccess.class);
-    private final RegisterController controller = new RegisterController(registers, outlets, permissions);
+    private final OutletAccessService outletAccess = mock(OutletAccessService.class);
+    private final UserService users = mock(UserService.class);
+    private final RegisterController controller = new RegisterController(
+            registers, outlets, permissions, outletAccess, users);
 
     @BeforeEach
     void authenticate() {
+        User user = new User();
+        user.setId(7L);
+        user.setOutletId(12L);
+        user.setIsAdmin(false);
+        when(users.require(7L)).thenReturn(user);
         SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
                 new AuthUser(7L, "manager", false, 12L, 55L), null));
     }
@@ -31,8 +42,12 @@ class RegisterControllerScopeTest {
 
     @Test
     void listUsesAuthenticatedVendorScope() {
+        Register assigned = new Register();
+        assigned.setId(4L);
+        assigned.setOutletId(12L);
+        when(registers.findByOutletId(12L)).thenReturn(java.util.List.of(assigned));
         controller.list();
-        verify(registers).findByVendorId(55L);
+        verify(registers).findByOutletId(12L);
         verifyNoMoreInteractions(registers);
     }
 
@@ -46,6 +61,10 @@ class RegisterControllerScopeTest {
         outlet.setId(87L);
         outlet.setVendorId(55L);
         when(outlets.findByIdAndVendor(87L, 55L)).thenReturn(outlet);
+        User admin = users.require(7L);
+        admin.setIsAdmin(true);
+        SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
+                new AuthUser(7L, "manager", true, 12L, 55L), null));
 
         controller.create(register);
 

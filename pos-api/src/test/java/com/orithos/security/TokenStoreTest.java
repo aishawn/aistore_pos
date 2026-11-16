@@ -56,4 +56,24 @@ class TokenStoreTest {
         verify(ops).set(eq("jwt:refresh:prev:5"), eq("token-a"), any());
         verify(ops).set(eq("jwt:refresh:5"), eq("token-b"), any());
     }
+
+    @Test
+    void refreshTokensAreStoredPerSessionAndDoNotReplaceAnotherDevice() {
+        Date expiry = new Date(System.currentTimeMillis() + TimeUnit.DAYS.toMillis(1));
+        store.saveRefresh(7L, "device-a", "token-a", expiry);
+        store.saveRefresh(7L, "device-b", "token-b", expiry);
+
+        verify(ops).set(eq("jwt:refresh:7:device-a"), eq("token-a"), any());
+        verify(ops).set(eq("jwt:refresh:7:device-b"), eq("token-b"), any());
+    }
+
+    @Test
+    void revokedSessionCannotRefreshWhileOtherSessionsRemainValid() {
+        when(redis.hasKey("jwt:refresh:revoked:7:device-a")).thenReturn(true);
+        when(ops.get("jwt:refresh:version:7")).thenReturn("0");
+        when(ops.get("jwt:refresh:7:device-b")).thenReturn("token-b");
+
+        assertFalse(store.refreshValid(7L, "device-a", "token-a", 0L));
+        assertTrue(store.refreshValid(7L, "device-b", "token-b", 0L));
+    }
 }

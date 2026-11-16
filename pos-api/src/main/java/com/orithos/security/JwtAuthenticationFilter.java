@@ -37,17 +37,21 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (header != null && header.startsWith("Bearer ")) {
             try {
                 Claims claims = jwtService.parse(header.substring(7));
+                Long userId = Long.parseLong(claims.getSubject());
+                String sessionId = claims.get("sid", String.class);
                 boolean usable = "access".equals(claims.get("type", String.class))
-                        && !tokenStore.isBlacklisted(claims.getId());
+                        && !tokenStore.isBlacklisted(claims.getId())
+                        && !tokenStore.isRefreshSessionRevoked(userId, sessionId);
                 if (usable && SecurityContextHolder.getContext().getAuthentication() == null) {
                     List<String> auths = claims.get("authorities", List.class);
                     var authorities = (auths == null ? List.<String>of() : auths).stream()
                             .map(SimpleGrantedAuthority::new).toList();
-                    var principal = new AuthUser(Long.parseLong(claims.getSubject()),
+                    var principal = new AuthUser(userId,
                             claims.get("username", String.class),
                             Boolean.TRUE.equals(claims.get("admin", Boolean.class)),
                             JwtService.claimAsLong(claims, "outletId"),
-                            JwtService.claimAsLong(claims, "vendorId"));
+                            JwtService.claimAsLong(claims, "vendorId"),
+                            sessionId);
                     var auth = new UsernamePasswordAuthenticationToken(principal, null, authorities);
                     auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(auth);

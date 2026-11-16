@@ -34,6 +34,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -156,8 +157,10 @@ public class AuthController {
             throw new BusinessException(40103, "Invalid refresh token");
         }
         Long userId = Long.parseLong(claims.getSubject());
+        String sessionId = claims.get("sid", String.class);
+        Long sessionVersion = JwtService.claimAsLong(claims, "sessionVersion");
         if (!"refresh".equals(claims.get("type", String.class))
-                || !tokenStore.refreshValid(userId, claims.getId())) {
+                || !tokenStore.refreshValid(userId, sessionId, claims.getId(), sessionVersion)) {
             throw new BusinessException(40103, "Refresh token expired or revoked");
         }
         routeRefreshContext();
@@ -173,7 +176,10 @@ public class AuthController {
             }
         }
         // Rotate refresh tokens so active sessions keep their sliding expiry.
-        return ApiResult.ok(issueTokens(u));
+        Long sessionOutletId = JwtService.claimAsLong(claims, "outletId");
+        if (sessionOutletId == null) sessionOutletId = u.getOutletId();
+        outletAccess.requireOutletAccess(sessionOutletId, u, u.getVendorId());
+        return ApiResult.ok(issueTokens(u, sessionOutletId, sessionId));
     }
 
     @PostMapping("/logout")
@@ -182,7 +188,7 @@ public class AuthController {
             try {
                 Claims claims = jwtService.parse(header.substring(7));
                 tokenStore.blacklist(claims.getId(), claims.getExpiration());
-                tokenStore.revokeRefresh(Long.parseLong(claims.getSubject()));
+                tokenStore.revokeRefreshSession(Long.parseLong(claims.getSubject()), claims.get("sid", String.class));
             } catch (Exception ignored) {
             }
         }
@@ -264,7 +270,8 @@ public class AuthController {
         Long vendorId = outletAccess.requireVendor();
         outletAccess.requireOutletAccess(req.outletId(), u, vendorId);
         outletAccess.requireRegisterForOutlet(req.registerId(), req.outletId(), vendorId);
-        return ApiResult.ok(issueTokens(u, req.outletId()));
+        if (req.globalMode()) throw new BusinessException(40001, "Global work mode is not available");
+        return ApiResult.ok(issueTokens(u, req.outletId(), CurrentUser.sessionId()));
     }
 
     /** Current user info — mirrors the live /user/info shape. */
@@ -283,7 +290,7 @@ public class AuthController {
         body.put("platformOperator", platformAccess.isPlatformAdmin(
                 Boolean.TRUE.equals(u.getIsAdmin()), u.getVendorId()));
         body.put("darkMode", u.getDarkMode() == null ? "default" : u.getDarkMode());
-        body.put("outletId", u.getOutletId());
+        body.put("outletId", CurrentUser.outletId() != null ? CurrentUser.outletId() : u.getOutletId());
         body.put("vendorId", u.getVendorId());
         body.put("email", u.getEmail());
         body.put("roleId", u.getRoleId());
@@ -341,12 +348,18 @@ public class AuthController {
     }
 
     private TokenResponse issueTokens(User u, Long sessionOutletId) {
+        return issueTokens(u, sessionOutletId, UUID.randomUUID().toString());
+    }
+
+    private TokenResponse issueTokens(User u, Long sessionOutletId, String sessionId) {
         List<String> authorities = userService.authorities(u);
         Long outletId = sessionOutletId != null ? sessionOutletId : u.getOutletId();
+        String effectiveSessionId = sessionId == null ? UUID.randomUUID().toString() : sessionId;
         var access = jwtService.issueAccess(u.getId(), u.getUsername(),
-                Boolean.TRUE.equals(u.getIsAdmin()), outletId, u.getVendorId(), authorities);
-        var refresh = jwtService.issueRefresh(u.getId(), u.getUsername());
-        tokenStore.saveRefresh(u.getId(), refresh.jti(), refresh.expiry());
+                Boolean.TRUE.equals(u.getIsAdmin()), outletId, u.getVendorId(), authorities, effectiveSessionId);
+        long sessionVersion = tokenStore.currentRefreshVersion(u.getId());
+        var refresh = jwtService.issueRefresh(u.getId(), u.getUsername(), outletId, effectiveSessionId, sessionVersion);
+        tokenStore.saveRefresh(u.getId(), effectiveSessionId, refresh.jti(), refresh.expiry());
         return toResponse(u, access.token(), refresh.token(), outletId);
     }
 

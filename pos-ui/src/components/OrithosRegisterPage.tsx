@@ -22,6 +22,9 @@ import {
 } from "@/lib/api";
 import { ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { readContextOutletId, readRegisterId, WORK_CONTEXT_EVENT, writeRegisterContext, writeWorkActivity } from "@/lib/work-context";
+import { clearPendingRegisterOpen, readPendingRegisterOpen, savePendingRegisterOpen } from "@/lib/register-open-attempt";
+import { isRegisterSwitchDisabled } from "@/lib/register-switch";
 
 type CartLine = { product: ProductBrowseItem; quantity: number };
 type Receipt = { reference: string; total: number; gst: number; change: number; lines: CartLine[] };
@@ -65,22 +68,29 @@ function NativeOrithosRegisterPage() {
   const openAttemptKey = useRef<string | null>(null);
   const checkoutAttempt = useRef<CheckoutAttempt | null>(null);
   const refundAttempt = useRef<RefundAttempt | null>(null);
-  const { hasPermission } = useAuth();
+  const { hasPermission, user, setWorkContext } = useAuth();
 
   const load = useCallback(async () => {
     try {
       const rows = await listRetailRegisters();
       setRegisters(rows);
-      const selected = rows.find((item) => item.id === registerId) ?? rows[0] ?? null;
+      const hasStoredContext = readContextOutletId() === user?.outletId;
+      const preferredId = hasStoredContext ? readRegisterId() : (readRegisterId() ?? registerId);
+      const selected = preferredId == null && hasStoredContext
+        ? null
+        : rows.find((item) => item.id === preferredId) ?? rows[0] ?? null;
       setRegisterId(selected?.id ?? null);
       if (selected) setSession(await getRetailRegisterSession(selected.id));
       else setSession(null);
+      if (user?.outletId && (selected || !hasStoredContext)) {
+        writeRegisterContext(user.outletId, selected?.id ?? null);
+      }
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Orithos could not load the register.");
     } finally {
       setLoading(false);
     }
-  }, [registerId]);
+  }, [registerId, user?.outletId]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => { void load(); }, 0);
@@ -106,6 +116,94 @@ function NativeOrithosRegisterPage() {
     }, 0);
     return () => window.clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    if (!user?.id || !user.outletId) return;
+    let attempt: ReturnType<typeof readPendingRegisterOpen> = null;
+    try {
+      attempt = readPendingRegisterOpen(sessionStorage, user.id, user.outletId);
+    } catch { return; }
+    if (!attempt) return;
+
+    let active = true;
+    const timer = window.setTimeout(() => {
+      if (!active) return;
+      openAttemptKey.current = attempt.key;
+      setRegisterId(attempt.registerId);
+      setOpeningFloat(String(attempt.openingFloat));
+      setOpenAttemptPending(true);
+      void getRetailRegisterSession(attempt.registerId).then((current) => {
+        if (!active || !current) return;
+        setSession(current);
+        openAttemptKey.current = null;
+        setOpenAttemptPending(false);
+        try { clearPendingRegisterOpen(sessionStorage); } catch { /* Keep the saved recovery marker if storage is unavailable. */ }
+      }).catch((cause) => {
+        if (active && !(cause instanceof ApiError && cause.status === 409)) {
+          setError(cause instanceof Error ? cause.message : "Could not recover the register open attempt.");
+        }
+      });
+    }, 0);
+    return () => { active = false; window.clearTimeout(timer); };
+  }, [user?.id, user?.outletId]);
+
+  useEffect(() => {
+    try {
+      if (cart.length > 0) sessionStorage.setItem("orithos.native-cart-active.v1", "1");
+      else sessionStorage.removeItem("orithos.native-cart-active.v1");
+    } catch { /* The cart remains usable if session storage is unavailable. */ }
+  }, [cart]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    const operationPending = checkoutRecovery || refundRecovery || openAttemptPending || busy || refundBusy;
+    const activity = operationPending
+      ? "operation"
+      : cart.length > 0
+        ? "cart"
+        : refundOpen
+          ? "unsaved"
+          : null;
+    const update = () => writeWorkActivity(activity !== null, user.id, activity ?? "operation");
+    update();
+    if (!activity) return () => writeWorkActivity(false, user.id);
+    const heartbeat = window.setInterval(update, 60_000);
+    return () => {
+      window.clearInterval(heartbeat);
+      writeWorkActivity(false, user.id);
+    };
+  }, [cart.length, checkoutRecovery, refundRecovery, openAttemptPending, refundOpen, busy, refundBusy, user?.id]);
+
+  useEffect(() => {
+    const reloadContext = () => {
+      setCart([]);
+      setQuote(null);
+      setQuotedFingerprint(null);
+      setCashTendered("");
+      setSession(null);
+      setReceipt(null);
+      setRefundOpen(false);
+      setRefundSales([]);
+      setSelectedRefundSale(null);
+      setRefundQuantities({});
+      setRefundReason("");
+      setRefundError(null);
+      setRefundResult(null);
+      setError(null);
+      setProductsRevision((revision) => revision + 1);
+      setLoading(true);
+      void load();
+    };
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === "orithos_work_outlet_id" || event.key === "orithos_work_register_id") reloadContext();
+    };
+    window.addEventListener(WORK_CONTEXT_EVENT, reloadContext);
+    window.addEventListener("storage", onStorage);
+    return () => {
+      window.removeEventListener(WORK_CONTEXT_EVENT, reloadContext);
+      window.removeEventListener("storage", onStorage);
+    };
+  }, [load]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -189,10 +287,22 @@ function NativeOrithosRegisterPage() {
     setError(null);
     try {
       openAttemptKey.current ??= crypto.randomUUID();
+      if (user?.id && user.outletId) {
+        try {
+          savePendingRegisterOpen(sessionStorage, {
+            key: openAttemptKey.current,
+            userId: user.id,
+            outletId: user.outletId,
+            registerId,
+            openingFloat: amount,
+          });
+        } catch { /* In-memory idempotency remains active when session storage is unavailable. */ }
+      }
       setOpenAttemptPending(true);
       setSession(await openRetailRegisterSession(registerId, amount, openAttemptKey.current));
       openAttemptKey.current = null;
       setOpenAttemptPending(false);
+      try { clearPendingRegisterOpen(sessionStorage); } catch { /* The open session remains confirmed in memory. */ }
     } catch (cause) {
       try {
         const current = await getRetailRegisterSession(registerId);
@@ -200,6 +310,7 @@ function NativeOrithosRegisterPage() {
           setSession(current);
           openAttemptKey.current = null;
           setOpenAttemptPending(false);
+          try { clearPendingRegisterOpen(sessionStorage); } catch { /* The open session remains confirmed in memory. */ }
           return;
         }
       } catch { /* Keep the original open-session error for retry. */ }
@@ -407,14 +518,22 @@ function NativeOrithosRegisterPage() {
         </div>
         <div className="flex items-center gap-2">
           {hasPermission("sell.refund") && <button type="button" onClick={() => void openRefundWorkspace()} disabled={!session || busy} title="Refund a completed sale" aria-label="Refund a completed sale" className="inline-flex h-10 items-center gap-2 rounded border border-[var(--oh-border)] px-3 text-sm font-semibold disabled:opacity-50"><RotateCcw size={16} /> Refund</button>}
-          <select aria-label="Register" value={registerId ?? ""} disabled={checkoutRecovery || openAttemptPending} onChange={(event) => {
+          <select aria-label="Register" value={registerId ?? ""} disabled={isRegisterSwitchDisabled({
+            busy,
+            checkoutRecovery,
+            openAttemptPending,
+            refundBusy,
+            refundRecovery,
+            refundOpen,
+          })} onChange={(event) => {
             const id = Number(event.target.value);
-            setRegisterId(id);
-            setCart([]);
-            setSession(null);
-            const selected = registers.find((item) => item.id === id);
-            if (selected) void getRetailRegisterSession(id).then(setSession).catch((cause) => setError(cause instanceof Error ? cause.message : "Could not read register session."));
+            if (!user?.outletId) return;
+            if (cart.length > 0 && !window.confirm("Changing register will clear the current cart. Continue?")) return;
+            void setWorkContext({ outletId: user.outletId, registerId: id, globalMode: false }).then(() => {
+              writeRegisterContext(user.outletId!, id);
+            }).catch((cause) => setError(cause instanceof Error ? cause.message : "Could not change register."));
           }} className="h-10 min-w-40 rounded border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 text-sm">
+            <option value="" disabled>Select register</option>
             {registers.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
           </select>
           <button type="button" onClick={() => { setLoading(true); setError(null); void load(); setProductsRevision((revision) => revision + 1); }} title="Refresh register and products" aria-label="Refresh register and products" className="grid size-10 place-items-center rounded border border-[var(--oh-border)]"><RefreshCw size={17} /></button>

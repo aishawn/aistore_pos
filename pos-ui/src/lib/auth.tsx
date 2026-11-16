@@ -3,7 +3,7 @@
 import { setNativeReadIdentity, clearNativeReadCache } from "./native-read-cache";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { api, isLocalPreviewSession, refreshAccessToken, registerAuthFailureHandler } from "@/lib/api";
-import type { WorkContextSelection } from "@/lib/work-context";
+import { clearRegisterContext, type WorkContextSelection } from "@/lib/work-context";
 export type StoreRoleCode = "ADMIN" | "MANAGER" | "CLERK" | "NONE" | string;
 
 export interface AuthUser {
@@ -153,6 +153,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
+    const syncWorkContext = () => {
+      void api.get<CurrentUserResponse>("/api/auth/me").then((current) => {
+        const normalized = normalizeUser(current);
+        setUser(normalized);
+        if (typeof localStorage !== "undefined") localStorage.setItem(USER_KEY, JSON.stringify(normalized));
+      }).catch(() => undefined);
+    };
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === "orithos_work_outlet_id" || event.key === "orithos_work_register_id") syncWorkContext();
+    };
+    window.addEventListener("storage", onStorage);
+    return () => {
+      window.removeEventListener("storage", onStorage);
+    };
+  }, []);
+
+  useEffect(() => {
     setNativeReadIdentity(ready && user ? JSON.stringify([user.id, user.vendorId, user.outletId, user.roleCode, user.permissions]) : null);
   }, [ready, user]);
 
@@ -212,6 +229,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     setUser(null);
     if (typeof localStorage !== "undefined") localStorage.removeItem(USER_KEY);
+    clearRegisterContext();
     if (typeof sessionStorage !== "undefined") sessionStorage.setItem(SKIP_SESSION_RECOVER_KEY, "1");
     if (typeof document !== "undefined") document.cookie = "orithos_local_preview=;path=/;max-age=0;samesite=lax";
   }, []);
@@ -223,13 +241,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [user]);
 
   const setWorkContext = useCallback(async (selection: WorkContextSelection) => {
-    await api.post("/api/auth/work-context", {
+    const response = await api.post<LoginResponse>("/api/auth/work-context", {
       outletId: selection.outletId,
       registerId: selection.registerId,
       globalMode: selection.globalMode,
     });
-    const current = await api.get<CurrentUserResponse>("/api/auth/me");
-    const normalized = normalizeUser(current);
+    const normalized = normalizeUser(response.user);
     setUser(normalized);
     if (typeof localStorage !== "undefined") localStorage.setItem(USER_KEY, JSON.stringify(normalized));
   }, []);

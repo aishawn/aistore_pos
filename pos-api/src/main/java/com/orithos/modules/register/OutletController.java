@@ -2,6 +2,8 @@ package com.orithos.modules.register;
 
 import com.orithos.common.ApiResult;
 import com.orithos.common.BusinessException;
+import com.orithos.modules.auth.OutletAccessService;
+import com.orithos.modules.user.UserService;
 import com.orithos.security.CurrentUser;
 import com.orithos.security.PermissionAccess;
 import org.springframework.web.bind.annotation.*;
@@ -14,22 +16,28 @@ public class OutletController {
 
     private final OutletMapper mapper;
     private final PermissionAccess permissions;
+    private final OutletAccessService outletAccess;
+    private final UserService users;
 
-    public OutletController(OutletMapper mapper, PermissionAccess permissions) {
+    public OutletController(OutletMapper mapper, PermissionAccess permissions,
+                            OutletAccessService outletAccess, UserService users) {
         this.mapper = mapper;
         this.permissions = permissions;
+        this.outletAccess = outletAccess;
+        this.users = users;
     }
 
     @GetMapping
     public ApiResult<List<Outlet>> list() {
         Long vendorId = requireVendor();
-        return ApiResult.ok(mapper.findByVendorId(vendorId));
+        return ApiResult.ok(outletAccess.listOperableOutlets(users.require(CurrentUser.id()), vendorId));
     }
 
     @GetMapping("/{id}")
     public ApiResult<Outlet> get(@PathVariable Long id) {
         Outlet outlet = mapper.findByIdAndVendor(id, requireVendor());
         if (outlet == null) throw new BusinessException(40410, "Outlet not found");
+        outletAccess.requireOutletAccess(id, users.require(CurrentUser.id()), requireVendor());
         return ApiResult.ok(outlet);
     }
 

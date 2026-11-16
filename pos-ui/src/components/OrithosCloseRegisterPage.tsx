@@ -11,6 +11,8 @@ import {
   type RetailRegisterSessionSummary,
 } from "@/lib/api";
 import { ApiError } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
+import { readRegisterId, WORK_CONTEXT_EVENT, writeRegisterContext, writeWorkActivity } from "@/lib/work-context";
 
 type CloseAttempt = {
   key: string;
@@ -21,6 +23,7 @@ const PENDING_CLOSE_KEY = "orithos.native-register-close.pending.v1";
 const money = (amount: number) => new Intl.NumberFormat("en-AU", { style: "currency", currency: "AUD" }).format(amount);
 
 export function OrithosCloseRegisterPage() {
+  const { user, setWorkContext } = useAuth();
   const [registers, setRegisters] = useState<RetailRegister[]>([]);
   const [registerId, setRegisterId] = useState<number | null>(null);
   const [summary, setSummary] = useState<RetailRegisterSessionSummary | null>(null);
@@ -39,7 +42,8 @@ export function OrithosCloseRegisterPage() {
     try {
       const rows = await listRetailRegisters();
       setRegisters(rows);
-      const ordered = [...rows].sort((a, b) => Number(b.id === preferredId) - Number(a.id === preferredId));
+      const preferred = preferredId ?? readRegisterId();
+      const ordered = [...rows].sort((a, b) => Number(b.id === preferred) - Number(a.id === preferred));
       let selectedId: number | null = null;
       let selectedSummary: RetailRegisterSessionSummary | null = null;
       for (const item of ordered) {
@@ -51,7 +55,9 @@ export function OrithosCloseRegisterPage() {
           if (!(cause instanceof ApiError && cause.status === 409)) throw cause;
         }
       }
-      setRegisterId(selectedId ?? preferredId ?? rows[0]?.id ?? null);
+      const activeRegisterId = selectedId ?? preferred ?? rows[0]?.id ?? null;
+      setRegisterId(activeRegisterId);
+      if (activeRegisterId && user?.outletId) writeRegisterContext(user.outletId, activeRegisterId);
       setSummary(selectedSummary);
       setCountedCash("");
       setCountedTenders(Object.fromEntries((selectedSummary?.tenders ?? []).map((tender) => [tender.paymentMethodId, ""])));
@@ -60,7 +66,7 @@ export function OrithosCloseRegisterPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user?.outletId]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => { void load(); }, 0);
@@ -80,6 +86,34 @@ export function OrithosCloseRegisterPage() {
     }, 0);
     return () => window.clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    const hasCount = Boolean(countedCash.trim())
+      || Object.values(countedTenders).some((value) => value.trim().length > 0);
+    const active = pending || hasCount;
+    const update = () => writeWorkActivity(active, user.id, pending ? "operation" : "unsaved");
+    update();
+    if (!active) return () => writeWorkActivity(false, user.id);
+    const heartbeat = window.setInterval(update, 60_000);
+    return () => {
+      window.clearInterval(heartbeat);
+      writeWorkActivity(false, user.id);
+    };
+  }, [pending, countedCash, countedTenders, user?.id]);
+
+  useEffect(() => {
+    const reloadContext = () => { setClosure(null); setLoading(true); void load(); };
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === "orithos_work_outlet_id" || event.key === "orithos_work_register_id") reloadContext();
+    };
+    window.addEventListener(WORK_CONTEXT_EVENT, reloadContext);
+    window.addEventListener("storage", onStorage);
+    return () => {
+      window.removeEventListener(WORK_CONTEXT_EVENT, reloadContext);
+      window.removeEventListener("storage", onStorage);
+    };
+  }, [load]);
 
   const selectedRegister = registers.find((register) => register.id === registerId) ?? null;
 
@@ -140,7 +174,16 @@ export function OrithosCloseRegisterPage() {
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--oh-border)] pb-4">
         <div><h1 className="text-xl font-semibold">Close register</h1><p className="mt-1 text-sm text-[var(--oh-muted)]">Orithos session · {selectedRegister?.name ?? "No active session"}</p></div>
         <div className="flex items-center gap-2">
-          <select aria-label="Register" value={registerId ?? ""} disabled={pending || busy} onChange={(event) => { const id = Number(event.target.value); setRegisterId(id); setLoading(true); setClosure(null); void load(id); }} className="h-10 min-w-40 rounded border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 text-sm">
+          <select aria-label="Register" value={registerId ?? ""} disabled={pending || busy} onChange={(event) => {
+            const id = Number(event.target.value);
+            if (!user?.outletId) return;
+            if ((countedCash.trim() || Object.values(countedTenders).some((value) => value.trim()))
+                && !window.confirm("Changing register will clear the current cash count. Continue?")) return;
+            void setWorkContext({ outletId: user.outletId, registerId: id, globalMode: false }).then(() => {
+              writeRegisterContext(user.outletId!, id);
+            }).catch((cause) => setError(cause instanceof Error ? cause.message : "Could not change register."));
+          }} className="h-10 min-w-40 rounded border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 text-sm">
+            <option value="" disabled>Select register</option>
             {registers.map((register) => <option key={register.id} value={register.id}>{register.name}</option>)}
           </select>
           <button type="button" title="Refresh register totals" aria-label="Refresh register totals" onClick={() => { setLoading(true); void load(registerId); }} className="grid size-10 place-items-center rounded border border-[var(--oh-border)]"><RefreshCw size={17} /></button>

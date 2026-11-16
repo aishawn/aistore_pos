@@ -29,17 +29,32 @@ public class JwtService {
 
     public IssuedToken issueAccess(Long userId, String username, boolean admin, Long outletId,
                                    Long vendorId, List<String> authorities) {
-        return issue(userId, username, "access", admin, outletId, vendorId, authorities,
+        return issueAccess(userId, username, admin, outletId, vendorId, authorities, null);
+    }
+
+    public IssuedToken issueAccess(Long userId, String username, boolean admin, Long outletId,
+                                   Long vendorId, List<String> authorities, String sessionId) {
+        return issue(userId, username, "access", admin, outletId, vendorId, authorities, sessionId, null,
                 props.getAccessTokenTtlMinutes() * 60_000L);
     }
 
     public IssuedToken issueRefresh(Long userId, String username) {
-        return issue(userId, username, "refresh", false, null, null, List.of(),
+        return issueRefresh(userId, username, null, null);
+    }
+
+    public IssuedToken issueRefresh(Long userId, String username, Long outletId, String sessionId) {
+        return issueRefresh(userId, username, outletId, sessionId, null);
+    }
+
+    public IssuedToken issueRefresh(Long userId, String username, Long outletId, String sessionId,
+                                    Long sessionVersion) {
+        return issue(userId, username, "refresh", false, outletId, null, List.of(), sessionId, sessionVersion,
                 props.getRefreshTokenTtlDays() * 24 * 60 * 60_000L);
     }
 
     private IssuedToken issue(Long userId, String username, String type, boolean admin, Long outletId,
-                              Long vendorId, List<String> authorities, long ttlMillis) {
+                              Long vendorId, List<String> authorities, String sessionId,
+                              Long sessionVersion, long ttlMillis) {
         String jti = UUID.randomUUID().toString();
         Date now = new Date();
         Date exp = new Date(now.getTime() + ttlMillis);
@@ -54,6 +69,8 @@ public class JwtService {
         if (vendorId != null) {
             claims.put("vendorId", vendorId);
         }
+        if (sessionId != null) claims.put("sid", sessionId);
+        if (sessionVersion != null) claims.put("sessionVersion", sessionVersion);
         String token = Jwts.builder()
                 .issuer(props.getIssuer())
                 .subject(String.valueOf(userId))

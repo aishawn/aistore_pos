@@ -4,6 +4,8 @@ import com.orithos.common.ApiResult;
 import com.orithos.common.BusinessException;
 import com.orithos.security.CurrentUser;
 import com.orithos.security.PermissionAccess;
+import com.orithos.modules.auth.OutletAccessService;
+import com.orithos.modules.user.UserService;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -15,16 +17,24 @@ public class RegisterController {
     private final RegisterMapper mapper;
     private final OutletMapper outlets;
     private final PermissionAccess permissions;
+    private final OutletAccessService outletAccess;
+    private final UserService users;
 
-    public RegisterController(RegisterMapper mapper, OutletMapper outlets, PermissionAccess permissions) {
+    public RegisterController(RegisterMapper mapper, OutletMapper outlets, PermissionAccess permissions,
+                              OutletAccessService outletAccess, UserService users) {
         this.mapper = mapper;
         this.outlets = outlets;
         this.permissions = permissions;
+        this.outletAccess = outletAccess;
+        this.users = users;
     }
 
     @GetMapping
     public ApiResult<List<Register>> list() {
-        return ApiResult.ok(mapper.findByVendorId(requireVendor()));
+        Long vendorId = requireVendor();
+        var user = users.require(CurrentUser.id());
+        if (Boolean.TRUE.equals(user.getIsAdmin())) return ApiResult.ok(mapper.findByVendorId(vendorId));
+        return ApiResult.ok(user.getOutletId() == null ? List.of() : mapper.findByOutletId(user.getOutletId()));
     }
 
     @GetMapping("/{id}")
@@ -54,6 +64,7 @@ public class RegisterController {
     @DeleteMapping("/{id}")
     public ApiResult<Void> delete(@PathVariable Long id) {
         permissions.requirePermission("settings.store");
+        requireRegister(id);
         mapper.softDelete(id, requireVendor());
         return ApiResult.ok();
     }
@@ -83,6 +94,7 @@ public class RegisterController {
     private Register requireRegister(Long id) {
         Register register = mapper.findByIdAndVendor(id, requireVendor());
         if (register == null) throw new BusinessException(40400, "Register not found.");
+        outletAccess.requireOutletAccess(register.getOutletId(), users.require(CurrentUser.id()), requireVendor());
         return register;
     }
 
@@ -90,6 +102,7 @@ public class RegisterController {
         if (outletId == null || outlets.findByIdAndVendor(outletId, requireVendor()) == null) {
             throw new BusinessException(40410, "Outlet not found.");
         }
+        outletAccess.requireOutletAccess(outletId, users.require(CurrentUser.id()), requireVendor());
     }
 
     private Long requireVendor() {

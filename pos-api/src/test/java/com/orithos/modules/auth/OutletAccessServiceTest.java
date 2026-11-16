@@ -1,7 +1,6 @@
 package com.orithos.modules.auth;
 
 import com.orithos.common.BusinessException;
-import com.orithos.modules.ai.report.UserReportingOutletMapper;
 import com.orithos.modules.register.Outlet;
 import com.orithos.modules.register.OutletMapper;
 import com.orithos.modules.register.Register;
@@ -14,7 +13,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -26,7 +24,6 @@ class OutletAccessServiceTest {
 
     @Mock OutletMapper outletMapper;
     @Mock RegisterMapper registerMapper;
-    @Mock UserReportingOutletMapper reportingOutletMapper;
     @InjectMocks OutletAccessService service;
 
     private User clerk;
@@ -55,7 +52,6 @@ class OutletAccessServiceTest {
     @Test
     void clerkDeniedForeignOutlet() {
         when(outletMapper.findByIdAndVendor(2L, 5L)).thenReturn(outlet);
-        when(reportingOutletMapper.findOutletIds(10L)).thenReturn(List.of());
         assertThrows(BusinessException.class, () -> service.requireOutletAccess(2L, clerk, 5L));
     }
 

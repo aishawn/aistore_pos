@@ -30,4 +30,9 @@ public final class CurrentUser {
         AuthUser u = get();
         return u == null ? null : u.vendorId();
     }
+
+    public static String sessionId() {
+        AuthUser u = get();
+        return u == null ? null : u.sessionId();
+    }
 }
