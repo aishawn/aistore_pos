@@ -36,10 +36,17 @@ All conflict records are now classified, but none were moved or cleared. Keep th
 
 There was no active sync job at the time of the status query. The current source catalog observation is recent, while catalog job health is still partial/stale because the latest catalog job did not reach a clean terminal success.
 
+## Latest Sync Health Readback (2026-11-18 04:11 +08)
+
+An additional authenticated read-only `GET /api/sync/status?store=skr` confirmed the crawler runtime fingerprint above and no active job. The newest daily sync was job `#845`, `partial` in `pos_import_incomplete`, finished at `2026-11-17T19:57:34Z` with 2 barcode-association conflicts across Demo and SKR. The most recent successful `daily_sync` was job `#825`, finished at `2026-11-17T13:38:32Z`; its age was 23,579 seconds against the 5,400-second stale threshold. Daily sync health therefore remains `partial` and stale despite the newer partial run.
+
+The newest `catalog_snapshot` was job `#844`, `partial` at `pos_inventory:demo:10853/10853`, finished at `2026-11-17T19:26:24Z`. The last successful catalog snapshot was `#757`, finished at `2026-11-16T18:10:58Z`; its age was 93,633 seconds against the same 5,400-second threshold. Catalog sync freshness therefore remains `partial` and stale. A recent read-only view of source catalog observations must not be treated as evidence that the complete scheduled catalog import succeeded.
+
 ## Evidence and Remaining Work
 
 - Ignored local candidate export: crawler `.local/cost-reconciliation-live-2026-11-18.csv` and `.json`.
 - Ignored local barcode exports: crawler `.local/shopfront-barcode-conflicts-run523-2026-11-18.csv/.json`, `.local/shopfront-barcode-full-classification-run523-2026-11-18.csv/.json`, and the per-store owner readbacks. These contain the row-level evidence for all 408 conflicts.
+- The latest authenticated sync-health readback is summarized above; live API status is point-in-time evidence, not a guarantee that subsequent scheduled runs succeed.
 - Direct Shopfront UI `/reports/misc` and product cost management inspection remains pending.
 - Define and test an explicit barcode reassignment policy before acting on any of the 52 zero-stock stale-owner rows per store. Source-duplicate claims and all owners with positive or negative stock remain protected; no barcode was moved in this audit.
 - Reconcile any historical candidate only after Shopfront establishes a current authoritative cost, outlet, and case-size value. Use the existing explicit-ID cost-only path and verify every changed ID in both stores.
