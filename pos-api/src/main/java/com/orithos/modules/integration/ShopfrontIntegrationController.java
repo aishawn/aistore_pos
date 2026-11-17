@@ -60,7 +60,8 @@ public class ShopfrontIntegrationController {
     private record ShopfrontMirrorTable(String name, String columns) {}
     private record BusinessImportPlan(Map<String, Long> productIds, Set<String> existingProductMappings) {}
     private record BarcodeWrite(long productId, String sourceId, String code, BigDecimal quantity,
-                                boolean catalogConfirmed) {}
+                                boolean catalogConfirmed, boolean snapshotComplete,
+                                String snapshotFingerprint, boolean activeSource) {}
     private record BarcodeConflict(String sourceId, String code, long existingProductId, long requestedProductId) {}
 
     private static final class ProductImportBatch {
@@ -179,6 +180,105 @@ public class ShopfrontIntegrationController {
     public ApiResult<Map<String, Object>> products(@RequestHeader("X-Shopfront-Integration-Token") String supplied,
                                                    @RequestBody JsonNode body) {
         return stage(supplied, "products", body);
+    }
+
+    @PostMapping("/products:register-barcode-snapshot")
+    @Transactional
+    public ApiResult<Map<String, Object>> registerProductBarcodeSnapshot(
+            @RequestHeader("X-Shopfront-Integration-Token") String supplied,
+            @RequestBody JsonNode body) {
+        authorize(supplied);
+        if (!businessWriteEnabled) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "SHOPFRONT_BUSINESS_WRITE_ENABLED is false");
+        }
+        String store = body.path("store_key").asText("").trim();
+        JsonNode sourceIdsNode = body.path("source_ids");
+        JsonNode productsNode = body.path("products");
+        int expectedCount = body.path("expected_count").asInt(-1);
+        if (!STORE_KEY.matcher(store).matches() || !body.path("snapshot_complete").asBoolean(false)
+                || !sourceIdsNode.isArray() || !productsNode.isArray() || expectedCount <= 0
+                || expectedCount > 50_000 || expectedCount != sourceIdsNode.size()
+                || expectedCount != productsNode.size()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "A complete barcode snapshot with matching source IDs and product rows is required");
+        }
+        Set<String> sourceIds = new java.util.TreeSet<>();
+        for (JsonNode sourceId : sourceIdsNode) {
+            String value = sourceId.asText("").trim();
+            if (value.isBlank() || !sourceIds.add(value)) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "source_ids must be unique non-empty IDs");
+            }
+        }
+        Map<String, Set<String>> barcodeSources = new java.util.TreeMap<>();
+        Map<String, List<String>> codesBySource = new java.util.TreeMap<>();
+        for (JsonNode product : productsNode) {
+            String sourceId = product.path("source_id").asText("").trim();
+            JsonNode barcodes = product.path("barcodes");
+            if (sourceId.isBlank() || !sourceIds.contains(sourceId) || codesBySource.containsKey(sourceId)
+                    || !barcodes.isArray()) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,
+                        "Every snapshot product must have a unique source ID and explicit barcodes array");
+            }
+            Set<String> productCodes = new java.util.TreeSet<>();
+            for (JsonNode barcode : barcodes) {
+                String code = barcode.asText("").trim();
+                if (code.isBlank()) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Barcode claims must be non-empty strings");
+                }
+                productCodes.add(code);
+                barcodeSources.computeIfAbsent(code, ignored -> new java.util.TreeSet<>()).add(sourceId);
+            }
+            codesBySource.put(sourceId, new ArrayList<>(productCodes));
+        }
+        if (!codesBySource.keySet().equals(sourceIds)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Barcode snapshot source IDs do not match product rows");
+        }
+
+        List<List<Object>> canonicalRows = new ArrayList<>();
+        for (Map.Entry<String, List<String>> entry : codesBySource.entrySet()) {
+            canonicalRows.add(List.of(entry.getKey(), entry.getValue()));
+        }
+        String fingerprint;
+        try {
+            fingerprint = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
+                    .digest(objectMapper.writeValueAsBytes(canonicalRows)));
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Unable to fingerprint barcode snapshot", e);
+        }
+
+        ensureMappingTable();
+        Map<String, Object> mapping = jdbc.queryForList(
+                        "SELECT company_id, outlet_id, enabled FROM shopfront_store_mapping WHERE store_key = ?", store)
+                .stream().filter(row -> isEnabled(row.get("enabled"))).findFirst()
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT,
+                        "No enabled shopfront_store_mapping for store_key=" + store));
+        long outletId = longValue(mapping.get("outlet_id"));
+        if (outletId <= 0) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Shopfront mapping has no numeric POS outlet_id");
+        }
+        ensureBarcodeSnapshotTable();
+        try {
+            jdbc.update("""
+                    INSERT INTO shopfront_product_barcode_snapshot
+                        (store_key,outlet_id,fingerprint,source_ids,barcode_sources,recorded_at)
+                    VALUES (?,?,?,?::jsonb,?::jsonb,CURRENT_TIMESTAMP)
+                    ON CONFLICT (store_key,outlet_id) DO UPDATE SET
+                        fingerprint=EXCLUDED.fingerprint,source_ids=EXCLUDED.source_ids,
+                        barcode_sources=EXCLUDED.barcode_sources,recorded_at=CURRENT_TIMESTAMP
+                    """, store, outletId, fingerprint, objectMapper.writeValueAsString(new ArrayList<>(sourceIds)),
+                    objectMapper.writeValueAsString(barcodeSources));
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Unable to register barcode snapshot", e);
+        }
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("status", "REGISTERED");
+        result.put("store_key", store);
+        result.put("source_count", sourceIds.size());
+        result.put("barcode_count", barcodeSources.size());
+        result.put("fingerprint", fingerprint);
+        return ApiResult.ok(result);
     }
 
     @PostMapping("/products:reconcile-catalog")
@@ -792,7 +892,7 @@ public class ShopfrontIntegrationController {
                 }
             }
         }
-        flushBusinessProductBatch(batch, outletId);
+        flushBusinessProductBatch(batch, outletId, store);
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("store_key", store);
         result.put("scanned", rows.size());
@@ -2426,6 +2526,12 @@ public class ShopfrontIntegrationController {
         jdbc.update("CREATE TABLE IF NOT EXISTS shopfront_store_mapping (store_key VARCHAR(64) NOT NULL PRIMARY KEY, shopfront_outlet VARCHAR(255), company_id VARCHAR(128) NOT NULL, outlet_id VARCHAR(128) NOT NULL, enabled BOOLEAN NOT NULL DEFAULT TRUE)");
     }
 
+    private void ensureBarcodeSnapshotTable() {
+        ensureShadowTables();
+        jdbc.update("CREATE TABLE IF NOT EXISTS shopfront_product_barcode_snapshot (store_key VARCHAR(64) NOT NULL, outlet_id BIGINT NOT NULL, fingerprint VARCHAR(64) NOT NULL, source_ids JSONB NOT NULL, barcode_sources JSONB NOT NULL, recorded_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (store_key,outlet_id))");
+        jdbc.update("ALTER TABLE shopfront_product_barcode_audit ADD COLUMN IF NOT EXISTS catalog_fingerprint VARCHAR(64)");
+    }
+
     private <T> T gone(String message) {
         throw new ResponseStatusException(HttpStatus.GONE, message);
     }
@@ -2435,7 +2541,7 @@ public class ShopfrontIntegrationController {
         String key = "VARCHAR(160)";
         jdbc.update("CREATE TABLE IF NOT EXISTS shopfront_supplier_business_mapping (store_key VARCHAR(64) NOT NULL, source_id " + key + " NOT NULL, outlet_id BIGINT NOT NULL, supplier_id BIGINT NOT NULL, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (store_key, source_id, outlet_id))");
         jdbc.update("CREATE TABLE IF NOT EXISTS shopfront_product_mapping (store_key VARCHAR(64) NOT NULL, source_product_id " + key + " NOT NULL, pos_product_id BIGINT NOT NULL, match_type VARCHAR(32) NOT NULL, status VARCHAR(32) NOT NULL, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (store_key, source_product_id))");
-        jdbc.update("CREATE TABLE IF NOT EXISTS shopfront_product_barcode_audit (id BIGSERIAL PRIMARY KEY, outlet_id BIGINT NOT NULL, source_product_id VARCHAR(160) NOT NULL, barcode VARCHAR(128) NOT NULL, previous_pos_product_id BIGINT NOT NULL, new_pos_product_id BIGINT NOT NULL, reason VARCHAR(96) NOT NULL, recorded_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP)");
+        jdbc.update("CREATE TABLE IF NOT EXISTS shopfront_product_barcode_audit (id BIGSERIAL PRIMARY KEY, outlet_id BIGINT NOT NULL, source_product_id VARCHAR(160) NOT NULL, barcode VARCHAR(128) NOT NULL, previous_pos_product_id BIGINT NOT NULL, new_pos_product_id BIGINT NOT NULL, reason VARCHAR(96) NOT NULL, catalog_fingerprint VARCHAR(64), recorded_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP)");
     }
 
     /**
@@ -2573,7 +2679,7 @@ public class ShopfrontIntegrationController {
                         if (errors.size() < 25) errors.add(ex.getMessage());
                     }
                 }
-                flushBusinessProductBatch(batch, outletId);
+                flushBusinessProductBatch(batch, outletId, store);
                 barcodeConflictCount += batch.barcodeConflictCount;
                 barcodeConflicts.addAll(batch.barcodeConflicts);
                 appendBarcodeConflictErrors(batch, errors);
@@ -3741,7 +3847,7 @@ public class ShopfrontIntegrationController {
         return productId;
     }
 
-    private void flushBusinessProductBatch(ProductImportBatch batch, long outletId) {
+    private void flushBusinessProductBatch(ProductImportBatch batch, long outletId, String store) {
         if (!batch.productUpdates.isEmpty()) {
             String reservation = java.util.UUID.randomUUID().toString().replace("-", "");
             List<Object[]> temporaryNames = new ArrayList<>(batch.productUpdates.size());
@@ -3772,7 +3878,7 @@ public class ShopfrontIntegrationController {
                 owners.put(String.valueOf(row.get("code")), longValue(row.get("product_id")));
             }
             Map<Long, Map<String, Object>> retiredUnstockedOwners = retiredUnstockedBarcodeOwners(
-                    batch.barcodes, owners, outletId);
+                    batch.barcodes, owners, outletId, store);
             Map<String, BarcodeWrite> inserts = new LinkedHashMap<>();
             Map<String, BarcodeWrite> updates = new LinkedHashMap<>();
             int migratedBarcodes = 0;
@@ -3786,9 +3892,10 @@ public class ShopfrontIntegrationController {
                             outletId, owner, barcode.code()) == 1) {
                         jdbc.update("""
                                 INSERT INTO shopfront_product_barcode_audit
-                                    (outlet_id,source_product_id,barcode,previous_pos_product_id,new_pos_product_id,reason)
-                                VALUES (?,?,?,?,?,'retired_unstocked_shopfront_product')
-                                """, outletId, barcode.sourceId(), barcode.code(), owner, barcode.productId());
+                                    (outlet_id,source_product_id,barcode,previous_pos_product_id,new_pos_product_id,reason,catalog_fingerprint)
+                                VALUES (?,?,?,?,?,'retired_unstocked_shopfront_product',?)
+                                """, outletId, barcode.sourceId(), barcode.code(), owner, barcode.productId(),
+                                barcode.snapshotFingerprint());
                         owners.put(barcode.code(), barcode.productId());
                         inserts.put(barcode.code(), barcode);
                         migratedBarcodes++;
@@ -3856,17 +3963,37 @@ public class ShopfrontIntegrationController {
     }
 
     private Map<Long, Map<String, Object>> retiredUnstockedBarcodeOwners(
-            List<BarcodeWrite> barcodes, Map<String, Long> owners, long outletId) {
-        if (barcodes.stream().noneMatch(BarcodeWrite::catalogConfirmed)) return Map.of();
+            List<BarcodeWrite> barcodes, Map<String, Long> owners, long outletId, String store) {
+        BarcodeWrite snapshot = barcodes.stream().filter(barcode -> barcode.catalogConfirmed()
+                && barcode.snapshotComplete() && barcode.activeSource()
+                && barcode.snapshotFingerprint() != null && barcode.snapshotFingerprint().matches("[a-f0-9]{64}"))
+                .findFirst().orElse(null);
+        if (snapshot == null) return Map.of();
+        List<Map<String, Object>> registered = jdbc.queryForList("""
+                SELECT source_ids::text AS source_ids,barcode_sources::text AS barcode_sources
+                FROM shopfront_product_barcode_snapshot
+                WHERE store_key=? AND outlet_id=? AND fingerprint=?
+                """, store, outletId, snapshot.snapshotFingerprint());
+        if (registered.isEmpty()) return Map.of();
+        JsonNode snapshotSourceIds;
+        JsonNode barcodeSources;
+        try {
+            snapshotSourceIds = objectMapper.readTree(String.valueOf(registered.getFirst().get("source_ids")));
+            barcodeSources = objectMapper.readTree(String.valueOf(registered.getFirst().get("barcode_sources")));
+        } catch (Exception e) {
+            return Map.of();
+        }
+        if (!snapshotSourceIds.isArray() || !barcodeSources.isObject()) return Map.of();
         List<Long> productIds = barcodes.stream()
-                .filter(BarcodeWrite::catalogConfirmed)
+                .filter(barcode -> barcode.catalogConfirmed() && barcode.snapshotComplete()
+                        && barcode.activeSource() && snapshot.snapshotFingerprint().equals(barcode.snapshotFingerprint()))
                 .map(barcode -> owners.get(barcode.code()))
                 .filter(owner -> owner != null)
                 .distinct()
                 .toList();
         if (productIds.isEmpty()) return Map.of();
 
-        Map<Long, Map<String, Object>> result = new HashMap<>();
+        Map<Long, Map<String, Object>> candidates = new HashMap<>();
         for (int start = 0; start < productIds.size(); start += 400) {
             List<Long> chunk = productIds.subList(start, Math.min(start + 400, productIds.size()));
             String placeholders = String.join(",", java.util.Collections.nCopies(chunk.size(), "?"));
@@ -3875,7 +4002,7 @@ public class ShopfrontIntegrationController {
             args.add(outletId);
             args.addAll(chunk);
             for (Map<String, Object> row : jdbc.queryForList("""
-                    SELECT p.id AS product_id,p.shopfront_catalog_confirmed,
+                    SELECT p.id AS product_id,p.status,
                            COALESCE(pi.quantity,0) AS inventory_quantity
                     FROM product p
                     LEFT JOIN product_inventory pi ON pi.product_id=p.id AND pi.outlet_id=?
@@ -3885,11 +4012,38 @@ public class ShopfrontIntegrationController {
                 BigDecimal inventory = quantity == null ? BigDecimal.ZERO
                         : quantity instanceof BigDecimal value ? value
                         : new BigDecimal(quantity.toString());
-                if (Boolean.FALSE.equals(row.get("shopfront_catalog_confirmed"))
-                        && inventory.compareTo(BigDecimal.ZERO) == 0) {
-                    result.put(longValue(row.get("product_id")), row);
+                if (inventory.compareTo(BigDecimal.ZERO) == 0) {
+                    candidates.put(longValue(row.get("product_id")), row);
                 }
             }
+        }
+        if (candidates.isEmpty()) return Map.of();
+        String placeholders = String.join(",", java.util.Collections.nCopies(candidates.size(), "?"));
+        List<Object> mappingArgs = new ArrayList<>();
+        mappingArgs.add(store);
+        mappingArgs.addAll(candidates.keySet());
+        Map<Long, List<String>> ownerSources = new HashMap<>();
+        for (Map<String, Object> row : jdbc.queryForList("""
+                SELECT pos_product_id,source_product_id FROM shopfront_product_mapping
+                WHERE store_key=? AND status='MAPPED' AND pos_product_id IN (%s)
+                """.formatted(placeholders), mappingArgs.toArray())) {
+            ownerSources.computeIfAbsent(longValue(row.get("pos_product_id")), ignored -> new ArrayList<>())
+                    .add(String.valueOf(row.get("source_product_id")));
+        }
+        Set<String> currentSourceIds = new HashSet<>();
+        snapshotSourceIds.forEach(node -> currentSourceIds.add(node.asText()));
+        Map<Long, Map<String, Object>> result = new HashMap<>();
+        for (BarcodeWrite barcode : barcodes) {
+            Long owner = owners.get(barcode.code());
+            if (owner == null || !candidates.containsKey(owner) || !barcode.snapshotComplete()
+                    || !barcode.activeSource() || !barcode.catalogConfirmed()
+                    || !snapshot.snapshotFingerprint().equals(barcode.snapshotFingerprint())) continue;
+            JsonNode claims = barcodeSources.path(barcode.code());
+            List<String> mappedSources = ownerSources.get(owner);
+            if (!claims.isArray() || claims.size() != 1 || !barcode.sourceId().equals(claims.get(0).asText())
+                    || mappedSources == null || mappedSources.size() != 1
+                    || currentSourceIds.contains(mappedSources.getFirst())) continue;
+            result.put(owner, candidates.get(owner));
         }
         return result;
     }
@@ -4021,11 +4175,15 @@ public class ShopfrontIntegrationController {
         JsonNode barcodes = item.get("barcodes");
         if (barcodes == null || !barcodes.isArray()) return;
         boolean catalogConfirmed = item.path("catalog_confirmed").asBoolean(false);
+        boolean snapshotComplete = item.path("catalog_snapshot_complete").asBoolean(false);
+        String snapshotFingerprint = text(item, "catalog_snapshot_fingerprint");
+        boolean activeSource = "ACTIVE".equalsIgnoreCase(text(item, "source_status"));
         for (JsonNode barcode : barcodes) {
             String code = text(barcode, "code");
             if (code != null && !code.isBlank()) {
                 batch.barcodes.add(new BarcodeWrite(productId, text(item, "source_id"), code,
-                        decimal(barcode, "quantity", BigDecimal.ONE), catalogConfirmed));
+                        decimal(barcode, "quantity", BigDecimal.ONE), catalogConfirmed, snapshotComplete,
+                        snapshotFingerprint, activeSource));
             }
         }
     }
