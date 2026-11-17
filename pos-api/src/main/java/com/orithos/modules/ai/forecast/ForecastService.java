@@ -118,8 +118,15 @@ public class ForecastService {
                     batchResponse = responses.get(index).get(120, TimeUnit.SECONDS);
                 } catch (InterruptedException error) {
                     Thread.currentThread().interrupt();
+                    log.warn("AI forecast batch interrupted vendorId={} outletId={} batch={} of {} products={} elapsedMs={}",
+                            tenant.vendorId(), tenant.requireOutletId(), index + 1, requestBatches.size(), batch.size(), elapsedMs(startedAt));
                     throw new BusinessException(50331, "Forecast service was interrupted.");
                 } catch (ExecutionException | TimeoutException error) {
+                    Throwable cause = error instanceof ExecutionException && error.getCause() != null
+                            ? error.getCause() : error;
+                    log.warn("AI forecast batch failed vendorId={} outletId={} batch={} of {} products={} causeType={} elapsedMs={}",
+                            tenant.vendorId(), tenant.requireOutletId(), index + 1, requestBatches.size(), batch.size(),
+                            cause.getClass().getSimpleName(), elapsedMs(startedAt));
                     throw new BusinessException(50331, "Forecast service is temporarily unavailable.");
                 }
                 log.info("AI forecast batch completed vendorId={} outletId={} batch={} of {} products={} elapsedMs={}",

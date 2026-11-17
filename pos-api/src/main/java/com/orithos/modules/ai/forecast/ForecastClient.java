@@ -58,6 +58,8 @@ public class ForecastClient {
             HttpRequest httpRequest = requestBuilder.build();
             HttpResponse<String> response = http.send(httpRequest, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                log.warn("Forecast service returned non-success status={} requestBytes={} vendorId={} outletId={}",
+                        response.statusCode(), bodyBytes.length, request.vendorId(), request.outletId());
                 if (response.statusCode() == 422) {
                     log.warn("Forecast service rejected request payloadBytes={} validationErrors={}",
                             bodyBytes.length, validationErrorPaths(response.body()));
@@ -68,6 +70,7 @@ public class ForecastClient {
         } catch (BusinessException error) {
             throw error;
         } catch (Exception error) {
+            log.warn("Forecast service call failed causeType={}", error.getClass().getSimpleName());
             throw new BusinessException(50331, "Forecast service is temporarily unavailable.");
         }
     }
