@@ -86,9 +86,11 @@
 - [x] Run `mvn -B "-Dtest=ReportTemplateRegistryTest,AiReportTenantSchemaTest" test` from `pos-api`; both new assertions failed for the missing view contract.
 - [x] Add the minimal product-core view to the public migration and outlet provisioning; update the inventory-value template to use it. Register the view in the SQL allowlist and cover binder → guard execution, outlet scoping, and cost permission with tests.
 - [x] Re-run the focused Maven tests: `SqlGuardTest`, `ReportTemplateRegistryTest`, and `AiReportTenantSchemaTest` passed 47/47. Existing JSQLParser deprecation and annotation-processing warnings remain.
-- [ ] After deployment, run read-only `EXPLAIN (ANALYZE, BUFFERS)` on Demo and SKR; require no repeated `product_price` scan and SQL execution below 750 ms.
-- [ ] Push the task-scoped change directly to `main`, verify both deployed runtime SHAs, and rerun the selected bilingual stock-value cases plus sales/AOV/write-safety smoke.
-- [ ] Compare answer status, unvalued counts, deterministic routing, writes, and request latencies; retain the missing-cost result and avoid claiming a latency gain without comparable samples.
+- [x] After deployment, run read-only `EXPLAIN (ANALYZE, BUFFERS)` on Demo and SKR. Demo: 11.954 ms, 2,366 shared buffer hits; SKR: 9.434 ms, 2,354 shared buffer hits. Neither plan scans `product_price`; both are below the 750 ms target.
+- [x] Push the task-scoped change directly to `main` in commit `7f2240f688146f03f297b4b41ecbd0087094dd4f`. During deployment, `main` advanced to descendant `064b367f8b6da51de74730e6dd66f7fd491c4920` with a separate AI commit; the deployed runtime is that current `main` SHA in both stores and includes the stock-value fix.
+- [x] Re-run eight selected critical workflow cases per store: 16 PASS, 0 FAIL, 0 blocked cases in the summarizer. Each includes deterministic routing, `llmFallback=false`, and empty `writeRequests`; the workflow report top-level status remains BLOCKED by design because the 400+ catalog was not run.
+- [x] SKR report/assistant verifier: 7 PASS, 0 FAIL, 0 blocked, with source/runtime SHA match. Capability seed/config check: PASS for Demo and SKR. The verifier's forecast risks POST refreshed its read-only forecast snapshot; it made no purchase, price, or inventory business writes.
+- [x] Preserve honest stock-value result: positive verified costs remain unavailable, so numeric total and product rows are not asserted. The query plan validates the performance change independently of that data gap.
 
 **Other candidates:**
 - Fix the stale report-readonly UAT script, which still calls retired `/api/odoo/session`.
