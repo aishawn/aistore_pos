@@ -20,6 +20,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.ToIntFunction;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -29,6 +30,7 @@ import java.util.concurrent.TimeoutException;
 
 @Service
 public class ForecastService {
+    private static final int MAX_FORECAST_REQUEST_BYTES = 12 * 1024 * 1024;
     private static final Logger log = LoggerFactory.getLogger(ForecastService.class);
     private final JdbcTemplate jdbc;
     private final ForecastClient client;
@@ -103,13 +105,15 @@ public class ForecastService {
         series.forEach(item -> expectedProducts.add(item.productId()));
         List<ForecastDtos.Item> items = new ArrayList<>();
         ForecastDtos.Response firstBatch = null;
-        List<List<ForecastDtos.Series>> requestBatches = batches(series, maxProducts);
+        LocalDate forecastStartDate = LocalDate.now();
+        List<List<ForecastDtos.Series>> requestBatches = requestBatches(
+                series, tenant, horizon, sourceVersion, forecastStartDate);
         ExecutorService executor = Executors.newFixedThreadPool(Math.min(4, requestBatches.size()));
         try {
             List<Future<ForecastDtos.Response>> responses = new ArrayList<>();
             for (List<ForecastDtos.Series> batch : requestBatches) {
                 responses.add(executor.submit(() -> client.forecast(new ForecastDtos.Request(
-                        tenant.vendorId(), tenant.requireOutletId(), horizon, sourceVersion, LocalDate.now(), batch))));
+                        tenant.vendorId(), tenant.requireOutletId(), horizon, sourceVersion, forecastStartDate, batch))));
             }
             for (int index = 0; index < requestBatches.size(); index++) {
                 List<ForecastDtos.Series> batch = requestBatches.get(index);
@@ -185,6 +189,59 @@ public class ForecastService {
             batches.add(List.copyOf(series.subList(offset, Math.min(series.size(), offset + batchSize))));
         }
         return List.copyOf(batches);
+    }
+
+    static List<List<ForecastDtos.Series>> batchesByPayloadSize(List<ForecastDtos.Series> series,
+                                                                 int maxProducts, int maxRequestBytes,
+                                                                 int emptyRequestBytes,
+                                                                 ToIntFunction<ForecastDtos.Series> seriesSizeBytes) {
+        if (maxProducts < 1) throw new IllegalArgumentException("maxProducts must be positive");
+        if (maxRequestBytes < 1 || emptyRequestBytes < 0) {
+            throw new IllegalArgumentException("request byte limits must be positive");
+        }
+        List<List<ForecastDtos.Series>> result = new ArrayList<>();
+        List<ForecastDtos.Series> current = new ArrayList<>();
+        int currentRequestBytes = emptyRequestBytes;
+        for (ForecastDtos.Series item : series) {
+            int itemBytes = seriesSizeBytes.applyAsInt(item);
+            if (itemBytes < 0) throw new IllegalArgumentException("series size must not be negative");
+            int candidateBytes = currentRequestBytes + (current.isEmpty() ? 0 : 1) + itemBytes;
+            if (!current.isEmpty() && (current.size() >= maxProducts || candidateBytes > maxRequestBytes)) {
+                result.add(List.copyOf(current));
+                current.clear();
+                currentRequestBytes = emptyRequestBytes;
+                candidateBytes = currentRequestBytes + itemBytes;
+            }
+            if (candidateBytes > maxRequestBytes) {
+                throw new IllegalArgumentException("a forecast series exceeds the request byte limit");
+            }
+            current.add(item);
+            currentRequestBytes = candidateBytes;
+        }
+        if (!current.isEmpty()) result.add(List.copyOf(current));
+        return List.copyOf(result);
+    }
+
+    private List<List<ForecastDtos.Series>> requestBatches(List<ForecastDtos.Series> series,
+                                                            TenantContext tenant, int horizon,
+                                                            String sourceVersion, LocalDate forecastStartDate) {
+        try {
+            int emptyRequestBytes = mapper.writeValueAsBytes(new ForecastDtos.Request(
+                    tenant.vendorId(), tenant.requireOutletId(), horizon, sourceVersion,
+                    forecastStartDate, List.of())).length;
+            return batchesByPayloadSize(series, maxProducts, MAX_FORECAST_REQUEST_BYTES, emptyRequestBytes,
+                    item -> serializedSize(item));
+        } catch (JsonProcessingException error) {
+            throw new BusinessException(50331, "Forecast request could not be prepared.");
+        }
+    }
+
+    private int serializedSize(ForecastDtos.Series series) {
+        try {
+            return mapper.writeValueAsBytes(series).length;
+        } catch (JsonProcessingException error) {
+            throw new IllegalArgumentException("forecast series JSON encoding failed", error);
+        }
     }
 
     void persistSnapshot(TenantContext tenant, ForecastDtos.Response response) {
