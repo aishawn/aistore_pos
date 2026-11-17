@@ -1261,6 +1261,22 @@ class ShopfrontIntegrationControllerTest {
     }
 
     @Test
+    void productImportEnsuresBarcodeAuditTableBeforeProcessing() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true, true);
+        Method importBusiness = ShopfrontIntegrationController.class.getDeclaredMethod(
+                "importBusiness", String.class, String.class, Map.class, JsonNode.class,
+                boolean.class, boolean.class, JsonNode.class);
+        importBusiness.setAccessible(true);
+
+        importBusiness.invoke(controller, "products", "skr", Map.of("outlet_id", 87L),
+                new ObjectMapper().createArrayNode(), false, false, null);
+
+        verify(jdbc).update(contains("CREATE TABLE IF NOT EXISTS shopfront_product_mapping"));
+        verify(jdbc).update(contains("CREATE TABLE IF NOT EXISTS shopfront_product_barcode_audit"));
+    }
+
+    @Test
     void productBarcodeConflictIsReportedWithoutReassigningTheBarcode() throws Exception {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
         when(jdbc.queryForList(contains("SELECT code, product_id FROM product_barcode"), any(Object[].class)))

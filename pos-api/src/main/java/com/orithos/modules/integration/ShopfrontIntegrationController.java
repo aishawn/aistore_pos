@@ -2508,6 +2508,7 @@ public class ShopfrontIntegrationController {
         int barcodeConflictCount = 0;
         List<BarcodeConflict> barcodeConflicts = new ArrayList<>();
         if ("products".equals(type)) {
+            ensureShadowTables();
             com.fasterxml.jackson.databind.node.ArrayNode eligible = objectMapper.createArrayNode();
             for (JsonNode item : items) {
                 try {
