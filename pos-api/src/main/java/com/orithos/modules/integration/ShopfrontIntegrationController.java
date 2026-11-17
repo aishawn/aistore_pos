@@ -3747,7 +3747,7 @@ public class ShopfrontIntegrationController {
                 temporaryNames.add(new Object[]{"__sf_sync_" + reservation + "_" + index++, outletId, productId});
             }
             jdbc.batchUpdate("UPDATE product SET name=? WHERE outlet_id=? AND id=?", temporaryNames);
-            jdbc.batchUpdate("UPDATE product SET name=?,type=?,status=?,description=?,category_id=?,brand_id=?,family_id=?,tax_rate_id=?,cost_tax_rate_id=?,cost=CASE WHEN ? THEN ? ELSE NULL END,case_cost=CASE WHEN ? THEN ? ELSE NULL END,case_quantity=?,cost_percentage=?,shopfront_catalog_confirmed=?,shopfront_source_updated_at=?,track_inventory=?,use_scales=?,use_barcode_templates=?,prevent_manual_discounts=?,request_price=?,request_quantity=?,order_notes=?,invoice_notes=?,image=COALESCE(?,image),alternate_images=?::jsonb,mdb_id=?,outlet_id=? WHERE id=?",
+            jdbc.batchUpdate("UPDATE product SET name=?,type=?,status=?,description=?,category_id=?,brand_id=?,family_id=?,tax_rate_id=?,cost_tax_rate_id=?,cost=CASE WHEN ? THEN ? ELSE NULL END,case_cost=CASE WHEN ? THEN CAST(? AS numeric) ELSE NULL END,case_quantity=?,cost_percentage=?,shopfront_catalog_confirmed=?,shopfront_source_updated_at=?,track_inventory=?,use_scales=?,use_barcode_templates=?,prevent_manual_discounts=?,request_price=?,request_quantity=?,order_notes=?,invoice_notes=?,image=COALESCE(?,image),alternate_images=?::jsonb,mdb_id=?,outlet_id=? WHERE id=?",
                     new ArrayList<>(batch.productUpdates.values()));
         }
 
