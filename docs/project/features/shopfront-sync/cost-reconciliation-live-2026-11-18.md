@@ -26,17 +26,21 @@ The import readback reports 644 directory-outside mappings per store. Current re
 
 ## Partial Sync and Barcode Conflicts
 
-Crawler job `#844` and SyncRun `#523` remain `partial`, despite processing 10,853 products and 10,853 inventory rows. The stored import result contains 408 unique barcode-conflict records: 204 for each store, with 196 distinct barcode strings per store. Two records are the known Doritos barcode `9310015250286`, one per store. The other 406 records are exported but not classified as safe or resolved because this API response does not expose the existing barcode owner's current stock and barcode readback.
+Crawler job `#844` and SyncRun `#523` remain `partial`, despite processing 10,853 products and 10,853 inventory rows. The stored import result contains 408 unique barcode-conflict records: 204 for each store, with 196 distinct barcode strings per store. A read-only follow-up matched all 408 records to the current Shopfront product claims and original POS owners:
 
-Current catalog comparison reports no missing source products, but that does not establish that every conflicting old owner is safe to replace. Preserve the Doritos barcode and its negative stock. Keep the job status `partial` until the remaining conflicts are read back and classified; do not reduce the conflict count by suppressing errors.
+- 202 records (101 per store) are barcodes claimed by multiple current Shopfront products. Those 101 rows correspond to 96 distinct barcode strings per store. They are source-data conflicts, not stale POS ownership, and remain unresolved at the source.
+- 206 records (103 per store) are barcodes retained by an existing POS owner but no longer declared by that owner's current Shopfront product. Of these 103 per store, 52 owners have zero stock, 10 have positive stock, and 41 have negative stock. All 206 owners are still POS `ACTIVE` and catalog-confirmed. Zero stock alone is not authorization to transfer a barcode.
+- The known Doritos barcode `9310015250286` is in the stale-owner group. Its current mapped owner is `ACTIVE` with inventory `-268` in both SKR and Demo; preserve the owner and barcode.
+
+All conflict records are now classified, but none were moved or cleared. Keep the job status `partial`; classification does not resolve duplicate source claims or establish an approved POS reassignment policy. Any future reassignment must be explicitly scoped and must preserve all product and inventory ownership, including positive and negative stock.
 
 There was no active sync job at the time of the status query. The current source catalog observation is recent, while catalog job health is still partial/stale because the latest catalog job did not reach a clean terminal success.
 
 ## Evidence and Remaining Work
 
 - Ignored local candidate export: crawler `.local/cost-reconciliation-live-2026-11-18.csv` and `.json`.
-- Ignored local barcode export: crawler `.local/shopfront-barcode-conflicts-run523-2026-11-18.csv` and `.json`.
+- Ignored local barcode exports: crawler `.local/shopfront-barcode-conflicts-run523-2026-11-18.csv/.json`, `.local/shopfront-barcode-full-classification-run523-2026-11-18.csv/.json`, and the per-store owner readbacks. These contain the row-level evidence for all 408 conflicts.
 - Direct Shopfront UI `/reports/misc` and product cost management inspection remains pending.
-- Read back the existing owners and stock for the 406 unclassified barcode conflicts; retain the existing Doritos conflict.
+- Define and test an explicit barcode reassignment policy before acting on any of the 52 zero-stock stale-owner rows per store. Source-duplicate claims and all owners with positive or negative stock remain protected; no barcode was moved in this audit.
 - Reconcile any historical candidate only after Shopfront establishes a current authoritative cost, outlet, and case-size value. Use the existing explicit-ID cost-only path and verify every changed ID in both stores.
 - No tests were run for this read-only audit. No online Shopfront calls or business writes were made; Shopfront/model cost was AUD 0.
