@@ -7,6 +7,7 @@ import {
   assistantUtteranceStatus,
   replenishmentCardAcceptance,
   AUTHORITATIVE_ASSISTANT_DATA_SOURCE,
+  expectedReportDataStatus,
   readOnlyApiAcceptanceStatus,
 } from "./assistant-assertions.mjs";
 
@@ -391,6 +392,12 @@ test("legacy source and mismatched metadata fail provenance acceptance", () => {
 test("non-available report states are not accepted as reconciled metrics", () => {
   assert.equal(assistantTraceability(response({ reportDataStatus: "incomplete" }), expected).dataStatus, false);
   assert.equal(assistantTraceability(response({ reportDataStatus: "unavailable" }), expected).dataStatus, false);
+});
+
+test("report data status reflects incomplete direct report metrics", () => {
+  assert.equal(expectedReportDataStatus({ costAvailable: true, grossProfit: 125.5 }), "available");
+  assert.equal(expectedReportDataStatus({ costAvailable: false, grossProfit: null }), "incomplete");
+  assert.equal(expectedReportDataStatus({ dataStatus: "unavailable", costAvailable: false }), "unavailable");
 });
 
 test("unavailable read-only services are recorded as blocked instead of aborting the report", () => {

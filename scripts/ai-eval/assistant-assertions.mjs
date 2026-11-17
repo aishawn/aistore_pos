@@ -196,6 +196,13 @@ export function assistantTraceability(assistant, expected) {
   };
 }
 
+export function expectedReportDataStatus(reportData = {}) {
+  const explicitStatus = reportData.reportDataStatus ?? reportData.dataStatus;
+  if (typeof explicitStatus === "string" && explicitStatus.trim()) return explicitStatus.toLowerCase();
+  if (reportData.costAvailable === false || reportData.grossProfit === null) return "incomplete";
+  return "available";
+}
+
 export function readOnlyApiAcceptanceStatus(httpStatus, errorCode, valid) {
   if (httpStatus === 401 || httpStatus === 403 || httpStatus >= 500
       || errorCode === 40100 || errorCode === 40300

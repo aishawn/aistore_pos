@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import {
   replenishmentCardAcceptance,
   assistantTraceability,
+  expectedReportDataStatus,
   readOnlyApiAcceptanceStatus,
 } from "./assistant-assertions.mjs";
 
@@ -250,6 +251,7 @@ try {
         from: reportData.from,
         to: reportData.to,
         timeZone: reportData.timeZone,
+        status: expectedReportDataStatus(reportData),
       }),
     };
     return {
