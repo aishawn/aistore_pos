@@ -302,6 +302,7 @@ CREATE TABLE product (
   tax_rate_id BIGINT NULL,
   cost_tax_rate_id BIGINT NULL,
   cost            DECIMAL(14,4) NULL,
+  case_cost       DECIMAL(14,4) NULL,
   case_quantity   DECIMAL(14,4) NOT NULL,
   cost_percentage SMALLINT   NOT NULL DEFAULT 0,
   track_inventory SMALLINT   NOT NULL DEFAULT 1,

@@ -75,10 +75,17 @@ FROM product_inventory pi;
 -- SQL guard permissions must authorize access before this view is queried.
 CREATE OR REPLACE VIEW ai_rpt_inventory_cost AS
 SELECT
-  pc.product_id,
-  pc.outlet_id,
-  pc.cost
-FROM product_cost pc;
+    p.id AS product_id,
+    p.outlet_id,
+    CASE WHEN p.cost_percentage <> 0 THEN NULL ELSE
+        COALESCE(pc.average_cost, pc.cost,
+            CASE WHEN p.shopfront_source_updated_at IS NULL OR p.case_cost IS NOT NULL
+                 THEN p.cost END)
+    END AS cost,
+    CASE WHEN p.cost_percentage <> 0 THEN NULL ELSE p.case_cost END AS case_cost,
+    p.case_quantity
+FROM product p
+LEFT JOIN product_cost pc ON pc.product_id = p.id AND pc.outlet_id = p.outlet_id;
 
 -- One row per completed sale (average ticket / customer-sale).
 CREATE OR REPLACE VIEW ai_rpt_customer_sale AS

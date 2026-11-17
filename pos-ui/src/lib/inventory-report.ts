@@ -46,6 +46,7 @@ export interface OnHandProductSource {
   caseQuantity?: number | null;
   stockQuantity?: number | null;
   cost?: number | null;
+  caseCost?: number | null;
   deletedAt?: string | null;
 }
 
@@ -81,21 +82,24 @@ export function splitCaseItemLevels(
 }
 
 /**
- * Shopfront Value (Inc) (Last) = case_cost × (case_level + item_level / case_qty).
- * Orithos `cost` is the case cost, matching Shopfront's last cost.
+ * Shopfront keeps an exact case cost; POS calculations use per-item cost.
  */
 export function inventoryValueIncLast(
   stockQuantity?: number | null,
-  caseCost?: number | null,
+  unitCost?: number | null,
   caseQuantity?: number | null,
+  exactCaseCost?: number | null,
 ): number | null {
-  if (stockQuantity == null || caseCost == null) return null;
+  if (stockQuantity == null || (unitCost == null && exactCaseCost == null)) return null;
   const stock = Number(stockQuantity);
-  const cost = Number(caseCost);
+  const cost = Number(unitCost);
   const pack = Number(caseQuantity);
-  if (!Number.isFinite(stock) || !Number.isFinite(cost)) return null;
-  const units = Number.isFinite(pack) && pack > 0 ? stock / pack : stock;
-  return Math.round(units * cost * 100) / 100;
+  const caseCost = exactCaseCost == null ? null : Number(exactCaseCost);
+  if (!Number.isFinite(stock) || (unitCost != null && !Number.isFinite(cost)) || (caseCost != null && !Number.isFinite(caseCost))) return null;
+  if (caseCost != null && Number.isFinite(pack) && pack > 0) {
+    return Math.round((stock / pack) * caseCost * 100) / 100;
+  }
+  return unitCost == null ? null : Math.round(stock * cost * 100) / 100;
 }
 
 export function toOnHandRow(product: OnHandProductSource): OnHandRow {
@@ -116,7 +120,7 @@ export function toOnHandRow(product: OnHandProductSource): OnHandRow {
     caseQuantity: normalizedCaseQty,
     caseLevel,
     itemLevel,
-    valueIncLast: inventoryValueIncLast(stockQuantity, product.cost, normalizedCaseQty),
+    valueIncLast: inventoryValueIncLast(stockQuantity, product.cost, normalizedCaseQty, product.caseCost),
     stockQuantity,
   };
 }

@@ -11,11 +11,12 @@ function money(value: number): string {
 }
 
 export function productCostDisplay(
-  cost: number | null | undefined,
+  unitCost: number | null | undefined,
   caseQuantity: number | null | undefined,
   status?: string | null,
   costPercentage = false,
   shopfrontCatalogConfirmed?: boolean | null,
+  exactCaseCost?: number | null,
 ): { caseCost: string; itemCost: string } {
   if (shopfrontCatalogConfirmed === false) {
     return {
@@ -36,7 +37,12 @@ export function productCostDisplay(
       itemCost: "Not current in Shopfront catalogue",
     };
   }
-  if (cost == null || !Number.isFinite(cost)) {
+  const validUnitCost = unitCost != null && Number.isFinite(unitCost) ? unitCost : null;
+  const validCaseCost = exactCaseCost != null && Number.isFinite(exactCaseCost) ? exactCaseCost : null;
+  if (shopfrontCatalogConfirmed === true && !costPercentage && validCaseCost == null) {
+    return { caseCost: "Unavailable", itemCost: "Shopfront case cost is missing" };
+  }
+  if (validUnitCost == null && validCaseCost == null) {
     return {
       caseCost: "Unavailable",
       itemCost: "Shopfront cost is missing",
@@ -44,19 +50,22 @@ export function productCostDisplay(
   }
   if (costPercentage) {
     return {
-      caseCost: `${percentageFormat.format(cost)}%`,
+      caseCost: `${percentageFormat.format(validUnitCost ?? validCaseCost!)}%`,
       itemCost: "Percentage cost; no currency amount",
     };
   }
-  if (caseQuantity == null || !Number.isFinite(caseQuantity) || caseQuantity <= 0) {
-    return {
-      caseCost: `${money(cost)} / case`,
-      itemCost: "Unavailable: invalid case quantity",
-    };
-  }
-
+  const validCaseQuantity = caseQuantity != null && Number.isFinite(caseQuantity) && caseQuantity > 0
+    ? caseQuantity
+    : null;
+  const displayedCaseCost = validCaseCost ?? (validUnitCost != null && validCaseQuantity != null
+    ? validUnitCost * validCaseQuantity
+    : null);
   return {
-    caseCost: `${money(cost)} / case`,
-    itemCost: `${money(cost / caseQuantity)} / item`,
+    caseCost: displayedCaseCost == null ? "Unavailable" : `${money(displayedCaseCost)} / case`,
+    itemCost: validUnitCost != null
+      ? `${money(validUnitCost)} / item`
+      : validCaseQuantity != null
+        ? `${money(validCaseCost! / validCaseQuantity)} / item`
+        : "Unavailable: invalid case quantity",
   };
 }

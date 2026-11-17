@@ -178,7 +178,8 @@ public class ProductController {
 
     @GetMapping("/{id}")
     public ApiResult<Product> get(@PathVariable Long id) {
-        Product product = mapper.findById(id);
+        Long vendorId = requireVendorId();
+        Product product = mapper.findByIdAndVendor(id, vendorId);
         if (product != null) {
             enrichProduct(id, product);
         }
@@ -189,7 +190,7 @@ public class ProductController {
         product.setTagIds(mapper.findTagIdsByProductId(id));
         product.setSupplierIds(mapper.findSupplierIdsByProductId(id));
         product.setBarcodes(mapper.findBarcodesByProductId(id));
-        product.setStockQuantity(mapper.sumInventoryByProductId(id));
+        product.setStockQuantity(mapper.sumInventoryByProductId(id, CurrentUser.vendorId()));
         product.setPrices(mapper.findPricesByProductId(id));
         if (product.getFamilyId() != null) {
             product.setFamilyMemberNames(mapper.findFamilyMemberNames(product.getFamilyId(), id));
@@ -253,7 +254,14 @@ public class ProductController {
     // ---- inventory adjustment ----
     @PostMapping("/{id}/adjust-inventory")
     public ApiResult<Void> adjustInventory(@PathVariable Long id, @RequestBody AdjustInventoryRequest body) {
-        mapper.adjustInventory(id, body.outletId(), body.quantity());
+        Long vendorId = requireVendorId();
+        requireProductForVendor(id, vendorId);
+        if (body == null || body.outletId() == null || body.quantity() == null) {
+            throw new BusinessException("Outlet and inventory quantity are required.");
+        }
+        if (mapper.adjustInventoryForVendor(id, vendorId, body.outletId(), body.quantity()) == 0) {
+            throw new BusinessException("Product or outlet is not available to this vendor.");
+        }
         return ApiResult.ok();
     }
 
@@ -262,13 +270,17 @@ public class ProductController {
     // ---- inventory ----
     @GetMapping("/{id}/inventory")
     public ApiResult<List<ProductInventory>> listInventory(@PathVariable Long id) {
-        return ApiResult.ok(mapper.findInventoryByProductId(id));
+        Long vendorId = requireVendorId();
+        requireProductForVendor(id, vendorId);
+        return ApiResult.ok(mapper.findInventoryByProductId(id, vendorId));
     }
 
     @PutMapping("/{id}/inventory")
     @Transactional
     public ApiResult<List<ProductInventory>> setInventory(@PathVariable Long id,
                                                           @RequestBody SetInventoryRequest body) {
+        Long vendorId = requireVendorId();
+        requireProductForVendor(id, vendorId);
         if (body != null && body.rows() != null) {
             for (InventoryRow row : body.rows()) {
                 if (row.outletId() == null) continue;
@@ -280,10 +292,28 @@ public class ProductController {
                 inv.setReorderLimit(row.reorderLimit());
                 inv.setMaxQuantity(row.maxQuantity());
                 inv.setReorderRounding(row.reorderRounding() != null ? row.reorderRounding() : "NONE");
-                mapper.upsertInventory(id, inv);
+                if (mapper.upsertInventoryForVendor(id, vendorId, inv) == 0) {
+                    throw new BusinessException("Product or outlet is not available to this vendor.");
+                }
             }
         }
-        return ApiResult.ok(mapper.findInventoryByProductId(id));
+        return ApiResult.ok(mapper.findInventoryByProductId(id, vendorId));
+    }
+
+    private Long requireVendorId() {
+        Long vendorId = CurrentUser.vendorId();
+        if (vendorId == null) {
+            throw new BusinessException(40100, "Authenticated vendor is required.");
+        }
+        return vendorId;
+    }
+
+    private Product requireProductForVendor(Long id, Long vendorId) {
+        Product product = mapper.findByIdAndVendor(id, vendorId);
+        if (product == null) {
+            throw new BusinessException(40400, "Product not found.");
+        }
+        return product;
     }
 
     public record InventoryRow(Long outletId,

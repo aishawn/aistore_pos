@@ -63,6 +63,19 @@ public interface ProductMapper {
                         @Param("outletId") Long outletId,
                         @Param("quantity") BigDecimal quantity);
 
+    @Update("INSERT INTO product_inventory (product_id, outlet_id, quantity) "
+            + "SELECT #{productId}, target.id, #{quantity} FROM outlet target "
+            + "WHERE target.id = #{outletId} AND target.vendor_id=#{vendorId} AND target.deleted_at IS NULL "
+            + "AND EXISTS (SELECT 1 FROM product p JOIN outlet owner ON owner.id = p.outlet_id "
+            + "WHERE p.id = #{productId} AND p.deleted_at IS NULL AND owner.vendor_id=#{vendorId} "
+            + "AND owner.deleted_at IS NULL) "
+            + "ON CONFLICT (product_id, outlet_id) DO UPDATE "
+            + "SET quantity = product_inventory.quantity + EXCLUDED.quantity")
+    int adjustInventoryForVendor(@Param("productId") Long productId,
+                                 @Param("vendorId") Long vendorId,
+                                 @Param("outletId") Long outletId,
+                                 @Param("quantity") BigDecimal quantity);
+
     /** Apply a negative delta only when on-hand stays at or above zero. */
     @Update("UPDATE product_inventory SET quantity = quantity + #{quantity} "
             + "WHERE product_id = #{productId} AND outlet_id = #{outletId} "
@@ -113,8 +126,11 @@ public interface ProductMapper {
     @Select("SELECT id, code FROM product_barcode WHERE product_id = #{productId} ORDER BY id")
     List<ProductBarcode> findBarcodesByProductId(@Param("productId") Long productId);
 
-    @Select("SELECT COALESCE(SUM(quantity), 0) FROM product_inventory WHERE product_id = #{productId}")
-    BigDecimal sumInventoryByProductId(@Param("productId") Long productId);
+    @Select("SELECT COALESCE(SUM(pi.quantity), 0) FROM product_inventory pi "
+            + "JOIN outlet o ON o.id = pi.outlet_id "
+            + "WHERE pi.product_id = #{productId} AND o.vendor_id = #{vendorId} AND o.deleted_at IS NULL")
+    BigDecimal sumInventoryByProductId(@Param("productId") Long productId,
+                                       @Param("vendorId") Long vendorId);
 
     @Select("SELECT o.id AS outletId, o.name AS outletName, "
             + "COALESCE(pi.quantity, 0) AS quantity, "
@@ -126,9 +142,10 @@ public interface ProductMapper {
             + "COALESCE(pi.reorder_rounding, 'NONE') AS reorderRounding "
             + "FROM outlet o "
             + "LEFT JOIN product_inventory pi ON pi.outlet_id = o.id AND pi.product_id = #{productId} "
-            + "WHERE o.deleted_at IS NULL "
+            + "WHERE o.deleted_at IS NULL AND o.vendor_id = #{vendorId} "
             + "ORDER BY o.name")
-    List<ProductInventory> findInventoryByProductId(@Param("productId") Long productId);
+    List<ProductInventory> findInventoryByProductId(@Param("productId") Long productId,
+                                                    @Param("vendorId") Long vendorId);
 
     @Update("INSERT INTO product_inventory (product_id, outlet_id, quantity, reorder_level, reorder_amount, "
             + "reorder_limit, max_quantity, reorder_rounding) "
@@ -139,6 +156,22 @@ public interface ProductMapper {
             + "reorder_limit = EXCLUDED.reorder_limit, max_quantity = EXCLUDED.max_quantity, "
             + "reorder_rounding = EXCLUDED.reorder_rounding")
     int upsertInventory(@Param("productId") Long productId, @Param("row") ProductInventory row);
+
+    @Update("INSERT INTO product_inventory (product_id, outlet_id, quantity, reorder_level, reorder_amount, "
+            + "reorder_limit, max_quantity, reorder_rounding) "
+            + "SELECT #{productId}, target.id, #{row.quantity}, #{row.reorderLevel}, #{row.reorderAmount}, "
+            + "#{row.reorderLimit}, #{row.maxQuantity}, #{row.reorderRounding} FROM outlet target "
+            + "WHERE target.id = #{row.outletId} AND target.vendor_id=#{vendorId} AND target.deleted_at IS NULL "
+            + "AND EXISTS (SELECT 1 FROM product p JOIN outlet owner ON owner.id = p.outlet_id "
+            + "WHERE p.id = #{productId} AND p.deleted_at IS NULL AND owner.vendor_id=#{vendorId} "
+            + "AND owner.deleted_at IS NULL) "
+            + "ON CONFLICT (product_id, outlet_id) DO UPDATE SET quantity = EXCLUDED.quantity, "
+            + "reorder_level = EXCLUDED.reorder_level, reorder_amount = EXCLUDED.reorder_amount, "
+            + "reorder_limit = EXCLUDED.reorder_limit, max_quantity = EXCLUDED.max_quantity, "
+            + "reorder_rounding = EXCLUDED.reorder_rounding")
+    int upsertInventoryForVendor(@Param("productId") Long productId,
+                                 @Param("vendorId") Long vendorId,
+                                 @Param("row") ProductInventory row);
 
     /**
      * Active products whose name matches exactly. Used by sell quick keys so a

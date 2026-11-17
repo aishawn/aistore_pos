@@ -14,7 +14,8 @@
         <result property="familyId" column="family_id"/>
         <result property="taxRateId" column="tax_rate_id"/>
         <result property="costTaxRateId" column="cost_tax_rate_id"/>
-        <result property="cost" column="cost"/>
+        <result property="cost" column="cost_unit_safe"/>
+        <result property="caseCost" column="case_cost"/>
         <result property="caseQuantity" column="case_quantity"/>
         <result property="costPercentage" column="cost_percentage"/>
         <result property="shopfrontCatalogConfirmed" column="shopfront_catalog_confirmed"/>
@@ -178,6 +179,9 @@
 
     <select id="page" resultMap="ProductMap">
         SELECT p.*,
+               CASE WHEN p.shopfront_source_updated_at IS NULL OR p.case_cost IS NOT NULL
+                          OR p.cost_percentage &lt;&gt; 0
+                    THEN p.cost ELSE NULL END AS cost_unit_safe,
                c.name AS category_name,
                b.name AS brand_name,
                (SELECT pp.price FROM product_price pp
@@ -243,10 +247,12 @@
                    END
                ), 0) AS itemLevelTotal,
                ROUND(COALESCE(SUM(
-                   COALESCE(p.cost, 0) *
-                   CASE WHEN p.case_quantity IS NOT NULL AND p.case_quantity &gt; 0
-                        THEN COALESCE(inv.total_qty, 0) / p.case_quantity
-                        ELSE COALESCE(inv.total_qty, 0)
+                   CASE WHEN p.cost_percentage &lt;&gt; 0 THEN 0
+                        WHEN p.case_cost IS NOT NULL AND p.case_quantity &gt; 0
+                        THEN p.case_cost * COALESCE(inv.total_qty, 0) / p.case_quantity
+                        WHEN p.shopfront_source_updated_at IS NULL
+                        THEN COALESCE(p.cost, 0) * COALESCE(inv.total_qty, 0)
+                        ELSE 0
                    END
                ), 0), 2) AS valueIncLastTotal
         FROM product p
@@ -256,6 +262,9 @@
 
     <select id="findById" resultMap="ProductMap">
         SELECT p.*,
+               CASE WHEN p.shopfront_source_updated_at IS NULL OR p.case_cost IS NOT NULL
+                          OR p.cost_percentage &lt;&gt; 0
+                    THEN p.cost ELSE NULL END AS cost_unit_safe,
                c.name AS category_name,
                b.name AS brand_name,
                (SELECT pp.price FROM product_price pp
@@ -268,11 +277,11 @@
 
     <insert id="insert" useGeneratedKeys="true" keyProperty="p.id">
         INSERT INTO product ( name, type, status, description, category_id, brand_id, family_id,
-                             tax_rate_id, cost_tax_rate_id, cost, case_quantity, cost_percentage,
+                             tax_rate_id, cost_tax_rate_id, cost, case_cost, case_quantity, cost_percentage,
                              prevent_manual_discounts, request_price, request_quantity,
                              track_inventory, show_shortcuts, abv, volume_ml, region, vintage, image)
         VALUES ( #{p.name}, #{p.type}, #{p.status}, #{p.description}, #{p.categoryId},
-                #{p.brandId}, #{p.familyId}, #{p.taxRateId}, #{p.costTaxRateId}, #{p.cost},
+                #{p.brandId}, #{p.familyId}, #{p.taxRateId}, #{p.costTaxRateId}, #{p.cost}, #{p.caseCost},
                 #{p.caseQuantity}, #{p.costPercentage}, #{p.preventManualDiscounts},
                 #{p.requestPrice}, #{p.requestQuantity}, #{p.trackInventory},
                 #{p.showShortcuts}, #{p.abv}, #{p.volumeMl}, #{p.region}, #{p.vintage}, #{p.image})
@@ -283,7 +292,14 @@
         SET name = #{p.name}, status = #{p.status}, description = #{p.description},
             category_id = #{p.categoryId}, brand_id = #{p.brandId}, family_id = #{p.familyId},
             tax_rate_id = #{p.taxRateId}, cost_tax_rate_id = #{p.costTaxRateId},
-            cost = #{p.cost}, case_quantity = #{p.caseQuantity},
+            cost = #{p.cost},
+            case_cost = CASE WHEN cost IS DISTINCT FROM #{p.cost} OR case_quantity IS DISTINCT FROM #{p.caseQuantity}
+                                  OR cost_percentage IS DISTINCT FROM #{p.costPercentage}
+                             THEN NULL ELSE case_cost END,
+            shopfront_catalog_confirmed = CASE WHEN cost IS DISTINCT FROM #{p.cost} OR case_quantity IS DISTINCT FROM #{p.caseQuantity}
+                                                    OR cost_percentage IS DISTINCT FROM #{p.costPercentage}
+                                               THEN FALSE ELSE shopfront_catalog_confirmed END,
+            case_quantity = #{p.caseQuantity},
             cost_percentage = #{p.costPercentage},
             prevent_manual_discounts = #{p.preventManualDiscounts},
             request_price = #{p.requestPrice}, request_quantity = #{p.requestQuantity},

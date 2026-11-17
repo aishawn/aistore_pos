@@ -18,6 +18,7 @@ public class Product {
     private Long taxRateId;
     private Long costTaxRateId;
     private BigDecimal cost;
+    private BigDecimal caseCost;
     private BigDecimal caseQuantity;
     private Boolean costPercentage;
     private Boolean shopfrontCatalogConfirmed;

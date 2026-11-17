@@ -48,6 +48,7 @@ class ReportQueryServiceReportableSaleTest {
         String query = sql.getValue();
         assertTrue(query.contains(ReportQueryService.REPORTABLE_SALE_STATUS_SQL));
         assertTrue(query.contains("s.status = 'INCOMPLETE'"));
+        assertTrue(query.contains("COALESCE(p.cost_percentage, 0) = 0"));
         assertFalse(query.contains("s.status = 'PARKED'"));
     }
 }

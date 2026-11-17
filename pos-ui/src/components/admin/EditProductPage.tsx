@@ -88,6 +88,7 @@ export interface ProductDetail {
   taxRateId?: string;
   costTaxRateId?: string;
   cost?: number | null;
+  caseCost?: number | null;
   price?: number | null;
   caseQuantity?: number | null;
   costPercentage?: boolean;

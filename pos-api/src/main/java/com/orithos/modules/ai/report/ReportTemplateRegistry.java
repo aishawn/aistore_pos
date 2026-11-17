@@ -84,21 +84,26 @@ public class ReportTemplateRegistry {
                     """, List.of(outletId, fromDay, toDay, outletId, outletId));
             case "report_stock_value" -> BoundSql.ok("""
                     WITH store_summary AS (
-                      SELECT COALESCE(SUM(i.quantity * c.cost) FILTER (WHERE COALESCE(c.cost, 0) > 0), 0)
+                      SELECT COALESCE(SUM(CASE WHEN c.case_cost IS NOT NULL AND c.case_quantity > 0
+                                                THEN i.quantity * c.case_cost / c.case_quantity
+                                                ELSE i.quantity * c.cost END)
+                                      FILTER (WHERE COALESCE(c.case_cost, c.cost, 0) > 0), 0)
                                AS store_inventory_value_total,
-                             COUNT(*) FILTER (WHERE COALESCE(c.cost, 0) > 0) AS valued_product_count,
-                             COUNT(*) FILTER (WHERE COALESCE(c.cost, 0) <= 0) AS excluded_product_count
+                             COUNT(*) FILTER (WHERE COALESCE(c.case_cost, c.cost, 0) > 0) AS valued_product_count,
+                             COUNT(*) FILTER (WHERE COALESCE(c.case_cost, c.cost, 0) <= 0) AS excluded_product_count
                       FROM ai_rpt_inventory i
                       JOIN ai_rpt_product_core p ON p.id = i.product_id AND p.outlet_id = i.outlet_id
                       LEFT JOIN ai_rpt_inventory_cost c ON c.product_id = i.product_id AND c.outlet_id = i.outlet_id
                       WHERE i.outlet_id = ? AND i.quantity > 0
                     ), top_products AS (
                       SELECT p.id, p.name, i.quantity AS on_hand,
-                             i.quantity * c.cost AS inventory_value
+                             CASE WHEN c.case_cost IS NOT NULL AND c.case_quantity > 0
+                                  THEN i.quantity * c.case_cost / c.case_quantity
+                                  ELSE i.quantity * c.cost END AS inventory_value
                       FROM ai_rpt_inventory i
                       JOIN ai_rpt_product_core p ON p.id = i.product_id AND p.outlet_id = i.outlet_id
                       JOIN ai_rpt_inventory_cost c ON c.product_id = i.product_id AND c.outlet_id = i.outlet_id
-                      WHERE i.outlet_id = ? AND i.quantity > 0 AND c.cost > 0
+                      WHERE i.outlet_id = ? AND i.quantity > 0 AND COALESCE(c.case_cost, c.cost, 0) > 0
                       ORDER BY inventory_value DESC, p.name
                       LIMIT 8
                     )

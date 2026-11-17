@@ -26,8 +26,8 @@ test("only exposes confirmed costs while preserving confirmed zero and missing v
     shopfrontSourceUpdatedAt: "2026-11-16T10:00:00Z",
   };
 
-  assert.equal(mapNativeProduct({ ...base, cost: 0 }).shopfront_cost_status, "available");
-  assert.equal(mapNativeProduct({ ...base, cost: 0 }).shopfront_cost, 0);
+  assert.equal(mapNativeProduct({ ...base, cost: 0, caseCost: 0 }).shopfront_cost_status, "available");
+  assert.equal(mapNativeProduct({ ...base, cost: 0, caseCost: 0 }).shopfront_cost, 0);
   assert.equal(mapNativeProduct({ ...base, cost: null }).shopfront_cost_status, "missing");
 });
 

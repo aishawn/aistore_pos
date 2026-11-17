@@ -96,7 +96,11 @@ public class ForecastRiskService {
         jdbc.query("""
                 SELECT p.id AS product_id, COALESCE(i.quantity, 0) AS on_hand,
                        COALESCE(i.quantity, 0) + COALESCE(i.on_order, 0) AS available_stock,
-                       COALESCE(pc.average_cost, pc.cost, p.cost, 0) AS cost,
+                       CASE WHEN p.cost_percentage <> 0 THEN NULL ELSE
+                           COALESCE(pc.average_cost, pc.cost,
+                               CASE WHEN p.shopfront_source_updated_at IS NULL OR p.case_cost IS NOT NULL
+                                    THEN p.cost END)
+                       END AS cost,
                        0 AS lead_time
                 FROM product p
                 JOIN outlet o ON o.id = p.outlet_id AND o.vendor_id = ? AND o.deleted_at IS NULL

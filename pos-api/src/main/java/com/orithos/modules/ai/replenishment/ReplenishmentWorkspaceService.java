@@ -74,7 +74,11 @@ public class ReplenishmentWorkspaceService {
                        COALESCE(s.sold_7d, 0) AS sold_7d,
                        COALESCE(s.recent_units, 0) AS recent_units,
                        COALESCE(s.previous_units, 0) AS previous_units,
-                       COALESCE(p.cost, pc.cost) AS unit_cost,
+                       CASE WHEN p.cost_percentage <> 0 THEN NULL ELSE
+                           COALESCE(pc.average_cost, pc.cost,
+                               CASE WHEN p.shopfront_source_updated_at IS NULL OR p.case_cost IS NOT NULL
+                                    THEN p.cost END)
+                       END AS unit_cost,
                        (SELECT MIN(pp.price) FROM product_price pp
                         WHERE pp.product_id = p.id AND pp.outlet_id = p.outlet_id) AS unit_price,
                        EXISTS (SELECT 1 FROM product_supplier ps

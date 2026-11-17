@@ -2,19 +2,33 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { productCostDisplay } from "./product-cost-display.ts";
 
-test("preserves Shopfront case cost and derives POS item cost from pack size", () => {
-  assert.deepEqual(productCostDisplay(55.94, 4, "ACTIVE"), {
+test("preserves exact Shopfront case cost and displays the unit cost independently", () => {
+  assert.deepEqual(productCostDisplay(13.985, 4, "ACTIVE", false, true, 55.94), {
     caseCost: "A$ 55.94 / case",
     itemCost: "A$ 13.985 / item",
   });
-  assert.deepEqual(productCostDisplay(391.10, 6, "ACTIVE"), {
+  assert.deepEqual(productCostDisplay(65.1833, 6, "ACTIVE", false, true, 391.10), {
     caseCost: "A$ 391.10 / case",
     itemCost: "A$ 65.1833 / item",
   });
 });
 
+test("uses exact Shopfront case cost and unit cost without reconstructing rounded values", () => {
+  assert.deepEqual(productCostDisplay(43.5258, 12, "ACTIVE", false, true, 522.31), {
+    caseCost: "A$ 522.31 / case",
+    itemCost: "A$ 43.5258 / item",
+  });
+});
+
+test("does not infer a Shopfront case cost from a legacy confirmed unit field", () => {
+  assert.deepEqual(productCostDisplay(43.5258, 12, "ACTIVE", false, true), {
+    caseCost: "Unavailable",
+    itemCost: "Shopfront case cost is missing",
+  });
+});
+
 test("keeps a source zero distinct from a missing cost", () => {
-  assert.deepEqual(productCostDisplay(0, 6, "ACTIVE"), {
+  assert.deepEqual(productCostDisplay(0, 6, "ACTIVE", false, true, 0), {
     caseCost: "A$ 0.00 / case",
     itemCost: "A$ 0.00 / item",
   });
@@ -32,9 +46,9 @@ test("shows percentage costs without treating them as currency or deriving a uni
 });
 
 test("keeps case cost but does not invent item cost when pack size is invalid", () => {
-  assert.deepEqual(productCostDisplay(24, 0, "ACTIVE"), {
+  assert.deepEqual(productCostDisplay(4, 0, "ACTIVE", false, true, 24), {
     caseCost: "A$ 24.00 / case",
-    itemCost: "Unavailable: invalid case quantity",
+    itemCost: "A$ 4.00 / item",
   });
 });
 

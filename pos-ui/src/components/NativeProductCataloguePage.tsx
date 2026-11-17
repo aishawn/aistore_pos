@@ -16,6 +16,7 @@ type ProductRow = {
   categoryName?: string;
   brandName?: string;
   cost?: number | null;
+  caseCost?: number | null;
   caseQuantity?: number | null;
   shopfrontCatalogConfirmed?: boolean | null;
   price?: number | null;
@@ -68,7 +69,7 @@ export function NativeProductCataloguePage() {
               </thead>
               <tbody className="divide-y divide-[var(--oh-border)]">
                 {sortedItems.map((product) => {
-                  const cost = productCostDisplay(product.cost, product.caseQuantity, product.status, product.costPercentage, product.shopfrontCatalogConfirmed);
+                  const cost = productCostDisplay(product.cost, product.caseQuantity, product.status, product.costPercentage, product.shopfrontCatalogConfirmed, product.caseCost);
                   return (
                     <tr key={String(product.id)} className="hover:bg-[var(--oh-surface)]">
                       <td className="px-4 py-3"><Link href={`/products/${product.id}/view`} className="font-semibold text-[var(--oh-primary)] hover:underline">{product.name}</Link></td>

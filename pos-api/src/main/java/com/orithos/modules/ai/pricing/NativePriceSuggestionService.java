@@ -35,7 +35,11 @@ public class NativePriceSuggestionService {
                        (SELECT pp.price FROM product_price pp
                         WHERE pp.product_id = p.id AND pp.outlet_id = p.outlet_id
                         ORDER BY pp.quantity, pp.id LIMIT 1) AS current_price,
-                       COALESCE(pc.average_cost, pc.cost, p.cost) AS unit_cost,
+                       CASE WHEN p.cost_percentage <> 0 THEN NULL ELSE
+                           COALESCE(pc.average_cost, pc.cost,
+                               CASE WHEN p.shopfront_source_updated_at IS NULL OR p.case_cost IS NOT NULL
+                                    THEN p.cost END)
+                       END AS unit_cost,
                        tr.amount AS tax_percent,
                        COALESCE(s.units, 0) AS sold_units
                 FROM product p

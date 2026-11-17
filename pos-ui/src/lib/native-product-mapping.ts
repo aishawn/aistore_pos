@@ -12,6 +12,7 @@ export type NativeProductRow = {
   familyId?: number | null;
   price?: number | null;
   cost?: number | null;
+  caseCost?: number | null;
   costPercentage?: boolean | null;
   caseQuantity?: number | null;
   shopfrontCatalogConfirmed?: boolean | null;
@@ -32,7 +33,8 @@ export function mapNativeProduct(product: NativeProductRow): OdooProductRecord {
   const currentCatalogProduct = status === "ACTIVE" || status === "NOT_PURCHASING";
   const sourceCostStatus = !currentCatalogProduct || product.shopfrontCatalogConfirmed !== true || !sourceUpdatedAt
     ? "unavailable"
-    : cost === null ? "missing" : "available";
+    : product.costPercentage === true ? cost === null ? "missing" : "available"
+      : product.caseCost == null || !Number.isFinite(Number(product.caseCost)) ? "missing" : "available";
   const qty = product.stockQuantity == null ? 0 : Number(product.stockQuantity);
   const categoryId = product.categoryId == null ? null : Number(product.categoryId);
   // Shopfront: NOT_PURCHASING remains sellable; NOT_SELLING / NOT_ACTIVE do not.
@@ -47,7 +49,9 @@ export function mapNativeProduct(product: NativeProductRow): OdooProductRecord {
     default_code: false,
     list_price: price,
     standard_price: cost ?? false,
-    shopfront_cost: sourceCostStatus === "available" ? cost : null,
+    shopfront_cost: sourceCostStatus === "available"
+      ? product.costPercentage === true ? cost : Number(product.caseCost)
+      : null,
     shopfront_cost_status: sourceCostStatus,
     shopfront_cost_percentage: product.costPercentage === true,
     shopfront_source_updated_at: sourceUpdatedAt,

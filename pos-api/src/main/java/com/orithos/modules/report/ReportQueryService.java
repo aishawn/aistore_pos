@@ -98,7 +98,10 @@ public class ReportQueryService {
                 FROM sale s
                 LEFT JOIN (
                   SELECT si.sale_id,
-                         SUM(COALESCE(si.cost, pc.cost, p.cost, 0) * COALESCE(si.quantity, 0)) AS cost
+                         SUM(COALESCE(si.cost, pc.cost,
+                             CASE WHEN COALESCE(p.cost_percentage, 0) = 0
+                                       AND (p.shopfront_source_updated_at IS NULL OR p.case_cost IS NOT NULL)
+                                  THEN p.cost END, 0) * COALESCE(si.quantity, 0)) AS cost
                   FROM sale_item si
                   LEFT JOIN product p ON p.id = si.product_id
                   LEFT JOIN product_cost pc ON pc.product_id = si.product_id AND pc.outlet_id = si.outlet_id
@@ -651,7 +654,10 @@ public class ReportQueryService {
                 FROM sale s
                 LEFT JOIN (
                   SELECT si.sale_id,
-                         SUM(COALESCE(si.cost, pc.cost, p.cost, 0) * COALESCE(si.quantity, 0)) AS cost
+                         SUM(COALESCE(si.cost, pc.cost,
+                             CASE WHEN COALESCE(p.cost_percentage, 0) = 0
+                                       AND (p.shopfront_source_updated_at IS NULL OR p.case_cost IS NOT NULL)
+                                  THEN p.cost END, 0) * COALESCE(si.quantity, 0)) AS cost
                   FROM sale_item si
                   LEFT JOIN product p ON p.id = si.product_id
                   LEFT JOIN product_cost pc ON pc.product_id = si.product_id AND pc.outlet_id = si.outlet_id
@@ -679,7 +685,10 @@ public class ReportQueryService {
                 FROM sale s
                 LEFT JOIN (
                   SELECT si.sale_id,
-                         SUM(COALESCE(si.cost, pc.cost, p.cost, 0) * COALESCE(si.quantity, 0)) AS cost
+                         SUM(COALESCE(si.cost, pc.cost,
+                             CASE WHEN COALESCE(p.cost_percentage, 0) = 0
+                                       AND (p.shopfront_source_updated_at IS NULL OR p.case_cost IS NOT NULL)
+                                  THEN p.cost END, 0) * COALESCE(si.quantity, 0)) AS cost
                   FROM sale_item si
                   LEFT JOIN product p ON p.id = si.product_id
                   LEFT JOIN product_cost pc ON pc.product_id = si.product_id AND pc.outlet_id = si.outlet_id

@@ -315,6 +315,8 @@ class ShopfrontIntegrationControllerTest {
 
         upsert.invoke(controller, new ObjectMapper().readTree("""
                 {"source_id":"current-1","name":"Current item","sku":"123456","catalog_confirmed":true,
+                 "cost_authority":"catalog_verified","cost_contract":"case-and-unit-cost-v1",
+                 "cost":43.5258,"case_cost":522.31,"case_quantity":12,
                  "source_updated_at":"2026-10-29T13:19:56+08:00"}
                 """), "skr", 87L, new java.util.HashMap<>(), 123L, batch);
 
@@ -322,14 +324,18 @@ class ShopfrontIntegrationControllerTest {
         updatesField.setAccessible(true);
         @SuppressWarnings("unchecked")
         Map<Long, Object[]> updates = (Map<Long, Object[]>) updatesField.get(batch);
-        assertEquals(Boolean.TRUE, updates.get(123L)[13]);
-        assertEquals("2026-10-29T13:19:56+08:00", updates.get(123L)[14]);
-        assertEquals(123456, updates.get(123L)[25]);
+        assertEquals(Boolean.TRUE, updates.get(123L)[15]);
+        assertEquals("2026-10-29T13:19:56+08:00", updates.get(123L)[16]);
+        assertEquals(Boolean.TRUE, updates.get(123L)[9]);
+        assertEquals(new java.math.BigDecimal("43.5258"), updates.get(123L)[10]);
+        assertEquals(Boolean.TRUE, updates.get(123L)[11]);
+        assertEquals(new java.math.BigDecimal("522.31"), updates.get(123L)[12]);
+        assertEquals(123456, updates.get(123L)[27]);
 
         upsert.invoke(controller, new ObjectMapper().readTree("""
                 {"source_id":"historical-1","name":"Historical item"}
                 """), "skr", 87L, new java.util.HashMap<>(), 124L, batch);
-        assertEquals(Boolean.FALSE, updates.get(124L)[13]);
+        assertEquals(Boolean.FALSE, updates.get(124L)[15]);
     }
 
     @Test
@@ -366,7 +372,7 @@ class ShopfrontIntegrationControllerTest {
         controller.nativeData("token", "skr", "products", 1, 2500);
 
         verify(jdbc).queryForList(contains("p.mdb_id AS sku"), any(Object[].class));
-        verify(jdbc).queryForList(contains("p.cost,"), any(Object[].class));
+        verify(jdbc).queryForList(contains("p.cost,p.case_cost"), any(Object[].class));
         verify(jdbc).queryForList(contains("p.case_quantity,p.tax_rate_id"), any(Object[].class));
         verify(jdbc).queryForList(contains("p.shopfront_catalog_confirmed AS catalog_confirmed"), any(Object[].class));
         verify(jdbc).queryForList(contains("cost_tax.name AS cost_tax_rate_name"), any(Object[].class));
@@ -1085,8 +1091,14 @@ class ShopfrontIntegrationControllerTest {
         assertFalse(ShopfrontIntegrationController.sourceCostIsAuthoritative(mapper.readTree("{}")));
         assertFalse(ShopfrontIntegrationController.sourceCostIsAuthoritative(
                 mapper.readTree("{\"cost_authority\":\"unknown\"}")));
-        assertTrue(ShopfrontIntegrationController.sourceCostIsAuthoritative(
+        assertFalse(ShopfrontIntegrationController.sourceCostIsAuthoritative(
                 mapper.readTree("{\"cost_authority\":\"catalog_verified\"}")));
+        assertTrue(ShopfrontIntegrationController.sourceCostIsAuthoritative(mapper.readTree(
+                "{\"cost_authority\":\"catalog_verified\",\"cost_contract\":\"case-and-unit-cost-v1\",\"cost\":43.5258,\"case_cost\":522.31}")));
+        assertTrue(ShopfrontIntegrationController.sourceCostIsAuthoritative(mapper.readTree(
+                "{\"cost_authority\":\"catalog_verified\",\"cost_contract\":\"case-and-unit-cost-v1\",\"cost_percentage\":true,\"cost\":35}")));
+        assertFalse(ShopfrontIntegrationController.sourceCostIsAuthoritative(mapper.readTree(
+                "{\"cost_authority\":\"catalog_verified\",\"cost_contract\":\"case-and-unit-cost-v1\",\"cost\":43.5258}")));
     }
 
     @Test

@@ -452,7 +452,7 @@ public class ShopfrontIntegrationController {
                     """, store, outletId, entry.getKey(), productId, oldCost);
             int updated = jdbc.update("""
                     UPDATE product
-                    SET cost=NULL, shopfront_catalog_confirmed=FALSE
+                    SET cost=NULL, case_cost=NULL, shopfront_catalog_confirmed=FALSE
                     WHERE id=? AND outlet_id=? AND cost=?
                       AND shopfront_catalog_confirmed IS DISTINCT FROM TRUE
                     """, productId, outletId, oldCost);
@@ -1923,7 +1923,7 @@ public class ShopfrontIntegrationController {
                     + "ON p.id=m.pos_product_id AND p.outlet_id=? AND p.deleted_at IS NULL "
                     + "WHERE m.store_key=? AND m.status='MAPPED'";
             rowsSql = "SELECT m.source_product_id AS source_id,p.name,p.mdb_id AS sku,p.status, "
-                    + "p.cost,p.shopfront_catalog_confirmed AS catalog_confirmed,p.case_quantity,p.tax_rate_id,product_tax.name AS tax_rate_name, "
+                    + "p.cost,p.case_cost,p.shopfront_catalog_confirmed AS catalog_confirmed,p.case_quantity,p.tax_rate_id,product_tax.name AS tax_rate_name, "
                     + "p.cost_tax_rate_id,cost_tax.name AS cost_tax_rate_name,p.cost_percentage, "
                     + "p.updated_at AS pos_updated_at,p.shopfront_source_updated_at AS source_updated_at "
                     + "FROM shopfront_product_mapping m JOIN product p "
@@ -3708,6 +3708,7 @@ public class ShopfrontIntegrationController {
         Long costTaxRateId = ensureTaxRate(effectiveTaxRateName(item, "cost_tax_rate_name"), taxRates, outletId);
         BigDecimal caseQuantity = effectiveCaseQuantity(item);
         BigDecimal cost = decimal(item, "cost");
+        BigDecimal caseCost = decimal(item, "case_cost");
         boolean costIsVerified = sourceCostIsAuthoritative(item);
         String type = text(item, "source_type");
         if (type == null || type.isBlank()) type = "STANDARD";
@@ -3725,10 +3726,10 @@ public class ShopfrontIntegrationController {
             // Shopfront allows duplicate display names across distinct source_ids.
             // Orithos keeps a unique active name per outlet, so disambiguate on create.
             String insertName = disambiguateProductName(name, outletId, firstBarcode(item), sourceId);
-            String sql = "INSERT INTO product (name,type,status,description,category_id,brand_id,family_id,tax_rate_id,cost_tax_rate_id,cost,case_quantity,cost_percentage,shopfront_catalog_confirmed,shopfront_source_updated_at,track_inventory,use_scales,use_barcode_templates,prevent_manual_discounts,request_price,request_quantity,order_notes,invoice_notes,image,alternate_images,mdb_id,outlet_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?::jsonb,?,?) RETURNING id";
-            productId = jdbc.queryForObject(sql, Long.class, insertName, type, productStatus, description, categoryId, brandId, familyId, taxRateId, costTaxRateId, costIsVerified ? cost : null, caseQuantity, flag(item, "cost_percentage", false), item.path("catalog_confirmed").asBoolean(false), text(item, "source_updated_at"), flag(item, "track_inventory", true), flag(item, "use_scales", false), flag(item, "use_barcode_templates", false), flag(item, "prevent_manual_discounts", false), flag(item, "request_price", false), flag(item, "request_quantity", false), text(item, "order_notes"), text(item, "invoice_notes"), image, alternateImages, mdbId, outletId);
+            String sql = "INSERT INTO product (name,type,status,description,category_id,brand_id,family_id,tax_rate_id,cost_tax_rate_id,cost,case_cost,case_quantity,cost_percentage,shopfront_catalog_confirmed,shopfront_source_updated_at,track_inventory,use_scales,use_barcode_templates,prevent_manual_discounts,request_price,request_quantity,order_notes,invoice_notes,image,alternate_images,mdb_id,outlet_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?::jsonb,?,?) RETURNING id";
+            productId = jdbc.queryForObject(sql, Long.class, insertName, type, productStatus, description, categoryId, brandId, familyId, taxRateId, costTaxRateId, costIsVerified ? cost : null, costIsVerified ? caseCost : null, caseQuantity, flag(item, "cost_percentage", false), item.path("catalog_confirmed").asBoolean(false), text(item, "source_updated_at"), flag(item, "track_inventory", true), flag(item, "use_scales", false), flag(item, "use_barcode_templates", false), flag(item, "prevent_manual_discounts", false), flag(item, "request_price", false), flag(item, "request_quantity", false), text(item, "order_notes"), text(item, "invoice_notes"), image, alternateImages, mdbId, outletId);
         } else {
-            batch.productUpdates.put(productId, new Object[]{name, type, productStatus, description, categoryId, brandId, familyId, taxRateId, costTaxRateId, costIsVerified, cost, caseQuantity, flag(item, "cost_percentage", false), item.path("catalog_confirmed").asBoolean(false), text(item, "source_updated_at"), flag(item, "track_inventory", true), flag(item, "use_scales", false), flag(item, "use_barcode_templates", false), flag(item, "prevent_manual_discounts", false), flag(item, "request_price", false), flag(item, "request_quantity", false), text(item, "order_notes"), text(item, "invoice_notes"), image, alternateImages, mdbId, outletId, productId});
+            batch.productUpdates.put(productId, new Object[]{name, type, productStatus, description, categoryId, brandId, familyId, taxRateId, costTaxRateId, costIsVerified, cost, costIsVerified, caseCost, caseQuantity, flag(item, "cost_percentage", false), item.path("catalog_confirmed").asBoolean(false), text(item, "source_updated_at"), flag(item, "track_inventory", true), flag(item, "use_scales", false), flag(item, "use_barcode_templates", false), flag(item, "prevent_manual_discounts", false), flag(item, "request_price", false), flag(item, "request_quantity", false), text(item, "order_notes"), text(item, "invoice_notes"), image, alternateImages, mdbId, outletId, productId});
         }
         collectProductPrices(productId, item, outletId, batch);
         collectProductBarcodes(productId, item, batch);
@@ -3746,7 +3747,7 @@ public class ShopfrontIntegrationController {
                 temporaryNames.add(new Object[]{"__sf_sync_" + reservation + "_" + index++, outletId, productId});
             }
             jdbc.batchUpdate("UPDATE product SET name=? WHERE outlet_id=? AND id=?", temporaryNames);
-            jdbc.batchUpdate("UPDATE product SET name=?,type=?,status=?,description=?,category_id=?,brand_id=?,family_id=?,tax_rate_id=?,cost_tax_rate_id=?,cost=CASE WHEN ? THEN ? ELSE NULL END,case_quantity=?,cost_percentage=?,shopfront_catalog_confirmed=?,shopfront_source_updated_at=?,track_inventory=?,use_scales=?,use_barcode_templates=?,prevent_manual_discounts=?,request_price=?,request_quantity=?,order_notes=?,invoice_notes=?,image=COALESCE(?,image),alternate_images=?::jsonb,mdb_id=?,outlet_id=? WHERE id=?",
+            jdbc.batchUpdate("UPDATE product SET name=?,type=?,status=?,description=?,category_id=?,brand_id=?,family_id=?,tax_rate_id=?,cost_tax_rate_id=?,cost=CASE WHEN ? THEN ? ELSE NULL END,case_cost=CASE WHEN ? THEN ? ELSE NULL END,case_quantity=?,cost_percentage=?,shopfront_catalog_confirmed=?,shopfront_source_updated_at=?,track_inventory=?,use_scales=?,use_barcode_templates=?,prevent_manual_discounts=?,request_price=?,request_quantity=?,order_notes=?,invoice_notes=?,image=COALESCE(?,image),alternate_images=?::jsonb,mdb_id=?,outlet_id=? WHERE id=?",
                     new ArrayList<>(batch.productUpdates.values()));
         }
 
@@ -4133,7 +4134,18 @@ public class ShopfrontIntegrationController {
 
     static boolean sourceCostIsAuthoritative(JsonNode item) {
         JsonNode authority = item == null ? null : item.get("cost_authority");
-        return authority != null && !authority.isNull() && "catalog_verified".equalsIgnoreCase(authority.asText());
+        JsonNode contract = item == null ? null : item.get("cost_contract");
+        if (authority == null || authority.isNull() || !"catalog_verified".equalsIgnoreCase(authority.asText())
+                || contract == null || !"case-and-unit-cost-v1".equals(contract.asText())) return false;
+        JsonNode percentage = item.get("cost_percentage");
+        String requiredAmount = percentage != null && percentage.asBoolean(false) ? "cost" : "case_cost";
+        JsonNode amount = item.get(requiredAmount);
+        if (amount == null || amount.isNull()) return false;
+        try {
+            return new BigDecimal(amount.asText()).signum() >= 0;
+        } catch (NumberFormatException invalidAmount) {
+            return false;
+        }
     }
 
     /**

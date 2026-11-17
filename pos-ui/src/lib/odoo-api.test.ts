@@ -28,12 +28,13 @@ describe("mapNativeProduct cost provenance", () => {
       id: 1,
       name: "Wine",
       cost: 10.35,
+      caseCost: 62.07,
       costPercentage: false,
       caseQuantity: 6,
       shopfrontCatalogConfirmed: true,
       shopfrontSourceUpdatedAt: "2026-10-29T13:19:56+08:00",
     });
-    assert.equal(product.shopfront_cost, 10.35);
+    assert.equal(product.shopfront_cost, 62.07);
     assert.equal(product.shopfront_cost_status, "available");
     assert.equal(product.shopfront_cost_percentage, false);
     assert.equal(product.shopfront_source_updated_at, "2026-10-29T13:19:56+08:00");
@@ -77,6 +78,7 @@ describe("mapNativeProduct cost provenance", () => {
       name: "Still saleable",
       status: "NOT_PURCHASING",
       cost: 62.07,
+      caseCost: 62.07,
       shopfrontCatalogConfirmed: true,
       shopfrontSourceUpdatedAt: "2026-11-12T05:13:22+0000",
     });

@@ -380,8 +380,8 @@ async function buildLiveOperationsPreview(
         dataAsOf: brief.dataAsOf ?? undefined,
       };
       const answer = chinese
-        ? `本周销售 ${revenueText}（${brief.sales.transactions} 笔）；${brief.replenishment.actionableItemCount} 个 SKU 有补货建议。打开下方卡片继续核对。`
-        : `This week: net sales ${revenueText} (${brief.sales.transactions} transactions); ${brief.replenishment.actionableItemCount} SKUs have replenishment suggestions. Use the cards below to review.`;
+        ? `本周销售 ${revenueText}（${brief.sales.transactions} 笔）；${brief.replenishment.actionableItemCount} 个 SKU 有补货建议。数据期间：${brief.reportPeriodFrom} 至 ${brief.reportPeriodTo}（${brief.reportTimeZone}）。打开下方卡片继续核对。`
+        : `This week: net sales ${revenueText} (${brief.sales.transactions} transactions); ${brief.replenishment.actionableItemCount} SKUs have replenishment suggestions. Replenishment period: ${brief.reportPeriodFrom} to ${brief.reportPeriodTo} (${brief.reportTimeZone}). Use the cards below to review.`;
       return {
         threadId: threadId ?? "",
         intent: "navigate",
@@ -485,8 +485,8 @@ async function buildLiveOperationsPreview(
           : `• ${item.name} — suggested ${item.suggestedQuantity} ${item.unit ?? "units"}`
       )).join("\n");
       const scanLine = chinese
-        ? `全店扫描：${plan.actionableItemCount ?? plan.itemsNeedingOrder} 个 SKU 有建议量（覆盖 ${plan.coverageDays} 天）${plan.dataGapCount > 0 ? `；${plan.dataGapCount} 个因资料缺失未纳入` : ""}。`
-        : `Store-wide scan: ${plan.actionableItemCount ?? plan.itemsNeedingOrder} SKUs have suggested order (${plan.coverageDays}d cover)${plan.dataGapCount > 0 ? `; ${plan.dataGapCount} excluded for missing data` : ""}.`;
+        ? `全店扫描（销售期间 ${analysisPeriod}）：${plan.actionableItemCount ?? plan.itemsNeedingOrder} 个 SKU 有建议量（覆盖 ${plan.coverageDays} 天）${plan.dataGapCount > 0 ? `；${plan.dataGapCount} 个因资料缺失未纳入` : ""}。`
+        : `Store-wide scan (sales period ${analysisPeriod}): ${plan.actionableItemCount ?? plan.itemsNeedingOrder} SKUs have suggested order (${plan.coverageDays}d cover)${plan.dataGapCount > 0 ? `; ${plan.dataGapCount} excluded for missing data` : ""}.`;
       card.summary = chinese
         ? hasNoData
           ? `所选销售期间 ${analysisPeriod} 没有可验证的销售历史，未生成补货数量。`
