@@ -3775,6 +3775,7 @@ public class ShopfrontIntegrationController {
                     batch.barcodes, owners, outletId);
             Map<String, BarcodeWrite> inserts = new LinkedHashMap<>();
             Map<String, BarcodeWrite> updates = new LinkedHashMap<>();
+            int migratedBarcodes = 0;
             for (BarcodeWrite barcode : batch.barcodes) {
                 Long owner = owners.get(barcode.code());
                 if (owner != null && owner != barcode.productId()) {
@@ -3790,6 +3791,7 @@ public class ShopfrontIntegrationController {
                                 """, outletId, barcode.sourceId(), barcode.code(), owner, barcode.productId());
                         owners.put(barcode.code(), barcode.productId());
                         inserts.put(barcode.code(), barcode);
+                        migratedBarcodes++;
                         continue;
                     }
                     batch.barcodeConflictCount++;
@@ -3815,6 +3817,12 @@ public class ShopfrontIntegrationController {
             if (!updates.isEmpty()) {
                 jdbc.batchUpdate("UPDATE product_barcode SET quantity=? WHERE product_id=? AND code=? AND outlet_id=?",
                         updates.values().stream().map(value -> new Object[]{value.quantity(), value.productId(), value.code(), outletId}).toList());
+            }
+            if (batch.barcodeConflictCount > 0 || migratedBarcodes > 0) {
+                long catalogConfirmedBarcodes = batch.barcodes.stream().filter(BarcodeWrite::catalogConfirmed).count();
+                log.info("Shopfront barcode reconciliation outletId={} catalogConfirmed={} retiredUnstockedOwners={} migrated={} conflicts={}",
+                        outletId, catalogConfirmedBarcodes, retiredUnstockedOwners.size(), migratedBarcodes,
+                        batch.barcodeConflictCount);
             }
         }
 
