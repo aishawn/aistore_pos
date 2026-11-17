@@ -25,6 +25,7 @@ public final class AiReportTableCatalog {
     private static final Map<String, Policy> BY_NAME = Map.of(
             "ai_rpt_sale_item", new Policy("ai_rpt_sale_item", true, false, false),
             "ai_rpt_product", new Policy("ai_rpt_product", true, false, false),
+            "ai_rpt_product_core", new Policy("ai_rpt_product_core", true, false, false),
             "ai_rpt_inventory", new Policy("ai_rpt_inventory", true, false, false),
             "ai_rpt_inventory_cost", new Policy("ai_rpt_inventory_cost", true, false, true),
             "ai_rpt_customer_sale", new Policy("ai_rpt_customer_sale", true, false, false),

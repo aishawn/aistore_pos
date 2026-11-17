@@ -50,6 +50,12 @@ SELECT p.id, p.outlet_id, p.status, p.name
 FROM product p
 WHERE p.deleted_at IS NULL;
 
+-- Product identity fields without price/barcode lateral joins.
+CREATE OR REPLACE VIEW ai_rpt_product_core AS
+SELECT p.id, p.outlet_id, p.name, p.status
+FROM product p
+WHERE p.deleted_at IS NULL;
+
 -- Lightweight exact/contains barcode lookup for bounded product search.
 CREATE OR REPLACE VIEW ai_rpt_product_barcode AS
 SELECT pb.product_id, pb.outlet_id, pb.code

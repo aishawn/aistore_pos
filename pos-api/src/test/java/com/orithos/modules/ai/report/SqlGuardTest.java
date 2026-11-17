@@ -272,6 +272,34 @@ class SqlGuardTest {
     }
 
     @Test
+    void acceptsStockValueCoreViewWithCostPermission() {
+        TenantContext cost = new TenantContext(1L, 9L, 1L, List.of(1L),
+                Set.of(TenantContext.PERM_QUERY, TenantContext.PERM_COST));
+        SqlTenantBinder.BoundSql bound = new SqlTenantBinder(500).bind("""
+                WITH store_summary AS (
+                  SELECT SUM(i.quantity * c.cost) AS total
+                  FROM ai_rpt_inventory i
+                  JOIN ai_rpt_product_core p ON p.id = i.product_id AND p.outlet_id = i.outlet_id
+                  LEFT JOIN ai_rpt_inventory_cost c ON c.product_id = i.product_id AND c.outlet_id = i.outlet_id
+                  WHERE i.quantity > 0
+                )
+                SELECT total FROM store_summary LIMIT 10
+                """, cost);
+        assertDoesNotThrow(() -> guard.validate(bound.sql(), cost, bound.params()));
+    }
+
+    @Test
+    void rejectsStockValueCoreViewWithoutCostPermission() {
+        reject("""
+                SELECT i.quantity * c.cost
+                FROM ai_rpt_inventory i
+                JOIN ai_rpt_product_core p ON p.id = i.product_id AND p.outlet_id = i.outlet_id
+                JOIN ai_rpt_inventory_cost c ON c.product_id = i.product_id AND c.outlet_id = i.outlet_id
+                WHERE i.outlet_id = 1 LIMIT 10
+                """, List.of(), "not allowed");
+    }
+
+    @Test
     void acceptsCategoryOr() {
         ok("""
                 SELECT SUM(si.qty) AS qty, SUM(si.amount) AS sales

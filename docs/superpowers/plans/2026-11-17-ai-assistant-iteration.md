@@ -68,17 +68,34 @@
 
 ### Task 4: Select and ship the next bounded AI improvement
 
-**Candidate backlog:**
-- Regressions from critical workflow UAT, prioritizing `deterministicRoute`, `writeRequests`, and native report parity.
-- High-frequency phrases that still fall through to `llmFallback`; add bilingual router tests and workflow cases together.
-- Replenishment `partial` / data-gap card status and copy, with backend/UI tests updated together.
-- `product_count` deterministic fast path only if measured traffic justifies it.
-- Sell draft notice and UserMenu visual acceptance if the deployed UI still has a visible issue.
+**Selected issue:** `report_stock_value` remains the slowest common deterministic report (Demo: 22 requests, p50 2,050 ms, p95 4,231 ms; SKR: 19 requests, p50 1,982 ms, p95 4,741 ms). `EXPLAIN (ANALYZE, BUFFERS)` on the live query measured 2,312 ms in Demo and 3,290 ms in SKR. Both plans repeatedly scanned `product_price` through `ai_rpt_product` for each on-hand product (3,071 / 3,050 loops; about 1.4 million shared buffer hits). The report only needs product id/name, so the selected fix is to use a minimal outlet-scoped product-core view.
 
-- [ ] Choose the highest-severity item supported by current UAT or metrics evidence.
-- [ ] Write a failing focused test before implementation, then run the narrowest relevant checks.
-- [ ] Create a task-scoped commit and deploy through `main`.
-- [ ] Repeat runtime SHA and Demo/SKR acceptance; retain reports and measured latency.
+**Files:**
+- Modify: `pos-api/src/main/java/com/orithos/modules/ai/report/ReportTemplateRegistry.java`
+- Modify: `pos-api/src/main/java/com/orithos/modules/ai/report/AiReportTenantProvisioner.java`
+- Modify: `pos-api/src/main/java/com/orithos/modules/ai/report/AiReportTableCatalog.java`
+- Modify: `pos-api/src/main/resources/db/migration_ai_report_views.sql`
+- Test: `pos-api/src/test/java/com/orithos/modules/ai/report/ReportTemplateRegistryTest.java`
+- Test: `pos-api/src/test/java/com/orithos/modules/ai/report/AiReportTenantSchemaTest.java`
+- Test: `pos-api/src/test/java/com/orithos/modules/ai/report/SqlGuardTest.java`
+
+**Interfaces:** `ai_rpt_product_core` exposes only `id`, `outlet_id`, `name`, and `status`, filtered to non-deleted products. Tenant provisioning creates the same view in each outlet schema; the stock-value query retains explicit outlet joins and cost permission checks.
+
+- [x] Capture live metrics and read-only execution plans for both outlets; record the repeated product-price scan as the SQL bottleneck.
+- [x] Add failing tests that require `report_stock_value` to join `ai_rpt_product_core` and require per-outlet provisioning to include that view.
+- [x] Run `mvn -B "-Dtest=ReportTemplateRegistryTest,AiReportTenantSchemaTest" test` from `pos-api`; both new assertions failed for the missing view contract.
+- [x] Add the minimal product-core view to the public migration and outlet provisioning; update the inventory-value template to use it. Register the view in the SQL allowlist and cover binder → guard execution, outlet scoping, and cost permission with tests.
+- [x] Re-run the focused Maven tests: `SqlGuardTest`, `ReportTemplateRegistryTest`, and `AiReportTenantSchemaTest` passed 47/47. Existing JSQLParser deprecation and annotation-processing warnings remain.
+- [ ] After deployment, run read-only `EXPLAIN (ANALYZE, BUFFERS)` on Demo and SKR; require no repeated `product_price` scan and SQL execution below 750 ms.
+- [ ] Push the task-scoped change directly to `main`, verify both deployed runtime SHAs, and rerun the selected bilingual stock-value cases plus sales/AOV/write-safety smoke.
+- [ ] Compare answer status, unvalued counts, deterministic routing, writes, and request latencies; retain the missing-cost result and avoid claiming a latency gain without comparable samples.
+
+**Other candidates:**
+- Fix the stale report-readonly UAT script, which still calls retired `/api/odoo/session`.
+- Add bilingual deterministic routes only for measured phrases that currently use unnecessary LLM fallback.
+- Replenishment `partial` / data-gap status and copy, with backend/UI tests updated together.
+- `product_count` already has a deterministic fast path; current metrics do not justify more changes there.
+- Sell draft notice and UserMenu visual acceptance if the deployed UI still has a visible issue.
 
 ## Exit Criteria
 

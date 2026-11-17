@@ -22,7 +22,8 @@ public class AiReportTenantProvisioner {
 
     private static final Logger log = LoggerFactory.getLogger(AiReportTenantProvisioner.class);
     static final String[] VIEWS = {
-            "ai_rpt_sale_item", "ai_rpt_product", "ai_rpt_product_count", "ai_rpt_product_barcode",
+            "ai_rpt_sale_item", "ai_rpt_product", "ai_rpt_product_count", "ai_rpt_product_core",
+            "ai_rpt_product_barcode",
             "ai_rpt_inventory", "ai_rpt_inventory_cost", "ai_rpt_customer_sale"
     };
 
@@ -30,6 +31,7 @@ public class AiReportTenantProvisioner {
             "ai_rpt_sale_item", "id, outlet_id, sold_at, product_id, qty, amount, customer_id, sale_id, business_date",
             "ai_rpt_product", "id, outlet_id, name, status, category_id, category_name, list_price, barcode",
             "ai_rpt_product_count", "id, outlet_id, status, name",
+            "ai_rpt_product_core", "id, outlet_id, name, status",
             "ai_rpt_product_barcode", "product_id, outlet_id, code",
             "ai_rpt_inventory", "product_id, outlet_id, quantity, reorder_level, on_order",
             "ai_rpt_inventory_cost", "product_id, outlet_id, cost",

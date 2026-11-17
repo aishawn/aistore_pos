@@ -80,6 +80,8 @@ class ReportTemplateRegistryTest {
 
         assertNull(bound.error());
         assertTrue(bound.sql().contains("ai_rpt_inventory_cost"));
+        assertTrue(bound.sql().contains("ai_rpt_product_core"));
+        assertFalse(bound.sql().contains("JOIN ai_rpt_product p"));
         assertTrue(bound.sql().contains("i.outlet_id = ?"));
         assertTrue(bound.sql().contains("store_summary AS"));
         assertTrue(bound.sql().contains("top_products AS"));
