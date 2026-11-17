@@ -1,5 +1,12 @@
 # Handoff — Orithos Native Ledger Cutover
 
+## Current release status (2026-11-17)
+
+- GitHub `main` includes stock-value query optimization at `6f339fbddb6998896665eb123f6aff906770bb6b`; Demo and SKR frontend/backend runtime SHAs match it. Selected critical AI workflow checks passed 10/10 per store, SKR read-only verifier passed 7/7, and Demo metrics UI/API passed 9/9. The workflow reports themselves are marked `BLOCKED` only because they intentionally ran 10 of 414 catalog cases; the summarizer reports 20 PASS, 0 FAIL, 0 blocked cases.
+- The exact-SHA Java 21 candidate workflow is optional, not a pre-push gate. Push task-scoped changes directly to `main`, then confirm both deployed runtime SHAs and run scoped online acceptance. Older release-blocker notes below are historical records and do not override this current policy.
+- Stock value is honestly reported unavailable in both stores because no on-hand products have verifiable positive costs. Demo reports 3,071 unvalued products and SKR 3,050; numeric inventory-value parity cannot be established until verified costs exist. The post-deploy latency sample is exploratory and does not prove an improvement.
+- Evidence is under the ignored `.local/ai-eval/` folder in the `ai-assistant-uat-20261117` worktree. The legacy `pilot-ai-report-readonly-uat.mjs` remains stale (retired Odoo endpoint, HTTP 410) and should be replaced before reuse.
+
 > Generated: 2026-11-12 (UTC+8)
 > Project: Orithos POS (`orithopos-master` / GitHub `aishawn/aistore_pos`, branch `main`)  
 > Session: Post-deploy Demo/SKR parity check + promote `business_date` fix + leftover UI cleanup  
