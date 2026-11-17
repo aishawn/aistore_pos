@@ -964,6 +964,9 @@ export interface AssistantCard {
   ctaRoute?: string | null;
   cta?: { label?: string | null; route?: string | null } | null;
   retryable?: boolean | null;
+  supplierGapCount?: number | null;
+  inventoryGapCount?: number | null;
+  actionableItemCount?: number | null;
 }
 
 export interface AssistantResponse {

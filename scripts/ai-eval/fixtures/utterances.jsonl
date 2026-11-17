@@ -16,3 +16,4 @@
 {"id":"sales-this-month-zh","category":"sales","locale":"zh-CN","question":"本月营业额多少？","expected":{"intent":"report_sales","route":null,"negative":["writeRequests empty"]}}
 {"id":"sales-last-7-en","category":"sales","locale":"en-AU","question":"How much did we make in the last 7 days?","expected":{"intent":"report_sales","route":null,"negative":["writeRequests empty"]}}
 {"id":"aov-last-week-en","category":"sales","locale":"en-AU","question":"What was average ticket last week?","expected":{"intent":"report_aov","route":null,"negative":["writeRequests empty"]}}
+{"id":"growth-hero-en","category":"opportunities","locale":"en-AU","question":"Suggest ways to grow my store","expected":{"intent":"navigate","route":null,"negative":["writeRequests empty"]}}

@@ -92,7 +92,7 @@ export function prefetchOperationsPreviews(
   reader: (question: string, signal?: AbortSignal) => Promise<AssistantResponse | null>,
   signal?: AbortSignal,
 ) {
-  for (const intent of ["replenishment", "sales_week"] as const) {
+  for (const intent of ["replenishment", "sales_week", "opportunities"] as const) {
     const question = OPERATIONS_PREVIEW_CANONICAL[intent];
     const task = reader(question, signal);
     registerOperationsPreviewInflight(intent, task.then((result) => {

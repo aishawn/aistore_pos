@@ -14,6 +14,7 @@ const cardTitlesZh: Record<string, string> = {
   pricing: "价格复核建议",
   replenishment: "补货建议",
   sales: "本周销售",
+  opportunities: "门店机会",
 };
 
 const workflowLabelsZh: Record<string, string> = {

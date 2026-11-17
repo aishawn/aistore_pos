@@ -22,11 +22,49 @@ public class AiAssistantReadOnlyReportController {
 
     private final TenantContextFactory tenantContextFactory;
     private final NativeReplenishmentService replenishmentService;
+    private final StoreOpportunitiesBriefService opportunitiesBriefService;
 
     public AiAssistantReadOnlyReportController(TenantContextFactory tenantContextFactory,
-                                               NativeReplenishmentService replenishmentService) {
+                                               NativeReplenishmentService replenishmentService,
+                                               StoreOpportunitiesBriefService opportunitiesBriefService) {
         this.tenantContextFactory = tenantContextFactory;
         this.replenishmentService = replenishmentService;
+        this.opportunitiesBriefService = opportunitiesBriefService;
+    }
+
+    @GetMapping("/store-opportunities-brief")
+    public ApiResult<AssistantStoreOpportunitiesBriefResponse> storeOpportunitiesBrief() {
+        long startedAt = System.nanoTime();
+        try {
+            AssistantStoreOpportunitiesBriefResponse brief =
+                    opportunitiesBriefService.build(tenantContextFactory.fromSecurity());
+            log.info("AI store opportunities brief correlationId={} category=success reportDataStatus={} elapsedMs={}",
+                    CorrelationIdContext.current(), brief.reportDataStatus(), elapsedMs(startedAt));
+            return ApiResult.ok(brief);
+        } catch (AccessDeniedException e) {
+            log.info("AI store opportunities brief correlationId={} category=permission elapsedMs={}",
+                    CorrelationIdContext.current(), elapsedMs(startedAt));
+            throw new BusinessException(40310,
+                    "You do not have permission to view store opportunities. Contact your administrator.");
+        } catch (BusinessException e) {
+            log.info("AI store opportunities brief correlationId={} category=business code={} elapsedMs={}",
+                    CorrelationIdContext.current(), e.getCode(), elapsedMs(startedAt));
+            throw e;
+        } catch (DataAccessException e) {
+            String sqlState = sqlState(e);
+            String category = "57014".equals(sqlState) ? "timeout"
+                    : sqlState != null && sqlState.startsWith("08") ? "connection" : "data_access";
+            log.warn("AI store opportunities brief failed correlationId={} category={} exceptionType={} sqlState={} elapsedMs={}",
+                    CorrelationIdContext.current(), category, e.getClass().getSimpleName(), sqlState,
+                    elapsedMs(startedAt));
+            throw new BusinessException(50321,
+                    "Store opportunities data is temporarily unavailable. Please retry shortly.");
+        } catch (RuntimeException e) {
+            log.warn("AI store opportunities brief failed correlationId={} category=service exceptionType={} elapsedMs={}",
+                    CorrelationIdContext.current(), e.getClass().getSimpleName(), elapsedMs(startedAt));
+            throw new BusinessException(50321,
+                    "Store opportunities data is temporarily unavailable. Please retry shortly.");
+        }
     }
 
     @GetMapping("/replenishment-report")

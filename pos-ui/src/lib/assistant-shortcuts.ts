@@ -51,8 +51,9 @@ export const WORKSPACE_HERO_SHORTCUTS: AssistantShortcut[] = [
     description: "Suggest ways to grow my store",
     quickActionKey: "Find opportunities",
     canonicalQuestion: "Suggest ways to grow my store",
-    mode: "assistant_fast",
+    mode: "operations_preview",
     fallbackHref: "/dashboard",
+    operationsPreview: "opportunities",
   },
 ];
 

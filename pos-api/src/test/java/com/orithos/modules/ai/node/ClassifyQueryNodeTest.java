@@ -893,6 +893,26 @@ class ClassifyQueryNodeTest {
     }
 
     @Test
+    void storeGrowthUtteranceSkipsClassifyModel() {
+        ChatClient chatClient = mock(ChatClient.class);
+        IntentConfigService config = mock(IntentConfigService.class);
+        IntentSanitizeService sanitizer = mock(IntentSanitizeService.class);
+        AiProperties properties = mock(AiProperties.class);
+        ClassifyQueryNode node = new ClassifyQueryNode(
+                chatClient, config, sanitizer, properties, null, null, null, null);
+        OverAllState state = mock(OverAllState.class);
+        when(state.value("question", String.class)).thenReturn(Optional.of("Suggest ways to grow my store"));
+
+        Map<String, Object> result = node.apply(state);
+
+        assertEquals("navigate", result.get("intent"));
+        assertEquals("store_growth_qa", result.get("fast_path_id"));
+        assertEquals("/dashboard", result.get("ui_route"));
+        assertTrue(String.valueOf(result.get("intent_summary")).contains("dashboard"));
+        verifyNoInteractions(chatClient, config, sanitizer, properties);
+    }
+
+    @Test
     void pricingWorkflowUsesChatBriefInsteadOfPlaceholder() {
         ChatClient chatClient = mock(ChatClient.class);
         IntentConfigService config = mock(IntentConfigService.class);

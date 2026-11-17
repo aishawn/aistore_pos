@@ -125,7 +125,7 @@ export function assistantReportDataStatus(
     available: ["Available", "可用"],
     no_data: ["No data", "无数据"],
     unavailable: ["Unavailable", "暂不可用"],
-    incomplete: ["Incomplete", "数据不完整"],
+    incomplete: ["Partial data", "部分可用"],
   };
   return labels[status.trim().toLowerCase()]?.[chinese ? 1 : 0] ?? status;
 }
@@ -156,7 +156,7 @@ export function assistantCardDisplayStatus(
   const labels: Record<typeof selected.tone, string> = {
     ready: chinese ? "可用" : "Ready",
     empty: chinese ? "暂无建议" : "No suggestions",
-    partial: chinese ? "部分数据需复核" : "Review needed",
+    partial: chinese ? "部分可用" : "Partial data",
     unavailable: chinese ? "暂不可用" : "Unavailable",
   };
   const statusMissing = !reportStatus && !cardKey;

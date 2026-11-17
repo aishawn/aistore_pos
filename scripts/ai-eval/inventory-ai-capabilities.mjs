@@ -136,6 +136,8 @@ const report = {
         && probe.intentAlignment?.matches === true),
   },
   runtimeProbes,
+  replenishmentMasterData:
+    "High supplierGapCount on GET /api/ai/assistant/replenishment-report is master-data drift; reconcile Shopfront suppliers before expecting INCOMPLETE to clear.",
   status: missingInSeed.length === 0 && capabilitiesPresent
     && runtimeProbes.length === targets.length
     && runtimeProbes.every((probe) => probe.authenticated && probe.intentHttp === 200

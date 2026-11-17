@@ -14,7 +14,8 @@ export type { OperationsPreview } from "./assistant-operations-constants.ts";
 
 /** Complete catalogue/history reads have a different latency budget from a model reply. */
 export function assistantRequestTimeoutMs(question: string): number {
-  return operationsPreviewIntent(question) === "replenishment" ? 120_000 : 45_000;
+  const intent = operationsPreviewIntent(question);
+  return intent === "replenishment" || intent === "opportunities" ? 120_000 : 45_000;
 }
 
 export function assistantTimeoutMessage(question: string): string {
@@ -24,6 +25,9 @@ export function assistantTimeoutMessage(question: string): string {
   }
   if (intent === "sales_week") {
     return "This week's sales data took too long to load. No figures were generated. Open the sales dashboard or retry.";
+  }
+  if (intent === "opportunities") {
+    return "Store opportunities data took too long to load. Open the dashboard or replenishment page to review, or retry.";
   }
   return "The assistant timed out. Please retry, or open the relevant business page to check the data.";
 }
@@ -35,6 +39,8 @@ export function operationsPreviewIntent(question: string): OperationsPreview | n
     "what should i restock", "哪些商品需要补货", "低库存补货建议"].includes(text)) return "replenishment";
   if (["show me this week's sales performance", "show me this week’s sales performance",
     "this week's sales", "本周销售额", "查看本周销售表现"].includes(text)) return "sales_week";
+  if (["suggest ways to grow my store", "how can i grow my store", "store growth opportunities",
+    "怎么把店做好", "如何把店做好", "增长机会", "店铺增长建议"].includes(text)) return "opportunities";
   return null;
 }
 
@@ -45,7 +51,17 @@ type Plan = {
   top: Product[]; itemsNeedingOrder: number; dataGapCount: number; dataGaps: string[];
   coverageDays: number; dataAsOf?: string | null; dataSource: string; storeScope: string;
   reportPeriodFrom: string; reportPeriodTo: string; reportTimeZone: string; reportDataStatus: string;
-  inventoryGapCount?: number; supplierGapCount?: number;
+  inventoryGapCount?: number; supplierGapCount?: number; actionableItemCount?: number;
+};
+type OpportunitiesBrief = {
+  dataSource: string; storeScope: string; reportPeriodFrom: string; reportPeriodTo: string;
+  reportTimeZone: string; reportDataStatus: string; dataAsOf?: string | null;
+  sales: { revenue?: string | null; transactions: number; currency: string; reportDataStatus: string; dataAsOf?: string | null };
+  replenishment: {
+    coverageDays: number; itemsNeedingOrder: number; actionableItemCount: number;
+    dataGapCount: number; inventoryGapCount: number; supplierGapCount: number;
+    top: Product[]; reportDataStatus: string; dataAsOf?: string | null;
+  };
 };
 type Sales = {
   period: string; revenue: number; transactions: number; currency: string;
@@ -104,6 +120,7 @@ async function readReplenishmentPlan(fetcher: typeof fetch, signal?: AbortSignal
       reportPeriodTo?: string;
       reportTimeZone?: string;
       reportDataStatus?: string;
+      actionableItemCount?: number;
     };
   };
   if (body.code != null && body.code !== 0) {
@@ -125,7 +142,45 @@ async function readReplenishmentPlan(fetcher: typeof fetch, signal?: AbortSignal
     dataGapCount: asNumber(plan.dataGapCount),
     coverageDays: asNumber(plan.coverageDays),
     storeScope: plan.storeScope ?? "current_authenticated_store",
+    actionableItemCount: finite(plan.actionableItemCount) ? asNumber(plan.actionableItemCount) : asNumber(plan.itemsNeedingOrder),
   } as Plan;
+}
+
+async function readStoreOpportunitiesBrief(fetcher: typeof fetch, signal?: AbortSignal): Promise<OpportunitiesBrief> {
+  const response = await fetcher("/api/ai/assistant/store-opportunities-brief", {
+    method: "GET", credentials: "same-origin", cache: "no-store", signal,
+  });
+  if (!response.ok) throw new PreviewReadError("Business data unavailable", response.status);
+  const body = await response.json() as { code?: number; message?: string; data?: OpportunitiesBrief };
+  if (body.code != null && body.code !== 0) {
+    const status = response.status === 401 || response.status === 403
+      ? response.status
+      : body.code === 40300 || body.code === 40310 ? 403
+        : body.code >= 50000 ? 503 : response.status;
+    throw new PreviewReadError(body.message ?? "Business data unavailable", status);
+  }
+  const brief = body.data;
+  if (!brief?.sales || !brief.replenishment || !brief.dataSource || !brief.reportPeriodFrom
+    || !brief.reportPeriodTo || !brief.reportTimeZone || !brief.reportDataStatus) {
+    throw new Error("Incomplete opportunities response");
+  }
+  return {
+    ...brief,
+    storeScope: brief.storeScope ?? "current_authenticated_store",
+    replenishment: {
+      ...brief.replenishment,
+      top: Array.isArray(brief.replenishment.top) ? brief.replenishment.top : [],
+    },
+  };
+}
+
+function parseCurrencyAmount(revenue: string | number | null | undefined): number | null {
+  if (revenue == null) return null;
+  if (typeof revenue === "number" && Number.isFinite(revenue)) return revenue;
+  const digits = String(revenue).replace(/[^0-9.-]+/g, "");
+  if (!digits) return null;
+  const parsed = Number(digits);
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 async function readWeekSales(fetcher: typeof fetch, signal?: AbortSignal): Promise<Sales> {
@@ -193,6 +248,11 @@ function previewUnavailableSummary(
         ? "You do not have permission to view sales reports. Ask an administrator to check store access."
         : "You do not have permission to view replenishment data. Ask an administrator to check store access.";
   }
+  if (intent === "opportunities") {
+    return chinese
+      ? "门店机会数据暂时不可用。请稍后重试，或打开仪表盘和补货页面核对。"
+      : "The store opportunities service is temporarily unavailable. Retry shortly or open the dashboard and replenishment pages to check.";
+  }
   return chinese
     ? intent === "sales_week"
       ? "销售查询服务暂时不可用，未生成金额。请稍后重试或打开销售报表核查。"
@@ -238,6 +298,137 @@ async function buildLiveOperationsPreview(
   const intent = operationsPreviewIntent(question);
   if (!intent) throw new Error("preview intent required");
   const chinese = /[\u3400-\u9fff]/.test(question);
+  if (intent === "opportunities") {
+    try {
+      const brief = await readStoreOpportunitiesBrief(fetcher, signal);
+      const revenueAmount = parseCurrencyAmount(brief.sales.revenue);
+      const revenueText = revenueAmount == null
+        ? (brief.sales.revenue ?? (chinese ? "暂无" : "n/a"))
+        : new Intl.NumberFormat(chinese ? "zh-CN" : "en-AU", {
+          style: "currency", currency: brief.sales.currency || "AUD",
+        }).format(revenueAmount);
+      const eligible = brief.replenishment.top.filter((item) => finite(item.suggestedQuantity) && item.suggestedQuantity > 0);
+      const gapDetails = chinese
+        ? `${brief.replenishment.inventoryGapCount} 个商品缺少库存数据，${brief.replenishment.supplierGapCount} 个商品缺少供应商资料。`
+        : `${brief.replenishment.inventoryGapCount} products lack inventory data; ${brief.replenishment.supplierGapCount} lack supplier details.`;
+      const salesCard: AssistantCard = {
+        type: "sales",
+        title: chinese ? "本周销售" : "This week's sales",
+        ctaRoute: "/reports/dashboard",
+        ctaLabel: chinese ? "打开销售报表" : "Open sales dashboard",
+        status: brief.sales.reportDataStatus === "no_data" ? "empty"
+          : brief.sales.reportDataStatus === "incomplete" ? "partial" : "ready",
+        summary: chinese
+          ? `本周净销售额 ${revenueText}，${brief.sales.transactions} 笔交易（Orithos 账本）。`
+          : `Net sales ${revenueText} from ${brief.sales.transactions} transactions (Orithos ledger).`,
+        dataSource: brief.dataSource,
+        storeScope: brief.storeScope,
+        reportPeriodFrom: brief.reportPeriodFrom,
+        reportPeriodTo: brief.reportPeriodTo,
+        reportTimeZone: brief.reportTimeZone,
+        reportDataStatus: brief.sales.reportDataStatus,
+        dataAsOf: brief.sales.dataAsOf ?? brief.dataAsOf ?? undefined,
+      };
+      const replenishmentStatus = brief.replenishment.reportDataStatus === "no_data" ? "unavailable"
+        : brief.replenishment.dataGapCount > 0 ? "partial"
+          : eligible.length ? "ready" : "empty";
+      const topSummary = eligible.slice(0, 3).map((item) => (
+        chinese
+          ? `• ${item.name} — 建议 ${item.suggestedQuantity} ${item.unit ?? "件"}`
+          : `• ${item.name} — suggested ${item.suggestedQuantity} ${item.unit ?? "units"}`
+      )).join("\n");
+      const replenishmentCard: AssistantCard = {
+        type: "replenishment",
+        title: chinese ? "补货机会" : "Restock opportunities",
+        ctaRoute: "/purchases?tab=replenishment",
+        ctaLabel: chinese ? "查看补货" : "Review replenishment",
+        status: replenishmentStatus,
+        supplierGapCount: brief.replenishment.supplierGapCount,
+        inventoryGapCount: brief.replenishment.inventoryGapCount,
+        actionableItemCount: brief.replenishment.actionableItemCount,
+        summary: chinese
+          ? `${topSummary ? `优先补货：\n${topSummary}\n\n` : ""}全店扫描：${brief.replenishment.actionableItemCount} 个 SKU 有建议量（${brief.replenishment.dataGapCount} 个因资料缺失未纳入）。${gapDetails}`
+          : `${topSummary ? `Top restock picks:\n${topSummary}\n\n` : ""}Store-wide scan: ${brief.replenishment.actionableItemCount} SKUs have suggested order (${brief.replenishment.dataGapCount} excluded for missing data). ${gapDetails}`,
+        items: eligible.slice(0, 3).map((item) => ({
+          id: item.productId,
+          label: `${item.name} — ${chinese ? "建议" : "suggested"} ${item.suggestedQuantity} ${item.unit ?? "units"}`,
+        })),
+        dataSource: brief.dataSource,
+        storeScope: brief.storeScope,
+        reportPeriodFrom: brief.reportPeriodFrom,
+        reportPeriodTo: brief.reportPeriodTo,
+        reportTimeZone: brief.reportTimeZone,
+        reportDataStatus: brief.replenishment.reportDataStatus,
+        dataAsOf: brief.replenishment.dataAsOf ?? brief.dataAsOf ?? undefined,
+      };
+      const overviewCard: AssistantCard = {
+        type: "opportunities",
+        title: chinese ? "门店增长建议" : "Store growth opportunities",
+        ctaRoute: "/dashboard",
+        ctaLabel: chinese ? "打开仪表盘" : "Open dashboard",
+        status: brief.reportDataStatus === "no_data" ? "empty"
+          : brief.reportDataStatus === "incomplete" ? "partial" : "ready",
+        summary: chinese
+          ? "基于本周销售与补货预览：先巩固畅销品补货，再在仪表盘查看品类表现与定价复核。"
+          : "Based on this week's sales and replenishment preview: restock top movers first, then review category performance and pricing on the dashboard.",
+        dataSource: brief.dataSource,
+        storeScope: brief.storeScope,
+        reportPeriodFrom: brief.reportPeriodFrom,
+        reportPeriodTo: brief.reportPeriodTo,
+        reportTimeZone: brief.reportTimeZone,
+        reportDataStatus: brief.reportDataStatus,
+        dataAsOf: brief.dataAsOf ?? undefined,
+      };
+      const answer = chinese
+        ? `本周销售 ${revenueText}（${brief.sales.transactions} 笔）；${brief.replenishment.actionableItemCount} 个 SKU 有补货建议。打开下方卡片继续核对。`
+        : `This week: net sales ${revenueText} (${brief.sales.transactions} transactions); ${brief.replenishment.actionableItemCount} SKUs have replenishment suggestions. Use the cards below to review.`;
+      return {
+        threadId: threadId ?? "",
+        intent: "navigate",
+        intentSummary: overviewCard.title,
+        answer,
+        slots: {},
+        ui: null,
+        cards: [overviewCard, salesCard, replenishmentCard],
+        writeRequests: [],
+        source: "deterministic",
+        llmFallback: false,
+        dataAsOf: brief.dataAsOf ?? undefined,
+        dataSource: brief.dataSource,
+        storeScope: brief.storeScope,
+        reportPeriodFrom: brief.reportPeriodFrom,
+        reportPeriodTo: brief.reportPeriodTo,
+        reportTimeZone: brief.reportTimeZone,
+        reportDataStatus: brief.reportDataStatus,
+        fastPathId: "operations_opportunities",
+      };
+    } catch (error) {
+      if (signal?.aborted) throw error;
+      const retryable = error instanceof PreviewReadError ? error.retryable : true;
+      const fallback: AssistantCard = {
+        type: "opportunities",
+        title: chinese ? "门店增长建议" : "Store growth opportunities",
+        status: "unavailable",
+        retryable,
+        summary: previewUnavailableSummary("opportunities", error, chinese),
+        ctaRoute: "/dashboard",
+        ctaLabel: chinese ? "打开仪表盘" : "Open dashboard",
+      };
+      return {
+        threadId: threadId ?? "",
+        intent: "navigate",
+        intentSummary: fallback.title,
+        answer: fallback.summary ?? "",
+        slots: {},
+        ui: null,
+        cards: [fallback],
+        writeRequests: [],
+        source: "deterministic",
+        llmFallback: false,
+        fastPathId: "operations_opportunities",
+      };
+    }
+  }
   const route = intent === "replenishment" ? "/purchases?tab=replenishment" : "/reports/dashboard";
   const title = intent === "replenishment" ? "Replenishment suggestions" : "This week's sales";
   const card: AssistantCard = {
@@ -278,6 +469,9 @@ async function buildLiveOperationsPreview(
         : plan.dataGapCount > 0 ? "partial" : eligible.length ? "ready" : "empty";
       if (hasNoData) card.retryable = false;
       const analysisPeriod = `${plan.reportPeriodFrom} to ${plan.reportPeriodTo} (${plan.reportTimeZone})`;
+      card.supplierGapCount = plan.supplierGapCount;
+      card.inventoryGapCount = plan.inventoryGapCount;
+      card.actionableItemCount = plan.actionableItemCount ?? plan.itemsNeedingOrder;
       const gapDetails = plan.inventoryGapCount != null || plan.supplierGapCount != null
         ? chinese
           ? `${plan.inventoryGapCount ?? 0} 个商品缺少库存数据，${plan.supplierGapCount ?? 0} 个商品缺少供应商资料。`
@@ -285,13 +479,25 @@ async function buildLiveOperationsPreview(
         : chinese
           ? `${plan.dataGapCount} 个商品因资料不完整被排除。`
           : `${plan.dataGapCount} products were excluded for incomplete data.`;
+      const topSummary = eligible.slice(0, 3).map((item) => (
+        chinese
+          ? `• ${item.name} — 建议 ${item.suggestedQuantity} ${item.unit ?? "件"}`
+          : `• ${item.name} — suggested ${item.suggestedQuantity} ${item.unit ?? "units"}`
+      )).join("\n");
+      const scanLine = chinese
+        ? `全店扫描：${plan.actionableItemCount ?? plan.itemsNeedingOrder} 个 SKU 有建议量（覆盖 ${plan.coverageDays} 天）${plan.dataGapCount > 0 ? `；${plan.dataGapCount} 个因资料缺失未纳入` : ""}。`
+        : `Store-wide scan: ${plan.actionableItemCount ?? plan.itemsNeedingOrder} SKUs have suggested order (${plan.coverageDays}d cover)${plan.dataGapCount > 0 ? `; ${plan.dataGapCount} excluded for missing data` : ""}.`;
       card.summary = chinese
         ? hasNoData
           ? `所选销售期间 ${analysisPeriod} 没有可验证的销售历史，未生成补货数量。`
-          : `${analysisPeriod} 销售数据对应的补货预览：目标覆盖 ${plan.coverageDays} 天，${plan.itemsNeedingOrder} 个商品有建议数量。${gapDetails}`
+          : plan.dataGapCount > 0 && topSummary
+            ? `优先补货：\n${topSummary}\n\n${scanLine}\n${gapDetails}`
+            : `${analysisPeriod} 销售数据对应的补货预览：${scanLine} ${gapDetails}`
         : hasNoData
           ? `No verifiable sales history is available for ${analysisPeriod}; no replenishment quantities were generated.`
-          : `Replenishment preview for ${analysisPeriod}: ${plan.itemsNeedingOrder} products need order for ${plan.coverageDays}d cover. ${gapDetails}`;
+          : plan.dataGapCount > 0 && topSummary
+            ? `Top restock picks:\n${topSummary}\n\n${scanLine} ${gapDetails}`
+            : `Replenishment preview for ${analysisPeriod}: ${scanLine} ${gapDetails}`;
       if (plan.reportDataStatus === "incomplete" && !plan.dataGapCount) {
         card.summary += chinese ? " 报表数据不完整，请人工复核。" : " Report data is incomplete; review manually.";
       }

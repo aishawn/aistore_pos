@@ -121,7 +121,7 @@ test("uses authoritative report data status for assistant card badges", () => {
   });
   assert.deepEqual(assistantCardDisplayStatus("incomplete", "ready", true), {
     tone: "partial",
-    label: "数据不完整",
+    label: "部分可用",
   });
   assert.deepEqual(assistantCardDisplayStatus("no_data", "ready", true), {
     tone: "empty",
@@ -133,14 +133,14 @@ test("uses authoritative report data status for assistant card badges", () => {
   });
   assert.deepEqual(assistantCardDisplayStatus("available", "partial", true), {
     tone: "partial",
-    label: "部分数据需复核",
+    label: "部分可用",
   });
 });
 
 test("keeps card status behavior when the API has no report data status", () => {
   assert.deepEqual(assistantCardDisplayStatus(null, "partial", true), {
     tone: "partial",
-    label: "部分数据需复核",
+    label: "部分可用",
   });
   assert.deepEqual(assistantCardDisplayStatus(null, "empty", false), {
     tone: "empty",

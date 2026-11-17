@@ -332,6 +332,7 @@ const cases = [
   { id: "sales-last-week-zh", question: "上周营业额多少？", intent: "report_sales", noRoute: true, responseSource: "deterministic", answerLanguage: "zh", reportSource: "orithos_ledger", reportTimeZone: "Australia/Adelaide" },
   { id: "sales-this-month-zh", question: "本月营业额多少？", intent: "report_sales", noRoute: true, responseSource: "deterministic", answerLanguage: "zh", reportSource: "orithos_ledger", reportTimeZone: "Australia/Adelaide" },
   { id: "sales-last-7-en", question: "How much did we make in the last 7 days?", intent: "report_sales", noRoute: true, responseSource: "deterministic", reportSource: "orithos_ledger", reportTimeZone: "Australia/Adelaide" },
+  { id: "growth-hero-en", question: "Suggest ways to grow my store", intent: "navigate", noRoute: true, responseSource: "deterministic", answerLanguage: "en", reportSource: "orithos_ledger", reportTimeZone: "Australia/Adelaide" },
   { id: "aov-this-week-zh", question: "本周客单价多少？", intent: "report_aov", noRoute: true, responseSource: "deterministic", answerLanguage: "zh", reportSource: "orithos_ledger", reportTimeZone: "Australia/Adelaide" },
   { id: "aov-last-week-en", question: "What was average ticket last week?", intent: "report_aov", noRoute: true, responseSource: "deterministic", reportSource: "orithos_ledger", reportTimeZone: "Australia/Adelaide" },
   { id: "date-compare-ambiguous-refusal", question: "Compare sales last week with this week", intent: "report_adhoc", noRoute: true },

@@ -173,6 +173,12 @@ public class GenerateResponseNode implements NodeAction {
                     ? "我可以帮助查商品、库存、销售报表、顾客和门店流程，也可以打开推荐、补货、定价和供应商发票页面。"
                     : "I can help with products, stock, sales reports, customers, and POS workflows, and open recommendation, replenishment, pricing, and supplier invoice pages.";
         }
+        if (normalized.matches(".*(?:grow (?:my |the )?store|store growth|opportunit|improve (?:my |the )?store|ways to grow|"
+                + "增长|把店做好|门店机会|如何把店做好).*")) {
+            return chinese
+                    ? "请打开仪表盘查看本周销售，在补货页面核对建议量，并在价格复核页检查定价。AI 只使用账本数据，不会编造经营建议。"
+                    : "Open the dashboard for this week's sales, review replenishment suggestions, and check pricing on the price-review page. AI uses ledger data only and will not invent business advice.";
+        }
         if (normalized.matches(".*(?:recommend|suggest).*(?:wine|product|grocery|beer|snack)|.*(?:推荐|建议).*(?:酒|商品|杂货|啤酒|零食).*")) {
             return chinese
                     ? "我可以根据顾客的预算、场景和偏好推荐本店有库存的商品，请打开 Recommend。"

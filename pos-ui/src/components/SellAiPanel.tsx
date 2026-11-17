@@ -2065,6 +2065,21 @@ function DialogueView({
                         <ExternalLink className="h-3 w-3 shrink-0 opacity-70" aria-hidden />
                       </button>
                     ) : null}
+                    {card.type === "replenishment"
+                      && (displayStatus.tone === "partial" || card.status === "partial")
+                      && (card.supplierGapCount ?? 0) > 0 ? (
+                      <button
+                        type="button"
+                        onClick={() => onOpenLink("/suppliers")}
+                        className={cn(chatNavLinkClassName, "mt-2 min-h-11 px-3 text-[var(--oh-muted)]")}
+                        title={chineseCard
+                          ? "仍有建议量，但部分 SKU 缺供应商资料"
+                          : "Suggestions remain, but some SKUs are missing supplier details"}
+                      >
+                        {chineseCard ? "完善供应商资料" : "Fix supplier data"}
+                        <ExternalLink className="h-3 w-3 shrink-0 opacity-70" aria-hidden />
+                      </button>
+                    ) : null}
                     {card.status === "unavailable" && msg.retryQuestion ? (
                       <button
                         type="button"

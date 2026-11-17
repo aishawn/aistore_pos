@@ -285,13 +285,27 @@ public class ClassifyQueryNode implements NodeAction {
                     fast.route(), fast.action());
         }
 
+        if (isStoreGrowthUtterance(question)) {
+            log.info("Store-growth fast-path (skipped classify LLM)");
+            return storeGrowthShortcut(question);
+        }
+
         IntentConfigService.Snapshot snap = configService.getSnapshot();
         String system = snap.promptContent(IntentConfigService.PROMPT_CLASSIFY, FALLBACK_CLASSIFY_PROMPT);
         String history = optionalString(state, "conversation_history");
         String storeContext = optionalString(state, "store_context");
         String userPrompt = buildUserPrompt(snap, question, history, storeContext);
 
-        RawIntent raw = callModel(system, userPrompt, tenantContext(state));
+        RawIntent raw;
+        try {
+            raw = callModel(system, userPrompt, tenantContext(state));
+        } catch (RuntimeException failure) {
+            if (isStoreGrowthUtterance(question)) {
+                log.warn("Classify failed for store-growth utterance; using deterministic shortcut");
+                return storeGrowthShortcut(question);
+            }
+            throw failure;
+        }
         SanitizedIntent result = sanitizeService.sanitize(raw);
         if (isWriteEntityResult(result) || isUnknownEntityOperation(result)) {
             String route = resolveGuidedActionRoute(
@@ -743,6 +757,30 @@ public class ClassifyQueryNode implements NodeAction {
 
     private static boolean isChinese(String text) {
         return text != null && text.matches("(?s).*[\\u3400-\\u9fff].*");
+    }
+
+    private static boolean isStoreGrowthUtterance(String question) {
+        if (question == null || question.isBlank()) {
+            return false;
+        }
+        String q = question.trim().toLowerCase(Locale.ROOT)
+                .replaceAll("[\\u3000\\s]+", " ")
+                .replace('？', '?')
+                .replace('！', '!')
+                .replace('。', '.');
+        return q.matches("^(?:suggest ways to grow (?:my |the )?store|how can i grow (?:my |the )?store|"
+                + "store growth opportunities|ways to grow (?:my |the )?store|improve (?:my |the )?store|"
+                + "怎么把店做好|如何把店做好|增长机会|店铺增长建议|门店增长|如何把店做大)[?.!]*$");
+    }
+
+    private static Map<String, Object> storeGrowthShortcut(String question) {
+        boolean chinese = isChinese(question);
+        String summary = chinese
+                ? "请打开仪表盘查看本周销售，在补货页面核对建议量，并在价格复核页检查定价。AI 只使用账本数据，不会编造经营建议。"
+                : "Open the dashboard for this week's sales, review replenishment suggestions, and check pricing on the price-review page. AI uses ledger data only and will not invent business advice.";
+        Map<String, Object> result = shortcutResult("navigate", summary, Map.of(), "", "", "/dashboard", "");
+        result.put("fast_path_id", "store_growth_qa");
+        return result;
     }
 
     private static boolean isProductCountUtterance(String question) {
