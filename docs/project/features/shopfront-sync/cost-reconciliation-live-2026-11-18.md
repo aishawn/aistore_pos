@@ -42,6 +42,14 @@ Crawler job `#844` and SyncRun `#523` remain `partial`, despite processing 10,85
 
 All conflict records are now classified, but none were moved or cleared. Keep the job status `partial`; classification does not resolve duplicate source claims or establish an approved POS reassignment policy. Any future reassignment must be explicitly scoped and must preserve all product and inventory ownership, including positive and negative stock.
 
+## Barcode Reassignment Gate
+
+The detailed classification contains 104 zero-stock stale-owner rows (52 per store). Every row's requested Shopfront product is `ACTIVE`, present in the current catalog, and declares the barcode. The existing POS owner is also `ACTIVE` and catalog-confirmed, has zero inventory, and no longer declares that barcode in its current source record. These rows are separate from the 202 source-side duplicate claims.
+
+The POS importer explains why they remain conflicts: `retiredUnstockedBarcodeOwners` in `ShopfrontIntegrationController` permits migration only when the old owner's `shopfront_catalog_confirmed` flag is false and inventory is zero. `collectProductBarcodes` collects incoming barcode claims but does not remove an existing association simply because an active source product's current barcode list omits it. The safety test covers migration from an unconfirmed retired owner and refusal when inventory exists; it does not cover a still-active owner whose source record no longer claims a barcode.
+
+This gap does not make a zero balance by itself sufficient authority to move the code. Any future automated policy must also prove from one complete current source snapshot that exactly one Shopfront product claims the barcode, that the old owner's current source record omits it, and that the requesting product is the unique current claimant. A permitted move must update only the outlet-scoped barcode association, record old/new product IDs and the evidence snapshot in an audit row, and leave inventory, product status, cost, and historical sales untouched. No code or live barcode change was made in this audit.
+
 There was no active sync job at the time of the status query. The current source catalog observation is recent, while catalog job health is still partial/stale because the latest catalog job did not reach a clean terminal success.
 
 ## Latest Sync Health Readback (2026-11-18 04:11 +08)
