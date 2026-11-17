@@ -48,7 +48,13 @@ VALUES
  'dialogue', NULL, 1, 56),
 ('report_adhoc', 'Report ad-hoc', 'Looks like a numbers question but no template fits',
  'User asks for a number that is not sales/qty/aov/stock/dead-stock. Do not invent figures.',
- 'dialogue', NULL, 1, 57);
+ 'dialogue', NULL, 1, 57),
+('product_count', 'Product catalogue count', 'Count sellable products in the outlet catalogue',
+ 'User asks how many products, SKUs, or items are in the catalogue (商品总数/目录有多少商品). Not a stock level for one product.',
+ 'dialogue', NULL, 1, 51),
+('report_stock_value', 'Report inventory cash value', 'On-hand inventory value using trusted product cost',
+ 'User asks which stock ties up cash, inventory value, or 库存资金占用. Read-only; requires cost permission.',
+ 'dialogue', NULL, 1, 58);
 
 UPDATE `ai_intent`
 SET `name` = 'Entity lookup',

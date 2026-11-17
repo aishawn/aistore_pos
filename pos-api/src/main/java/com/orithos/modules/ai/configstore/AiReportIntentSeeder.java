@@ -49,6 +49,10 @@ final class AiReportIntentSeeder {
                 "Products with stock but no sales in N days",
                 "User asks dead stock / 滞销. Extract days (default 30).",
                 56);
+        ensureIntent(intentMapper, "product_count", "Product catalogue count",
+                "Count sellable products in the outlet catalogue",
+                "User asks how many products/SKUs/items in the catalogue (商品总数). Not on-hand stock for one named product.",
+                51);
         ensureIntent(intentMapper, "report_stock_value", "Report inventory cash value",
                 "Products ranked by on-hand inventory value using trusted product cost",
                 "User asks which inventory ties up the most cash, highest inventory value, or 库存资金占用. Read-only; require cost-report permission, use Orithos cost data and explain exclusions.",

@@ -103,7 +103,7 @@ public final class WorkflowRouteRouter {
             "\\b(?:place|send|create|approve|apply|execute|finalize|commit)\\s+(?:the\\s+)?(?:purchase\\s+)?(?:order|replenishment|restock|suggestions?|prices?|pricing)\\b|"
                     + "\\b(?:submit|confirm|save|publish|approve|apply|send|create|set|change|update|raise|lower|reprice)\\s+(?:(?:this|the|these|a|an|new|suggested|recommended|proposed)\\s+)*(?:purchase\\s+)?(?:order|price changes?|prices?|price|pricing|replenishment|restock)\\b|"
                     + "\\b(?:buy|purchase|order)\\s+(?:these|those|the items?|the products?|it|them|now|today)\\b|"
-                    + "(?:下单|采购这些|购买这些|执行补货|提交补货|提交采购订单|确认采购单|确认这些订单|确认这个订单|发送采购订单|保存价格变更|保存这些价格|应用这些价格|确认这些价格|发布价格|执行调价|直接调价|直接改价|设置这些价格|修改这些价格)",
+                    + "(?:下单|采购这些|购买这些|执行补货|提交补货|提交采购订单|确认采购单|确认这些订单|确认这个订单|发送采购订单|保存价格变更|保存这些价格|应用这些价格|确认这些价格|发布价格|执行调价|直接调价|直接改价|设置这些价格|修改这些价格|马上提交订单|立即保存价格)",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern DIRECT_EXECUTION_ZH = Pattern.compile(
             "把这些建议下单|直接把价格改了|直接(?:调价|改价)|(?:帮我)?把.*?(?:价格|售价)(?:改了|改掉)|(?:直接\\s*)?把.+?(?:补到|补足|补至|加到)\\s*\\d+\\s*(?:件|个|瓶|箱)?",

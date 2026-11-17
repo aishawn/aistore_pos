@@ -207,6 +207,8 @@ class WorkflowRouteRouterTest {
         assertTrue(WorkflowRouteRouter.hasWriteIntent("提交采购订单"));
         assertTrue(WorkflowRouteRouter.hasWriteIntent("确认这些订单"));
         assertTrue(WorkflowRouteRouter.hasWriteIntent("保存价格变更"));
+        assertTrue(WorkflowRouteRouter.hasWriteIntent("马上提交订单"));
+        assertTrue(WorkflowRouteRouter.hasWriteIntent("立即保存价格"));
         assertTrue(WorkflowRouteRouter.hasWriteIntent("Set these prices now"));
         assertTrue(WorkflowRouteRouter.hasWriteIntent("Change these prices"));
         assertTrue(WorkflowRouteRouter.hasWriteIntent("设置这些价格"));

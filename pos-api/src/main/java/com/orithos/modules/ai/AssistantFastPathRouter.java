@@ -40,13 +40,30 @@ public final class AssistantFastPathRouter {
                     + "昨天.*(?:利润|毛利).*|(?:利润|毛利).*昨天.*)[?.!。！？]*$",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern SALES_RANGE = Pattern.compile(
-            "^(?:(?:sales|revenue|takings|turnover)\\s+(?:for\\s+)?(?:last|past|previous)\\s+\\d+\\s+days?|(?:近|最近|过去)\\s*\\d+\\s*天(?:销售额?|营业额?)?)$",
+            "^(?:(?:sales|revenue|takings|turnover)\\s+(?:for\\s+)?(?:last|past|previous)\\s+\\d+\\s+days?|"
+                    + "how much did we (?:make|take|sell)\\s+in the (?:last|past|previous)\\s+\\d+\\s+days?|"
+                    + "(?:last|past|previous)\\s+\\d+\\s+days?\\s+(?:sales|revenue|takings|turnover)|"
+                    + "(?:近|最近|过去)\\s*\\d+\\s*天(?:的)?(?:销售额?|营业额|流水)(?:多少|怎么样|如何)?|"
+                    + "(?:近|最近)一(?:周|星期)(?:的)?(?:销售额?|营业额|流水)(?:多少|怎么样|如何)?)[?.!。！？]*$",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern LAST_WEEK_SALES = Pattern.compile(
             "^(?:(?:sales|revenue|takings|turnover)\\s+(?:for\\s+)?(?:the\\s+)?(?:last|previous)\\s+week|"
                     + "how much did we (?:make|take|sell)\\s+(?:in\\s+)?(?:the\\s+)?last\\s+week|"
                     + "what did we (?:make|take|sell)\\s+(?:in\\s+)?(?:the\\s+)?last\\s+week|"
-                    + "what were (?:our )?(?:sales|takings|revenue|turnover)\\s+(?:for\\s+(?:the\\s+)?last|last)\\s+week)[?.!]*$",
+                    + "what were (?:our )?(?:sales|takings|revenue|turnover)\\s+(?:for\\s+(?:the\\s+)?last|last)\\s+week|"
+                    + "上周(?:销售额?|营业额|流水|收入)(?:多少|怎么样|如何)?|上星期(?:销售额?|营业额|流水)(?:多少)?)[?.!。！？]*$",
+            Pattern.CASE_INSENSITIVE);
+    private static final Pattern THIS_WEEK_SALES = Pattern.compile(
+            "^(?:(?:what were|how (?:were|was)|show(?:\\s+me)?)\\s+(?:(?:our|the) )?(?:sales|revenue|takings|turnover)\\s+(?:for\\s+)?this\\s+week|"
+                    + "(?:sales|revenue|takings|turnover)\\s+(?:for\\s+)?this\\s+week|"
+                    + "how much did we (?:make|take|sell)\\s+this\\s+week|"
+                    + "本周(?:销售额?|营业额|流水|收入)(?:多少|怎么样|如何)?|这周(?:销售额?|营业额|流水)(?:多少|怎么样|如何)?)[?.!。！？]*$",
+            Pattern.CASE_INSENSITIVE);
+    private static final Pattern THIS_MONTH_SALES = Pattern.compile(
+            "^(?:(?:what were|how (?:were|was)|show(?:\\s+me)?)\\s+(?:(?:our|the) )?(?:sales|revenue|takings|turnover)\\s+(?:for\\s+)?this\\s+month|"
+                    + "(?:sales|revenue|takings|turnover)\\s+(?:for\\s+)?this\\s+month|"
+                    + "how much did we (?:make|take|sell)\\s+this\\s+month|"
+                    + "本月(?:销售额?|营业额|流水|收入)(?:多少|怎么样|如何)?|这个月(?:销售额?|营业额|流水)(?:多少|怎么样|如何)?)[?.!。！？]*$",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern DATE_TOKEN = Pattern.compile(
             "(?:\\b\\d{4}[-/.]\\d{1,2}[-/.]\\d{1,2}\\b|\\b\\d{1,2}/\\d{1,2}/\\d{4}\\b|"
@@ -91,7 +108,9 @@ public final class AssistantFastPathRouter {
                     + "how\\s+much\\s+(?:cash|money|capital)\\s+is\\s+tied\\s+up\\s+in\\s+(?:current\\s+)?(?:inventory|stock)|"
                     + "(?:哪些|什么)(?:库存|商品|产品)(?:占用|占用了|占着|压着)(?:最多|最高)(?:现金|资金|钱)|"
                     + "(?:当前|现在)(?:库存|存货)(?:占用|占了|压了)(?:多少|多少钱)(?:现金|资金|钱)?|"
-                    + "库存(?:现金|资金)占用(?:最多|最高|排名)?)[?.!。！？]*$",
+                    + "库存(?:现金|资金)占用(?:最多|最高|排名)?|"
+                    + "(?:库存|存货)(?:总)?价值(?:多少|是多少|有多高)?|"
+                    + "哪些(?:商品|产品)?库存价值(?:最高|最大))[?.!。！？]*$",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern CATEGORY_QUANTITY = Pattern.compile(
             "^how much\\s+(.+?)\\s+sold\\s+(?:this|last)\\s+week\\??$|^本周(.+?)(?:卖了多少|销量(?:是多少)?)$",
@@ -210,8 +229,11 @@ public final class AssistantFastPathRouter {
                     + "ai\\s*(?:(?:会|能)(?:不|否)?|可不可以|可以不可以|能不能|会不会)\\s*(?:帮我\\s*)?(?:直接|自动)?\\s*(?:下(?:采购)?单|下订单|提交(?:采购)?订单?|生成(?:采购)?订单?|改价|调价|推荐(?:什么酒|商品|葡萄酒|红酒)|(?:识别|读取|扫描)(?:供应商)?(?:发票|账单)|回答(?:销售|库存)问题)\\s*(?:吗)?)[?.!。！？]*$",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern TICKET_COUNT = Pattern.compile(
-            "^(?:(?:what was|what's|what is) (?:our )?average (?:sale|ticket) (?:today|yesterday)|how many (?:transactions?|tickets?|orders?)(?: did we have)? (?:today|yesterday)|"
-                    + "(?:(?:昨天|昨日|今天|今日)(?:的)?(?:平均)?客单价(?:是多少|如何|怎么样)?|(?:平均)?客单价(?:是)?(?:昨天|昨日|今天|今日))|"
+            "^(?:(?:what was|what's|what is) (?:our )?average (?:sale|ticket) (?:today|yesterday|(?:this|last) week)|"
+                    + "average (?:sale|ticket) (?:for )?(?:this|last) week|"
+                    + "how many (?:transactions?|tickets?|orders?)(?: did we have)? (?:today|yesterday)|"
+                    + "(?:(?:昨天|昨日|今天|今日|本周|这周|上周|上星期)(?:的)?(?:平均)?客单价(?:是多少|如何|怎么样|多少)?|"
+                    + "(?:平均)?客单价(?:是)?(?:昨天|昨日|今天|今日|本周|这周|上周|上星期))|"
                     + "(?:today|yesterday)\\s+(?:transaction|ticket|order) count|今天(?:有)?多少笔(?:交易|订单)|"
                     + "今天(?:有)?几笔(?:交易|订单)?)[?.!。！？]*$",
             Pattern.CASE_INSENSITIVE);
@@ -339,6 +361,26 @@ public final class AssistantFastPathRouter {
             return new Match(
                     "report_sales",
                     "Last week's sales",
+                    Map.of(),
+                    "",
+                    "",
+                    "",
+                    "");
+        }
+        if (THIS_WEEK_SALES.matcher(normalized).matches()) {
+            return new Match(
+                    "report_sales",
+                    "This week's sales",
+                    Map.of(),
+                    "",
+                    "",
+                    "",
+                    "");
+        }
+        if (THIS_MONTH_SALES.matcher(normalized).matches()) {
+            return new Match(
+                    "report_sales",
+                    "This month's sales",
                     Map.of(),
                     "",
                     "",

@@ -351,6 +351,72 @@ class AssistantFastPathRouterTest {
         }
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "What were sales this week?",
+            "How much did we make this week?",
+            "Sales for this week",
+            "本周营业额多少？",
+            "这周销售额怎么样？"
+    })
+    void routesThisWeekSalesDeterministically(String question) {
+        AssistantFastPathRouter.Match match = AssistantFastPathRouter.maybeMatch(question);
+        assertNotNull(match, question);
+        assertEquals("report_sales", match.intent(), question);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "Sales for this month",
+            "How much did we make this month?",
+            "本月营业额多少？"
+    })
+    void routesThisMonthSalesDeterministically(String question) {
+        AssistantFastPathRouter.Match match = AssistantFastPathRouter.maybeMatch(question);
+        assertNotNull(match, question);
+        assertEquals("report_sales", match.intent(), question);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "sales last 14 days",
+            "How much did we make in the last 7 days?",
+            "past 14 days revenue",
+            "近7天营业额多少？",
+            "最近一周销售额多少？",
+            "上周营业额多少？"
+    })
+    void routesRollingAndWeeklySalesColloquials(String question) {
+        AssistantFastPathRouter.Match match = AssistantFastPathRouter.maybeMatch(question);
+        assertNotNull(match, question);
+        assertEquals("report_sales", match.intent(), question);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "What was average ticket this week?",
+            "What was average ticket last week?",
+            "Average ticket for last week",
+            "本周客单价多少？",
+            "上周平均客单价是多少？"
+    })
+    void routesWeeklyAverageTicketDeterministically(String question) {
+        AssistantFastPathRouter.Match match = AssistantFastPathRouter.maybeMatch(question);
+        assertNotNull(match, question);
+        assertEquals("report_aov", match.intent(), question);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "库存价值多少？",
+            "哪些商品库存价值最高？"
+    })
+    void routesChineseStockValueQuestionsDeterministically(String question) {
+        AssistantFastPathRouter.Match match = AssistantFastPathRouter.maybeMatch(question);
+        assertNotNull(match, question);
+        assertEquals("report_stock_value", match.intent(), question);
+    }
+
     @Test
     void routesNaturalRemainingStockQuestionsAndPreservesTheProductName() {
         for (String question : new String[]{
