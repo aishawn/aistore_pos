@@ -1300,6 +1300,76 @@ class ShopfrontIntegrationControllerTest {
     }
 
     @Test
+    void confirmedCatalogMovesBarcodeFromRetiredProductWithoutInventory() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        when(jdbc.queryForList(contains("SELECT code, product_id FROM product_barcode"), any(Object[].class)))
+                .thenReturn(List.of(Map.of("code", "9300001", "product_id", 101L)));
+        when(jdbc.queryForList(contains("shopfront_catalog_confirmed"), any(Object[].class)))
+                .thenReturn(List.of(Map.of(
+                        "product_id", 101L,
+                        "shopfront_catalog_confirmed", false,
+                        "inventory_quantity", BigDecimal.ZERO)));
+        when(jdbc.update(contains("DELETE FROM product_barcode"), any(Object[].class))).thenReturn(1);
+        var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true, true);
+        Class<?> batchType = Class.forName(ShopfrontIntegrationController.class.getName() + "$ProductImportBatch");
+        Constructor<?> constructor = batchType.getDeclaredConstructor();
+        constructor.setAccessible(true);
+        Object batch = constructor.newInstance();
+        Method collect = ShopfrontIntegrationController.class.getDeclaredMethod(
+                "collectProductBarcodes", long.class, JsonNode.class, batchType);
+        collect.setAccessible(true);
+        collect.invoke(controller, 102L, new ObjectMapper().readTree("""
+                {"source_id":"current-source","catalog_confirmed":true,
+                 "barcodes":[{"code":"9300001","quantity":1}]}
+                """), batch);
+        Method flush = ShopfrontIntegrationController.class.getDeclaredMethod("flushBusinessProductBatch", batchType, long.class);
+        flush.setAccessible(true);
+
+        flush.invoke(controller, batch, 87L);
+
+        var conflictCount = batchType.getDeclaredField("barcodeConflictCount");
+        conflictCount.setAccessible(true);
+        assertEquals(0, conflictCount.get(batch));
+        verify(jdbc).update(contains("DELETE FROM product_barcode"), any(Object[].class));
+        verify(jdbc).update(contains("INSERT INTO shopfront_product_barcode_audit"), any(Object[].class));
+        verify(jdbc).batchUpdate(contains("INSERT INTO product_barcode"), any(List.class));
+    }
+
+    @Test
+    void confirmedCatalogKeepsBarcodeConflictWhenExistingProductHasInventory() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        when(jdbc.queryForList(contains("SELECT code, product_id FROM product_barcode"), any(Object[].class)))
+                .thenReturn(List.of(Map.of("code", "9300001", "product_id", 101L)));
+        when(jdbc.queryForList(contains("shopfront_catalog_confirmed"), any(Object[].class)))
+                .thenReturn(List.of(Map.of(
+                        "product_id", 101L,
+                        "shopfront_catalog_confirmed", false,
+                        "inventory_quantity", new BigDecimal("-268"))));
+        var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true, true);
+        Class<?> batchType = Class.forName(ShopfrontIntegrationController.class.getName() + "$ProductImportBatch");
+        Constructor<?> constructor = batchType.getDeclaredConstructor();
+        constructor.setAccessible(true);
+        Object batch = constructor.newInstance();
+        Method collect = ShopfrontIntegrationController.class.getDeclaredMethod(
+                "collectProductBarcodes", long.class, JsonNode.class, batchType);
+        collect.setAccessible(true);
+        collect.invoke(controller, 102L, new ObjectMapper().readTree("""
+                {"source_id":"current-source","catalog_confirmed":true,
+                 "barcodes":[{"code":"9300001","quantity":1}]}
+                """), batch);
+        Method flush = ShopfrontIntegrationController.class.getDeclaredMethod("flushBusinessProductBatch", batchType, long.class);
+        flush.setAccessible(true);
+
+        flush.invoke(controller, batch, 87L);
+
+        var conflictCount = batchType.getDeclaredField("barcodeConflictCount");
+        conflictCount.setAccessible(true);
+        assertEquals(1, conflictCount.get(batch));
+        verify(jdbc, never()).update(contains("DELETE FROM product_barcode"), any(Object[].class));
+        verify(jdbc, never()).batchUpdate(contains("INSERT INTO product_barcode"), any(List.class));
+    }
+
+    @Test
     void catalogSupplierLinksAreWrittenThroughTheBatchImportPath() throws Exception {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
         var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true, true);

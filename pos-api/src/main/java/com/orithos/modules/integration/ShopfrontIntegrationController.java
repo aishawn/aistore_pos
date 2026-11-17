@@ -59,7 +59,8 @@ public class ShopfrontIntegrationController {
     );
     private record ShopfrontMirrorTable(String name, String columns) {}
     private record BusinessImportPlan(Map<String, Long> productIds, Set<String> existingProductMappings) {}
-    private record BarcodeWrite(long productId, String sourceId, String code, BigDecimal quantity) {}
+    private record BarcodeWrite(long productId, String sourceId, String code, BigDecimal quantity,
+                                boolean catalogConfirmed) {}
     private record BarcodeConflict(String sourceId, String code, long existingProductId, long requestedProductId) {}
 
     private static final class ProductImportBatch {
@@ -2434,6 +2435,7 @@ public class ShopfrontIntegrationController {
         String key = "VARCHAR(160)";
         jdbc.update("CREATE TABLE IF NOT EXISTS shopfront_supplier_business_mapping (store_key VARCHAR(64) NOT NULL, source_id " + key + " NOT NULL, outlet_id BIGINT NOT NULL, supplier_id BIGINT NOT NULL, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (store_key, source_id, outlet_id))");
         jdbc.update("CREATE TABLE IF NOT EXISTS shopfront_product_mapping (store_key VARCHAR(64) NOT NULL, source_product_id " + key + " NOT NULL, pos_product_id BIGINT NOT NULL, match_type VARCHAR(32) NOT NULL, status VARCHAR(32) NOT NULL, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (store_key, source_product_id))");
+        jdbc.update("CREATE TABLE IF NOT EXISTS shopfront_product_barcode_audit (id BIGSERIAL PRIMARY KEY, outlet_id BIGINT NOT NULL, source_product_id VARCHAR(160) NOT NULL, barcode VARCHAR(128) NOT NULL, previous_pos_product_id BIGINT NOT NULL, new_pos_product_id BIGINT NOT NULL, reason VARCHAR(96) NOT NULL, recorded_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP)");
     }
 
     /**
@@ -3768,11 +3770,27 @@ public class ShopfrontIntegrationController {
                     List.of(outletId), new ArrayList<>(codes))) {
                 owners.put(String.valueOf(row.get("code")), longValue(row.get("product_id")));
             }
+            Map<Long, Map<String, Object>> retiredUnstockedOwners = retiredUnstockedBarcodeOwners(
+                    batch.barcodes, owners, outletId);
             Map<String, BarcodeWrite> inserts = new LinkedHashMap<>();
             Map<String, BarcodeWrite> updates = new LinkedHashMap<>();
             for (BarcodeWrite barcode : batch.barcodes) {
                 Long owner = owners.get(barcode.code());
                 if (owner != null && owner != barcode.productId()) {
+                    Map<String, Object> retiredOwner = barcode.catalogConfirmed()
+                            ? retiredUnstockedOwners.get(owner) : null;
+                    if (retiredOwner != null && jdbc.update(
+                            "DELETE FROM product_barcode WHERE outlet_id=? AND product_id=? AND code=?",
+                            outletId, owner, barcode.code()) == 1) {
+                        jdbc.update("""
+                                INSERT INTO shopfront_product_barcode_audit
+                                    (outlet_id,source_product_id,barcode,previous_pos_product_id,new_pos_product_id,reason)
+                                VALUES (?,?,?,?,?,'retired_unstocked_shopfront_product')
+                                """, outletId, barcode.sourceId(), barcode.code(), owner, barcode.productId());
+                        owners.put(barcode.code(), barcode.productId());
+                        inserts.put(barcode.code(), barcode);
+                        continue;
+                    }
                     batch.barcodeConflictCount++;
                     if (batch.barcodeConflicts.size() < 25) {
                         batch.barcodeConflicts.add(new BarcodeConflict(
@@ -3826,6 +3844,45 @@ public class ShopfrontIntegrationController {
             jdbc.batchUpdate("INSERT INTO shopfront_product_mapping (store_key,source_product_id,pos_product_id,match_type,status) VALUES (?,?,?,'SHOPFRONT','MAPPED') ON CONFLICT (store_key,source_product_id) DO UPDATE SET pos_product_id=EXCLUDED.pos_product_id,match_type='SHOPFRONT',status='MAPPED',updated_at=CURRENT_TIMESTAMP",
                     new ArrayList<>(batch.sourceMappings.values()));
         }
+    }
+
+    private Map<Long, Map<String, Object>> retiredUnstockedBarcodeOwners(
+            List<BarcodeWrite> barcodes, Map<String, Long> owners, long outletId) {
+        if (barcodes.stream().noneMatch(BarcodeWrite::catalogConfirmed)) return Map.of();
+        List<Long> productIds = barcodes.stream()
+                .filter(BarcodeWrite::catalogConfirmed)
+                .map(barcode -> owners.get(barcode.code()))
+                .filter(owner -> owner != null)
+                .distinct()
+                .toList();
+        if (productIds.isEmpty()) return Map.of();
+
+        Map<Long, Map<String, Object>> result = new HashMap<>();
+        for (int start = 0; start < productIds.size(); start += 400) {
+            List<Long> chunk = productIds.subList(start, Math.min(start + 400, productIds.size()));
+            String placeholders = String.join(",", java.util.Collections.nCopies(chunk.size(), "?"));
+            List<Object> args = new ArrayList<>();
+            args.add(outletId);
+            args.add(outletId);
+            args.addAll(chunk);
+            for (Map<String, Object> row : jdbc.queryForList("""
+                    SELECT p.id AS product_id,p.shopfront_catalog_confirmed,
+                           COALESCE(pi.quantity,0) AS inventory_quantity
+                    FROM product p
+                    LEFT JOIN product_inventory pi ON pi.product_id=p.id AND pi.outlet_id=?
+                    WHERE p.outlet_id=? AND p.deleted_at IS NULL AND p.id IN (%s)
+                    """.formatted(placeholders), args.toArray())) {
+                Object quantity = row.get("inventory_quantity");
+                BigDecimal inventory = quantity == null ? BigDecimal.ZERO
+                        : quantity instanceof BigDecimal value ? value
+                        : new BigDecimal(quantity.toString());
+                if (Boolean.FALSE.equals(row.get("shopfront_catalog_confirmed"))
+                        && inventory.compareTo(BigDecimal.ZERO) == 0) {
+                    result.put(longValue(row.get("product_id")), row);
+                }
+            }
+        }
+        return result;
     }
 
     private void appendBarcodeConflictErrors(ProductImportBatch batch, List<String> errors) {
@@ -3954,11 +4011,12 @@ public class ShopfrontIntegrationController {
     private void collectProductBarcodes(long productId, JsonNode item, ProductImportBatch batch) {
         JsonNode barcodes = item.get("barcodes");
         if (barcodes == null || !barcodes.isArray()) return;
+        boolean catalogConfirmed = item.path("catalog_confirmed").asBoolean(false);
         for (JsonNode barcode : barcodes) {
             String code = text(barcode, "code");
             if (code != null && !code.isBlank()) {
                 batch.barcodes.add(new BarcodeWrite(productId, text(item, "source_id"), code,
-                        decimal(barcode, "quantity", BigDecimal.ONE)));
+                        decimal(barcode, "quantity", BigDecimal.ONE), catalogConfirmed));
             }
         }
     }
