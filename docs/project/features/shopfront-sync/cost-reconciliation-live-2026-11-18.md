@@ -12,7 +12,15 @@ The most recent complete source-ID snapshot covered 10,853 catalog products: 10,
 
 Both SKR and Demo reconciliation responses reported `complete_match=true`. Each target had zero mismatches in current unit cost, case cost, case quantity, retail tax name, cost tax name, status, and Shopfront source update time. Each had zero unavailable values for those fields. Name differences were 114 for SKR and 158 for Demo; every difference matched the expected POS uniqueness suffix, leaving zero unresolved mismatches. SKU was unset in both source and POS for 6,239 products.
 
-The current code path takes the configured outlet-specific Shopfront `cost`, preserves case cost, and derives the POS unit cost by dividing by `caseQuantity` when `costPercentage` is false. Percentage costs retain their returned amount. This confirms the API mapping behavior and current POS parity; the Shopfront page labels, tax basis, and relation to `Last Case Cost` still need visual confirmation.
+The current code path takes the configured outlet-specific Shopfront `cost`, preserves case cost, and derives the POS unit cost by dividing by `caseQuantity` when `costPercentage` is false. Percentage costs retain their returned amount. This matches the source field contract and current POS parity. Public Shopfront documentation clarifies the cost fields and report labels; the live product-editor display and `/reports/misc` UI still need visual confirmation.
+
+## Shopfront Cost Field Semantics
+
+The public [Products object documentation](https://developer.onshopfront.com/documentation/Objects/Products) distinguishes the outlet's current case cost (affected by Vendor settings), the outlet's `lastCost` (last case cost), and the outlet's `averageCost`. It also defines the `Cost.cost` value as including tax. The [Cost Tax Rate ID documentation](https://developer.onshopfront.com/documentation/Types/Cost%20Tax%20Rate%20ID) says the `inherit` value uses the product's sale tax rate when handling cost. These are distinct fields and settings; do not treat current outlet cost, last case cost, and average case cost as interchangeable.
+
+The public [Special Reports documentation](https://developer.onshopfront.com/documentation/Reporting/Special%20Reports) shows the Inventory At Date report returning both `Last Case Cost (Ex)` and `Last Case Cost`, plus stock values excluding and including tax. Its example reports `$12.50` ex tax and `$13.75` including tax. This documents the report API's paired fields, but does not prove that the signed-in `/reports/misc` page uses the same report, filters, or display settings.
+
+A live read-only Crawler source-product GET fetched `JIM BEAM WHITE LBL 37% 700ML` from Shopfront at `2026-11-17T20:19:02Z`: outlet case cost `$522.31`, case quantity `12`, `last_case_cost` `$522.31`, and `average_case_cost` `$522.21`; exactly one outlet cost matched. The non-percentage POS item cost derives to `$43.5258` and displays rounded to `$43.53`. This is a representative field-mapping check, not proof that current outlet cost always equals last case cost.
 
 ## Historical Cost Candidates
 
@@ -47,6 +55,7 @@ The newest `catalog_snapshot` was job `#844`, `partial` at `pos_inventory:demo:1
 - Ignored local candidate export: crawler `.local/cost-reconciliation-live-2026-11-18.csv` and `.json`.
 - Ignored local barcode exports: crawler `.local/shopfront-barcode-conflicts-run523-2026-11-18.csv/.json`, `.local/shopfront-barcode-full-classification-run523-2026-11-18.csv/.json`, and the per-store owner readbacks. These contain the row-level evidence for all 408 conflicts.
 - The latest authenticated sync-health readback is summarized above; live API status is point-in-time evidence, not a guarantee that subsequent scheduled runs succeed.
+- Public Shopfront field definitions and the representative source-product GET are recorded above. They do not replace the pending visual check of `/reports/misc` and the product editor.
 - Direct Shopfront UI `/reports/misc` and product cost management inspection remains pending.
 - Define and test an explicit barcode reassignment policy before acting on any of the 52 zero-stock stale-owner rows per store. Source-duplicate claims and all owners with positive or negative stock remain protected; no barcode was moved in this audit.
 - Reconcile any historical candidate only after Shopfront establishes a current authoritative cost, outlet, and case-size value. Use the existing explicit-ID cost-only path and verify every changed ID in both stores.
