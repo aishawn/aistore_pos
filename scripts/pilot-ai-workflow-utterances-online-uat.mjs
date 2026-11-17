@@ -12,6 +12,11 @@ const adelaideBusinessDate = (offsetDays = 0) => {
     .toISOString().slice(0, 10);
 };
 const yesterdayAdelaide = adelaideBusinessDate(-1);
+const todayAdelaide = adelaideBusinessDate();
+const currentWeekStartAdelaide = (() => {
+  const weekday = new Date(`${todayAdelaide}T12:00:00Z`).getUTCDay();
+  return adelaideBusinessDate(weekday === 0 ? -6 : 1 - weekday);
+})();
 const sourceCommit = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
 const worktreeStatus = execFileSync("git", ["status", "--porcelain"], { cwd: root, encoding: "utf8" });
 const evidenceOnlyPath = (statusLine) => {
@@ -319,8 +324,8 @@ const cases = [
   { id: "sales-yesterday-takings-like-en", question: "What were takings like yesterday?", intent: "report_sales", noRoute: true, responseSource: "deterministic", compareReport: true, singlePeriodReport: true, reportStatus: ["available", "no_data"], reportSource: "orithos_ledger", reportFrom: yesterdayAdelaide, reportTo: yesterdayAdelaide, reportTimeZone: "Australia/Adelaide" },
   { id: "sales-yesterday-turnover-like-en", question: "What was turnover like yesterday?", intent: "report_sales", noRoute: true, responseSource: "deterministic", compareReport: true, singlePeriodReport: true, reportStatus: ["available", "no_data"], reportSource: "orithos_ledger", reportFrom: yesterdayAdelaide, reportTo: yesterdayAdelaide, reportTimeZone: "Australia/Adelaide" },
   { id: "sales-yesterday-turnover-order-zh", question: "昨日的营业额如何？", intent: "report_sales", noRoute: true, responseSource: "deterministic", compareReport: true, singlePeriodReport: true, answerLanguage: "zh", reportStatus: ["available", "no_data"], reportSource: "orithos_ledger", reportFrom: yesterdayAdelaide, reportTo: yesterdayAdelaide, reportTimeZone: "Australia/Adelaide" },
-  { id: "sales-this-week-en", question: "What were sales this week?", intent: "report_sales", noRoute: true, responseSource: "deterministic", compareReport: false, reportStatus: ["available", "no_data"], reportSource: "orithos_ledger", reportTimeZone: "Australia/Adelaide" },
-  { id: "sales-this-week-zh", question: "本周营业额多少？", intent: "report_sales", noRoute: true, responseSource: "deterministic", compareReport: false, answerLanguage: "zh", reportStatus: ["available", "no_data"], reportSource: "orithos_ledger", reportTimeZone: "Australia/Adelaide" },
+  { id: "sales-this-week-en", question: "What were sales this week?", intent: "report_sales", noRoute: true, responseSource: "deterministic", compareReport: false, reportStatus: ["available", "no_data"], reportSource: "orithos_ledger", reportFrom: currentWeekStartAdelaide, reportTo: todayAdelaide, reportTimeZone: "Australia/Adelaide" },
+  { id: "sales-this-week-zh", question: "本周营业额多少？", intent: "report_sales", noRoute: true, responseSource: "deterministic", compareReport: false, answerLanguage: "zh", reportStatus: ["available", "no_data"], reportSource: "orithos_ledger", reportFrom: currentWeekStartAdelaide, reportTo: todayAdelaide, reportTimeZone: "Australia/Adelaide" },
   { id: "report-stock-value-zh", question: "库存价值多少？", intent: "report_stock_value", noRoute: true, responseSource: "deterministic", answerLanguage: "zh", answerRegex: "库存|价值|暂不可用|没有" },
   { id: "sales-near-7-zh", question: "近7天营业额多少？", intent: "report_sales", noRoute: true, responseSource: "deterministic", answerLanguage: "zh", reportSource: "orithos_ledger", reportTimeZone: "Australia/Adelaide" },
   { id: "sales-near-week-zh", question: "最近一周销售额多少？", intent: "report_sales", noRoute: true, responseSource: "deterministic", answerLanguage: "zh", reportSource: "orithos_ledger", reportTimeZone: "Australia/Adelaide" },
