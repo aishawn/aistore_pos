@@ -43,6 +43,61 @@ import static org.mockito.Mockito.when;
 class ShopfrontIntegrationControllerTest {
 
     @Test
+    void clearsOnlyExplicitUnverifiedProductCostsAndWritesAudit() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        when(jdbc.queryForList(contains("SELECT outlet_id, enabled FROM shopfront_store_mapping"), any(Object[].class)))
+                .thenReturn(List.of(Map.of("outlet_id", 87L, "enabled", true)));
+        when(jdbc.queryForList(contains("SELECT m.source_product_id, m.pos_product_id, p.cost"), any(Object[].class)))
+                .thenReturn(List.of(Map.of(
+                        "source_product_id", "sf-product-1",
+                        "pos_product_id", 23L,
+                        "cost", new BigDecimal("12.3400"),
+                        "shopfront_catalog_confirmed", false)));
+        when(jdbc.update(contains("UPDATE product"), any(Object[].class))).thenReturn(1);
+
+        var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true, true);
+        var response = controller.clearUnverifiedProductCosts("token", new ObjectMapper().readTree("""
+                {"store_key":"skr","items":[{"source_id":"sf-product-1","expected_cost":12.34}]}
+                """));
+
+        assertEquals(1, response.data().get("updated"));
+        assertEquals(0, response.data().get("history_rows_changed"));
+        ArgumentCaptor<Object[]> updateArgs = ArgumentCaptor.forClass(Object[].class);
+        verify(jdbc).update(contains("UPDATE product"), updateArgs.capture());
+        assertEquals(List.of(23L, 87L), List.of(updateArgs.getValue()[0], updateArgs.getValue()[1]));
+        assertEquals(0, ((BigDecimal) updateArgs.getValue()[2]).compareTo(new BigDecimal("12.34")));
+        ArgumentCaptor<Object[]> auditArgs = ArgumentCaptor.forClass(Object[].class);
+        verify(jdbc).update(contains("INSERT INTO shopfront_product_cost_audit"), auditArgs.capture());
+        assertEquals(List.of("skr", 87L, "sf-product-1", 23L), List.of(
+                auditArgs.getValue()[0], auditArgs.getValue()[1], auditArgs.getValue()[2], auditArgs.getValue()[3]));
+        assertEquals(0, ((BigDecimal) auditArgs.getValue()[4]).compareTo(new BigDecimal("12.34")));
+        verify(jdbc, never()).update(contains("UPDATE sale_item"), any(Object[].class));
+    }
+
+    @Test
+    void refusesToClearCostForCatalogConfirmedProduct() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        when(jdbc.queryForList(contains("SELECT outlet_id, enabled FROM shopfront_store_mapping"), any(Object[].class)))
+                .thenReturn(List.of(Map.of("outlet_id", 87L, "enabled", true)));
+        when(jdbc.queryForList(contains("SELECT m.source_product_id, m.pos_product_id, p.cost"), any(Object[].class)))
+                .thenReturn(List.of(Map.of(
+                        "source_product_id", "sf-product-1",
+                        "pos_product_id", 23L,
+                        "cost", new BigDecimal("12.3400"),
+                        "shopfront_catalog_confirmed", true)));
+
+        var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true, true);
+        var error = assertThrows(ResponseStatusException.class, () -> controller.clearUnverifiedProductCosts(
+                "token", new ObjectMapper().readTree("""
+                        {"store_key":"skr","items":[{"source_id":"sf-product-1","expected_cost":12.34}]}
+                        """)));
+
+        assertEquals(HttpStatus.CONFLICT, error.getStatusCode());
+        verify(jdbc, never()).update(contains("UPDATE product"), any(Object[].class));
+        verify(jdbc, never()).update(contains("INSERT INTO shopfront_product_cost_audit"), any(Object[].class));
+    }
+
+    @Test
     void linksOnlyCustomerIdForExistingMappedShopfrontSales() throws Exception {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
         DataSource dataSource = mock(DataSource.class);

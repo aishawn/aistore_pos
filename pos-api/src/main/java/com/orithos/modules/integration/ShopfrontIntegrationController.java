@@ -345,6 +345,138 @@ public class ShopfrontIntegrationController {
                 "outside_snapshot_count", outsideSnapshotCount == null ? 0L : outsideSnapshotCount));
     }
 
+    @PostMapping("/products:clear-unverified-costs")
+    @Transactional
+    public ApiResult<Map<String, Object>> clearUnverifiedProductCosts(
+            @RequestHeader("X-Shopfront-Integration-Token") String supplied,
+            @RequestBody JsonNode body) {
+        authorize(supplied);
+        if (!businessWriteEnabled) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "SHOPFRONT_BUSINESS_WRITE_ENABLED is false");
+        }
+        String store = body.path("store_key").asText("").trim();
+        if (!STORE_KEY.matcher(store).matches()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Valid store_key is required");
+        }
+        JsonNode items = body.path("items");
+        if (!items.isArray() || items.isEmpty() || items.size() > 1000) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "items must contain 1 to 1000 explicit source IDs and expected_cost values");
+        }
+
+        Map<String, BigDecimal> expectedCosts = new LinkedHashMap<>();
+        for (JsonNode item : items) {
+            String sourceId = item.path("source_id").asText("").trim();
+            JsonNode expectedCostNode = item.path("expected_cost");
+            if (sourceId.isBlank() || !expectedCostNode.isNumber() || expectedCosts.putIfAbsent(
+                    sourceId, expectedCostNode.decimalValue()) != null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Each item requires a unique source_id and numeric expected_cost");
+            }
+        }
+
+        ensureMappingTable();
+        List<Map<String, Object>> mappingRows = jdbc.queryForList(
+                "SELECT outlet_id, enabled FROM shopfront_store_mapping WHERE store_key = ?", store);
+        Map<String, Object> mapping = mappingRows.stream()
+                .filter(row -> isEnabled(row.get("enabled")))
+                .findFirst()
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT,
+                        "No enabled shopfront_store_mapping for store_key=" + store));
+        long outletId = longValue(mapping.get("outlet_id"));
+        if (outletId <= 0) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Shopfront mapping has no numeric POS outlet_id");
+        }
+
+        String placeholders = String.join(",", java.util.Collections.nCopies(expectedCosts.size(), "?"));
+        List<Object> selectArgs = new ArrayList<>();
+        selectArgs.add(store);
+        selectArgs.add(outletId);
+        selectArgs.addAll(expectedCosts.keySet());
+        List<Map<String, Object>> rows = jdbc.queryForList("""
+                SELECT m.source_product_id, m.pos_product_id, p.cost, p.shopfront_catalog_confirmed
+                FROM shopfront_product_mapping m
+                JOIN product p ON p.id=m.pos_product_id
+                WHERE m.store_key=? AND m.status='MAPPED' AND p.outlet_id=? AND p.deleted_at IS NULL
+                  AND m.source_product_id IN (%s)
+                """.formatted(placeholders), selectArgs.toArray());
+        Map<String, Map<String, Object>> rowsBySourceId = new LinkedHashMap<>();
+        for (Map<String, Object> row : rows) {
+            String sourceId = String.valueOf(row.get("source_product_id"));
+            if (rowsBySourceId.putIfAbsent(sourceId, row) != null) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,
+                        "Each requested source ID must map to exactly one POS product");
+            }
+        }
+        if (rowsBySourceId.size() != expectedCosts.size()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Every requested source ID must map to one live product in the selected outlet");
+        }
+        for (Map.Entry<String, BigDecimal> entry : expectedCosts.entrySet()) {
+            Map<String, Object> row = rowsBySourceId.get(entry.getKey());
+            BigDecimal currentCost = row.get("cost") instanceof BigDecimal value ? value : null;
+            boolean catalogConfirmed = Boolean.TRUE.equals(row.get("shopfront_catalog_confirmed"));
+            if (catalogConfirmed || currentCost == null || currentCost.compareTo(entry.getValue()) != 0) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,
+                        "Product cost or catalog confirmation changed for source_id=" + entry.getKey());
+            }
+        }
+
+        jdbc.execute("""
+                CREATE TABLE IF NOT EXISTS shopfront_product_cost_audit (
+                    id BIGSERIAL PRIMARY KEY,
+                    store_key VARCHAR(64) NOT NULL,
+                    outlet_id BIGINT NOT NULL,
+                    source_product_id VARCHAR(160) NOT NULL,
+                    pos_product_id BIGINT NOT NULL,
+                    old_cost NUMERIC(18,4) NOT NULL,
+                    new_cost NUMERIC(18,4),
+                    reason VARCHAR(96) NOT NULL,
+                    recorded_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )
+                """);
+
+        List<Map<String, Object>> changed = new ArrayList<>();
+        for (Map.Entry<String, BigDecimal> entry : expectedCosts.entrySet()) {
+            Map<String, Object> row = rowsBySourceId.get(entry.getKey());
+            Long productId = longValue(row.get("pos_product_id"));
+            BigDecimal oldCost = entry.getValue();
+            jdbc.update("""
+                    INSERT INTO shopfront_product_cost_audit
+                        (store_key,outlet_id,source_product_id,pos_product_id,old_cost,new_cost,reason)
+                    VALUES (?,?,?,?,?,NULL,'unverified_shopfront_catalog_cost')
+                    """, store, outletId, entry.getKey(), productId, oldCost);
+            int updated = jdbc.update("""
+                    UPDATE product
+                    SET cost=NULL, shopfront_catalog_confirmed=FALSE
+                    WHERE id=? AND outlet_id=? AND cost=?
+                      AND shopfront_catalog_confirmed IS DISTINCT FROM TRUE
+                    """, productId, outletId, oldCost);
+            if (updated != 1) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,
+                        "Product changed while clearing source_id=" + entry.getKey());
+            }
+            Map<String, Object> result = new LinkedHashMap<>();
+            result.put("source_id", entry.getKey());
+            result.put("pos_product_id", productId);
+            result.put("old_cost", oldCost);
+            result.put("new_cost", null);
+            result.put("cost_authority", "unavailable_unconfirmed_catalog");
+            changed.add(result);
+        }
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("store_key", store);
+        result.put("outlet_id", outletId);
+        result.put("updated", changed.size());
+        result.put("business_write", true);
+        result.put("scope", "product.cost and product.shopfront_catalog_confirmed only");
+        result.put("history_rows_changed", 0);
+        result.put("items", changed);
+        return ApiResult.ok(result);
+    }
+
     /**
      * Split many-to-one Shopfront→Orithos product aliases so each source_id owns
      * its own POS product. Keeps one mapping per shared pos_product_id, unmaps the
