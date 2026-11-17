@@ -83,20 +83,31 @@ public class ReportTemplateRegistry {
                     LIMIT 50
                     """, List.of(outletId, fromDay, toDay, outletId, outletId));
             case "report_stock_value" -> BoundSql.ok("""
-                    SELECT p.id, p.name, i.quantity AS on_hand,
-                           CASE WHEN COALESCE(c.cost, 0) > 0
-                                THEN i.quantity * c.cost ELSE NULL END AS inventory_value,
-                           SUM(CASE WHEN COALESCE(c.cost, 0) > 0
-                                    THEN i.quantity * c.cost ELSE 0 END) OVER () AS store_inventory_value_total,
-                           COUNT(*) FILTER (WHERE COALESCE(c.cost, 0) > 0) OVER () AS valued_product_count,
-                           COUNT(*) FILTER (WHERE COALESCE(c.cost, 0) <= 0) OVER () AS excluded_product_count
-                    FROM ai_rpt_inventory i
-                    JOIN ai_rpt_product p ON p.id = i.product_id AND p.outlet_id = i.outlet_id
-                    LEFT JOIN ai_rpt_inventory_cost c ON c.product_id = i.product_id AND c.outlet_id = i.outlet_id
-                    WHERE i.outlet_id = ? AND i.quantity > 0
-                    ORDER BY inventory_value DESC NULLS LAST, p.name
-                    LIMIT 50
-                    """, List.of(outletId));
+                    WITH store_summary AS (
+                      SELECT COALESCE(SUM(i.quantity * c.cost) FILTER (WHERE COALESCE(c.cost, 0) > 0), 0)
+                               AS store_inventory_value_total,
+                             COUNT(*) FILTER (WHERE COALESCE(c.cost, 0) > 0) AS valued_product_count,
+                             COUNT(*) FILTER (WHERE COALESCE(c.cost, 0) <= 0) AS excluded_product_count
+                      FROM ai_rpt_inventory i
+                      JOIN ai_rpt_product p ON p.id = i.product_id AND p.outlet_id = i.outlet_id
+                      LEFT JOIN ai_rpt_inventory_cost c ON c.product_id = i.product_id AND c.outlet_id = i.outlet_id
+                      WHERE i.outlet_id = ? AND i.quantity > 0
+                    ), top_products AS (
+                      SELECT p.id, p.name, i.quantity AS on_hand,
+                             i.quantity * c.cost AS inventory_value
+                      FROM ai_rpt_inventory i
+                      JOIN ai_rpt_product p ON p.id = i.product_id AND p.outlet_id = i.outlet_id
+                      JOIN ai_rpt_inventory_cost c ON c.product_id = i.product_id AND c.outlet_id = i.outlet_id
+                      WHERE i.outlet_id = ? AND i.quantity > 0 AND c.cost > 0
+                      ORDER BY inventory_value DESC, p.name
+                      LIMIT 8
+                    )
+                    SELECT t.id, t.name, t.on_hand, t.inventory_value,
+                           s.store_inventory_value_total, s.valued_product_count, s.excluded_product_count
+                    FROM store_summary s
+                    LEFT JOIN top_products t ON TRUE
+                    ORDER BY t.inventory_value DESC NULLS LAST, t.name
+                    """, List.of(outletId, outletId));
             default -> BoundSql.fail("UNKNOWN_TEMPLATE");
         };
     }

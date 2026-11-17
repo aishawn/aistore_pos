@@ -81,6 +81,13 @@ class ReportTemplateRegistryTest {
         assertNull(bound.error());
         assertTrue(bound.sql().contains("ai_rpt_inventory_cost"));
         assertTrue(bound.sql().contains("i.outlet_id = ?"));
-        assertEquals(List.of(87L), bound.params());
+        assertTrue(bound.sql().contains("store_summary AS"));
+        assertTrue(bound.sql().contains("top_products AS"));
+        assertTrue(bound.sql().contains("LEFT JOIN top_products"));
+        assertTrue(bound.sql().contains("AND c.cost > 0"));
+        assertTrue(bound.sql().contains("COUNT(*) FILTER (WHERE COALESCE(c.cost, 0) <= 0)"));
+        assertTrue(bound.sql().contains("LIMIT 8"));
+        assertFalse(bound.sql().contains("OVER ()"));
+        assertEquals(List.of(87L, 87L), bound.params());
     }
 }
