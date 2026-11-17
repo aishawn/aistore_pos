@@ -464,11 +464,11 @@ class PosAssistantGraphServiceCardTest {
                 {"What should I restock?", "Top restock suggestions (21d cover): 3 items need order.\n"
                         + "Source: Orithos inventory and sales ledger.\n\n"
                         + "• VB Cans — order 24\n\n"
-                        + "Some items were excluded because data is missing: Shiraz: supplier unavailable."},
+                        + "Some items are excluded pending data review: Shiraz: supplier unavailable."},
                 {"给我补货建议", "建议补货（覆盖 21 天）：3 个商品需要补货。\n"
                         + "数据来源：Orithos 库存与销售账本。\n\n"
                         + "• VB Cans — 建议订购 24\n\n"
-                        + "注意：部分商品因数据缺失未纳入建议：Shiraz: supplier unavailable。"}
+                        + "部分商品因数据不全暂未纳入：Shiraz: supplier unavailable。"}
         }) {
             AssistantCard card = PosAssistantGraphService.cardsFor(
                     "navigate",

@@ -272,10 +272,10 @@ public class PosAssistantGraphService {
         List<Map<String, Object>> parsedItems = cardItems(type, answer);
         boolean hasPartialReplenishmentResults = "replenishment".equals(type) && !parsedItems.isEmpty();
         boolean incompleteReplenishment = "replenishment".equals(type)
-                && (lower.contains("some items were excluded because data is missing")
+                && (lower.contains("some items are excluded pending data review")
                 || lower.contains("replenishment data is incomplete")
                 || lower.contains("data gaps:")
-                || lower.contains("部分商品因数据缺失未纳入建议")
+                || lower.contains("部分商品因数据不全暂未纳入")
                 || lower.contains("补货建议数据不完整")
                 || lower.contains("数据缺口："));
         boolean missingReplenishmentSalesHistory = "replenishment".equals(type)

@@ -211,10 +211,11 @@ export function readOnlyApiAcceptanceStatus(httpStatus, errorCode, valid) {
 export function replenishmentCardAcceptance(assistant) {
   const answer = assistant.answer ?? "";
   const lowerAnswer = answer.toLowerCase();
-  const incomplete = lowerAnswer.includes("some items were excluded because data is missing")
+  const incomplete = lowerAnswer.includes("some items are excluded pending data review")
+    || lowerAnswer.includes("items are excluded pending data review")
     || lowerAnswer.includes("replenishment data is incomplete")
     || lowerAnswer.includes("data gaps:")
-    || answer.includes("部分商品因数据缺失未纳入建议")
+    || answer.includes("部分商品因数据不全暂未纳入")
     || answer.includes("补货建议数据不完整")
     || answer.includes("数据缺口：");
   const noSalesHistory = lowerAnswer.includes("no verifiable sales history")
@@ -233,7 +234,7 @@ export function replenishmentCardAcceptance(assistant) {
     sourceVisible: /source:\s*orithos inventory and sales ledger|数据来源：\s*orithos\s*库存与销售账本/i.test(summary),
     dataAsOfVisible: /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})/.test(summary),
     dataGapsVisible: expectedStatus !== "partial"
-      || /some items were excluded because data is missing|supplier details are incomplete|data gaps:|部分商品因数据缺失未纳入建议|数据缺口：|供应商资料不完整/i.test(summary),
+      || /items are excluded pending data review|supplier details are incomplete|data gaps:|部分商品因数据不全暂未纳入|数据缺口：|供应商资料不完整/i.test(summary),
   };
   return { ...result, passed: Object.values(result).every(Boolean) };
 }

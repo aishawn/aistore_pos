@@ -95,7 +95,7 @@ public class ReplenishmentChatBrief {
                     : "\n\nTap below to review quantities and confirm any order.");
             if ("DATA_INCOMPLETE".equalsIgnoreCase(plan.dataQualityStatus())) {
                 String gaps = String.join(", ", plan.dataGaps().stream().limit(3).toList());
-                sb.append(chinese ? "\n\n注意：部分商品因数据缺失未纳入建议：" : "\n\nSome items were excluded because data is missing: ")
+                sb.append(chinese ? "\n\n部分商品因数据不全暂未纳入：" : "\n\nSome items are excluded pending data review: ")
                         .append(gaps).append(". ").append(incompleteDataGuidance(plan, chinese));
             }
             logOutcome(dataGapCount == 0 ? "success" : "partial_data", dataGapCount, startedAt);

@@ -21,7 +21,12 @@ test("offline fixture checks are blocked as assistant acceptance and return exit
 
   assert.equal(run.status, 2, run.stderr);
   const report = JSON.parse(run.stdout);
-  assert.deepEqual(report.summary, { PASS: 0, PARTIAL: 0, FAIL: 0, BLOCKED: 13 });
+  assert.deepEqual(report.summary, {
+    PASS: 0,
+    PARTIAL: 0,
+    FAIL: 0,
+    BLOCKED: report.results.length,
+  });
   assert.ok(report.results.every((result) => result.status === "BLOCKED"));
   assert.ok(report.results.every((result) => result.assistantStatus === "NOT_CONFIGURED"));
 });

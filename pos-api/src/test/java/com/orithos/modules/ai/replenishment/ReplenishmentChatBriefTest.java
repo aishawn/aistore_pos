@@ -223,7 +223,11 @@ class ReplenishmentChatBriefTest {
         String text = new ReplenishmentChatBrief(client).brief("What should I restock?", tenant);
 
         assertTrue(text.contains("VB Cans"));
-        assertTrue(text.contains("Some items were excluded because data is missing"));
+        assertTrue(text.contains("Some items are excluded pending data review"));
         assertTrue(text.contains("Shiraz: supplier unavailable"));
+
+        String chinese = new ReplenishmentChatBrief(client).brief("哪些商品需要补货？", tenant);
+        assertTrue(chinese.contains("部分商品因数据不全暂未纳入："));
+        assertTrue(chinese.contains("Shiraz: supplier unavailable"));
     }
 }

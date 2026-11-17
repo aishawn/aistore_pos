@@ -402,11 +402,11 @@ test("unavailable read-only services are recorded as blocked instead of aborting
 
 test("partial replenishment cards expose their state, source, data time, and data gaps", () => {
   const result = replenishmentCardAcceptance({
-    answer: "Some items were excluded because data is missing: Shiraz: supplier unavailable. Source: Orithos inventory and sales ledger; latest available ledger data at 2026-11-14T09:22:25Z.",
+    answer: "Some items are excluded pending data review: Shiraz: supplier unavailable. Source: Orithos inventory and sales ledger; latest available ledger data at 2026-11-14T09:22:25Z.",
     cards: [{
       type: "replenishment",
       status: "partial",
-      summary: "Top restock suggestions.\nSource: Orithos inventory and sales ledger; latest available ledger data at 2026-11-14T09:22:25Z.\nSome items were excluded because data is missing: Shiraz: supplier unavailable.",
+      summary: "Top restock suggestions.\nSource: Orithos inventory and sales ledger; latest available ledger data at 2026-11-14T09:22:25Z.\nSome items are excluded pending data review: Shiraz: supplier unavailable.",
     }],
   });
   assert.deepEqual(result, {
