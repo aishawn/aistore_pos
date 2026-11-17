@@ -100,6 +100,14 @@
 - `product_count` already has a deterministic fast path; current metrics do not justify more changes there.
 - Sell draft notice and UserMenu visual acceptance if the deployed UI still has a visible issue.
 
+### Task 5: Re-check the stock-value latency tail
+
+- [x] Confirm both live stores still run the same `main` runtime/source SHA `3980b42f8ecdce16de834015a8a914119d2c6500`.
+- [x] Run the Chinese and English stock-value workflow cases on Demo and SKR. All four passed with deterministic routing, `llmFallback=false`, and empty `writeRequests`.
+- [x] Record assistant endpoint elapsed times: Demo 556 ms (Chinese), 499 ms (English); SKR 414 ms (Chinese), 399 ms (English). This is a small scoped sample, not a p95 estimate.
+- [x] Compare with the prior 24-hour metrics snapshot (Demo `assistant:report_stock_value` p95 4,231 ms; SKR p95 4,227 ms). The current scoped requests are much faster, so the historical tail does not justify another SQL change by itself. The report graph takes the deterministic classify → fill slots → native query → deterministic response path; no response-generation model call follows the native report.
+- [ ] Collect a time-bounded sample of the next stock-value requests or request-level traces before choosing an application-layer latency change. The assistant audit latency is captured before its audit insert and chat-history persistence, so those writes do not explain the recorded assistant latency.
+
 ## Exit Criteria
 
 - Every critical selected workflow passes in Demo and SKR on the same deployed SHA.
