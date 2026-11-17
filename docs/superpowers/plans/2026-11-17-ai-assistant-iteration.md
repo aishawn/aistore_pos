@@ -55,12 +55,14 @@
 ### Task 3: Restore the local report UAT and metrics toolchain
 
 **Files/scripts:**
-- `scripts/ai-eval/pilot-ai-report-readonly-uat.mjs`
-- `scripts/ai-eval/pilot-ai-metrics-uat.mjs`
+- `scripts/pilot-ai-report-readonly-uat.mjs`
+- `scripts/pilot-ai-report-readonly-orithos-uat.mjs`
+- `scripts/pilot-ai-metrics-uat.mjs`
 - Existing Playwright package/browser configuration
 
 - [x] Verify the repository Playwright version and matching headless shell; restore the module path only inside the temporary runtime worktree.
-- [ ] Replace the stale `pilot-ai-report-readonly-uat.mjs` before reuse; it still calls retired `/api/odoo/session` and returned HTTP 410.
+- [x] Replace the stale `scripts/pilot-ai-report-readonly-uat.mjs` with a compatibility entry that delegates to the Orithos-native suite. The prior entry called retired `/api/odoo/session`; the replacement passed 8/8 checks with zero writes in Demo and SKR on runtime/source SHA `00cbe101`.
+- [x] Add and pass `node --test scripts/pilot-ai-report-readonly-uat.test.mjs` to prevent retired Odoo/Shopfront API paths from returning to this entry point.
 - [x] Run Demo metrics UAT at desktop and mobile widths (9/9 PASS).
 - [x] Capture aggregate and stock-value latency samples. The metrics UI reported a 24-hour aggregate p95 of 3,950 ms; see Task 1 for stock-value samples and comparison limits.
 - [x] Keep the full 400+ workflow catalog out of the release gate; batch selected utterances and summarize by stable IDs.
@@ -93,7 +95,6 @@
 - [x] Preserve honest stock-value result: positive verified costs remain unavailable, so numeric total and product rows are not asserted. The query plan validates the performance change independently of that data gap.
 
 **Other candidates:**
-- Fix the stale report-readonly UAT script, which still calls retired `/api/odoo/session`.
 - Add bilingual deterministic routes only for measured phrases that currently use unnecessary LLM fallback.
 - Replenishment `partial` / data-gap status and copy, with backend/UI tests updated together.
 - `product_count` already has a deterministic fast path; current metrics do not justify more changes there.
