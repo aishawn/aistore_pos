@@ -45,6 +45,7 @@ import { splitMoney } from "@/lib/sell-screen";
 import { formatOdooDateTime } from "@/lib/odoo-date";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
 import { useAuth } from "@/lib/auth";
+import { sellDraftNoticePresentation, type SellDraftNoticeKind } from "@/lib/sell-draft-notice";
 
 // Card settlement needs a paired terminal; browser-only checkout must not mark it paid.
 const EFTPOS_TERMINAL_ENABLED = false;
@@ -205,7 +206,7 @@ export function OdooRegisterPage() {
   const [pendingRegisterId, setPendingRegisterId] = useState<number | null>(null);
   const [helpOpen, setHelpOpen] = useState(false);
   const [closeRegisterCartWarn, setCloseRegisterCartWarn] = useState(false);
-  const [draftNotice, setDraftNotice] = useState<string | null>(null);
+  const [draftNotice, setDraftNotice] = useState<{ kind: SellDraftNoticeKind; message: string } | null>(null);
   const { openCloseRegister } = useCloseRegisterUiOptional();
   const { openSalesHistory } = useSalesHistoryUiOptional();
   const orderUuid = useRef<string | null>(null);
@@ -220,6 +221,14 @@ export function OdooRegisterPage() {
   const selectedConfigIdRef = useRef<number | null>(null);
   const selectedPaymentMethodIdRef = useRef<number | null>(null);
   const [hydratedDraftKey, setHydratedDraftKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!draftNotice) return;
+    const presentation = sellDraftNoticePresentation(draftNotice.kind);
+    if (presentation.autoDismissMs === null) return;
+    const timeout = window.setTimeout(() => setDraftNotice(null), presentation.autoDismissMs);
+    return () => window.clearTimeout(timeout);
+  }, [draftNotice]);
 
   const loadPos = useCallback(async (initial = false) => {
     const revision = ++loadRevision.current;
@@ -371,7 +380,7 @@ export function OdooRegisterPage() {
       const savedAt = Date.parse(parsed.savedAt);
       if ((!Number.isFinite(savedAt) || Date.now() - savedAt > ACTIVE_CART_MAX_AGE_MS) && !parsed.pendingOrder) {
         localStorage.removeItem(key);
-        setDraftNotice("The saved cart draft was older than 24 hours and was discarded. Start a fresh sale.");
+        setDraftNotice({ kind: "expired", message: "The saved cart draft was older than 24 hours and was discarded. Start a fresh sale." });
         return;
       }
       setLines(parsed.lines.map((line) => ({ ...line, packFactor: line.packFactor || 1 })));
@@ -395,9 +404,9 @@ export function OdooRegisterPage() {
       }
       setWorkspaceTab("keys");
       setCatalogHome(true);
-      setDraftNotice("Draft restored from this device. Orithos will recheck stock and tax before finalising.");
+      setDraftNotice({ kind: "restored", message: "Draft restored. Stock and tax will be rechecked before finalising." });
     } catch {
-      setDraftNotice("A saved cart draft could not be read from this device.");
+      setDraftNotice({ kind: "read_error", message: "A saved cart draft could not be read from this device." });
     }
   }, [bootstrap, configId, connected, odooUserId]);
 
@@ -413,7 +422,7 @@ export function OdooRegisterPage() {
       const draft: ActiveCartDraft = { lines, paymentMethodId, customer: customer ? { id: customer.id, name: customer.name } : null, cashTendered, pendingOrder: pendingCheckout, savedAt: new Date().toISOString() };
       localStorage.setItem(key, JSON.stringify(draft));
     } catch {
-      setDraftNotice("This device could not save the active cart draft.");
+      setDraftNotice({ kind: "save_error", message: "This device could not save the active cart draft." });
     }
   }, [cashTendered, configId, connected, customer, hydratedDraftKey, lines, odooUserId, paymentMethodId, pendingCheckout]);
 
@@ -1327,9 +1336,16 @@ export function OdooRegisterPage() {
         </div>
       )}
       {draftNotice && (
-        <div role="status" aria-live="polite" className="mb-3 flex items-start justify-between gap-3 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2.5 text-sm text-blue-950">
-          <span>{draftNotice}</span>
-          <button type="button" onClick={() => setDraftNotice(null)} aria-label="Dismiss draft notice" className="grid h-11 w-11 shrink-0 place-items-center rounded-md hover:bg-blue-100"><X size={16} /></button>
+        <div role={sellDraftNoticePresentation(draftNotice.kind).role}
+          aria-live={draftNotice.kind === "restored" ? "polite" : "assertive"}
+          className={cn(
+            "flex items-start justify-between gap-3 rounded-lg border px-3 py-2.5 text-sm shadow-lg",
+            draftNotice.kind === "restored"
+              ? "fixed bottom-4 right-4 z-[70] w-[min(420px,calc(100vw-32px))] border-emerald-200 bg-emerald-50 text-emerald-950"
+              : "mb-3 border-amber-300 bg-amber-50 text-amber-950",
+          )}>
+          <span>{draftNotice.message}</span>
+          <button type="button" onClick={() => setDraftNotice(null)} aria-label="Dismiss draft notice" className="grid h-11 w-11 shrink-0 place-items-center rounded-md hover:bg-black/5"><X size={16} /></button>
         </div>
       )}
       {busy && (

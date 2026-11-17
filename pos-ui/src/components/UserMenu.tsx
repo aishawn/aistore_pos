@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { DoorClosed, History, LayoutDashboard, Moon, Sun, Wifi, WifiOff } from "lucide-react";
+import { ChevronDown, DoorClosed, History, LayoutDashboard, Moon, Sun, Wifi, WifiOff } from "lucide-react";
 import { SettingsGearIcon, LogOutIcon } from "@/components/icons";
 import { cn } from "@/lib/utils";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
@@ -84,18 +84,18 @@ export function UserMenu({
         )}
         <span className={online ? "text-[var(--sf-online-green)]" : ""}>{online ? "ONLINE" : "OFFLINE"}</span>
       </div>
-      <p className="px-1 pb-3 text-sm leading-5 text-[var(--oh-muted)]">
-        Account settings and sign-out for this workstation. Offline POS checkout is not supported; keep this workstation connected before taking payment.
-      </p>
-      <section aria-label="Hardware readiness" className="border-t border-[var(--oh-border)] px-1 py-3">
-        <h2 className="mb-2 text-xs font-semibold uppercase tracking-[0.08em] text-[var(--oh-muted)]">Hardware readiness</h2>
-        <ul className="space-y-1.5 text-xs text-[var(--oh-muted)]">
-          <li className="flex items-center justify-between gap-3"><span>Receipt printer</span><span className="font-semibold text-[var(--oh-warning)]">Not connected / not validated</span></li>
-          <li className="flex items-center justify-between gap-3"><span>Cash drawer</span><span className="font-semibold text-[var(--oh-warning)]">Not connected / not validated</span></li>
-          <li className="flex items-center justify-between gap-3"><span>Barcode scanner</span><span className="font-semibold text-[var(--oh-warning)]">Keyboard probe only</span></li>
-          <li className="flex items-center justify-between gap-3"><span>EFTPOS terminal</span><span className="font-semibold text-[var(--oh-warning)]">Not connected / not validated</span></li>
+      <details className="group border-t border-[var(--oh-border)] px-1 py-2">
+        <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between gap-2 text-sm font-semibold text-[var(--oh-text)] [&::-webkit-details-marker]:hidden">
+          Hardware readiness
+          <ChevronDown size={16} aria-hidden="true" className="shrink-0 text-[var(--oh-muted)] transition-transform group-open:rotate-180" />
+        </summary>
+        <ul aria-label="Hardware readiness" className="space-y-1.5 pb-2 pt-1 text-xs text-[var(--oh-muted)]">
+          <li className="flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5"><span>Receipt printer</span><span className="font-semibold text-[var(--oh-warning)]">Not connected / not validated</span></li>
+          <li className="flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5"><span>Cash drawer</span><span className="font-semibold text-[var(--oh-warning)]">Not connected / not validated</span></li>
+          <li className="flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5"><span>Barcode scanner</span><span className="font-semibold text-[var(--oh-warning)]">Keyboard probe only</span></li>
+          <li className="flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5"><span>EFTPOS terminal</span><span className="font-semibold text-[var(--oh-warning)]">Not connected / not validated</span></li>
         </ul>
-      </section>
+      </details>
       <div className="border-t border-[var(--oh-border)] px-1 py-3">
         <p className="mb-2 text-xs font-semibold uppercase tracking-[0.08em] text-[var(--oh-muted)]">Appearance</p>
         <div className="grid grid-cols-2 gap-2" role="group" aria-label="Appearance">
