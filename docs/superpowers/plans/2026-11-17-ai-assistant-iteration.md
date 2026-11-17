@@ -102,11 +102,15 @@
 
 ### Task 5: Re-check the stock-value latency tail
 
-- [x] Confirm both live stores still run the same `main` runtime/source SHA `3980b42f8ecdce16de834015a8a914119d2c6500`.
+- [x] Confirm both live stores run the same `main` runtime/source SHA `fac450adb764fc0f02c32e169b11e12ed5b55af6` after the documentation-only `fac450ad` push.
 - [x] Run the Chinese and English stock-value workflow cases on Demo and SKR. All four passed with deterministic routing, `llmFallback=false`, and empty `writeRequests`.
-- [x] Record assistant endpoint elapsed times: Demo 556 ms (Chinese), 499 ms (English); SKR 414 ms (Chinese), 399 ms (English). This is a small scoped sample, not a p95 estimate.
-- [x] Compare with the prior 24-hour metrics snapshot (Demo `assistant:report_stock_value` p95 4,231 ms; SKR p95 4,227 ms). The current scoped requests are much faster, so the historical tail does not justify another SQL change by itself. The report graph takes the deterministic classify → fill slots → native query → deterministic response path; no response-generation model call follows the native report.
-- [ ] Collect a time-bounded sample of the next stock-value requests or request-level traces before choosing an application-layer latency change. The assistant audit latency is captured before its audit insert and chat-history persistence, so those writes do not explain the recorded assistant latency.
+- [x] Collect eight sequential stock-value requests per store. Client-observed Demo p50/p95 was 469/782 ms; SKR was 478/1,128 ms. All 16 returned `report_stock_value`, deterministic source, `llmFallback=false`, and empty `writeRequests`.
+- [x] On deployed SHA `fac450ad`, rerun eight critical workflows per store (16 PASS, 0 FAIL), native report read-only UAT (8/8 per store), and capability seed/live-config alignment (PASS for both stores).
+- [x] Compare rolling metrics windows. The 24-hour stock-value p95 remains Demo 3,535 ms (40 requests) and SKR 4,227 ms (37 requests), while the latest one-hour backend audit reports stock-value p95 143/130 ms and sales-report p95 165/160 ms. The one-hour samples are small (10 stock-value and 3 sales requests per store); the 24-hour tail is not enough to justify a report SQL change without a continuing slow sample.
+- [x] Investigate the single 2,461 ms client-observed SKR `sales-last-7-en` request. It had one attempt, passed deterministic routing, and the one-hour server audit p95 for `assistant:report_sales` stayed at 160 ms. This points to an intermittent path/proxy delay outside server-measured assistant processing; no reproducible assistant or SQL bottleneck is established.
+- [x] Keep the graph behavior unchanged: report requests use deterministic classify → fill slots → native query → deterministic response; no response-generation model call follows the native report. Server-side assistant latency is recorded before audit insertion and chat-history persistence.
+
+**Latency decision:** No application code change is justified by current evidence. Continue watching the one-hour and 24-hour per-intent metrics; investigate again if server-side `report_stock_value` or `report_sales` p95 remains elevated in fresh windows, or if client-observed slow requests recur with matching server latency.
 
 ## Exit Criteria
 
