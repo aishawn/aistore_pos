@@ -1,5 +1,17 @@
 # Shopfront Sync Validation
 
+## Scoped old-cost cleanup (2026-11-17)
+
+- POS source commit and SKR/Demo runtime SHA: `3d08ca5a122c986241c8999f1b7219926f8c5166`. Dokploy deployment completed. Crawler runtime source fingerprint: `37652a4ef59e1aa4fee1caa40db9b80694574b58c142cbf996af06b94a99e7c3`; crawler Git SHA was reported as `unknown`, build time `2026-11-17T00:43:07.978322+00:00`.
+- Environment and scope: production read-only crawler/POS API audit for Shopfront store `skr`, POS targets `skr` and `demo`; exact catalog, mapping, product, and history-reference checks. No Shopfront write, inventory write, price write, or sales-ledger write was issued. The authorized product-cost cleanup was 179 IDs per target.
+- Data: crawler held 11,035 product rows, 10,853 current-catalog observations (10,850 ACTIVE, 3 NOT_ACTIVE), 179 legacy cost candidates, and 855 explicit zero current-catalog costs. The 179 legacy candidates all had historical sales references; 80 also had purchase-order references. One candidate remained POS ACTIVE in Demo, and its status was retained.
+- Parity before and after: current-catalog comparison covered 10,853 products. Cost, case quantity, retail tax name, cost tax name, status, and Shopfront updated-at mismatch counts were all zero. Name mismatches were 114 in SKR and 158 in Demo; 3 fields were unavailable. No matching complete full-catalog source-ID snapshot was verified.
+- Change: endpoint `/api/integrations/shopfront/products:clear-unverified-costs` updated only `product.cost` and `product.shopfront_catalog_confirmed`; expected current costs and unconfirmed catalog markers were checked before each transactional batch. The endpoint recorded `unverified_shopfront_catalog_cost` audit rows.
+- Result: HTTP 200 for both targets; 179 rows updated per target. POS native-data reread found 179/179 costs null and 179/179 catalog markers false in each store. Database audit query found 179 distinct source IDs per store and 179 null new-cost values. Product statuses, box quantities, and tax fields matched the pre-write snapshot. Historical sale rows changed: 0, as reported by the endpoint and enforced by the SQL scope.
+- Sync monitoring: crawler health returned 200 with the fingerprint above. `/api/sync/status` distinguished `partial` from `completed` and exposed freshness and stale thresholds. The latest catalog snapshot was `partial`; latest full success age was about 9.3 hours against a 90-minute stale threshold, so catalog freshness was stale. The full-catalog parity gate remained closed.
+- Unit/build verification: `mvn -B -Dtest=ShopfrontIntegrationControllerTest test` on Java 21 passed 64/64 tests. Main/test source compiled; existing JSqlParser deprecation warnings remain. `git diff --check` passed.
+- Not verified: direct Shopfront product-cost UI or `/reports/misc` semantics; awaiting owner login. Current source cost tax basis and the relationship to `Last Case Cost` remain unverified. Full catalog snapshot completeness and name-field differences remain unresolved.
+
 ## Explicit report refresh propagation (2026-11-10)
 
 - Change: POS report proxy forwards `refresh=true` for Shopfront Sales, Inventory, Purchase and Dashboard inventory. Manual report-page refreshes request the upstream Shopfront report; product-page refresh remains snapshot-backed. A failed forced refresh is not rendered as a current report.

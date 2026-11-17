@@ -1,8 +1,18 @@
 # Shopfront Sync Progress
 
-Updated: 2026-11-10. Owner: TBD.
+Updated: 2026-11-17. Owner: TBD.
 
 > Historical entries retain the state and evidence from their recorded dates. For current source boundaries, enabled store ledgers, active sync jobs, and unresolved parity issues, use the root `HANDOFF.md`; do not follow older instructions to write to Odoo.
+
+## Scoped cost cleanup (2026-11-17)
+
+- POS commit `3d08ca5a122c986241c8999f1b7219926f8c5166` adds a cost-only integration endpoint with explicit IDs, expected-current-cost guards, outlet ownership checks, catalog-confirmation checks, and durable audit rows. It was pushed to GitHub `main` and deployed to SKR/Demo at the same runtime SHA.
+- Java 21 `mvn -B -Dtest=ShopfrontIntegrationControllerTest test`: 64 tests passed, including the new exact-scope update and catalog-confirmed rejection cases.
+- Read-only reconciliation found 179 legacy cost candidates, all referenced by historical sales; 80 also appear in purchase-order history. The same source IDs were present in SKR and Demo. All candidate products were catalog-unconfirmed; 179 were inactive in SKR, while Demo had one still-active item. The active product stayed active.
+- The cost-only endpoint cleared 179 costs in each store and wrote one audit row per product. Post-write readback verified all 358 costs null and all 358 catalog-confirmed flags false; status, box quantity, and tax-rate fields remained as read before. Response reported zero historical sale rows changed.
+- Current catalog comparison had zero cost, case-quantity, tax-rate, status, and source-update-time mismatches. Name differences remain (SKR 114, Demo 158), 3 fields were unavailable, and a verified complete current catalog snapshot was absent. The daily sync status classified the latest catalog snapshot as `partial` and stale; full catalog parity is therefore still open.
+- Shopfront UI and `/reports/misc` were not checked because the owner deferred login. This source UI check is still required to verify the meaning/tax basis of current outlet cost and `Last Case Cost`.
+- Detailed local-only evidence is in the ignored crawler `.local` exports `cost-reconciliation-2026-11-17.json/.csv` and `cost-write-audit-2026-11-17.json`; product IDs and per-item cost values were not added to Git.
 
 ## Report refresh propagation (2026-11-10)
 

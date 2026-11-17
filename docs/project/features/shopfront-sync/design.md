@@ -1,6 +1,6 @@
 # Shopfront Sync Design
 
-Updated: 2026-11-06. Owner: TBD.
+Updated: 2026-11-17. Owner: TBD.
 
 ## Data path and invariants
 
@@ -35,6 +35,14 @@ Shopfront source records are mirrored independently from formal POS business tab
 A complete inventory replacement must be non-empty, contain unique source product IDs and explicit quantities, and resolve every source product to an Orithos product before clearing the current outlet snapshot. When multiple Shopfront source products resolve to one Orithos product, their business attributes must agree before catalog writes; conflicting prices, GST, case quantities, status, or costs block the whole batch. Inventory rows that resolve to the same Orithos product must also agree on quantity and replenishment values before a snapshot is replaced. Formal imports run atomically: row failures abort the batch. Product prices are stored against the mapped outlet and the base shelf price is materialized at quantity one when the source provides only tier prices.
 
 Shopfront sales have an Orithos native importer and reconciliation path; current coverage and unresolved records are tracked in the root `HANDOFF.md`. Suppliers, customers, and purchase orders remain source mirrors until each domain has an explicit Orithos business-ledger importer and reconciliation contract. A crawler acknowledgement alone does not prove source records have been posted correctly as POS sales, receipts, or payments.
+
+## Cost confirmation and scoped cleanup
+
+- A current product cost is usable only when the crawler confirms the product in a complete current catalog and selects the cost belonging to the configured Shopfront outlet. Global or historical cost fields do not confirm a current outlet cost.
+- Legacy product costs missing from the current catalog are unavailable, including for a POS product that remains active. Preserve its product state and box quantity; do not reuse a historical cost or invent zero.
+- The POS `products:clear-unverified-costs` integration accepts a bounded list of explicit source IDs and expected current costs. It requires one mapped, live POS product per source ID in the selected outlet, an unconfirmed catalog marker, and exact numeric match to the expected cost. Any mismatch rejects the transaction.
+- The transaction updates only `product.cost` and `product.shopfront_catalog_confirmed`, and stores old/new values, source ID, outlet, reason and timestamp in `shopfront_product_cost_audit`. It does not update sale-item costs, inventory, prices, status, box quantity, or other product attributes.
+- Reconciliation is not complete when the full source catalog snapshot is missing/partial/stale or the two-store field comparison reports any mismatch/unavailable field. Report those conditions independently from the scoped stale-cost cleanup result.
 
 ## Completion evidence
 
