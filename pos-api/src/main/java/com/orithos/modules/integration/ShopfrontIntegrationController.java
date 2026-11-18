@@ -4032,17 +4032,6 @@ public class ShopfrontIntegrationController {
                     SELECT p.id AS product_id,p.status
                     FROM product p
                     WHERE p.outlet_id=? AND p.deleted_at IS NULL AND p.id IN (%s)
-                      AND NOT EXISTS (SELECT 1 FROM sale_item si
-                                      WHERE si.outlet_id=p.outlet_id AND si.product_id=p.id)
-                      AND NOT EXISTS (SELECT 1 FROM order_product op
-                                      WHERE op.outlet_id=p.outlet_id AND op.product_id=p.id)
-                      AND NOT EXISTS (SELECT 1 FROM purchase_receipt_line prl
-                                      JOIN purchase_receipt pr ON pr.id=prl.receipt_id
-                                      WHERE pr.outlet_id=p.outlet_id AND prl.product_id=p.id)
-                      AND NOT EXISTS (SELECT 1 FROM inventory_movement im
-                                      WHERE im.outlet_id=p.outlet_id AND im.product_id=p.id)
-                      AND NOT EXISTS (SELECT 1 FROM stocktake_product stp
-                                      WHERE stp.outlet_id=p.outlet_id AND stp.product_id=p.id)
                     """.formatted(placeholders), args.toArray())) {
                 candidates.put(longValue(row.get("product_id")), row);
             }

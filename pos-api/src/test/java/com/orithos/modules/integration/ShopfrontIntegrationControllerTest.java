@@ -1396,7 +1396,7 @@ class ShopfrontIntegrationControllerTest {
     }
 
     @Test
-    void confirmedCatalogMovesBarcodeWhenCurrentOwnerDroppedItsClaim() throws Exception {
+    void confirmedCatalogMovesBarcodeWhenOwnerHasHistoricalRowsAndDroppedItsClaim() throws Exception {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
         when(jdbc.queryForList(contains("SELECT code, product_id FROM product_barcode"), any(Object[].class)))
                 .thenReturn(List.of(Map.of("code", "9300001", "product_id", 101L)));
@@ -1433,12 +1433,8 @@ class ShopfrontIntegrationControllerTest {
         assertEquals(0, conflictCount.getInt(batch));
         verify(jdbc).update(contains("DELETE FROM product_barcode WHERE outlet_id=? AND product_id=? AND code=?"),
                 eq(87L), eq(101L), eq("9300001"));
-        verify(jdbc).queryForList(argThat(sql -> sql.contains("NOT EXISTS (SELECT 1 FROM sale_item")
-                && sql.contains("NOT EXISTS (SELECT 1 FROM order_product")
-                && sql.contains("NOT EXISTS (SELECT 1 FROM purchase_receipt_line")
-                && sql.contains("purchase_receipt")
-                && sql.contains("inventory_movement")
-                && sql.contains("stocktake_product")), any(Object[].class));
+        verify(jdbc).queryForList(argThat(sql -> sql.contains("deleted_at IS NULL")
+                && !sql.contains("NOT EXISTS")), any(Object[].class));
         verify(jdbc).update(contains("INSERT INTO shopfront_product_barcode_audit"), any(Object[].class));
         verify(jdbc).update(contains("'verified_unclaimed_shopfront_barcode'"), any(Object[].class));
         verify(jdbc).batchUpdate(contains("INSERT INTO product_barcode"), any(List.class));
@@ -1539,8 +1535,8 @@ class ShopfrontIntegrationControllerTest {
         verify(jdbc).batchUpdate(contains("INSERT INTO product_barcode"), any(List.class));
         verify(jdbc, never()).update(contains("product_inventory"), any(Object[].class));
         verify(jdbc, never()).batchUpdate(contains("product_inventory"), any(List.class));
-        verify(jdbc).queryForList(argThat(sql -> sql.contains("NOT EXISTS (SELECT 1 FROM sale_item")
-                && sql.contains("inventory_movement") && !sql.contains("product_inventory")), any(Object[].class));
+        verify(jdbc).queryForList(argThat(sql -> sql.contains("deleted_at IS NULL")
+                && !sql.contains("NOT EXISTS") && !sql.contains("product_inventory")), any(Object[].class));
     }
 
     @Test
