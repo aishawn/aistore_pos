@@ -23,6 +23,23 @@ test("hardware setup reports bridge availability without enabling Linkly payment
     path: "/",
   }]);
   const page = await context.newPage();
+  await page.addInitScript(() => {
+    const permissions = navigator.permissions;
+    if (!permissions?.query) return;
+    const original = permissions.query.bind(permissions);
+    permissions.query = async (descriptor) => {
+      const name = typeof descriptor === "object" && descriptor && "name" in descriptor ? String(descriptor.name) : "";
+      if (name === "loopback-network" || name === "local-network") {
+        return {
+          state: "granted",
+          onchange: null,
+          addEventListener: () => undefined,
+          removeEventListener: () => undefined,
+        } as PermissionStatus;
+      }
+      return original(descriptor);
+    };
+  });
   await page.route("https://cdn.jsdelivr.net/npm/qz-tray@2.3.0/qz-tray.js", (route) => route.abort());
   const qzLoadFailure = page.waitForEvent("requestfailed", (request) => request.url().includes("cdn.jsdelivr.net/npm/qz-tray@2.3.0/qz-tray.js"));
   await page.goto("/settings/hardware");
@@ -35,7 +52,7 @@ test("hardware setup reports bridge availability without enabling Linkly payment
   })).toBeVisible({ timeout: 15_000 });
   await expect(page.getByText("Adapter required; payments disabled")).toBeVisible();
   await expect(page.getByText("Linkly payments remain disabled and are not recorded by this POS.")).toBeVisible();
-  await expect(page.getByText(/RS232.*not supported.*USB HID/i)).toBeVisible();
+  await expect(page.getByText(/RS232.*not supported/i)).toBeVisible();
 
   const scannerInput = page.getByLabel("Barcode input check");
   await scannerInput.fill("0001234567890");

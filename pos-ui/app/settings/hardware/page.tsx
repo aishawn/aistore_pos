@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { StoreSettingsPage as AdminPageLayout } from "@/components/admin/StoreSettingsPage";
 import { DevicesSettingsTabs } from "@/components/admin/SetupHubTabs";
 import { HardwareSetupPanel } from "@/components/admin/HardwareSetupPanel";
+import { LocalNetworkAccessGate } from "@/components/admin/LocalNetworkAccessGate";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
@@ -64,7 +65,9 @@ export default function HardwareSettingsPage() {
           </button>
         )}
       </details>
-      <HardwareSetupPanel />
+      <LocalNetworkAccessGate>
+        <HardwareSetupPanel />
+      </LocalNetworkAccessGate>
     </AdminPageLayout>
   );
 }
