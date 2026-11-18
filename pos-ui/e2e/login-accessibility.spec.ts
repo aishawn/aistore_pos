@@ -52,8 +52,8 @@ test("hardware setup reports bridge availability without enabling Linkly payment
   await expect(page.getByRole("status").filter({
     hasText: /QZ Tray browser library failed to load|QZ Tray is not installed or unavailable in this browser/,
   })).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByText("Adapter required; payments disabled")).toBeVisible();
-  await expect(page.getByText("Linkly payments remain disabled and are not recorded by this POS.")).toBeVisible();
+  await expect(page.getByText("Pair below")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "EFTPOS terminal pairing" })).toBeVisible();
   await expect(page.getByText(/RS232.*not supported/i)).toBeVisible();
 
   const scannerInput = page.getByLabel("Barcode input check");

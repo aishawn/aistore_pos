@@ -1,6 +1,7 @@
 package com.orithos.modules.sale;
 
 import com.orithos.modules.config.CompanySettingsService;
+import com.orithos.modules.eftpos.EftposService;
 import com.orithos.modules.sale.dto.CheckoutRequest;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -14,7 +15,7 @@ import static org.mockito.Mockito.mock;
 class CheckoutLineAmountTest {
 
     private final CheckoutService service = new CheckoutService(null, null, null, null, null, null, new ObjectMapper(),
-            mock(CompanySettingsService.class));
+            mock(CompanySettingsService.class), mock(EftposService.class));
 
     @Test
     void displayedLineTotalIsChargedInsteadOfReconstructedUnitPrice() {

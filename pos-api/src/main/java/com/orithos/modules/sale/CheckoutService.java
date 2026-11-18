@@ -16,6 +16,7 @@ import com.orithos.modules.product.mapper.ProductMapper;
 import com.orithos.modules.register.Register;
 import com.orithos.modules.register.RegisterMapper;
 import com.orithos.modules.register.RegisterSessionMapper;
+import com.orithos.modules.eftpos.EftposService;
 import com.orithos.modules.sale.dto.CheckoutRequest;
 import com.orithos.modules.sale.dto.CheckoutResponse;
 import com.orithos.modules.sale.dto.CheckoutQuoteResponse;
@@ -45,11 +46,13 @@ public class CheckoutService {
     private final RegisterSessionMapper registerSessionMapper;
     private final ObjectMapper objectMapper;
     private final CompanySettingsService companySettings;
+    private final EftposService eftposService;
 
     public CheckoutService(SaleMapper saleMapper, SalePaymentMapper paymentMapper,
                            PaymentMethodMapper paymentMethodMapper, ProductMapper productMapper,
                            RegisterMapper registerMapper, RegisterSessionMapper registerSessionMapper,
-                           ObjectMapper objectMapper, CompanySettingsService companySettings) {
+                           ObjectMapper objectMapper, CompanySettingsService companySettings,
+                           EftposService eftposService) {
         this.saleMapper = saleMapper;
         this.paymentMapper = paymentMapper;
         this.paymentMethodMapper = paymentMethodMapper;
@@ -58,6 +61,7 @@ public class CheckoutService {
         this.registerSessionMapper = registerSessionMapper;
         this.objectMapper = objectMapper;
         this.companySettings = companySettings;
+        this.eftposService = eftposService;
     }
 
     public CheckoutQuoteResponse quote(CheckoutRequest req) {
@@ -115,6 +119,9 @@ public class CheckoutService {
         }
         if (req.getSaleId() == null && (req.getExpectedTotal() == null || req.getExpectedGst() == null)) {
             throw new BusinessException(40000, "Refresh and confirm a server quote before checkout.");
+        }
+        if (req.getSaleId() == null && "EFTPOS".equals(resolveTenderType(req.getTender())) && !isEftposCashOut(req.getTender())) {
+            eftposService.requireApprovedAttemptForCheckout(idempotencyKey);
         }
         if (req.getSaleId() == null && req.getItems().stream().anyMatch(item -> item == null
                 || item.getUnitPrice() == null || item.getExpectedTaxRate() == null)) {

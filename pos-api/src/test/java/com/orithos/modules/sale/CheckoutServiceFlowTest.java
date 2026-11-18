@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.orithos.common.BusinessException;
 import com.orithos.modules.config.CompanySettingsService;
+import com.orithos.modules.eftpos.EftposService;
 import com.orithos.modules.payment.PaymentMethod;
 import com.orithos.modules.payment.PaymentMethodMapper;
 import com.orithos.modules.product.Product;
@@ -44,7 +45,7 @@ class CheckoutServiceFlowTest {
     void setUp() {
         when(companySettings.cashRoundTo(3L)).thenReturn(new BigDecimal("0.05"));
         service = new CheckoutService(sales, payments, paymentMethods, products, registers, sessions,
-                new ObjectMapper().registerModule(new JavaTimeModule()), companySettings);
+                new ObjectMapper().registerModule(new JavaTimeModule()), companySettings, mock(EftposService.class));
         SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
                 new AuthUser(7L, "cashier", false, 12L, 3L), null, List.of()));
 

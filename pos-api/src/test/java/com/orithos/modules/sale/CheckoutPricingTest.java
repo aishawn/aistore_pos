@@ -3,6 +3,7 @@ package com.orithos.modules.sale;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.orithos.common.BusinessException;
 import com.orithos.modules.config.CompanySettingsService;
+import com.orithos.modules.eftpos.EftposService;
 import com.orithos.modules.payment.PaymentMethod;
 import com.orithos.modules.payment.PaymentMethodMapper;
 import com.orithos.modules.product.Product;
@@ -36,7 +37,7 @@ class CheckoutPricingTest {
     private final CompanySettingsService companySettings = mock(CompanySettingsService.class);
     private final CheckoutService service = new CheckoutService(saleMapper, mock(SalePaymentMapper.class),
             paymentMethodMapper, productMapper, registerMapper,
-            registerSessionMapper, new ObjectMapper(), companySettings);
+            registerSessionMapper, new ObjectMapper(), companySettings, mock(EftposService.class));
 
     @BeforeEach
     void authenticateOutlet() {

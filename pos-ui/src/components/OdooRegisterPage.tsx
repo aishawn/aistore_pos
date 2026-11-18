@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Check, CircleAlert, DoorClosed, LoaderCircle, Printer, RefreshCw, X } from "lucide-react";
+import { Banknote, Check, CircleAlert, DoorClosed, LoaderCircle, Printer, RefreshCw, X } from "lucide-react";
 import { SalesMenu } from "@/components/SalesMenu";
 import { useCloseRegisterUiOptional } from "@/components/CloseRegisterUiProvider";
 import { useSalesHistoryUiOptional } from "@/components/SalesHistoryUiProvider";
@@ -47,9 +47,12 @@ import { useDialogFocus } from "@/hooks/useDialogFocus";
 import { useAuth } from "@/lib/auth";
 import { formatSaleReceiptPlainText, printReceiptDocument } from "@/lib/local-hardware";
 import { sellDraftNoticePresentation, type SellDraftNoticeKind } from "@/lib/sell-draft-notice";
-
-// Card settlement needs a paired terminal; browser-only checkout must not mark it paid.
-const EFTPOS_TERMINAL_ENABLED = false;
+import {
+  readRegisterStartupPromptAck,
+  writeRegisterStartupPromptAck,
+} from "@/lib/odoo-register-startup";
+import { getRegisterEftposBinding } from "@/lib/eftpos-api";
+import { ensureEftposApprovedBeforeCheckout } from "@/lib/eftpos-checkout";
 
 type CompletedReceipt = {
   reference: string;
@@ -205,6 +208,12 @@ export function OdooRegisterPage() {
   const [clearSaleConfirm, setClearSaleConfirm] = useState(false);
   const [parkedAction, setParkedAction] = useState<{ type: "resume" | "discard"; saleId: string } | null>(null);
   const [pendingRegisterId, setPendingRegisterId] = useState<number | null>(null);
+  const [registerStartupPrompt, setRegisterStartupPrompt] = useState<{
+    configId: number;
+    outletLabel: string;
+    registerName: string;
+    needsOpen: boolean;
+  } | null>(null);
   const [helpOpen, setHelpOpen] = useState(false);
   const [closeRegisterCartWarn, setCloseRegisterCartWarn] = useState(false);
   const [draftNotice, setDraftNotice] = useState<{ kind: SellDraftNoticeKind; message: string } | null>(null);
@@ -222,6 +231,8 @@ export function OdooRegisterPage() {
   const selectedConfigIdRef = useRef<number | null>(null);
   const selectedPaymentMethodIdRef = useRef<number | null>(null);
   const [hydratedDraftKey, setHydratedDraftKey] = useState<string | null>(null);
+  const [eftposPaymentsEnabled, setEftposPaymentsEnabled] = useState(false);
+  const [eftposPaymentNotice, setEftposPaymentNotice] = useState<string | null>(null);
 
   useEffect(() => {
     if (!draftNotice) return;
@@ -257,13 +268,26 @@ export function OdooRegisterPage() {
         const stored = Number(localStorage.getItem(`${REGISTER_SELECTION_KEY}:${user.id}`));
         if (Number.isSafeInteger(stored) && stored > 0) rememberedId = stored;
       } catch { /* Register selection remains available for this session. */ }
+      const remembered = rememberedId == null
+        ? undefined
+        : data.configs.find((item) => item.id === rememberedId);
+      const shouldPrompt = Boolean(initial && remembered && !readRegisterStartupPromptAck(user.id));
       let active = data.configs.find((item) => item.id === selectedConfigIdRef.current)
-        ?? data.configs.find((item) => item.id === rememberedId)
+        ?? remembered
         ?? data.configs.find((item) => item.session)
         ?? data.configs[0];
-      if (active && !active.session) {
+      if (shouldPrompt && remembered) {
+        setRegisterStartupPrompt({
+          configId: remembered.id,
+          outletLabel: Array.isArray(remembered.company) ? remembered.company[1] : "Outlet",
+          registerName: remembered.name,
+          needsOpen: !remembered.session,
+        });
+        active = remembered;
+      } else if (active && !active.session) {
         await openOdooPosSession(active.id);
         data = await getOdooPosBootstrap();
+        if (revision !== loadRevision.current) return;
         active = data.configs.find((item) => item.id === active?.id) ?? data.configs[0];
       }
       selectedConfigIdRef.current = active?.id ?? null;
@@ -341,7 +365,7 @@ export function OdooRegisterPage() {
     openCloseRegister();
   }
 
-  const dialogOpen = helpOpen || closeRegisterCartWarn || clearSaleConfirm || cashOutOpen || Boolean(receipt) || Boolean(parkedAction) || pendingRegisterId !== null;
+  const dialogOpen = helpOpen || closeRegisterCartWarn || clearSaleConfirm || cashOutOpen || Boolean(receipt) || Boolean(parkedAction) || pendingRegisterId !== null || registerStartupPrompt !== null;
   useDialogFocus(dialogOpen, () => {
     if (helpOpen) setHelpOpen(false);
     else if (closeRegisterCartWarn) setCloseRegisterCartWarn(false);
@@ -560,6 +584,16 @@ export function OdooRegisterPage() {
     const frame = window.requestAnimationFrame(() => productSearchRef.current?.focus());
     return () => window.cancelAnimationFrame(frame);
   }, [sessionOpen]);
+
+  useEffect(() => {
+    if (!configId) {
+      setEftposPaymentsEnabled(false);
+      return;
+    }
+    void getRegisterEftposBinding(configId)
+      .then((binding) => setEftposPaymentsEnabled(binding.paymentsEnabled))
+      .catch(() => setEftposPaymentsEnabled(false));
+  }, [configId]);
   const currentQuoteFingerprint = JSON.stringify({
     configId,
     paymentMethodId,
@@ -911,8 +945,8 @@ export function OdooRegisterPage() {
 
   async function checkout() {
     if (!isOnline || !selectedConfig || (!pendingCheckout && (!selectedConfig.session || !paymentMethodId || !lines.length)) || checkoutBusy.current) return;
-    if (cardMethod && paymentMethodId === cardMethod.id && !EFTPOS_TERMINAL_ENABLED) {
-      setError("EFTPOS is unavailable: connect and validate a terminal before taking card payments.");
+    if (cardMethod && paymentMethodId === cardMethod.id && !eftposPaymentsEnabled) {
+      setError("EFTPOS is unavailable: pair this register under Settings → Hardware before taking card payments.");
       return;
     }
     checkoutBusy.current = true;
@@ -932,6 +966,24 @@ export function OdooRegisterPage() {
       }
       const stableOrderUuid = orderUuid.current ?? crypto.randomUUID();
       orderUuid.current = stableOrderUuid;
+      if (cardMethod && paymentMethodId === cardMethod.id && eftposPaymentsEnabled) {
+        if (!quoteIsCurrent || !quote?.signature) throw new Error("Refresh the cart quote before taking card payment.");
+        setEftposPaymentNotice("Waiting for the EFTPOS terminal…");
+        await ensureEftposApprovedBeforeCheckout({
+          registerId: selectedConfig.id,
+          orderUuid: stableOrderUuid,
+          expectedTotal: quote.total,
+          quoteSignature: quote.signature,
+          onStatus: (attempt) => {
+            if (attempt.status === "PENDING" || attempt.status === "UNKNOWN") {
+              setEftposPaymentNotice("Waiting for the EFTPOS terminal…");
+            } else if (attempt.status === "APPROVED" || attempt.status === "APPROVED_PENDING_SETTLEMENT") {
+              setEftposPaymentNotice("Terminal approved; finalising sale…");
+            }
+          },
+        });
+        setEftposPaymentNotice(null);
+      }
       const request: OdooCheckoutRequest = pendingCheckout ?? {
         configId: selectedConfig.id,
         paymentMethodId: paymentMethodId!,
@@ -976,6 +1028,7 @@ export function OdooRegisterPage() {
       orderUuid.current = null;
       checkoutFingerprint.current = null;
     } catch (cause) {
+      setEftposPaymentNotice(null);
       if (cause instanceof OdooCheckoutPendingError) setPendingCheckout(cause.order);
       else {
         setPendingCheckout(null);
@@ -1106,6 +1159,32 @@ export function OdooRegisterPage() {
 
   const finaliseTitle = canFinalise ? "Complete this sale in Orithos" : finaliseLabel;
 
+  async function confirmOpenRegister() {
+    if (!registerStartupPrompt || !odooUserId) return;
+    writeRegisterStartupPromptAck(odooUserId);
+    const { configId, needsOpen } = registerStartupPrompt;
+    setRegisterStartupPrompt(null);
+    if (!needsOpen) return;
+    setRefreshing(true);
+    setError(null);
+    try {
+      await openOdooPosSession(configId);
+      await loadPos(false);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not open this register.");
+    }
+  }
+
+  function requestChangeRegister() {
+    if (!odooUserId) return;
+    writeRegisterStartupPromptAck(odooUserId);
+    setRegisterStartupPrompt(null);
+    window.setTimeout(() => {
+      registerSelectRef.current?.focus();
+      try { registerSelectRef.current?.showPicker?.(); } catch { /* showPicker is optional */ }
+    }, 0);
+  }
+
   function selectRegister(id: number) {
     selectedConfigIdRef.current = id;
     setConfigId(id);
@@ -1156,8 +1235,8 @@ export function OdooRegisterPage() {
   }
 
   function selectCardPayment() {
-    if (!EFTPOS_TERMINAL_ENABLED) {
-      setError("EFTPOS is unavailable: connect and validate a terminal before taking card payments.");
+    if (!eftposPaymentsEnabled) {
+      setError("EFTPOS is unavailable: pair this register under Settings → Hardware before taking card payments.");
       return;
     }
     const nonCash = paymentMethods.filter((item) => !isCashMethod(item));
@@ -1486,6 +1565,7 @@ export function OdooRegisterPage() {
         </section>
 
         {quoteIsCurrent && quote?.priceSource && <p role="status" className="px-3 text-xs text-[var(--oh-muted)]">Pricing: {quote.priceSource} · {quote.currency}</p>}
+        {eftposPaymentNotice && <p role="status" className="px-3 text-xs font-medium text-amber-900">{eftposPaymentNotice}</p>}
         <OdooSellPaymentBar
           linesLength={lines.length}
           eftposSelected={eftposSelected}
@@ -1494,7 +1574,7 @@ export function OdooRegisterPage() {
           cashMethod={cashMethod}
           selectedPayment={selectedPayment ?? null}
           hasConfig={Boolean(selectedConfig)}
-          eftposAvailable={EFTPOS_TERMINAL_ENABLED}
+          eftposAvailable={eftposPaymentsEnabled}
           busy={busy}
           isCashPayment={isCashPayment}
           amountToCollect={amountToCollect}
@@ -1619,6 +1699,46 @@ export function OdooRegisterPage() {
           <div className="mt-5 flex justify-end gap-2"><button type="button" onClick={() => setParkedAction(null)} className="min-h-11 rounded-md border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-text)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Cancel</button><button type="button" onClick={confirmParkedAction} className={`min-h-11 rounded-md px-4 text-sm font-semibold text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] ${parkedAction.type === "discard" ? "bg-red-700 hover:bg-red-800" : "bg-[var(--sf-link-blue)] hover:brightness-95"}`}>{parkedAction.type === "resume" ? "Resume sale" : "Discard draft"}</button></div>
         </section>
       </div>}
+      {registerStartupPrompt && (
+        <div className="fixed inset-0 z-[70] grid place-items-center bg-black/55 p-4">
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="register-startup-title"
+            className="flex w-full max-w-[26rem] items-stretch overflow-hidden rounded-lg bg-[#31363b] text-white shadow-2xl"
+          >
+            <div className="flex w-20 shrink-0 items-center justify-center border-r border-white/10 bg-[#2a2e33]">
+              <Banknote size={34} strokeWidth={1.4} className="text-white/90" aria-hidden />
+            </div>
+            <div className="flex min-w-0 flex-1 flex-col gap-4 p-5 sm:p-6">
+              <div>
+                <p className="text-sm text-white/75">Outlet: {registerStartupPrompt.outletLabel}</p>
+                <h2 id="register-startup-title" className="mt-1 text-2xl font-bold leading-tight text-white">
+                  Register: {registerStartupPrompt.registerName}
+                </h2>
+              </div>
+              <div className="grid gap-2">
+                <button
+                  type="button"
+                  onClick={() => void confirmOpenRegister()}
+                  disabled={refreshing}
+                  className="min-h-11 rounded-md bg-[#67c7e3] px-4 text-sm font-semibold text-[#16313b] transition hover:brightness-105 disabled:cursor-wait disabled:opacity-70"
+                >
+                  {refreshing ? "Opening…" : "Open register"}
+                </button>
+                <button
+                  type="button"
+                  onClick={requestChangeRegister}
+                  disabled={refreshing}
+                  className="min-h-11 rounded-md bg-[#ececec] px-4 text-sm font-semibold text-[#31363b] transition hover:bg-white disabled:opacity-70"
+                >
+                  Change register
+                </button>
+              </div>
+            </div>
+          </section>
+        </div>
+      )}
       {pendingRegisterId !== null && <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
         <section role="alertdialog" aria-modal="true" aria-labelledby="register-change-title" aria-describedby="register-change-description" className="w-full max-w-md rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-6 shadow-2xl">
           <h2 id="register-change-title" className="text-lg font-semibold text-[var(--oh-text)]">Park this sale before switching?</h2>

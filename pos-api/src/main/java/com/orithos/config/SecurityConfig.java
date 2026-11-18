@@ -119,6 +119,7 @@ public class SecurityConfig {
                         "/api/auth/bootstrap",
                         "/api/integrations/shopfront/**",
                         "/api/public/**",
+                        "/api/eftpos/connector/**",
                         "/api/openapi.json",
                         "/authorized").permitAll()
                 .requestMatchers("/actuator/**", "/error").permitAll()

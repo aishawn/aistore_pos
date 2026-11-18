@@ -182,6 +182,11 @@ app:
         service-factor: ${AI_REPLENISHMENT_SERVICE_FACTOR:1.65}
         case-pack: ${AI_REPLENISHMENT_CASE_PACK:1}
 
+orithos:
+  eftpos:
+    test-mode: ${ORITHOS_EFTPOS_TEST_MODE:false}
+    enforce-card-capture: ${ORITHOS_EFTPOS_ENFORCE_CARD_CAPTURE:false}
+
 # 日志级别
 logging:
   pattern:

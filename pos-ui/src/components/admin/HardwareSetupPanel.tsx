@@ -145,7 +145,7 @@ export function HardwareSetupPanel() {
     { name: "Barcode scanner", icon: ScanBarcode, status: "USB HID keyboard mode", detail: "POS receives keyboard wedge scans. RS232/COM scanner mode is not supported yet. Switch to USB HID mode if the scanner supports it.", tone: "text-emerald-800 bg-emerald-50" },
     { name: "Receipt printer", icon: Printer, status: state.connected ? `${state.printers.length} printer(s) found` : "Connect the local bridge", detail: "Printers are discovered through QZ Tray after the local bridge connects.", tone: state.connected ? "text-emerald-800 bg-emerald-50" : "text-amber-900 bg-amber-50" },
     { name: "Cash drawer", icon: Cable, status: draft.cashDrawer ? "Configured; sale auto-open disabled" : "Not configured", detail: "Use Test open cash drawer after selecting printer, brand, and kick settings. Sales still do not open the drawer automatically.", tone: "text-amber-900 bg-amber-50" },
-    { name: "Linkly EFTPOS", icon: CreditCard, status: "Adapter required; payments disabled", detail: "The supported connection depends on terminal model and acquiring bank. No payment is recorded by this page.", tone: "text-amber-900 bg-amber-50" },
+    { name: "Linkly EFTPOS", icon: CreditCard, status: "Pair below", detail: "Use EFTPOS terminal pairing for Connector health, binding, and sell-time card payments.", tone: "text-amber-900 bg-amber-50" },
     { name: "Customer display", icon: ScreenShare, status: "Same-browser display available", detail: "Open the display from the register menu. Live cart data syncs between tabs in this browser profile.", tone: "text-emerald-800 bg-emerald-50" },
     { name: "Barcode label printer", icon: Printer, status: "Browser label workflow available", detail: "Generate labels from Barcodes and print with the system dialog; printer-specific profiles are not configured.", tone: "text-amber-900 bg-amber-50" },
     { name: "Electronic scales", icon: Scale, status: "Model-specific adapter required", detail: "No scale protocol is configured. Unverified scale values cannot be used for sales.", tone: "text-slate-700 bg-slate-100" },
@@ -287,7 +287,7 @@ export function HardwareSetupPanel() {
           <label className="grid gap-1 text-sm font-medium">Acquiring bank<input value={draft.linklyAcquirer} onChange={(event) => setDraft((current) => ({ ...current, linklyAcquirer: event.target.value }))} placeholder="Bank or acquirer" className="h-10 rounded-md border border-[var(--oh-border)] px-3 font-normal" /></label>
           <label className="grid gap-1 text-sm font-medium">Connection method<select value={draft.linklyConnection} onChange={(event) => setDraft((current) => ({ ...current, linklyConnection: event.target.value }))} className="h-10 rounded-md border border-[var(--oh-border)] bg-white px-3"><option value="">Select connection</option><option value="ethernet">Ethernet / LAN</option><option value="usb">USB</option><option value="linkly-software">Linkly software on this terminal</option><option value="unknown">Unknown</option></select></label>
         </div>
-        <p className="mt-2 text-sm text-amber-900">These details are saved in this browser for integration planning only. Linkly payments remain disabled and are not recorded by this POS.</p>
+        <p className="mt-2 text-sm text-[var(--oh-muted)]">These notes stay in this browser. Live card payments use the EFTPOS terminal pairing section on this page.</p>
       </section>
 
       <section className="rounded-lg border border-[var(--oh-border)] bg-white p-4 sm:p-5">
