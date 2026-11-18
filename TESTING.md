@@ -7,7 +7,7 @@
 | 离线提交门禁 | 已落地 | POS UI/API、Crawler、Forecast、AI harness 与 AI Gateway/Worker 各自执行；UI JUnit 失败计数也作为门禁判定；CI 上传脱敏 JSON 与 JUnit 工件 |
 | OpenAPI 合约入口 | 已落地 | Schemathesis wrapper 仅接受 allowlist host 且只跑 GET；需在本地 Compose 上手动启动 |
 | k6 只读冒烟 | 已落地 | 默认 localhost，逐步升压，只读版本端点 |
-| Playwright + axe | 已接入基础冒烟 | CI 和本地启动 Next dev，登录页跑标签断言与 axe；认证业务页仍待本地 Compose 测试账号 fixture |
+| Playwright + axe | 已接入本地 UI fixture | 登录页检查标签与 axe；报表和库存页使用固定合成 API 响应检查展示及只读权限，不连接后端；真实 API/Compose 集成仍待接入 |
 | PostgreSQL/Redis Testcontainers | 待接入 | 需要先把现有 API 集成测试与可重置容器数据连起来，不能以空容器连通性冒充业务集成覆盖 |
 | Promptfoo 在线比较 | 待接入 | 在线费用预算与可用 provider 配置需由手动批次提供；离线 CI 不加载模型密钥 |
 | Demo SHA 验收 | 手动流程 | 继续使用现有只读 UAT 脚本；写操作独立触发并记录清理 |
@@ -17,7 +17,7 @@
 | 范围 | 命令 | 运行环境 |
 |---|---|---|
 | POS UI 单测、类型、Lint | `cd pos-ui; npm ci; npm run test:unit; npm run typecheck; npm run lint` | Node 24 |
-| POS UI 浏览器冒烟 | `cd pos-ui; npx playwright install chromium; npm run test:e2e` | 本地 Next dev，登录页 |
+| POS UI 浏览器冒烟 | `cd pos-ui; npx playwright install chromium; npm run test:e2e` | 本地 Next dev，登录、报表、库存合成数据 fixture |
 | POS API | `cd pos-api; mvn -B clean verify` | Java 21 |
 | Crawler | `cd shopfront_crawler; pip install -e ".[test]"; pytest -q` | Python 3.12 |
 | Forecast | `cd forecast-service; pip install -r requirements.txt pytest; pytest -q` | Python 3.12 |
@@ -34,8 +34,9 @@ GitHub Actions 默认跟随提交门禁，也可在 Actions 页面手动重跑 `
 ## 集成与浏览器测试
 
 - 本地使用专属 Compose project 和可重置 PostgreSQL/Redis，不连接 Demo 或生产数据库；Java 集成测试补充 Testcontainers 后再纳入提交门禁。
-- Playwright Test 当前启动本地 Next dev，对登录表单执行无凭据 UI 检查。取得本地 Compose auth fixture 后，再逐步覆盖报表只读、助手问答、库存只读及收银草稿；不得自动跳到 Demo，也不保存/上传登录 storage state。
-- `@axe-core/playwright` 当前检查登录页；报表、助手和库存待本地数据 fixture 可重复后纳入。提交业务写入只允许隔离数据集。
+- Playwright Test 当前启动本地 Next dev。登录页执行无凭据 UI 检查；报表与库存使用 `pos-ui/e2e/fixtures/local-preview.ts` 创建无编辑权限的预览会话，并只 mock 经批准的只读 API 路由。未匹配的 `/api/**` 请求会中止，测试不连接后端、Demo 或生产。
+- 报表 fixture 检查销售金额、数据状态、成本覆盖提示和商品排行；库存 fixture 检查商品、现存数量、只读价格/商品字段。该结果只证明 UI 对固定合成 API 响应的行为，不证明后端数据正确或服务间集成可用。
+- `@axe-core/playwright` 当前检查登录页；报表、助手和库存待本地 Compose API 数据可重复后逐步增加可访问性及真实 API 集成覆盖。不得自动跳到 Demo，也不保存/上传登录 storage state。提交业务写入只允许隔离数据集。
 - Schemathesis 从 POS API 的 OpenAPI 文档生成边界请求，只指向显式 allowlist host；包装器只放行 GET。安装 `pip install -r scripts/testing/requirements.txt` 后，用 `API_SCHEMA`、`API_BASE_URL` 和 `SCHEMATHESIS_ALLOWED_HOSTS` 指向本地 Compose API 并执行 `python scripts/testing/run_contract_checks.py`。
 
 ## AI 与预测质量

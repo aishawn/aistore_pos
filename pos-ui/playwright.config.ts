@@ -1,5 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
+const port = process.env.PLAYWRIGHT_PORT ?? "3107";
+
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: true,
@@ -12,18 +14,18 @@ export default defineConfig({
   ],
   outputDir: "test-results/artifacts",
   use: {
-    baseURL: "http://127.0.0.1:3107",
+    baseURL: `http://127.0.0.1:${port}`,
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
     ...devices["Desktop Chrome"],
   },
   webServer: {
-    command: "npm run dev -- --hostname 127.0.0.1 --port 3107",
-    url: "http://127.0.0.1:3107/login",
+    command: `npm run dev -- --hostname 127.0.0.1 --port ${port}`,
+    url: `http://127.0.0.1:${port}/login`,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
     env: {
-      PORT: "3107",
+      PORT: port,
       NEXT_PUBLIC_TENANT_SCHEME: "http",
     },
   },

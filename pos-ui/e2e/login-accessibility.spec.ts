@@ -1,8 +1,9 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
+import { useLocalPreviewSession } from "./fixtures/local-preview";
 
 test("login form is labelled and has no axe violations", async ({ page }) => {
-  await page.route("**/api/auth/refresh", (route) => route.fulfill({ status: 401, body: "{}" }));
+  await useLocalPreviewSession(page);
   await page.goto("/login");
 
   await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
