@@ -2,7 +2,7 @@
 
 ## Scope
 
-This audit used authenticated read-only GET requests to the production Crawler API and POS native-data endpoint for Shopfront store `skr` and POS targets `skr` and `demo`. It did not call Shopfront directly, alter business data, enqueue sync jobs, or change configuration. Shopfront `/reports/misc` visual verification remains pending because the owner deferred login. Shopfront/model API spend was AUD 0.
+This audit used authenticated read-only GET requests to the production Crawler API and POS native-data endpoint for Shopfront store `skr` and POS targets `skr` and `demo`. A follow-up also inspected the signed-in Shopfront product editor and `/reports/misc` landing page. No business data was changed, no sync job was enqueued, and configuration was not changed. Shopfront/model API spend was AUD 0.
 
 Crawler `/healthz` was healthy. Local Crawler source commit was `321c8d6dc4c55c875bc7cd8a1131f841c683a84d`; runtime source fingerprint was `2390ddb8be6541f76f58b63f936efe970960fac459003c2d7a35fef0e55a8d35`. POS runtime SHA was not exposed by the reconcile API. The local direct read-only connection to Crawler PostgreSQL failed because the database closed the connection during handshake; all findings below come from the authenticated API.
 
@@ -12,7 +12,7 @@ The most recent complete source-ID snapshot covered 10,853 catalog products: 10,
 
 Both SKR and Demo reconciliation responses reported `complete_match=true`. Each target had zero mismatches in current unit cost, case cost, case quantity, retail tax name, cost tax name, status, and Shopfront source update time. Each had zero unavailable values for those fields. Name differences were 114 for SKR and 158 for Demo; every difference matched the expected POS uniqueness suffix, leaving zero unresolved mismatches. SKU was unset in both source and POS for 6,239 products.
 
-The current code path takes the configured outlet-specific Shopfront `cost`, preserves case cost, and derives the POS unit cost by dividing by `caseQuantity` when `costPercentage` is false. Percentage costs retain their returned amount. This matches the source field contract and current POS parity. Public Shopfront documentation clarifies the cost fields and report labels; the live product-editor display and `/reports/misc` UI still need visual confirmation.
+The current code path takes the configured outlet-specific Shopfront `cost`, preserves case cost, and derives the POS unit cost by dividing by `caseQuantity` when `costPercentage` is false. Percentage costs retain their returned amount. This matches the source field contract and current POS parity. The signed-in product-editor UI and `/reports/misc` landing page were read-only inspected on 2026-11-18; the exact Inventory At Date report output was not opened.
 
 ## Shopfront Cost Field Semantics
 
@@ -21,6 +21,8 @@ The public [Products object documentation](https://developer.onshopfront.com/doc
 The public [Special Reports documentation](https://developer.onshopfront.com/documentation/Reporting/Special%20Reports) shows the Inventory At Date report returning both `Last Case Cost (Ex)` and `Last Case Cost`, plus stock values excluding and including tax. Its example reports `$12.50` ex tax and `$13.75` including tax. This documents the report API's paired fields, but does not prove that the signed-in `/reports/misc` page uses the same report, filters, or display settings.
 
 A live read-only Crawler source-product GET fetched `JIM BEAM WHITE LBL 37% 700ML` from Shopfront at `2026-11-17T20:19:02Z`: outlet case cost `$522.31`, case quantity `12`, `last_case_cost` `$522.31`, and `average_case_cost` `$522.21`; exactly one outlet cost matched. The non-percentage POS item cost derives to `$43.5258` and displays rounded to `$43.53`. This is a representative field-mapping check, not proof that current outlet cost always equals last case cost.
+
+The signed-in product editor showed `-196 LEMON P/F 6% 330ML` with `Show Costs Including Tax` checked, `Case Cost` `$116.75`, and `Item Cost` `$3.89`. This confirms the UI's displayed tax toggle and labels for that product, but the page does not call the field `Last Case Cost`; the case quantity and the same product's API values were not captured in this UI observation. The `/reports/misc` landing page listed Inventory At Date, Slow Moving Stock, Stocktaked Products, Product Revision History, Inventory Movement, and Metcash MSC Sales Run. It did not list a standalone cost report. Public API documentation remains the evidence distinguishing current outlet `cost`, `lastCost`, and `averageCost`; the Inventory At Date page's live report labels and filters still need direct inspection.
 
 ## Historical Cost Candidates
 
@@ -51,6 +53,14 @@ The POS importer explains why they remain conflicts: `retiredUnstockedBarcodeOwn
 This gap does not make a zero balance by itself sufficient authority to move the code. Any future automated policy must also prove from one complete current source snapshot that exactly one Shopfront product claims the barcode, that the old owner's current source record omits it, and that the requesting product is the unique current claimant. A permitted move must update only the outlet-scoped barcode association, record old/new product IDs and the evidence snapshot in an audit row, and leave inventory, product status, cost, and historical sales untouched. No code or live barcode change was made in this audit.
 
 There was no active sync job at the time of the status query. The current source catalog observation is recent, while catalog job health is still partial/stale because the latest catalog job did not reach a clean terminal success.
+
+## Strict Barcode Review (2026-11-18)
+
+The newer run `#530` classification was filtered on unique current Shopfront claim, confirmed catalog owner, zero POS stock, no historical sale or purchase-line references, and resolved store mapping. This yields 90 rows (45 per store) representing 45 distinct barcodes. SKR and Demo requested-source and owner mappings agree. However, 22 existing owner products have multiple candidate barcodes and 26 target source products have multiple candidate barcodes. This remains a review-only set, not a single-row-per-product transfer authorization. No barcode was changed.
+
+The detailed CSV and JSON summary are in crawler `.local/shopfront-barcode-strict-review-run530-2026-11-18.csv/.json`; the summary records the source file SHA-256 and candidate file SHA-256. This is a derived snapshot from run `#530`, not a live refresh. A follow-up unauthenticated request to the production Crawler `/api/pos/products/reconcile` returned 401 because no integration token is configured in this workstation's `.env`; do not treat this review as current production state until the authenticated endpoint can be read again.
+
+At 2026-11-18 04:26 UTC, production `/healthz` returned 200 with source fingerprint `deee140faafd4140589c6076c04140a93ac116811ef2241ee7d00e44cca98624`, build time `2026-11-18T04:08:22Z`, and Git SHA `unknown`. The public health endpoint does not establish the latest sync job status. The last authenticated sync status remains the earlier readback below, so current sync freshness is unverified.
 
 ## Latest Sync Health Readback (2026-11-18 04:11 +08)
 
