@@ -298,7 +298,7 @@ class ShopfrontIntegrationControllerTest {
     }
 
     @Test
-    void newShopfrontProductKeepsTheExactSourceName() throws Exception {
+    void newShopfrontProductKeepsTheExactSourceNameIncludingOuterWhitespace() throws Exception {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
         when(jdbc.queryForObject(contains("INSERT INTO product"), eq(Long.class), any(Object[].class)))
                 .thenReturn(102L);
@@ -313,14 +313,14 @@ class ShopfrontIntegrationControllerTest {
         upsert.setAccessible(true);
 
         upsert.invoke(controller, new ObjectMapper().readTree("""
-                {"source_id":"source-102","name":"Duplicate","source_status":"ACTIVE","case_quantity":1}
+                {"source_id":"source-102","name":"Duplicate ","source_status":"ACTIVE","case_quantity":1}
                 """), "skr", 87L, new java.util.HashMap<>(Map.of("gst", 7L)), null, batch);
 
         org.mockito.ArgumentCaptor<Object[]> arguments = org.mockito.ArgumentCaptor.forClass(Object[].class);
         verify(jdbc).queryForObject(org.mockito.ArgumentMatchers.argThat(
                 (String query) -> query.contains("INSERT INTO product") && query.contains("shopfront_managed")),
                 eq(Long.class), arguments.capture());
-        assertEquals("Duplicate", arguments.getValue()[0]);
+        assertEquals("Duplicate ", arguments.getValue()[0]);
     }
 
     @Test
