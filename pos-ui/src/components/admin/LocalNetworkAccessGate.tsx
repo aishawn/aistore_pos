@@ -15,7 +15,7 @@ export function LocalNetworkAccessGate({ children }: { children: React.ReactNode
 
   useEffect(() => {
     let cancelled = false;
-    let unwatch = () => undefined;
+    let unwatch: () => void = () => undefined;
     void watchLocalNetworkAccess((state) => {
       if (!cancelled) setAccessState(state);
     }).then((cleanup) => {
