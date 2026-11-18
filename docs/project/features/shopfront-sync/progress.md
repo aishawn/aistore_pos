@@ -4,6 +4,14 @@ Updated: 2026-11-18. Owner: TBD.
 
 > Historical entries retain the state and evidence from their recorded dates. For current source boundaries, enabled store ledgers, active sync jobs, and unresolved parity issues, use the root `HANDOFF.md`; do not follow older instructions to write to Odoo.
 
+## Latest Barcode Gate Verification (2026-11-18 13:55 +08)
+
+- Root cause: Crawler `compact_business_payload()` removed `catalog_snapshot_complete` and `catalog_snapshot_fingerprint` from product upserts after registering a complete barcode snapshot. POS therefore failed closed at `complete_snapshot_metadata`. Crawler fix `bb632e6` preserves both fields; POS diagnostics `9740ae66` report gate-stage counts.
+- Production Crawler build time is `2026-11-18T13:52:42+08:00`, runtime fingerprint `45654590d4071f4ed801b404de7ed4f1f3ab63d517402507f377ded3570ac0a9`. POS SKR/Demo run commit `9740ae66ee9ba49d39aa477ab1bb48509621b883`.
+- Snapshot job `#878` processed 10,853 products and inventory rows for both targets. It migrated exactly 45 strict-review codes per store; audit readback found 45/45 barcode rows and 45/45 source mappings on the requested new product, with zero historical sales, purchase, receipt, movement, or stocktake references on old owners.
+- Remaining source/POS barcode conflicts: 159 rows per store (down from 204). These are not in the verified migration set; job `#878` remains correctly `partial`. Both targets reconcile 10,853/10,853 catalog rows; cost, case cost, case quantity, tax, and status mismatches are 0; inventory unmatched is 0. Catalog freshness still reports stale because the latest run is partial.
+- Verification: POS `ShopfrontIntegrationControllerTest` 73/73 passed; Crawler full suite 462 passed. See the dated [audit](cost-reconciliation-live-2026-11-18.md) for detailed evidence and remaining conflict scope.
+
 ## Current cost and catalog reconciliation (2026-11-18)
 
 - Authenticated read-only Crawler API comparison covered 10,853 current Shopfront catalog products for SKR and Demo. Both targets have 0 cost, case-cost, case-quantity, tax-rate, status, or source-update-time mismatches; both report `complete_match=true`. There are 855 real zero costs and no missing current-catalog costs. Name differences (114 SKR, 158 Demo) all match the expected POS uniqueness suffix; unresolved mismatches are 0.

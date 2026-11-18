@@ -1,5 +1,13 @@
 # Shopfront Sync Validation
 
+## Latest Controlled Verification (2026-11-18 13:55 +08)
+
+- Shopfront access remained read-only. After confirming no active catalog job, authenticated Crawler request queued catalog snapshot `#878`; it finished `partial` after processing 10,853 products and 10,853 inventory rows for each POS target.
+- Root cause was the Crawler product payload allowlist dropping `catalog_snapshot_complete` and `catalog_snapshot_fingerprint`. Crawler commit `bb632e6` adds the fields; runtime health build time `2026-11-18T13:52:42+08:00`, fingerprint `45654590d4071f4ed801b404de7ed4f1f3ab63d517402507f377ded3570ac0a9`. POS diagnostic commit `9740ae66ee9ba49d39aa477ab1bb48509621b883` is running on SKR and Demo.
+- Read-only POS DB audit found 45 barcode migrations per outlet under fingerprint `6b575ab5824aa7e214646a451a9e8291e16f97a5597c0c73d55fb7debab87284`, reason `verified_unclaimed_shopfront_barcode`. Every audit row matched its strict run `#530` candidate; the barcode row and source mapping both point to the new product (45/45 each store). Old owners have zero references in sales, purchase orders, receipts, inventory movements, or stocktakes.
+- Conflict count fell from 204 to 159 rows per store. These other conflicts remain unresolved and keep the catalog job `partial`; no further barcode transfer was attempted. Catalog reconciliation for SKR and Demo: 10,853/10,853 mapped, complete match, zero unresolved mismatches; cost, case cost, case quantity, tax, and status mismatches all 0. Inventory unmatched rows 0; inventory reconciliation was not required.
+- Tests: POS integration suite 73 passed; Crawler full suite 462 passed. Current catalog observations are recent, but sync health still marks catalog freshness stale because the latest full snapshot is partial. See [the detailed audit](cost-reconciliation-live-2026-11-18.md).
+
 ## Current read-only reconciliation (2026-11-18)
 
 - Environment: production Crawler API `https://crawler.orithos.com.au`; source store `skr`; POS targets `skr` and `demo`. Authenticated Crawler/POS GET calls only. No Shopfront API or model call, no write, and no sync enqueue; Shopfront/model spend was AUD 0. Shopfront UI `/reports/misc` was not opened because the owner deferred login.
