@@ -288,3 +288,4 @@ docker compose up -d PostgreSQL redis
 | `pos-api/docs/SPRING_AI_ALIBABA_GRAPH.md` | 百炼与 Graph 的集成方式 |
 | `docker-compose.yml`、`.env.example` | 整栈启动与生产前要改的环境变量 |
 | `pos-ui/docs/research/` | 早期页面对齐与交互研究笔记 |
+| `TESTING.md` | 全栈测试门禁、离线 AI/预测评测、Demo 验收与性能测试流程 |

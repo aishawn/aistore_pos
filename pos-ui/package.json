@@ -24,6 +24,7 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test:unit": "node --experimental-strip-types --test src/lib/**/*.test.ts",
+    "test:unit:ci": "node --experimental-strip-types --test --test-reporter=junit --test-reporter-destination=../reports/test-runs/pos-ui.xml src/lib/**/*.test.ts",
     "check": "npm run lint && npm run typecheck && npm run build"
   },
   "dependencies": {

@@ -1,0 +1,200 @@
+name: Offline Test Gates
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, "codex/**"]
+    paths:
+      - "pos-ui/**"
+      - "pos-api/**"
+      - "shopfront_crawler/**"
+      - "forecast-service/**"
+      - "scripts/ai-eval/**"
+      - "scripts/ai_forecast*.py"
+      - "scripts/testing/**"
+      - "TESTING.md"
+      - "README.md"
+      - ".gitignore"
+      - ".github/workflows/offline-test-gates.yml"
+  pull_request:
+    paths:
+      - "pos-ui/**"
+      - "pos-api/**"
+      - "shopfront_crawler/**"
+      - "forecast-service/**"
+      - "scripts/ai-eval/**"
+      - "scripts/ai_forecast*.py"
+      - "scripts/testing/**"
+      - "TESTING.md"
+      - "README.md"
+      - ".gitignore"
+      - ".github/workflows/offline-test-gates.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  ui:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: pos-ui
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: pos-ui/package-lock.json
+      - name: Install UI dependencies
+        id: install
+        run: npm ci
+      - run: mkdir -p ../reports/test-runs
+      - id: timer
+        run: echo "started=$(date +%s)" >> "$GITHUB_OUTPUT"
+      - name: Unit tests
+        id: test
+        run: npm run test:unit:ci
+      - name: Check JUnit failures
+        id: junit
+        if: always()
+        run: python ../scripts/testing/check_junit.py ../reports/test-runs/pos-ui.xml
+      - name: Type check
+        id: typecheck
+        if: always()
+        run: npm run typecheck
+      - name: Lint
+        id: lint
+        if: always()
+        run: npm run lint
+      - name: Write test manifest
+        if: always()
+        working-directory: ${{ github.workspace }}
+        env:
+          SUITE_STATUS: ${{ steps.install.outcome != 'success' && 'BLOCKED' || (steps.test.outcome == 'success' && steps.junit.outcome == 'success' && steps.typecheck.outcome == 'success' && steps.lint.outcome == 'success' && 'PASS' || 'FAIL') }}
+        run: python scripts/testing/report.py --suite pos-ui --status "$SUITE_STATUS" --environment github-actions --duration-seconds "$(( $(date +%s) - ${{ steps.timer.outputs.started || 0 }} ))" --output reports/test-runs/pos-ui.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-report-pos-ui
+          path: |
+            reports/test-runs/pos-ui.json
+            reports/test-runs/pos-ui.xml
+          if-no-files-found: warn
+
+  java:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        id: setup_java
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      - id: timer
+        run: echo "started=$(date +%s)" >> "$GITHUB_OUTPUT"
+      - name: Verify POS API
+        id: test
+        working-directory: pos-api
+        run: mvn -B clean verify
+      - name: Write test manifest
+        if: always()
+        env:
+          SUITE_STATUS: ${{ steps.setup_java.outcome != 'success' && 'BLOCKED' || (steps.test.outcome == 'success' && 'PASS' || 'FAIL') }}
+        run: python3 scripts/testing/report.py --suite pos-api-maven-verify --status "$SUITE_STATUS" --environment github-actions --duration-seconds "$(( $(date +%s) - ${{ steps.timer.outputs.started || 0 }} ))" --output reports/test-runs/pos-api.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-report-pos-api
+          path: |
+            reports/test-runs/pos-api.json
+            pos-api/target/surefire-reports/*.xml
+            pos-api/target/failsafe-reports/*.xml
+          if-no-files-found: warn
+
+  python-services:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: shopfront-crawler
+            directory: shopfront_crawler
+            python: "3.12"
+            install: pip install -e ".[test]"
+            test: python -m pytest -q --junitxml=../reports/test-runs/shopfront-crawler.xml
+          - service: forecast-service
+            directory: forecast-service
+            python: "3.12"
+            install: pip install -r requirements.txt pytest
+            test: python -m pytest -q --junitxml=../reports/test-runs/forecast-service.xml
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: mkdir -p reports/test-runs
+      - id: timer
+        run: echo "started=$(date +%s)" >> "$GITHUB_OUTPUT"
+      - name: Install dependencies
+        id: install
+        working-directory: ${{ matrix.directory }}
+        run: ${{ matrix.install }}
+      - name: Run tests
+        id: test
+        working-directory: ${{ matrix.directory }}
+        run: ${{ matrix.test }}
+      - name: Write test manifest
+        if: always()
+        env:
+          SUITE_STATUS: ${{ steps.install.outcome != 'success' && 'BLOCKED' || (steps.test.outcome == 'success' && 'PASS' || 'FAIL') }}
+        run: python scripts/testing/report.py --suite "${{ matrix.service }}" --status "$SUITE_STATUS" --environment github-actions --duration-seconds "$(( $(date +%s) - ${{ steps.timer.outputs.started || 0 }} ))" --output "reports/test-runs/${{ matrix.service }}.json"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-report-${{ matrix.service }}
+          path: reports/test-runs/${{ matrix.service }}.*
+          if-no-files-found: warn
+
+  offline-ai:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: mkdir -p reports/test-runs
+      - id: timer
+        run: echo "started=$(date +%s)" >> "$GITHUB_OUTPUT"
+      - name: Test AI evaluation harness
+        id: assertions
+        run: node --test --test-reporter=junit --test-reporter-destination=reports/test-runs/ai-eval.xml scripts/ai-eval/*.test.mjs
+      - name: Install forecast test dependencies
+        id: install_forecast
+        if: always()
+        run: pip install -r forecast-service/requirements.txt pytest
+      - name: Run forecast evaluator tests
+        id: forecast
+        if: always()
+        run: python -m pytest -q scripts/tests/test_ai_forecast_eval.py scripts/tests/test_ai_forecast_segmented_eval.py scripts/tests/test_ai_forecast_walkforward_eval.py scripts/testing/test_report.py scripts/testing/test_run_contract_checks.py scripts/testing/test_check_junit.py --junitxml=reports/test-runs/forecast-eval.xml
+      - name: Write test manifest
+        if: always()
+        env:
+          SUITE_STATUS: ${{ steps.install_forecast.outcome != 'success' && 'BLOCKED' || (steps.assertions.outcome == 'success' && steps.forecast.outcome == 'success' && 'PASS' || 'FAIL') }}
+        run: python scripts/testing/report.py --suite offline-ai-and-forecast-eval --status "$SUITE_STATUS" --environment github-actions --duration-seconds "$(( $(date +%s) - ${{ steps.timer.outputs.started || 0 }} ))" --output reports/test-runs/offline-ai.json
+      - name: Mark forecast quality as blocked without business history
+        if: always()
+        run: python scripts/testing/report.py --suite forecast-quality-walk-forward --status BLOCKED --environment github-actions --data-range "no approved historical inventory and sales snapshot in CI" --output reports/test-runs/forecast-quality.json
+      - name: Mark online model comparison not run
+        if: always()
+        run: python scripts/testing/report.py --suite prompt-model-online-comparison --status "NOT RUN" --environment github-actions --output reports/test-runs/model-online.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-report-offline-ai
+          path: reports/test-runs/*
+          if-no-files-found: warn
