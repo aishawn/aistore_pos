@@ -3877,7 +3877,7 @@ public class ShopfrontIntegrationController {
                     List.of(outletId), new ArrayList<>(codes))) {
                 owners.put(String.valueOf(row.get("code")), longValue(row.get("product_id")));
             }
-            Set<String> migratableBarcodeCodes = verifiedUnstockedBarcodeCodes(
+            Set<String> migratableBarcodeCodes = verifiedUnclaimedBarcodeCodes(
                     batch.barcodes, owners, outletId, store);
             Map<String, BarcodeWrite> inserts = new LinkedHashMap<>();
             Map<String, BarcodeWrite> updates = new LinkedHashMap<>();
@@ -3962,7 +3962,7 @@ public class ShopfrontIntegrationController {
         }
     }
 
-    private Set<String> verifiedUnstockedBarcodeCodes(
+    private Set<String> verifiedUnclaimedBarcodeCodes(
             List<BarcodeWrite> barcodes, Map<String, Long> owners, long outletId, String store) {
         long conflictingCodes = barcodes.stream()
                 .filter(barcode -> owners.get(barcode.code()) != null
@@ -4027,13 +4027,10 @@ public class ShopfrontIntegrationController {
             String placeholders = String.join(",", java.util.Collections.nCopies(chunk.size(), "?"));
             List<Object> args = new ArrayList<>();
             args.add(outletId);
-            args.add(outletId);
             args.addAll(chunk);
             for (Map<String, Object> row : jdbc.queryForList("""
-                    SELECT p.id AS product_id,p.status,
-                           COALESCE(pi.quantity,0) AS inventory_quantity
+                    SELECT p.id AS product_id,p.status
                     FROM product p
-                    LEFT JOIN product_inventory pi ON pi.product_id=p.id AND pi.outlet_id=?
                     WHERE p.outlet_id=? AND p.deleted_at IS NULL AND p.id IN (%s)
                       AND NOT EXISTS (SELECT 1 FROM sale_item si
                                       WHERE si.outlet_id=p.outlet_id AND si.product_id=p.id)
@@ -4047,17 +4044,11 @@ public class ShopfrontIntegrationController {
                       AND NOT EXISTS (SELECT 1 FROM stocktake_product stp
                                       WHERE stp.outlet_id=p.outlet_id AND stp.product_id=p.id)
                     """.formatted(placeholders), args.toArray())) {
-                Object quantity = row.get("inventory_quantity");
-                BigDecimal inventory = quantity == null ? BigDecimal.ZERO
-                        : quantity instanceof BigDecimal value ? value
-                        : new BigDecimal(quantity.toString());
-                if (inventory.compareTo(BigDecimal.ZERO) == 0) {
-                    candidates.put(longValue(row.get("product_id")), row);
-                }
+                candidates.put(longValue(row.get("product_id")), row);
             }
         }
         if (candidates.isEmpty()) {
-            if (conflictingCodes > 0) log.info("Shopfront barcode migration gate outletId={} store={} conflicts={} snapshotMetadataCodes={} candidateOwners=0 gate=zero_stock_without_history",
+            if (conflictingCodes > 0) log.info("Shopfront barcode migration gate outletId={} store={} conflicts={} snapshotMetadataCodes={} candidateOwners=0 gate=owner_history",
                     outletId, store, conflictingCodes, snapshotMetadataCodes);
             return Set.of();
         }
