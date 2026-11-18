@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronDown, DoorClosed, History, LayoutDashboard, Moon, Sun, Wifi, WifiOff } from "lucide-react";
@@ -8,6 +8,18 @@ import { SettingsGearIcon, LogOutIcon } from "@/components/icons";
 import { cn } from "@/lib/utils";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
 import { useTheme } from "@/components/ThemeProvider";
+import {
+  getHardwareReadinessItems,
+  getHardwareReadinessSnapshot,
+  subscribeLocalHardwareSettings,
+  type HardwareReadinessTone,
+} from "@/lib/local-hardware";
+
+const toneClass: Record<HardwareReadinessTone, string> = {
+  ok: "text-[var(--sf-online-green)]",
+  warn: "text-[var(--oh-warning)]",
+  muted: "text-[var(--oh-muted)]",
+};
 
 /** Compact account popover anchored to the application header. */
 export function UserMenu({
@@ -28,6 +40,14 @@ export function UserMenu({
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
   useDialogFocus(open, onClose);
+  const readinessSnapshot = useSyncExternalStore(
+    subscribeLocalHardwareSettings,
+    getHardwareReadinessSnapshot,
+    () => "",
+  );
+  const hardwareReadiness = readinessSnapshot
+    ? getHardwareReadinessItems()
+    : [];
 
   useEffect(() => {
     const syncStatus = () => setOnline(navigator.onLine);
@@ -90,10 +110,12 @@ export function UserMenu({
           <ChevronDown size={16} aria-hidden="true" className="shrink-0 text-[var(--oh-muted)] transition-transform group-open:rotate-180" />
         </summary>
         <ul aria-label="Hardware readiness" className="space-y-1.5 pb-2 pt-1 text-xs text-[var(--oh-muted)]">
-          <li className="flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5"><span>Receipt printer</span><span className="font-semibold text-[var(--oh-warning)]">Not connected / not validated</span></li>
-          <li className="flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5"><span>Cash drawer</span><span className="font-semibold text-[var(--oh-warning)]">Not connected / not validated</span></li>
-          <li className="flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5"><span>Barcode scanner</span><span className="font-semibold text-[var(--oh-warning)]">Keyboard probe only</span></li>
-          <li className="flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5"><span>EFTPOS terminal</span><span className="font-semibold text-[var(--oh-warning)]">Not connected / not validated</span></li>
+          {hardwareReadiness.map((item) => (
+            <li key={item.id} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5">
+              <span>{item.label}</span>
+              <span className={`font-semibold ${toneClass[item.tone]}`}>{item.status}</span>
+            </li>
+          ))}
         </ul>
       </details>
       <div className="border-t border-[var(--oh-border)] px-1 py-3">
