@@ -3877,7 +3877,7 @@ public class ShopfrontIntegrationController {
                     List.of(outletId), new ArrayList<>(codes))) {
                 owners.put(String.valueOf(row.get("code")), longValue(row.get("product_id")));
             }
-            Map<Long, Map<String, Object>> retiredUnstockedOwners = retiredUnstockedBarcodeOwners(
+            Set<String> migratableBarcodeCodes = verifiedUnstockedBarcodeCodes(
                     batch.barcodes, owners, outletId, store);
             Map<String, BarcodeWrite> inserts = new LinkedHashMap<>();
             Map<String, BarcodeWrite> updates = new LinkedHashMap<>();
@@ -3885,15 +3885,15 @@ public class ShopfrontIntegrationController {
             for (BarcodeWrite barcode : batch.barcodes) {
                 Long owner = owners.get(barcode.code());
                 if (owner != null && owner != barcode.productId()) {
-                    Map<String, Object> retiredOwner = barcode.catalogConfirmed()
-                            ? retiredUnstockedOwners.get(owner) : null;
-                    if (retiredOwner != null && jdbc.update(
+                    boolean safeMigration = barcode.catalogConfirmed()
+                            && migratableBarcodeCodes.contains(barcode.code());
+                    if (safeMigration && jdbc.update(
                             "DELETE FROM product_barcode WHERE outlet_id=? AND product_id=? AND code=?",
                             outletId, owner, barcode.code()) == 1) {
                         jdbc.update("""
                                 INSERT INTO shopfront_product_barcode_audit
                                     (outlet_id,source_product_id,barcode,previous_pos_product_id,new_pos_product_id,reason,catalog_fingerprint)
-                                VALUES (?,?,?,?,?,'retired_unstocked_shopfront_product',?)
+                                VALUES (?,?,?,?,?,'verified_unclaimed_shopfront_barcode',?)
                                 """, outletId, barcode.sourceId(), barcode.code(), owner, barcode.productId(),
                                 barcode.snapshotFingerprint());
                         owners.put(barcode.code(), barcode.productId());
@@ -3927,8 +3927,8 @@ public class ShopfrontIntegrationController {
             }
             if (batch.barcodeConflictCount > 0 || migratedBarcodes > 0) {
                 long catalogConfirmedBarcodes = batch.barcodes.stream().filter(BarcodeWrite::catalogConfirmed).count();
-                log.info("Shopfront barcode reconciliation outletId={} catalogConfirmed={} retiredUnstockedOwners={} migrated={} conflicts={}",
-                        outletId, catalogConfirmedBarcodes, retiredUnstockedOwners.size(), migratedBarcodes,
+                log.info("Shopfront barcode reconciliation outletId={} catalogConfirmed={} migratableBarcodeCodes={} migrated={} conflicts={}",
+                        outletId, catalogConfirmedBarcodes, migratableBarcodeCodes.size(), migratedBarcodes,
                         batch.barcodeConflictCount);
             }
         }
@@ -3962,28 +3962,28 @@ public class ShopfrontIntegrationController {
         }
     }
 
-    private Map<Long, Map<String, Object>> retiredUnstockedBarcodeOwners(
+    private Set<String> verifiedUnstockedBarcodeCodes(
             List<BarcodeWrite> barcodes, Map<String, Long> owners, long outletId, String store) {
         BarcodeWrite snapshot = barcodes.stream().filter(barcode -> barcode.catalogConfirmed()
                 && barcode.snapshotComplete() && barcode.activeSource()
                 && barcode.snapshotFingerprint() != null && barcode.snapshotFingerprint().matches("[a-f0-9]{64}"))
                 .findFirst().orElse(null);
-        if (snapshot == null) return Map.of();
+        if (snapshot == null) return Set.of();
         List<Map<String, Object>> registered = jdbc.queryForList("""
                 SELECT source_ids::text AS source_ids,barcode_sources::text AS barcode_sources
                 FROM shopfront_product_barcode_snapshot
                 WHERE store_key=? AND outlet_id=? AND fingerprint=?
                 """, store, outletId, snapshot.snapshotFingerprint());
-        if (registered.isEmpty()) return Map.of();
+        if (registered.isEmpty()) return Set.of();
         JsonNode snapshotSourceIds;
         JsonNode barcodeSources;
         try {
             snapshotSourceIds = objectMapper.readTree(String.valueOf(registered.getFirst().get("source_ids")));
             barcodeSources = objectMapper.readTree(String.valueOf(registered.getFirst().get("barcode_sources")));
         } catch (Exception e) {
-            return Map.of();
+            return Set.of();
         }
-        if (!snapshotSourceIds.isArray() || !barcodeSources.isObject()) return Map.of();
+        if (!snapshotSourceIds.isArray() || !barcodeSources.isObject()) return Set.of();
         List<Long> productIds = barcodes.stream()
                 .filter(barcode -> barcode.catalogConfirmed() && barcode.snapshotComplete()
                         && barcode.activeSource() && snapshot.snapshotFingerprint().equals(barcode.snapshotFingerprint()))
@@ -3991,7 +3991,7 @@ public class ShopfrontIntegrationController {
                 .filter(owner -> owner != null)
                 .distinct()
                 .toList();
-        if (productIds.isEmpty()) return Map.of();
+        if (productIds.isEmpty()) return Set.of();
 
         Map<Long, Map<String, Object>> candidates = new HashMap<>();
         for (int start = 0; start < productIds.size(); start += 400) {
@@ -4007,6 +4007,17 @@ public class ShopfrontIntegrationController {
                     FROM product p
                     LEFT JOIN product_inventory pi ON pi.product_id=p.id AND pi.outlet_id=?
                     WHERE p.outlet_id=? AND p.deleted_at IS NULL AND p.id IN (%s)
+                      AND NOT EXISTS (SELECT 1 FROM sale_item si
+                                      WHERE si.outlet_id=p.outlet_id AND si.product_id=p.id)
+                      AND NOT EXISTS (SELECT 1 FROM order_product op
+                                      WHERE op.outlet_id=p.outlet_id AND op.product_id=p.id)
+                      AND NOT EXISTS (SELECT 1 FROM purchase_receipt_line prl
+                                      JOIN purchase_receipt pr ON pr.id=prl.receipt_id
+                                      WHERE pr.outlet_id=p.outlet_id AND prl.product_id=p.id)
+                      AND NOT EXISTS (SELECT 1 FROM inventory_movement im
+                                      WHERE im.outlet_id=p.outlet_id AND im.product_id=p.id)
+                      AND NOT EXISTS (SELECT 1 FROM stocktake_product stp
+                                      WHERE stp.outlet_id=p.outlet_id AND stp.product_id=p.id)
                     """.formatted(placeholders), args.toArray())) {
                 Object quantity = row.get("inventory_quantity");
                 BigDecimal inventory = quantity == null ? BigDecimal.ZERO
@@ -4017,7 +4028,7 @@ public class ShopfrontIntegrationController {
                 }
             }
         }
-        if (candidates.isEmpty()) return Map.of();
+        if (candidates.isEmpty()) return Set.of();
         String placeholders = String.join(",", java.util.Collections.nCopies(candidates.size(), "?"));
         List<Object> mappingArgs = new ArrayList<>();
         mappingArgs.add(store);
@@ -4032,7 +4043,7 @@ public class ShopfrontIntegrationController {
         }
         Set<String> currentSourceIds = new HashSet<>();
         snapshotSourceIds.forEach(node -> currentSourceIds.add(node.asText()));
-        Map<Long, Map<String, Object>> result = new HashMap<>();
+        Set<String> result = new HashSet<>();
         for (BarcodeWrite barcode : barcodes) {
             Long owner = owners.get(barcode.code());
             if (owner == null || !candidates.containsKey(owner) || !barcode.snapshotComplete()
@@ -4041,9 +4052,9 @@ public class ShopfrontIntegrationController {
             JsonNode claims = barcodeSources.path(barcode.code());
             List<String> mappedSources = ownerSources.get(owner);
             if (!claims.isArray() || claims.size() != 1 || !barcode.sourceId().equals(claims.get(0).asText())
-                    || mappedSources == null || mappedSources.size() != 1
-                    || currentSourceIds.contains(mappedSources.getFirst())) continue;
-            result.put(owner, candidates.get(owner));
+                    || !currentSourceIds.contains(barcode.sourceId())
+                    || mappedSources == null || mappedSources.size() != 1) continue;
+            result.add(barcode.code());
         }
         return result;
     }

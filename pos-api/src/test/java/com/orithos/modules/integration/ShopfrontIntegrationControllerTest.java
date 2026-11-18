@@ -1396,6 +1396,110 @@ class ShopfrontIntegrationControllerTest {
     }
 
     @Test
+    void confirmedCatalogMovesBarcodeWhenCurrentOwnerDroppedItsClaim() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        when(jdbc.queryForList(contains("SELECT code, product_id FROM product_barcode"), any(Object[].class)))
+                .thenReturn(List.of(Map.of("code", "9300001", "product_id", 101L)));
+        when(jdbc.queryForList(contains("FROM shopfront_product_barcode_snapshot"), any(Object[].class)))
+                .thenReturn(List.of(Map.of("source_ids", "[\"current-source\",\"owner-source\"]",
+                        "barcode_sources", "{\"9300001\":[\"current-source\"]}")));
+        when(jdbc.queryForList(contains("SELECT p.id AS product_id,p.status"), any(Object[].class)))
+                .thenReturn(List.of(Map.of("product_id", 101L, "status", "ACTIVE",
+                        "inventory_quantity", BigDecimal.ZERO)));
+        when(jdbc.queryForList(contains("SELECT pos_product_id,source_product_id FROM shopfront_product_mapping"), any(Object[].class)))
+                .thenReturn(List.of(Map.of("pos_product_id", 101L, "source_product_id", "owner-source")));
+        when(jdbc.update(contains("DELETE FROM product_barcode"), any(Object[].class))).thenReturn(1);
+        var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true, true);
+        Class<?> batchType = Class.forName(ShopfrontIntegrationController.class.getName() + "$ProductImportBatch");
+        Constructor<?> constructor = batchType.getDeclaredConstructor();
+        constructor.setAccessible(true);
+        Object batch = constructor.newInstance();
+        Method collect = ShopfrontIntegrationController.class.getDeclaredMethod(
+                "collectProductBarcodes", long.class, JsonNode.class, batchType);
+        collect.setAccessible(true);
+        collect.invoke(controller, 102L, new ObjectMapper().readTree("""
+                {"source_id":"current-source","catalog_confirmed":true,"source_status":"ACTIVE",
+                 "catalog_snapshot_complete":true,"catalog_snapshot_fingerprint":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                 "barcodes":[{"code":"9300001","quantity":1}]}
+                """), batch);
+        Method flush = ShopfrontIntegrationController.class.getDeclaredMethod(
+                "flushBusinessProductBatch", batchType, long.class, String.class);
+        flush.setAccessible(true);
+
+        flush.invoke(controller, batch, 87L, "skr");
+
+        var conflictCount = batchType.getDeclaredField("barcodeConflictCount");
+        conflictCount.setAccessible(true);
+        assertEquals(0, conflictCount.getInt(batch));
+        verify(jdbc).update(contains("DELETE FROM product_barcode WHERE outlet_id=? AND product_id=? AND code=?"),
+                eq(87L), eq(101L), eq("9300001"));
+        verify(jdbc).queryForList(argThat(sql -> sql.contains("NOT EXISTS (SELECT 1 FROM sale_item")
+                && sql.contains("NOT EXISTS (SELECT 1 FROM order_product")
+                && sql.contains("NOT EXISTS (SELECT 1 FROM purchase_receipt_line")
+                && sql.contains("purchase_receipt")
+                && sql.contains("inventory_movement")
+                && sql.contains("stocktake_product")), any(Object[].class));
+        verify(jdbc).update(contains("INSERT INTO shopfront_product_barcode_audit"), any(Object[].class));
+        verify(jdbc).update(contains("'verified_unclaimed_shopfront_barcode'"), any(Object[].class));
+        verify(jdbc).batchUpdate(contains("INSERT INTO product_barcode"), any(List.class));
+    }
+
+    @Test
+    void duplicateBarcodeCannotBorrowMigrationEligibilityFromAnotherBarcodeOfSameOwner() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        when(jdbc.queryForList(contains("SELECT code, product_id FROM product_barcode"), any(Object[].class)))
+                .thenReturn(List.of(Map.of("code", "9300001", "product_id", 101L),
+                        Map.of("code", "9300002", "product_id", 101L)));
+        when(jdbc.queryForList(contains("FROM shopfront_product_barcode_snapshot"), any(Object[].class)))
+                .thenReturn(List.of(Map.of("source_ids",
+                        "[\"safe-source\",\"duplicate-a\",\"duplicate-b\"]",
+                        "barcode_sources", "{\"9300001\":[\"safe-source\"],\"9300002\":[\"duplicate-a\",\"duplicate-b\"]}")));
+        when(jdbc.queryForList(contains("SELECT p.id AS product_id,p.status"), any(Object[].class)))
+                .thenReturn(List.of(Map.of("product_id", 101L, "status", "ACTIVE",
+                        "inventory_quantity", BigDecimal.ZERO)));
+        when(jdbc.queryForList(contains("SELECT pos_product_id,source_product_id FROM shopfront_product_mapping"), any(Object[].class)))
+                .thenReturn(List.of(Map.of("pos_product_id", 101L, "source_product_id", "owner-source")));
+        when(jdbc.update(contains("DELETE FROM product_barcode"), any(Object[].class))).thenReturn(1);
+        var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true, true);
+        Class<?> batchType = Class.forName(ShopfrontIntegrationController.class.getName() + "$ProductImportBatch");
+        Constructor<?> constructor = batchType.getDeclaredConstructor();
+        constructor.setAccessible(true);
+        Object batch = constructor.newInstance();
+        Method collect = ShopfrontIntegrationController.class.getDeclaredMethod(
+                "collectProductBarcodes", long.class, JsonNode.class, batchType);
+        collect.setAccessible(true);
+        ObjectMapper mapper = new ObjectMapper();
+        collect.invoke(controller, 102L, mapper.readTree("""
+                {"source_id":"safe-source","catalog_confirmed":true,"source_status":"ACTIVE",
+                 "catalog_snapshot_complete":true,"catalog_snapshot_fingerprint":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                 "barcodes":[{"code":"9300001","quantity":1}]}
+                """), batch);
+        collect.invoke(controller, 103L, mapper.readTree("""
+                {"source_id":"duplicate-a","catalog_confirmed":true,"source_status":"ACTIVE",
+                 "catalog_snapshot_complete":true,"catalog_snapshot_fingerprint":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                 "barcodes":[{"code":"9300002","quantity":1}]}
+                """), batch);
+        collect.invoke(controller, 104L, mapper.readTree("""
+                {"source_id":"duplicate-b","catalog_confirmed":true,"source_status":"ACTIVE",
+                 "catalog_snapshot_complete":true,"catalog_snapshot_fingerprint":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                 "barcodes":[{"code":"9300002","quantity":1}]}
+                """), batch);
+        Method flush = ShopfrontIntegrationController.class.getDeclaredMethod(
+                "flushBusinessProductBatch", batchType, long.class, String.class);
+        flush.setAccessible(true);
+
+        flush.invoke(controller, batch, 87L, "skr");
+
+        verify(jdbc).update(contains("DELETE FROM product_barcode WHERE outlet_id=? AND product_id=? AND code=?"),
+                eq(87L), eq(101L), eq("9300001"));
+        verify(jdbc, never()).update(contains("DELETE FROM product_barcode WHERE outlet_id=? AND product_id=? AND code=?"),
+                eq(87L), eq(101L), eq("9300002"));
+        var conflictCount = batchType.getDeclaredField("barcodeConflictCount");
+        conflictCount.setAccessible(true);
+        assertEquals(2, conflictCount.getInt(batch));
+    }
+
+    @Test
     void confirmedCatalogKeepsBarcodeConflictWhenExistingProductHasInventory() throws Exception {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
         when(jdbc.queryForList(contains("SELECT code, product_id FROM product_barcode"), any(Object[].class)))
