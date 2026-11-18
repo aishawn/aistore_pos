@@ -3,8 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Wine } from "lucide-react";
-import { getUiMode } from "@/lib/ui-mode";
-
 export function SommelierShell({
   children,
   title,
@@ -15,9 +13,8 @@ export function SommelierShell({
   subtitle?: string;
 }) {
   const pathname = usePathname();
-  const mobile = getUiMode() === "mobile";
-  const hubHref = mobile ? "/m" : "/recommend";
-  const onHome = pathname === "/sommelier" || pathname === "/m";
+  const hubHref = "/recommend";
+  const onHome = pathname === "/sommelier";
 
   return (
     <div className="oh-workspace-main flex h-full min-h-0 flex-col text-[var(--oh-text)]">

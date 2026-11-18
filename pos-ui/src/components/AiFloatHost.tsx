@@ -1,10 +1,8 @@
 "use client";
 
-import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { SellAiPanel } from "@/components/SellAiPanel";
 import { useAiAssistant } from "@/lib/ai-assistant";
-import { getUiMode } from "@/lib/ui-mode";
 import { showsFloatingAiLauncher } from "@/lib/ai-entry-placement";
 
 /**
@@ -23,12 +21,6 @@ export function AiFloatHost() {
   const { expanded, setExpanded } = useAiAssistant();
   const onAssistantRoute = pathname === ASSISTANT_PATH;
 
-  useEffect(() => {
-    if (getUiMode() === "mobile" && pathname === "/m") {
-      setExpanded(false);
-    }
-  }, [pathname, setExpanded]);
-
   // Dedicated /assistant page renders SellAiPanel inline so Sidebar stays visible.
   if (onAssistantRoute) {
     return null;
@@ -38,7 +30,7 @@ export function AiFloatHost() {
     <SellAiPanel
       expanded={expanded}
       onExpandedChange={setExpanded}
-    launcherVisible={shouldShowAiFloat(pathname) && !pathname.startsWith("/reports") && pathname !== "/m" && pathname !== "/dashboard" && !pathname.startsWith("/dashboard/") && pathname !== "/overview" && !pathname.startsWith("/overview/")}
+    launcherVisible={shouldShowAiFloat(pathname) && !pathname.startsWith("/reports") && pathname !== "/dashboard" && !pathname.startsWith("/dashboard/") && pathname !== "/overview" && !pathname.startsWith("/overview/")}
     />
   );
 }

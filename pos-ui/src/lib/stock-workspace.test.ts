@@ -2,8 +2,6 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { parseStocktakeDraft, stocktakeDraftKey } from "./stocktake-draft.ts";
 import { getSidebarNavigation } from "./sidebar-navigation.ts";
-import { isMobileAllowedHref } from "./ui-mode.ts";
-
 test("stocktake drafts are isolated by tenant, employee, host and location", () => {
   const key = stocktakeDraftKey("demo.localhost", 1, "23", "45");
   assert.notEqual(key, stocktakeDraftKey("other.localhost", 1, "23", "45"));
@@ -52,8 +50,4 @@ test("Customers sidebar includes Pricelists after Gift Cards", () => {
   const customers = pricelistsOnly.find((entry) => entry.label === "Customers");
   assert.ok(customers && "items" in customers);
   assert.deepEqual(customers.items.map((item) => item.label), ["Pricelists"]);
-});
-
-test("purchasing tabs and product dialogs remain available in mobile mode", () => {
-  for (const href of ["/products?dialog=categories", "/products?dialog=stocktake", "/purchases?tab=replenishment", "/purchases?tab=invoices", "/invoices/new"]) assert.ok(isMobileAllowedHref(href), href);
 });

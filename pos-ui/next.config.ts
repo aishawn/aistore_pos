@@ -71,6 +71,9 @@ const nextConfig: NextConfig = {
   devIndicators: false,
   allowedDevOrigins: lanDevOrigins(),
   // Browser calls same-origin /api/*; Next.js proxies to the Spring Boot backend.
+  async redirects() {
+    return [{ source: "/m", destination: "/recommend", permanent: false }];
+  },
   async rewrites() {
     return {
       beforeFiles: [

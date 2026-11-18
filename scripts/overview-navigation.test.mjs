@@ -10,7 +10,6 @@ test("Workspace is the default, explicit Radial/checkout links remain intact", (
   assert.equal(storeLandingPath(null), "/dashboard");
   assert.equal(storeLandingPath("/overview"), "/overview");
   assert.equal(storeLandingPath("/?sale=42"), "/?sale=42");
-  assert.equal(storeLandingPath(null, "mobile"), "/m");
   assert.equal(
     storeLandingPath("https://external.invalid"),
     "/dashboard",

@@ -6,13 +6,10 @@ import { Camera, Search, Sparkles } from "lucide-react";
 import { SommelierShell } from "@/components/sommelier/SommelierShell";
 import { useOptionalAiAssistant } from "@/lib/ai-assistant";
 import { fetchAiClientConfig } from "@/lib/api";
-import { getUiMode } from "@/lib/ui-mode";
-
 export function SommelierHome({ showPosAssistant = false }: { showPosAssistant?: boolean }) {
   const ai = useOptionalAiAssistant();
   const findHref = "/sommelier/find";
   const identifyHref = "/sommelier/identify";
-  const mobile = getUiMode() === "mobile";
   const [aiEnabled, setAiEnabled] = useState<boolean | null>(null);
   const [labelVisionAvailable, setLabelVisionAvailable] = useState<boolean | null>(null);
 
@@ -40,7 +37,7 @@ export function SommelierHome({ showPosAssistant = false }: { showPosAssistant?:
     >
       <div className="grid gap-4">
         <p className="text-[13px] text-[var(--oh-muted)]">
-          <Link href={mobile ? "/m" : "/recommend"} className="font-semibold text-[var(--oh-primary)]">
+          <Link href="/recommend" className="font-semibold text-[var(--oh-primary)]">
             ← All recommendations
           </Link>
           {" "}(Wine and Grocery)

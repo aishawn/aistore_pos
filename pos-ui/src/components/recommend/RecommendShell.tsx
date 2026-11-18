@@ -3,8 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Sparkles } from "lucide-react";
-import { getUiMode } from "@/lib/ui-mode";
-
 export function RecommendShell({
   children,
   title,
@@ -15,9 +13,8 @@ export function RecommendShell({
   subtitle?: string;
 }) {
   const pathname = usePathname();
-  const mobile = getUiMode() === "mobile";
-  const homeHref = mobile ? "/m" : "/recommend";
-  const onHome = pathname === "/recommend" || pathname === "/m";
+  const homeHref = "/recommend";
+  const onHome = pathname === "/recommend";
 
   return (
     <div className="oh-workspace-main flex h-full min-h-0 flex-col text-[var(--oh-text)]">

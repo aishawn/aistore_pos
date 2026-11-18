@@ -46,7 +46,7 @@ export default function BootstrapPage() {
         if (cancelled) return;
         const user = { ...res.user, id: String(res.user.id) };
         localStorage.setItem(USER_KEY, JSON.stringify(user));
-        window.location.replace(storeLandingPath(null, "web", user));
+        window.location.replace(storeLandingPath(null, user));
       } catch (err) {
         if (!cancelled) {
           const timedOut = err instanceof Error && (err.name === "TimeoutError" || err.name === "AbortError");

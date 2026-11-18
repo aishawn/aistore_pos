@@ -15,9 +15,7 @@ import { LaunchRingHost } from "@/components/LaunchRingHost";
 import { AiTransitionOverlay } from "@/components/AiTransitionOverlay";
 import { AiAssistantProvider } from "@/lib/ai-assistant";
 import { SellScreenProvider } from "@/lib/sell-screen";
-import { MobileTopBar } from "@/components/MobileAiApp";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
-import { clearUiMode, getUiMode, isMobileAllowedPath, type UiMode } from "@/lib/ui-mode";
 import {
   controlPlaneLandingPath,
   isControlPlaneHost,
@@ -25,7 +23,6 @@ import {
   loginQueryReturnPath,
   normalizeAuthReturnPath,
   storeLandingPath,
-  STORE_WEB_LANDING_PATH,
 } from "@/lib/tenant-host";
 
 /** Routes that render standalone, without the app chrome + auth guard. */
@@ -47,16 +44,12 @@ const SIDEBAR_OPEN_KEY = "orithos-sidebar-open";
 const ODOO_REGISTER_PATHS = new Set(["/", "/register", "/sell"]);
 const subscribeToHost = () => () => {};
 
-/**
- * Orithos application shell — persistent sidebar + white header + content area.
- * Mobile sessions (`/m`) skip POS chrome and only keep the AI assistant.
- */
+/** Orithos application shell — persistent sidebar + white header + content area. */
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [isMobileViewport, setIsMobileViewport] = useState(false);
-  const [uiMode, setUiModeState] = useState<UiMode>("web");
   const pathname = usePathname();
   const router = useRouter();
   const { user, ready, logout, recoverSession } = useAuth();
@@ -99,8 +92,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   useDialogFocus(mobileSidebarOpen && isMobileViewport, () => setMobileSidebarOpen(false), "mobile-navigation");
 
   useLayoutEffect(() => {
-    const mode = getUiMode();
-    setUiModeState(mode);
     if (!ready) return;
     // Keep local preview sessions on their requested route even though
     // localhost is treated as the control plane for normal host routing.
@@ -130,18 +121,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         router.replace(controlPlaneLandingPath(next));
         return;
       }
-      router.replace(storeLandingPath(next, mode, user));
+      router.replace(storeLandingPath(next, user));
       return;
-    }
-    if (onControlPlane) {
-      return;
-    }
-    if (user && mode === "mobile" && !isMobileAllowedPath(pathname) && pathname !== "/login") {
-      router.replace("/m");
-      return;
-    }
-    if (user && mode !== "mobile" && pathname === "/m") {
-      router.replace(STORE_WEB_LANDING_PATH);
     }
   }, [ready, user, chromeless, pathname, router, onControlPlaneHost, recoverSession, sessionRecovering]);
 
@@ -155,7 +136,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   async function onLogout() {
     await logout();
-    clearUiMode();
     window.location.replace("/login");
   }
 
@@ -169,33 +149,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       localStorage.setItem(SIDEBAR_OPEN_KEY, String(next));
       return next;
     });
-  }
-
-  if (!user?.pendingPasswordReset && (pathname === "/m" || (uiMode === "mobile" && isMobileAllowedPath(pathname)))) {
-    const onAiHome = pathname === "/m";
-    return (
-      <UnsavedChangesProvider>
-      <SellScreenProvider>
-      <AiAssistantProvider defaultExpanded={false}>
-        <div className="flex h-dvh flex-col overflow-hidden bg-[var(--oh-surface)] font-sans">
-          <MobileTopBar backHref={onAiHome ? undefined : "/m"} />
-          <a
-            href="#main-content"
-            className="sr-only focus:not-sr-only focus:absolute focus:left-3 focus:top-3 focus:z-50 focus:rounded-md focus:bg-[var(--oh-primary)] focus:px-3 focus:py-2 focus:text-sm focus:font-semibold focus:text-white"
-          >
-            Skip to main content
-          </a>
-          <main id="main-content" tabIndex={-1} className="relative min-h-0 flex-1 overflow-hidden outline-none">
-            {children}
-          </main>
-          <AiFloatHost />
-          <LaunchRingHost />
-          <AiTransitionOverlay />
-        </div>
-      </AiAssistantProvider>
-      </SellScreenProvider>
-      </UnsavedChangesProvider>
-    );
   }
 
   return (

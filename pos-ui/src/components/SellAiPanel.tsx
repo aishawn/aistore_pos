@@ -40,7 +40,6 @@ import { useDialogFocus } from "@/hooks/useDialogFocus";
 import { AiFabIcon } from "@/components/AiFabIcon";
 import { useOptionalAiAssistant } from "@/lib/ai-assistant";
 import { useOptionalSellScreen, type LeftView } from "@/lib/sell-screen";
-import { getUiMode, isMobileAllowedHref } from "@/lib/ui-mode";
 
 
 const FLOAT_SHADOW =
@@ -436,7 +435,6 @@ export function SellAiPanel({
   workspace = false,
 }: SellAiPanelProps) {
   const pagePresentation = presentation === "page";
-  const mobileOnly = getUiMode() === "mobile";
   const sell = useOptionalSellScreen();
   const ai = useOptionalAiAssistant();
   const router = useRouter();
@@ -498,11 +496,10 @@ export function SellAiPanel({
     return () => window.clearTimeout(timeout);
   }, [busy]);
 
-  // Phone browsers on the WEB shell still need a true fullscreen assistant;
-  // dedicated /m mobile mode keeps the same layout.
+  // Phone browsers on the WEB shell still need a true fullscreen assistant.
   // Page presentation uses the same full-bleed chat chrome inside <main>.
   const fullscreenPanel =
-    pagePresentation || forceFullscreen || mobileOnly || compactViewport;
+    pagePresentation || forceFullscreen || compactViewport;
 
   const dismissPanel = useCallback(() => {
     if (!document.activeElement?.closest('[role="dialog"]')) {
@@ -586,10 +583,6 @@ export function SellAiPanel({
       pushAssistantNote("This assistant link is unavailable. Ask for the page again.");
       return;
     }
-    if (mobileOnly && !isMobileAllowedHref(safeHref)) {
-      pushAssistantNote("Open the WEB app to continue this action.");
-      return;
-    }
     collapsePanel({ skipRouteExit: true });
     router.push(safeHref);
   }
@@ -616,18 +609,6 @@ export function SellAiPanel({
   }
 
   function applySellView(view: LeftView) {
-    if (mobileOnly) {
-      if (view === "products") {
-        openWorkspace("/products", "Open products when you are ready.");
-        return;
-      }
-      if (view === "keys" || view === "parked") {
-        openWorkspace("/", "Open the sell screen when you are ready.");
-        return;
-      }
-      pushAssistantNote("This is available in the WEB app.");
-      return;
-    }
     if (sell) {
       sell.setView(view);
       return;
@@ -879,10 +860,6 @@ export function SellAiPanel({
   }
 
   function runSellAction(action: string) {
-    if (mobileOnly) {
-      pushAssistantNote(`Sell action “${action}” is available in the WEB app.`);
-      return;
-    }
     if (sell) {
       sell.runAction(action);
       return;
@@ -1258,7 +1235,6 @@ export function SellAiPanel({
   }
 
   function openCustomerLookup(query: string) {
-    if (mobileOnly) return;
     const q = query.trim();
     if (sell) {
       sell.setCustomerSearchQuery(q);
@@ -1274,13 +1250,6 @@ export function SellAiPanel({
 
   function openProductLookup(query: string) {
     const q = query.trim();
-    if (mobileOnly) {
-      openWorkspace(
-        q ? `/products?q=${encodeURIComponent(q)}` : "/products",
-        q ? `Open products for “${q}” when you are ready.` : "Open products when you are ready.",
-      );
-      return;
-    }
     if (sell) {
       sell.setProductSearchQuery(q);
       sell.setView("products");
@@ -1356,12 +1325,7 @@ export function SellAiPanel({
     let deferred: IntentDispatch = { kind: "none" };
     const assistantRoute = normalizeAssistantHref(ui.route);
     if (assistantRoute) {
-      if (!mobileOnly || isMobileAllowedHref(assistantRoute)) {
-        deferred = { kind: "deferred", href: assistantRoute };
-      } else {
-        pushAssistantNote("Open the WEB app to continue this action.");
-        return { kind: "messaged" };
-      }
+      deferred = { kind: "deferred", href: assistantRoute };
     }
 
     return deferred;
@@ -1373,16 +1337,10 @@ export function SellAiPanel({
       if (result.kind === "search_panel") {
         if (result.scope === "customer") openCustomerLookup(result.query);
         else openProductLookup(result.query);
-        if (!(mobileOnly && result.scope === "product")) {
-          onExpandedChange(true);
-        }
+        onExpandedChange(true);
         return;
       }
       if (result.kind === "navigate" || result.kind === "pick_list") {
-        if (mobileOnly && !isMobileAllowedHref(result.href)) {
-          pushAssistantNote(result.note ?? "Open the WEB app to continue this action.");
-          return;
-        }
         openWorkspace(
           result.href,
           result.note ?? navigatePromptText(result.href),
@@ -1976,9 +1934,8 @@ function DialogueView({
               <span className="block">
                 <a
                   href={`/reports/ai/${msg.reportId}`}
-                  {...(getUiMode() === "mobile"
-                    ? {}
-                    : { target: "_blank", rel: "noopener noreferrer" })}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="inline-flex items-start gap-1.5 text-inherit no-underline hover:text-[var(--oh-primary)]"
                 >
                   <span className="underline decoration-[var(--oh-primary)] underline-offset-2">
@@ -2097,9 +2054,8 @@ function DialogueView({
                 {msg.reportId ? (
                   <a
                     href={`/reports/ai/${msg.reportId}`}
-                    {...(getUiMode() === "mobile"
-                      ? {}
-                      : { target: "_blank", rel: "noopener noreferrer" })}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="inline-flex items-center gap-1.5 text-[12px] font-medium text-[var(--oh-muted)] underline decoration-[var(--oh-border)] underline-offset-2 hover:text-[var(--oh-primary)]"
                   >
                     {/[一-鿿]/.test(msg.text)

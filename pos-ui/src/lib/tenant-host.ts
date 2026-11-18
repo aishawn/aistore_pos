@@ -123,14 +123,12 @@ function isStoreLeadership(user?: { isAdmin: boolean; roleCode?: string }): bool
 /** Safe post-login path on a store host. */
 export function storeLandingPath(
   next: string | null | undefined,
-  mode: "web" | "mobile" = "web",
   user?: { isAdmin: boolean; roleCode?: string },
 ): string {
   const safeNext = normalizeAuthReturnPath(next);
   if (safeNext && safeNext !== "/") {
     return safeNext;
   }
-  if (mode === "mobile") return "/m";
   if (user && !isStoreLeadership(user)) return STORE_STAFF_LANDING_PATH;
   return STORE_WEB_LANDING_PATH;
 }

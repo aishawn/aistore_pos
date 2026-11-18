@@ -5,7 +5,6 @@ import Link from "next/link";
 import { Eye, EyeOff, LogIn } from "lucide-react";
 import { OrithosLogo } from "@/components/OrithosLogo";
 import { useAuth } from "@/lib/auth";
-import { setUiMode } from "@/lib/ui-mode";
 import {
   brandSignupUrl,
   controlPlaneLandingPath,
@@ -17,7 +16,6 @@ import {
 } from "@/lib/tenant-host";
 import { SKIP_SESSION_RECOVER_KEY } from "@/lib/auth";
 
-type UiMode = "web" | "mobile";
 const REMEMBERED_USERNAME_KEY = "orithos-remembered-username";
 
 export default function LoginPage() {
@@ -29,7 +27,7 @@ export default function LoginPage() {
   const [rememberUsername, setRememberUsername] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState<UiMode | null>(null);
+  const [signingIn, setSigningIn] = useState(false);
   const [passwordResetNotice, setPasswordResetNotice] = useState(false);
 
   useEffect(() => {
@@ -77,12 +75,12 @@ export default function LoginPage() {
       } catch {
         // Fall back to leadership default when cache is unreadable.
       }
-      window.location.assign(storeLandingPath(returnPath, "web", sessionUser));
+      window.location.assign(storeLandingPath(returnPath, sessionUser));
     });
   }, [recoverSession]);
 
-  async function doLogin(mode: UiMode) {
-    setBusy(mode);
+  async function doLogin() {
+    setSigningIn(true);
     setError(null);
     try {
       // Control plane: no subdomain — API uses the platform-operator vendor.
@@ -97,8 +95,6 @@ export default function LoginPage() {
       } catch {
         // Remembering the username is optional and must not block sign-in.
       }
-      setUiMode(mode);
-
       if (res.bootstrapToken && res.redirectHost) {
         const url = new URL("/auth/bootstrap", res.redirectHost.endsWith("/")
           ? res.redirectHost
@@ -113,17 +109,17 @@ export default function LoginPage() {
         window.location.assign(controlPlaneLandingPath(returnPath));
         return;
       }
-      window.location.assign(storeLandingPath(returnPath, mode, res.user));
+      window.location.assign(storeLandingPath(returnPath, res.user));
     } catch (err) {
       setError(err instanceof Error ? err.message : "We couldn’t sign you in. Check your details and try again.");
     } finally {
-      setBusy(null);
+      setSigningIn(false);
     }
   }
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    await doLogin("web");
+    await doLogin();
   }
 
   function enterLocalPreview() {
@@ -233,11 +229,11 @@ export default function LoginPage() {
 
           <button
             type="submit"
-            disabled={busy !== null}
+            disabled={signingIn}
             className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-[var(--oh-primary)] text-base font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-wait disabled:opacity-70"
           >
             <LogIn size={18} aria-hidden="true" />
-            {busy === "web" ? "Signing in…" : "Login"}
+            {signingIn ? "Signing in…" : "Login"}
           </button>
 
           {process.env.NODE_ENV === "development" ? (
@@ -249,17 +245,6 @@ export default function LoginPage() {
               Preview Dashboard locally
             </button>
           ) : null}
-
-          {!controlPlane && (
-            <button
-              type="button"
-              disabled={busy !== null}
-              onClick={() => void doLogin("mobile")}
-              className="min-h-11 rounded-md border border-[var(--oh-border-strong)] bg-transparent text-sm font-semibold text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-wait disabled:opacity-70"
-            >
-              {busy === "mobile" ? "Signing in to mobile workspace…" : "Sign in to mobile workspace"}
-            </button>
-          )}
 
           {controlPlane && (
             <p className="text-center text-sm text-[var(--oh-text-secondary)]">
