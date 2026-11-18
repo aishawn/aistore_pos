@@ -67,7 +67,6 @@ public class ShopfrontIntegrationController {
     private static final class ProductImportBatch {
         private final Map<String, Long> lookupIds = new HashMap<>();
         private final Map<String, Long> productIdsByIdentity = new HashMap<>();
-        private final Map<String, Long> reservedProductNames = new HashMap<>();
         private final Map<Long, Object[]> productUpdates = new LinkedHashMap<>();
         private final Map<Long, List<Object[]>> pricesByProduct = new LinkedHashMap<>();
         private final List<BarcodeWrite> barcodes = new ArrayList<>();
@@ -2641,12 +2640,6 @@ public class ShopfrontIntegrationController {
                     plan = resolveBusinessProductIds(store, outletId, importable);
                 }
                 ProductImportBatch batch = new ProductImportBatch();
-                Set<Long> replacingProductIds = new HashSet<>();
-                for (JsonNode item : importable) {
-                    Long productId = plan.productIds().get(text(item, "source_id"));
-                    if (productId != null) replacingProductIds.add(productId);
-                }
-                batch.reservedProductNames.putAll(activeProductNameOwners(outletId, replacingProductIds));
                 batch.supplierMappings.putAll(preloadSupplierMappings(store, outletId));
                 for (JsonNode item : importable) {
                     String sourceId = text(item, "source_id");
@@ -2654,11 +2647,6 @@ public class ShopfrontIntegrationController {
                         if (!hasValidCataloguePrice(item)) unpriced++;
                         if (!hasValidUnitCataloguePrice(item)) unitUnpriced++;
                         Long resolvedProductId = plan.productIds().get(sourceId);
-                        String productName = reserveUniqueProductName(
-                                text(item, "name"), sourceId, resolvedProductId, batch.reservedProductNames);
-                        if (item instanceof com.fasterxml.jackson.databind.node.ObjectNode objectNode) {
-                            objectNode.put("name", productName);
-                        }
                         // Identity is source_id only — never share a new INSERT across
                         // different Shopfront products that happen to share barcode/name.
                         String identity = productIdentityKey(item);
@@ -2668,7 +2656,6 @@ public class ShopfrontIntegrationController {
                         boolean mappingExisted = plan.existingProductMappings().contains(sourceId);
                         boolean productExisted = mappingExisted || resolvedProductId != null;
                         long productId = upsertBusinessProduct(item, store, outletId, taxRates, resolvedProductId, batch);
-                        batch.reservedProductNames.put(normalizeProductName(productName), productId);
                         batch.productIdsByIdentity.putIfAbsent(identity, productId);
                         if (!mappingExisted) {
                             batch.sourceMappings.put(sourceId, new Object[]{store, sourceId, productId});
@@ -3590,66 +3577,6 @@ public class ShopfrontIntegrationController {
         return "name:" + (name == null ? "" : name.trim().toLowerCase(Locale.ROOT));
     }
 
-    private String disambiguateProductName(String name, long outletId, String barcode, String sourceId) {
-        String base = name == null ? "" : name.trim();
-        if (base.isBlank()) return base;
-        Long existing = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM product WHERE outlet_id=? AND deleted_at IS NULL AND lower(trim(name))=lower(trim(?))",
-                Long.class, outletId, base);
-        if (existing == null || existing == 0) return base;
-        String marker = barcode != null && !barcode.isBlank() ? barcode.trim() : (sourceId == null ? "" : sourceId.trim());
-        if (marker.length() > 16) marker = marker.substring(marker.length() - 16);
-        if (marker.isBlank()) marker = Long.toString(System.currentTimeMillis() % 1_000_000);
-        String candidate = base + " [" + marker + "]";
-        Long stillTaken = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM product WHERE outlet_id=? AND deleted_at IS NULL AND lower(trim(name))=lower(trim(?))",
-                Long.class, outletId, candidate);
-        if (stillTaken == null || stillTaken == 0) return candidate;
-        return base + " [" + marker + "-" + (System.currentTimeMillis() % 10000) + "]";
-    }
-
-    private Map<String, Long> activeProductNameOwners(long outletId, Set<Long> replacingProductIds) {
-        Map<String, Long> owners = new LinkedHashMap<>();
-        for (Map<String, Object> row : jdbc.queryForList(
-                "SELECT id,name FROM product WHERE outlet_id=? AND deleted_at IS NULL", outletId)) {
-            long productId = longValue(row.get("id"));
-            if (replacingProductIds.contains(productId)) continue;
-            String key = normalizeProductName(String.valueOf(row.getOrDefault("name", "")));
-            if (!key.isBlank()) owners.put(key, productId);
-        }
-        return owners;
-    }
-
-    static String reserveUniqueProductName(String name, String sourceId, Long productId,
-                                           Map<String, Long> reservedNames) {
-        String base = name == null ? "" : name.trim();
-        String baseKey = normalizeProductName(base);
-        if (baseKey.isBlank()) return base;
-        if (!reservedNames.containsKey(baseKey) || java.util.Objects.equals(reservedNames.get(baseKey), productId)) {
-            reservedNames.put(baseKey, productId);
-            return base;
-        }
-
-        String identity = sourceId == null || sourceId.isBlank() ? "unknown" : sourceId.trim();
-        for (int suffixLength = Math.min(8, identity.length()); ; suffixLength = Math.min(identity.length(), suffixLength + 4)) {
-            String marker = identity.substring(identity.length() - suffixLength);
-            String suffix = " [" + marker + "]";
-            int prefixLength = Math.max(1, 255 - suffix.length());
-            String candidate = base.substring(0, Math.min(base.length(), prefixLength)) + suffix;
-            String key = normalizeProductName(candidate);
-            if (!reservedNames.containsKey(key) || java.util.Objects.equals(reservedNames.get(key), productId)) {
-                reservedNames.put(key, productId);
-                return candidate;
-            }
-            if (suffixLength == identity.length()) break;
-        }
-        throw new IllegalArgumentException("Unable to assign a unique POS name for Shopfront product " + identity);
-    }
-
-    private static String normalizeProductName(String name) {
-        return name == null ? "" : name.trim().toLowerCase(Locale.ROOT);
-    }
-
     private String productBusinessSignature(JsonNode item) {
         List<String> values = new ArrayList<>();
         JsonNode raw = item.path("raw_payload");
@@ -3832,11 +3759,8 @@ public class ShopfrontIntegrationController {
         String productStatus = normalizeShopfrontProductStatus(sourceStatus, sourceDeleted);
         String alternateImages = item.has("alternate_images") ? objectMapper.writeValueAsString(item.get("alternate_images")) : "[]";
         if (productId == null) {
-            // Shopfront allows duplicate display names across distinct source_ids.
-            // Orithos keeps a unique active name per outlet, so disambiguate on create.
-            String insertName = disambiguateProductName(name, outletId, firstBarcode(item), sourceId);
-            String sql = "INSERT INTO product (name,type,status,description,category_id,brand_id,family_id,tax_rate_id,cost_tax_rate_id,cost,case_cost,case_quantity,cost_percentage,shopfront_catalog_confirmed,shopfront_source_updated_at,track_inventory,use_scales,use_barcode_templates,prevent_manual_discounts,request_price,request_quantity,order_notes,invoice_notes,image,alternate_images,mdb_id,outlet_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?::jsonb,?,?) RETURNING id";
-            productId = jdbc.queryForObject(sql, Long.class, insertName, type, productStatus, description, categoryId, brandId, familyId, taxRateId, costTaxRateId, costIsVerified ? cost : null, costIsVerified ? caseCost : null, caseQuantity, flag(item, "cost_percentage", false), item.path("catalog_confirmed").asBoolean(false), text(item, "source_updated_at"), flag(item, "track_inventory", true), flag(item, "use_scales", false), flag(item, "use_barcode_templates", false), flag(item, "prevent_manual_discounts", false), flag(item, "request_price", false), flag(item, "request_quantity", false), text(item, "order_notes"), text(item, "invoice_notes"), image, alternateImages, mdbId, outletId);
+            String sql = "INSERT INTO product (name,type,status,description,category_id,brand_id,family_id,tax_rate_id,cost_tax_rate_id,cost,case_cost,case_quantity,cost_percentage,shopfront_catalog_confirmed,shopfront_source_updated_at,track_inventory,use_scales,use_barcode_templates,prevent_manual_discounts,request_price,request_quantity,order_notes,invoice_notes,image,alternate_images,mdb_id,outlet_id,shopfront_managed) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?::jsonb,?,?,TRUE) RETURNING id";
+            productId = jdbc.queryForObject(sql, Long.class, name.trim(), type, productStatus, description, categoryId, brandId, familyId, taxRateId, costTaxRateId, costIsVerified ? cost : null, costIsVerified ? caseCost : null, caseQuantity, flag(item, "cost_percentage", false), item.path("catalog_confirmed").asBoolean(false), text(item, "source_updated_at"), flag(item, "track_inventory", true), flag(item, "use_scales", false), flag(item, "use_barcode_templates", false), flag(item, "prevent_manual_discounts", false), flag(item, "request_price", false), flag(item, "request_quantity", false), text(item, "order_notes"), text(item, "invoice_notes"), image, alternateImages, mdbId, outletId);
         } else {
             batch.productUpdates.put(productId, new Object[]{name, type, productStatus, description, categoryId, brandId, familyId, taxRateId, costTaxRateId, costIsVerified, cost, costIsVerified, caseCost, caseQuantity, flag(item, "cost_percentage", false), item.path("catalog_confirmed").asBoolean(false), text(item, "source_updated_at"), flag(item, "track_inventory", true), flag(item, "use_scales", false), flag(item, "use_barcode_templates", false), flag(item, "prevent_manual_discounts", false), flag(item, "request_price", false), flag(item, "request_quantity", false), text(item, "order_notes"), text(item, "invoice_notes"), image, alternateImages, mdbId, outletId, productId});
         }
@@ -3856,7 +3780,7 @@ public class ShopfrontIntegrationController {
                 temporaryNames.add(new Object[]{"__sf_sync_" + reservation + "_" + index++, outletId, productId});
             }
             jdbc.batchUpdate("UPDATE product SET name=? WHERE outlet_id=? AND id=?", temporaryNames);
-            jdbc.batchUpdate("UPDATE product SET name=?,type=?,status=?,description=?,category_id=?,brand_id=?,family_id=?,tax_rate_id=?,cost_tax_rate_id=?,cost=CASE WHEN ? THEN ? ELSE NULL END,case_cost=CASE WHEN ? THEN CAST(? AS numeric) ELSE NULL END,case_quantity=?,cost_percentage=?,shopfront_catalog_confirmed=?,shopfront_source_updated_at=?,track_inventory=?,use_scales=?,use_barcode_templates=?,prevent_manual_discounts=?,request_price=?,request_quantity=?,order_notes=?,invoice_notes=?,image=COALESCE(?,image),alternate_images=?::jsonb,mdb_id=?,outlet_id=? WHERE id=?",
+            jdbc.batchUpdate("UPDATE product SET name=?,type=?,status=?,description=?,category_id=?,brand_id=?,family_id=?,tax_rate_id=?,cost_tax_rate_id=?,cost=CASE WHEN ? THEN ? ELSE NULL END,case_cost=CASE WHEN ? THEN CAST(? AS numeric) ELSE NULL END,case_quantity=?,cost_percentage=?,shopfront_catalog_confirmed=?,shopfront_source_updated_at=?,track_inventory=?,use_scales=?,use_barcode_templates=?,prevent_manual_discounts=?,request_price=?,request_quantity=?,order_notes=?,invoice_notes=?,image=COALESCE(?,image),alternate_images=?::jsonb,mdb_id=?,outlet_id=?,shopfront_managed=TRUE WHERE id=?",
                     new ArrayList<>(batch.productUpdates.values()));
         }
 

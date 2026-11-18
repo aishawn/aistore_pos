@@ -50,9 +50,31 @@ public class ProductOutletUniquenessSchemaMigrator implements CommandLineRunner 
             }
             boolean hasLegacyName = indexOrConstraintExists(connection, "uq_product_active_name");
             boolean hasLegacyBarcode = indexOrConstraintExists(connection, "uq_barcode_code");
-            boolean hasOutletName = indexOrConstraintExists(connection, "uq_product_outlet_active_name");
+            boolean hasOutletName = hasShopfrontAwareNameIndex(connection);
             boolean hasOutletBarcode = indexOrConstraintExists(connection, "uq_barcode_outlet_code");
-            return (hasLegacyName || hasLegacyBarcode) && !(hasOutletName && hasOutletBarcode);
+            return !columnExists(connection, "product", "shopfront_managed")
+                    || hasLegacyName || hasLegacyBarcode || !hasOutletName || !hasOutletBarcode;
+        }
+    }
+
+    private boolean columnExists(Connection connection, String table, String column) throws Exception {
+        try (var ps = connection.prepareStatement(
+                "SELECT 1 FROM information_schema.columns WHERE table_schema=current_schema() AND table_name=? AND column_name=?")) {
+            ps.setString(1, table);
+            ps.setString(2, column);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        }
+    }
+
+    private boolean hasShopfrontAwareNameIndex(Connection connection) throws Exception {
+        try (var ps = connection.prepareStatement(
+                "SELECT pg_get_indexdef(c.oid) FROM pg_class c WHERE c.relname='uq_product_outlet_active_name'")) {
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() && rs.getString(1) != null
+                        && rs.getString(1).contains("shopfront_managed IS NOT TRUE");
+            }
         }
     }
 

@@ -328,12 +328,14 @@ CREATE TABLE product (
   updated_at      TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   deleted_at      TIMESTAMP     NULL,
   active_name     VARCHAR(255) GENERATED ALWAYS AS (CASE WHEN deleted_at IS NULL THEN LOWER(TRIM(name)) ELSE NULL END) STORED,
+  shopfront_managed BOOLEAN NOT NULL DEFAULT FALSE,
   outlet_id BIGINT NOT NULL DEFAULT 1,
 
   PRIMARY KEY (id),
   CONSTRAINT chk_product_case_quantity_positive CHECK (case_quantity > 0)
 );
-CREATE UNIQUE INDEX uq_product_outlet_active_name ON product (outlet_id, active_name) WHERE active_name IS NOT NULL;
+CREATE UNIQUE INDEX uq_product_outlet_active_name ON product (outlet_id, active_name)
+  WHERE active_name IS NOT NULL AND shopfront_managed IS NOT TRUE;
 CREATE TABLE product_tag (
   product_id BIGINT NOT NULL,
   tag_id BIGINT NOT NULL,

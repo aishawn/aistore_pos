@@ -298,16 +298,29 @@ class ShopfrontIntegrationControllerTest {
     }
 
     @Test
-    void reservesStableNamesForDuplicateShopfrontProducts() {
-        Map<String, Long> reserved = new java.util.LinkedHashMap<>();
+    void newShopfrontProductKeepsTheExactSourceName() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        when(jdbc.queryForObject(contains("INSERT INTO product"), eq(Long.class), any(Object[].class)))
+                .thenReturn(102L);
+        var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true, true);
+        Class<?> batchType = Class.forName(ShopfrontIntegrationController.class.getName() + "$ProductImportBatch");
+        Constructor<?> constructor = batchType.getDeclaredConstructor();
+        constructor.setAccessible(true);
+        Object batch = constructor.newInstance();
+        Method upsert = ShopfrontIntegrationController.class.getDeclaredMethod(
+                "upsertBusinessProduct", JsonNode.class, String.class, long.class, Map.class,
+                Long.class, batchType);
+        upsert.setAccessible(true);
 
-        String first = ShopfrontIntegrationController.reserveUniqueProductName("Duplicate", "source-1", 101L, reserved);
-        String second = ShopfrontIntegrationController.reserveUniqueProductName("Duplicate", "source-2", 102L, reserved);
-        String replay = ShopfrontIntegrationController.reserveUniqueProductName("Duplicate", "source-2", 102L, reserved);
+        upsert.invoke(controller, new ObjectMapper().readTree("""
+                {"source_id":"source-102","name":"Duplicate","source_status":"ACTIVE","case_quantity":1}
+                """), "skr", 87L, new java.util.HashMap<>(Map.of("gst", 7L)), null, batch);
 
-        assertEquals("Duplicate", first);
-        assertEquals("Duplicate [source-2]", second);
-        assertEquals(second, replay);
+        org.mockito.ArgumentCaptor<Object[]> arguments = org.mockito.ArgumentCaptor.forClass(Object[].class);
+        verify(jdbc).queryForObject(org.mockito.ArgumentMatchers.argThat(
+                (String query) -> query.contains("INSERT INTO product") && query.contains("shopfront_managed")),
+                eq(Long.class), arguments.capture());
+        assertEquals("Duplicate", arguments.getValue()[0]);
     }
 
     @Test
