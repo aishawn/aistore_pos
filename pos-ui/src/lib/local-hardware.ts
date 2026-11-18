@@ -155,22 +155,26 @@ function moneyPlain(amount: number): string {
   return `$${amount.toFixed(2)}`;
 }
 
+function cleanReceiptField(value: string): string {
+  return value.replace(/[\u0000-\u001f\u007f-\u009f]/g, " ").replace(/\s+/g, " ").trim();
+}
+
 export function formatSaleReceiptPlainText(receipt: SaleReceiptPlainTextInput): string {
   const lines = receipt.lines
-    .map((line) => `${line.name}\n  ${line.quantity} x ${moneyPlain(line.total)}`)
+    .map((line) => `${cleanReceiptField(line.name)}\n  ${line.quantity} x ${moneyPlain(line.total)}`)
     .join("\n");
   const payment =
     receipt.change > 0
-      ? `Method: ${receipt.paymentMethod}\nCash received: ${moneyPlain(receipt.tendered)}\nChange: ${moneyPlain(receipt.change)}`
-      : `Method: ${receipt.paymentMethod}`;
+      ? `Method: ${cleanReceiptField(receipt.paymentMethod)}\nCash received: ${moneyPlain(receipt.tendered)}\nChange: ${moneyPlain(receipt.change)}`
+      : `Method: ${cleanReceiptField(receipt.paymentMethod)}`;
   return [
-    receipt.companyName.toUpperCase(),
+    cleanReceiptField(receipt.companyName).toUpperCase(),
     "Sales receipt",
-    receipt.reference,
-    receipt.dateLabel,
+    cleanReceiptField(receipt.reference),
+    cleanReceiptField(receipt.dateLabel),
     "",
-    `Customer: ${receipt.customerName}`,
-    `Register: ${receipt.session}`,
+    `Customer: ${cleanReceiptField(receipt.customerName)}`,
+    `Register: ${cleanReceiptField(receipt.session)}`,
     "",
     lines,
     "",

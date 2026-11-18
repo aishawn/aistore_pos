@@ -222,6 +222,28 @@ test("formats a completed sale receipt as plain text for the local bridge", () =
   assert.match(text, /Change: \$1.00/);
 });
 
+test("strips printer control characters from dynamic receipt fields", () => {
+  const text = formatSaleReceiptPlainText({
+    companyName: "Demo\u001b@\u0001Store",
+    reference: "S0001\r\nFAKE",
+    dateLabel: "18 Nov 2026\u001b(0",
+    customerName: "Alice\u001bp",
+    session: "Register\t2",
+    lines: [{ name: "Coffee\u001bp", quantity: 1, total: 4.5 }],
+    subtotal: 4.5,
+    gst: 0.45,
+    total: 4.5,
+    paymentMethod: "Cash\u001bp",
+    tendered: 5,
+    change: 0.5,
+  });
+
+  assert.doesNotMatch(text, /[\u0000-\u0009\u000b-\u001f\u007f-\u009f]/);
+  assert.match(text, /S0001 FAKE/);
+  assert.match(text, /Customer: Alice p/);
+  assert.match(text, /Coffee p/);
+});
+
 test("prints sale receipts through QZ when a printer is configured", async () => {
   const jobs: unknown[][] = [];
   let printed = false;
