@@ -94,10 +94,16 @@ public class ReportQueryService {
         List<Map<String, Object>> rows = jdbc.queryForList("""
                 SELECT COALESCE(SUM(s.total_price), 0) AS total_sales,
                        COUNT(s.id) AS transaction_count,
-                       COALESCE(SUM(COALESCE(s.total_cost, line.cost, 0)), 0) AS cost
+                       COALESCE(SUM(CASE WHEN s.source_system = 'shopfront' THEN
+                           COALESCE(CASE WHEN line.line_count > 0 AND line.missing_shopfront_cost_count = 0
+                                         THEN line.shopfront_cost END, s.total_cost, 0)
+                           ELSE COALESCE(s.total_cost, line.cost, 0) END), 0) AS cost
                 FROM sale s
                 LEFT JOIN (
                   SELECT si.sale_id,
+                         SUM(si.cost) AS shopfront_cost,
+                         COUNT(*) AS line_count,
+                         COUNT(*) FILTER (WHERE si.cost IS NULL) AS missing_shopfront_cost_count,
                          SUM(COALESCE(si.cost, pc.cost,
                              CASE WHEN COALESCE(p.cost_percentage, 0) = 0
                                        AND (p.shopfront_source_updated_at IS NULL OR p.case_cost IS NOT NULL)
@@ -453,12 +459,16 @@ public class ReportQueryService {
                          (line.line_count = 0 OR line.missing_tax_count > 0)) AS tax_missing_count,
                        COUNT(*) FILTER (WHERE s.total_cost IS NULL AND
                          (line.line_count = 0 OR line.missing_cost_count > 0)) AS cost_missing_count,
-                       COALESCE(SUM(COALESCE(s.total_cost, line.cost, 0)), 0) AS cost,
+                       COALESCE(SUM(CASE WHEN s.source_system = 'shopfront' THEN
+                           COALESCE(CASE WHEN line.line_count > 0 AND line.missing_cost_count = 0
+                                         THEN line.cost END, s.total_cost, 0)
+                           ELSE COALESCE(s.total_cost, line.cost, 0) END), 0) AS cost,
                        MAX(s.updated_at AT TIME ZONE 'UTC') AS data_as_of
                 FROM sale s
                 LEFT JOIN LATERAL (
                   SELECT COUNT(*) AS line_count,
-                         SUM(si.cost * si.quantity) AS cost,
+                         SUM(CASE WHEN s.source_system = 'shopfront' THEN si.cost
+                                  ELSE si.cost * si.quantity END) AS cost,
                          COUNT(*) FILTER (WHERE si.cost IS NULL) AS missing_cost_count,
                          SUM(si.tax) AS tax,
                          COUNT(*) FILTER (WHERE si.tax IS NULL) AS missing_tax_count
@@ -660,10 +670,16 @@ public class ReportQueryService {
         List<Map<String, Object>> rows = jdbc.queryForList("""
                 SELECT COALESCE(SUM(s.total_price), 0) AS total_sales,
                        COUNT(s.id) AS transaction_count,
-                       COALESCE(SUM(COALESCE(s.total_cost, line.cost, 0)), 0) AS cost
+                       COALESCE(SUM(CASE WHEN s.source_system = 'shopfront' THEN
+                           COALESCE(CASE WHEN line.line_count > 0 AND line.missing_shopfront_cost_count = 0
+                                         THEN line.shopfront_cost END, s.total_cost, 0)
+                           ELSE COALESCE(s.total_cost, line.cost, 0) END), 0) AS cost
                 FROM sale s
                 LEFT JOIN (
                   SELECT si.sale_id,
+                         SUM(si.cost) AS shopfront_cost,
+                         COUNT(*) AS line_count,
+                         COUNT(*) FILTER (WHERE si.cost IS NULL) AS missing_shopfront_cost_count,
                          SUM(COALESCE(si.cost, pc.cost,
                              CASE WHEN COALESCE(p.cost_percentage, 0) = 0
                                        AND (p.shopfront_source_updated_at IS NULL OR p.case_cost IS NOT NULL)
@@ -691,10 +707,16 @@ public class ReportQueryService {
                 SELECT COALESCE(s.business_date, DATE(s.local_sold_at), DATE(s.created_at)) AS d,
                        COALESCE(SUM(s.total_price), 0) AS total_sales,
                        COUNT(s.id) AS transaction_count,
-                       COALESCE(SUM(COALESCE(s.total_cost, line.cost, 0)), 0) AS cost
+                       COALESCE(SUM(CASE WHEN s.source_system = 'shopfront' THEN
+                           COALESCE(CASE WHEN line.line_count > 0 AND line.missing_shopfront_cost_count = 0
+                                         THEN line.shopfront_cost END, s.total_cost, 0)
+                           ELSE COALESCE(s.total_cost, line.cost, 0) END), 0) AS cost
                 FROM sale s
                 LEFT JOIN (
                   SELECT si.sale_id,
+                         SUM(si.cost) AS shopfront_cost,
+                         COUNT(*) AS line_count,
+                         COUNT(*) FILTER (WHERE si.cost IS NULL) AS missing_shopfront_cost_count,
                          SUM(COALESCE(si.cost, pc.cost,
                              CASE WHEN COALESCE(p.cost_percentage, 0) = 0
                                        AND (p.shopfront_source_updated_at IS NULL OR p.case_cost IS NOT NULL)

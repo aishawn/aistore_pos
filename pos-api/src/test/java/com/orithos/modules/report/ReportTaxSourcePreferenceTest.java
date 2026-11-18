@@ -43,5 +43,7 @@ class ReportTaxSourcePreferenceTest {
         org.mockito.Mockito.verify(jdbc).queryForList(sql.capture(), any(Object[].class));
         assertTrue(sql.getValue().replaceAll("\\s+", " ").contains(
                 "COALESCE(CASE WHEN s.source_system = 'shopfront' AND line.line_count > 0 AND line.missing_tax_count = 0 THEN line.tax END, s.total_tax)"));
+        assertTrue(sql.getValue().replaceAll("\\s+", " ").contains(
+                "CASE WHEN s.source_system = 'shopfront' THEN COALESCE(CASE WHEN line.line_count > 0 AND line.missing_cost_count = 0 THEN line.cost END, s.total_cost, 0)"));
     }
 }
