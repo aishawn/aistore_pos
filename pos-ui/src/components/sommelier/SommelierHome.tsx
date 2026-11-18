@@ -79,7 +79,7 @@ export function SommelierHome({ showPosAssistant = false }: { showPosAssistant?:
           </p>
         </Link>
 
-        {showPosAssistant && mobile ? (
+        {showPosAssistant ? (
           <button
             type="button"
             onClick={() => ai?.setExpanded(true)}
