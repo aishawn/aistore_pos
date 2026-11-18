@@ -215,6 +215,7 @@ public interface SaleMapper {
             outstanding = 0,
             internal_note = TRIM(CONCAT(COALESCE(internal_note, ''), ' Auto-expired parked sale'))
         WHERE status = 'PARKED'
+          AND COALESCE(source_system, '') <> 'shopfront'
           AND (
             (business_date IS NOT NULL AND business_date < #{expireBefore})
             OR (business_date IS NULL AND created_at < #{createdBeforeUtc})
