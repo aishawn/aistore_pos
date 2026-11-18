@@ -597,6 +597,11 @@ function decodeQuoteSignature(signature?: string): NativeQuoteSignature | null {
   }
 }
 
+/** Decode the server quote carried on a pending checkout for EFTPOS recovery. */
+export function readQuoteFromSignature(signature?: string | null): NativeQuoteSignature | null {
+  return decodeQuoteSignature(signature ?? undefined);
+}
+
 function tenderFromPaymentMethod(method: { id: number; name: string; type: string } | undefined): string {
   if (!method) return "CASH";
   const type = (method.type || "").toUpperCase();

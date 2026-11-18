@@ -31,6 +31,7 @@ import {
   submitOdooPosOrder,
   recoverOdooPosOrder,
   OdooCheckoutPendingError,
+  readQuoteFromSignature,
   type OdooCheckoutRequest,
   type OdooCustomerRecord,
   type OdooCheckoutQuote,
@@ -53,6 +54,7 @@ import {
 } from "@/lib/odoo-register-startup";
 import { getRegisterEftposBinding } from "@/lib/eftpos-api";
 import { ensureEftposApprovedBeforeCheckout } from "@/lib/eftpos-checkout";
+import { LocalQzBridge } from "@/components/LocalQzBridge";
 
 type CompletedReceipt = {
   reference: string;
@@ -943,9 +945,27 @@ export function OdooRegisterPage() {
     return formatStoreDate(value, timezone || selectedConfig?.timezone || "Australia/Adelaide");
   }
 
+  function persistPendingOrder(request: OdooCheckoutRequest) {
+    if (!hydratedDraftKey) throw new Error("Wait for this terminal's draft to load before finalising.");
+    try {
+      const saved = JSON.parse(localStorage.getItem(hydratedDraftKey) ?? "null");
+      if (!saved) throw new Error("missing draft");
+      localStorage.setItem(hydratedDraftKey, JSON.stringify({ ...saved, pendingOrder: request }));
+    } catch {
+      throw new Error("This terminal cannot preserve the order identity. Enable browser storage before taking payment.");
+    }
+    setPendingCheckout(request);
+  }
+
+  function isCardCheckoutRequest(request: OdooCheckoutRequest): boolean {
+    return Boolean(cardMethod && request.paymentMethodId === cardMethod.id);
+  }
+
   async function checkout() {
     if (!isOnline || !selectedConfig || (!pendingCheckout && (!selectedConfig.session || !paymentMethodId || !lines.length)) || checkoutBusy.current) return;
-    if (cardMethod && paymentMethodId === cardMethod.id && !eftposPaymentsEnabled) {
+    const activeRequest = pendingCheckout;
+    const payingByCard = activeRequest ? isCardCheckoutRequest(activeRequest) : Boolean(cardMethod && paymentMethodId === cardMethod.id);
+    if (payingByCard && !eftposPaymentsEnabled) {
       setError("EFTPOS is unavailable: pair this register under Settings → Hardware before taking card payments.");
       return;
     }
@@ -960,20 +980,35 @@ export function OdooRegisterPage() {
         customerId: customer?.id ?? null,
         lines: lines.map((line) => [line.product.id, line.quantity, line.packFactor || 1, line.discountPercent || 0]),
       });
-      if (!orderUuid.current || checkoutFingerprint.current !== fingerprint) {
-        orderUuid.current = crypto.randomUUID();
-        checkoutFingerprint.current = fingerprint;
+      if (!activeRequest) {
+        if (!orderUuid.current || checkoutFingerprint.current !== fingerprint) {
+          orderUuid.current = crypto.randomUUID();
+          checkoutFingerprint.current = fingerprint;
+        }
       }
-      const stableOrderUuid = orderUuid.current ?? crypto.randomUUID();
+      const stableOrderUuid = activeRequest?.orderUuid ?? orderUuid.current ?? crypto.randomUUID();
       orderUuid.current = stableOrderUuid;
-      if (cardMethod && paymentMethodId === cardMethod.id && eftposPaymentsEnabled) {
-        if (!quoteIsCurrent || !quote?.signature) throw new Error("Refresh the cart quote before taking card payment.");
+      const request: OdooCheckoutRequest = activeRequest ?? {
+        configId: selectedConfig.id,
+        paymentMethodId: paymentMethodId!,
+        orderUuid: stableOrderUuid,
+        customerId: customer?.id ?? null,
+        tendered: tenderedAmount,
+        expectedQuote: quote?.signature,
+        lines: lines.map((line) => ({ productId: line.product.id, quantity: line.quantity, uomFactor: line.packFactor || 1, discountPercent: line.discountPercent || 0 })),
+      };
+      if (!activeRequest) {
+        persistPendingOrder(request);
+      }
+      if (payingByCard && eftposPaymentsEnabled) {
+        const signed = readQuoteFromSignature(request.expectedQuote) ?? (quoteIsCurrent && quote?.signature ? readQuoteFromSignature(quote.signature) : null);
+        if (!signed) throw new Error("Refresh the cart quote before taking card payment.");
         setEftposPaymentNotice("Waiting for the EFTPOS terminal…");
         await ensureEftposApprovedBeforeCheckout({
-          registerId: selectedConfig.id,
-          orderUuid: stableOrderUuid,
-          expectedTotal: quote.total,
-          quoteSignature: quote.signature,
+          registerId: request.configId,
+          orderUuid: request.orderUuid,
+          expectedTotal: signed.expectedTotal,
+          quoteSignature: request.expectedQuote ?? quote?.signature ?? null,
           onStatus: (attempt) => {
             if (attempt.status === "PENDING" || attempt.status === "UNKNOWN") {
               setEftposPaymentNotice("Waiting for the EFTPOS terminal…");
@@ -984,27 +1019,8 @@ export function OdooRegisterPage() {
         });
         setEftposPaymentNotice(null);
       }
-      const request: OdooCheckoutRequest = pendingCheckout ?? {
-        configId: selectedConfig.id,
-        paymentMethodId: paymentMethodId!,
-        orderUuid: stableOrderUuid,
-        customerId: customer?.id ?? null,
-        tendered: tenderedAmount,
-        expectedQuote: quote?.signature,
-        lines: lines.map((line) => ({ productId: line.product.id, quantity: line.quantity, uomFactor: line.packFactor || 1, discountPercent: line.discountPercent || 0 })),
-      };
-      if (!pendingCheckout) {
-        // Persist the identity before sending money-related writes, including a browser refresh mid-request.
-        if (!hydratedDraftKey) throw new Error("Wait for this terminal's draft to load before finalising.");
-        try {
-          const saved = JSON.parse(localStorage.getItem(hydratedDraftKey) ?? "null");
-          if (!saved) throw new Error("missing draft");
-          localStorage.setItem(hydratedDraftKey, JSON.stringify({ ...saved, pendingOrder: request }));
-        } catch { throw new Error("This terminal cannot preserve the order identity. Enable browser storage before taking payment."); }
-        setPendingCheckout(request);
-      }
-      const result = pendingCheckout ? await recoverOdooPosOrder(request) : await submitOdooPosOrder(request);
-      if (!result) throw new OdooCheckoutPendingError(pendingCheckout!);
+      const result = activeRequest ? await recoverOdooPosOrder(request) : await submitOdooPosOrder(request);
+      if (!result) throw new OdooCheckoutPendingError(request);
       setPendingCheckout(null);
       setReceipt({
         reference: result.receipt,
@@ -1029,8 +1045,12 @@ export function OdooRegisterPage() {
       checkoutFingerprint.current = null;
     } catch (cause) {
       setEftposPaymentNotice(null);
+      const terminalPending = cause instanceof Error
+        && /pending on the terminal|Do not charge again|declined or cancelled/i.test(cause.message);
       if (cause instanceof OdooCheckoutPendingError) setPendingCheckout(cause.order);
-      else {
+      else if (terminalPending) {
+        /* keep pending order for recovery */
+      } else {
         setPendingCheckout(null);
         if (cause instanceof Error && /Prices or taxes have changed/.test(cause.message)) {
           setQuote(null); setQuoteRetryKey((value) => value + 1);
@@ -1044,8 +1064,10 @@ export function OdooRegisterPage() {
   }
 
   if (pendingCheckout) return <main className="flex h-full flex-col items-start gap-4 overflow-y-auto p-6">
+    <LocalQzBridge />
     <h1 className="text-xl font-semibold">Payment result pending confirmation</h1>
     <p role="alert">{error || "Do not take payment again. This cart is preserved while the result is checked."}</p>
+    {eftposPaymentNotice && <p role="status" className="text-sm font-medium text-amber-900">{eftposPaymentNotice}</p>}
     <p className="break-all text-sm">Order reference: {pendingCheckout.orderUuid}</p>
     <button type="button" disabled={busy || !isOnline} onClick={() => void checkout()} className="min-h-11 rounded bg-green-800 px-4 text-white disabled:opacity-50">{busy ? "Checking…" : "Check saved order"}</button>
     <Link href="/history" target="_blank" className="min-h-11 underline">Open sales history in another tab</Link>
@@ -1365,6 +1387,7 @@ export function OdooRegisterPage() {
 
   return (
     <main className="flex h-[calc(100dvh-50px)] min-h-0 flex-col overflow-hidden bg-[var(--oh-surface)] p-4 font-sans md:p-5">
+      <LocalQzBridge />
       <div className="odoo-register-header relative z-30 mb-3 flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-[20px] font-semibold leading-tight text-[var(--oh-text)]">Sell</h1>

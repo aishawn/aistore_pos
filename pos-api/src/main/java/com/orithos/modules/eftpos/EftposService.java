@@ -105,12 +105,21 @@ public class EftposService {
             throw new BusinessException(40000, "The payment amount must be greater than zero.");
         }
         String orderUuid = body.orderUuid().trim();
+        int amountCents = toCents(body.expectedTotal());
         var existing = repository.findAttemptByOrderUuid(scope.vendorId(), orderUuid);
-        if (existing.isPresent()) return toAttemptView(existing.get(), binding);
+        if (existing.isPresent()) {
+            EftposRepository.AttemptRow row = existing.get();
+            if (row.amountCents() != amountCents) {
+                throw new BusinessException(40900, "This order already has a payment attempt with a different amount.");
+            }
+            if (row.registerId() != registerId) {
+                throw new BusinessException(40900, "This payment attempt belongs to a different register.");
+            }
+            return toAttemptView(row, binding);
+        }
         if (repository.hasActiveAttempt(scope.vendorId(), registerId)) {
             throw new BusinessException(40900, "This register already has an in-progress EFTPOS attempt.");
         }
-        int amountCents = toCents(body.expectedTotal());
         String challenge = UUID.randomUUID().toString().replace("-", "");
         long attemptId = repository.insertAttempt(new EftposRepository.AttemptRow(
                 0,
@@ -173,12 +182,22 @@ public class EftposService {
         return toAttemptView(repository.findAttemptById(scope.vendorId(), attempt.id()).orElseThrow(), binding);
     }
 
-    public void requireApprovedAttemptForCheckout(String orderUuid) {
+    public void requireApprovedAttemptForCheckout(String orderUuid, Long registerId, BigDecimal expectedTotal) {
         if (!properties.isEnforceCardCapture()) return;
         Long vendorId = CurrentUser.vendorId();
         if (vendorId == null || orderUuid == null || orderUuid.isBlank()) return;
         EftposRepository.AttemptRow attempt = repository.findAttemptByOrderUuid(vendorId, orderUuid.trim()).orElse(null);
-        if (attempt == null || !EftposPaymentStatuses.APPROVED.equals(attempt.status())) {
+        if (attempt == null) {
+            throw new BusinessException(40900, "Card payment must be approved on the terminal before checkout.");
+        }
+        if (registerId != null && attempt.registerId() != registerId) {
+            throw new BusinessException(40900, "The EFTPOS approval does not match this register.");
+        }
+        if (expectedTotal != null && attempt.amountCents() != toCents(expectedTotal)) {
+            throw new BusinessException(40900, "The EFTPOS approval amount does not match this checkout.");
+        }
+        if (!EftposPaymentStatuses.APPROVED.equals(attempt.status())
+                && !EftposPaymentStatuses.APPROVED_PENDING_SETTLEMENT.equals(attempt.status())) {
             throw new BusinessException(40900, "Card payment must be approved on the terminal before checkout.");
         }
     }

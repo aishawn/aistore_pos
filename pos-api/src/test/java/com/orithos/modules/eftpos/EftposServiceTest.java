@@ -22,6 +22,7 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -43,7 +44,7 @@ class EftposServiceTest {
         Register register = new Register();
         register.setId(12L);
         register.setOutletId(2L);
-        when(registerMapper.findById(12L)).thenReturn(register);
+        lenient().when(registerMapper.findById(12L)).thenReturn(register);
     }
 
     @AfterEach
@@ -65,6 +66,19 @@ class EftposServiceTest {
         assertEquals(77L, view.attemptId());
         assertEquals("PENDING", view.status());
         assertNotNull(view.connectorChallenge());
+    }
+
+    @Test
+    void rejectsCheckoutWhenAttemptAmountDiffers() {
+        EftposProperties enforced = new EftposProperties();
+        enforced.setEnforceCardCapture(true);
+        EftposService enforcedService = new EftposService(repository, registerMapper, enforced);
+        when(repository.findAttemptByOrderUuid(1L, "order-2")).thenReturn(Optional.of(
+                new EftposRepository.AttemptRow(
+                        9L, 1L, 2L, 12L, "order-2", 500, "AUD",
+                        "sig", EftposPaymentStatuses.APPROVED, "T1", "challenge")));
+        org.junit.jupiter.api.Assertions.assertThrows(com.orithos.common.BusinessException.class, () ->
+                enforcedService.requireApprovedAttemptForCheckout("order-2", 12L, new BigDecimal("12.50")));
     }
 
     @Test

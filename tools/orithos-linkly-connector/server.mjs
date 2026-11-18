@@ -58,6 +58,33 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  if (req.method === "POST" && url === "/v1/query") {
+    let raw = "";
+    req.on("data", (chunk) => {
+      raw += chunk;
+    });
+    req.on("end", () => {
+      let body;
+      try {
+        body = raw ? JSON.parse(raw) : {};
+      } catch {
+        sendJson(res, 400, { error: "Invalid JSON" });
+        return;
+      }
+      const attemptId = body.attemptId;
+      const connectorChallenge = body.connectorChallenge;
+      if (!attemptId || !connectorChallenge) {
+        sendJson(res, 400, { error: "attemptId and connectorChallenge are required" });
+        return;
+      }
+      sendJson(res, 202, { queried: true, attemptId });
+      setTimeout(() => {
+        void postCallback(attemptId, connectorChallenge, "APPROVED", `LAB-QUERY-${attemptId}-${Date.now()}`);
+      }, AUTO_APPROVE_MS);
+    });
+    return;
+  }
+
   if (req.method === "POST" && url === "/v1/purchase") {
     let raw = "";
     req.on("data", (chunk) => {

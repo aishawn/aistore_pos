@@ -121,7 +121,7 @@ public class CheckoutService {
             throw new BusinessException(40000, "Refresh and confirm a server quote before checkout.");
         }
         if (req.getSaleId() == null && "EFTPOS".equals(resolveTenderType(req.getTender())) && !isEftposCashOut(req.getTender())) {
-            eftposService.requireApprovedAttemptForCheckout(idempotencyKey);
+            eftposService.requireApprovedAttemptForCheckout(idempotencyKey, req.getRegisterId(), req.getExpectedTotal());
         }
         if (req.getSaleId() == null && req.getItems().stream().anyMatch(item -> item == null
                 || item.getUnitPrice() == null || item.getExpectedTaxRate() == null)) {
