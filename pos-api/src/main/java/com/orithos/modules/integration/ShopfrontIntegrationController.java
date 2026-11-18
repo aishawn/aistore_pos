@@ -3964,26 +3964,50 @@ public class ShopfrontIntegrationController {
 
     private Set<String> verifiedUnstockedBarcodeCodes(
             List<BarcodeWrite> barcodes, Map<String, Long> owners, long outletId, String store) {
+        long conflictingCodes = barcodes.stream()
+                .filter(barcode -> owners.get(barcode.code()) != null
+                        && owners.get(barcode.code()) != barcode.productId())
+                .count();
         BarcodeWrite snapshot = barcodes.stream().filter(barcode -> barcode.catalogConfirmed()
                 && barcode.snapshotComplete() && barcode.activeSource()
                 && barcode.snapshotFingerprint() != null && barcode.snapshotFingerprint().matches("[a-f0-9]{64}"))
                 .findFirst().orElse(null);
-        if (snapshot == null) return Set.of();
+        if (snapshot == null) {
+            if (conflictingCodes > 0) log.info("Shopfront barcode migration gate outletId={} store={} conflicts={} gate=complete_snapshot_metadata",
+                    outletId, store, conflictingCodes);
+            return Set.of();
+        }
         List<Map<String, Object>> registered = jdbc.queryForList("""
                 SELECT source_ids::text AS source_ids,barcode_sources::text AS barcode_sources
                 FROM shopfront_product_barcode_snapshot
                 WHERE store_key=? AND outlet_id=? AND fingerprint=?
                 """, store, outletId, snapshot.snapshotFingerprint());
-        if (registered.isEmpty()) return Set.of();
+        if (registered.isEmpty()) {
+            if (conflictingCodes > 0) log.info("Shopfront barcode migration gate outletId={} store={} conflicts={} gate=registered_snapshot_fingerprint",
+                    outletId, store, conflictingCodes);
+            return Set.of();
+        }
         JsonNode snapshotSourceIds;
         JsonNode barcodeSources;
         try {
             snapshotSourceIds = objectMapper.readTree(String.valueOf(registered.getFirst().get("source_ids")));
             barcodeSources = objectMapper.readTree(String.valueOf(registered.getFirst().get("barcode_sources")));
         } catch (Exception e) {
+            if (conflictingCodes > 0) log.info("Shopfront barcode migration gate outletId={} store={} conflicts={} gate=snapshot_json",
+                    outletId, store, conflictingCodes);
             return Set.of();
         }
-        if (!snapshotSourceIds.isArray() || !barcodeSources.isObject()) return Set.of();
+        if (!snapshotSourceIds.isArray() || !barcodeSources.isObject()) {
+            if (conflictingCodes > 0) log.info("Shopfront barcode migration gate outletId={} store={} conflicts={} gate=snapshot_shape",
+                    outletId, store, conflictingCodes);
+            return Set.of();
+        }
+        long snapshotMetadataCodes = barcodes.stream()
+                .filter(barcode -> owners.get(barcode.code()) != null
+                        && owners.get(barcode.code()) != barcode.productId()
+                        && barcode.catalogConfirmed() && barcode.snapshotComplete() && barcode.activeSource()
+                        && snapshot.snapshotFingerprint().equals(barcode.snapshotFingerprint()))
+                .count();
         List<Long> productIds = barcodes.stream()
                 .filter(barcode -> barcode.catalogConfirmed() && barcode.snapshotComplete()
                         && barcode.activeSource() && snapshot.snapshotFingerprint().equals(barcode.snapshotFingerprint()))
@@ -3991,7 +4015,11 @@ public class ShopfrontIntegrationController {
                 .filter(owner -> owner != null)
                 .distinct()
                 .toList();
-        if (productIds.isEmpty()) return Set.of();
+        if (productIds.isEmpty()) {
+            if (conflictingCodes > 0) log.info("Shopfront barcode migration gate outletId={} store={} conflicts={} snapshotMetadataCodes={} gate=barcode_owner_lookup",
+                    outletId, store, conflictingCodes, snapshotMetadataCodes);
+            return Set.of();
+        }
 
         Map<Long, Map<String, Object>> candidates = new HashMap<>();
         for (int start = 0; start < productIds.size(); start += 400) {
@@ -4028,7 +4056,11 @@ public class ShopfrontIntegrationController {
                 }
             }
         }
-        if (candidates.isEmpty()) return Set.of();
+        if (candidates.isEmpty()) {
+            if (conflictingCodes > 0) log.info("Shopfront barcode migration gate outletId={} store={} conflicts={} snapshotMetadataCodes={} candidateOwners=0 gate=zero_stock_without_history",
+                    outletId, store, conflictingCodes, snapshotMetadataCodes);
+            return Set.of();
+        }
         String placeholders = String.join(",", java.util.Collections.nCopies(candidates.size(), "?"));
         List<Object> mappingArgs = new ArrayList<>();
         mappingArgs.add(store);
@@ -4044,18 +4076,29 @@ public class ShopfrontIntegrationController {
         Set<String> currentSourceIds = new HashSet<>();
         snapshotSourceIds.forEach(node -> currentSourceIds.add(node.asText()));
         Set<String> result = new HashSet<>();
+        long candidateOwnerCodes = 0;
+        long uniqueCurrentClaimCodes = 0;
+        long uniqueOwnerMappingCodes = 0;
         for (BarcodeWrite barcode : barcodes) {
             Long owner = owners.get(barcode.code());
-            if (owner == null || !candidates.containsKey(owner) || !barcode.snapshotComplete()
-                    || !barcode.activeSource() || !barcode.catalogConfirmed()
+            if (owner == null || owner == barcode.productId()) continue;
+            if (!barcode.snapshotComplete() || !barcode.activeSource() || !barcode.catalogConfirmed()
                     || !snapshot.snapshotFingerprint().equals(barcode.snapshotFingerprint())) continue;
+            if (!candidates.containsKey(owner)) continue;
+            candidateOwnerCodes++;
             JsonNode claims = barcodeSources.path(barcode.code());
             List<String> mappedSources = ownerSources.get(owner);
-            if (!claims.isArray() || claims.size() != 1 || !barcode.sourceId().equals(claims.get(0).asText())
-                    || !currentSourceIds.contains(barcode.sourceId())
-                    || mappedSources == null || mappedSources.size() != 1) continue;
+            if (claims.isArray() && claims.size() == 1
+                    && barcode.sourceId().equals(claims.get(0).asText())
+                    && currentSourceIds.contains(barcode.sourceId())) uniqueCurrentClaimCodes++;
+            else continue;
+            if (mappedSources == null || mappedSources.size() != 1) continue;
+            uniqueOwnerMappingCodes++;
             result.add(barcode.code());
         }
+        if (conflictingCodes > 0) log.info("Shopfront barcode migration gate outletId={} store={} conflicts={} snapshotMetadataCodes={} candidateOwnerCodes={} uniqueCurrentClaimCodes={} uniqueOwnerMappingCodes={} eligibleCodes={}",
+                outletId, store, conflictingCodes, snapshotMetadataCodes, candidateOwnerCodes,
+                uniqueCurrentClaimCodes, uniqueOwnerMappingCodes, result.size());
         return result;
     }
 
