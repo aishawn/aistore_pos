@@ -45,7 +45,9 @@ test("hardware setup reports bridge availability without enabling Linkly payment
   await page.goto("/settings/hardware");
   await qzLoadFailure;
 
-  await expect(page.getByRole("heading", { name: "Local hardware bridge" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Hardware connect settings" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Test open cash drawer" })).toBeVisible();
+  await expect(page.getByLabel("Cash drawer kick code")).toHaveValue("27, 112, 0, 25, 250");
   await page.getByRole("button", { name: "Connect local bridge" }).click();
   await expect(page.getByRole("status").filter({
     hasText: /QZ Tray browser library failed to load|QZ Tray is not installed or unavailable in this browser/,

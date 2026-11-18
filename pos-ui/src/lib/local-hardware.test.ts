@@ -5,8 +5,11 @@ import {
   formatSaleReceiptPlainText,
   getHardwareReadinessItems,
   getLocalHardwareSettings,
+  formatCashDrawerKickCode,
   printReceiptDocument,
+  printRawBytesThroughLocalBridge,
   printThroughLocalBridge,
+  testOpenCashDrawer,
   readSerialDiagnostic,
   saveLocalHardwareSettings,
   subscribeLocalHardwareSettings,
@@ -188,6 +191,9 @@ test("loads Linkly planning fields from local register preferences", () => {
   storage.set("orithos.hardware.settings.v1", JSON.stringify({
     printer: "Receipt Printer",
     cashDrawer: true,
+    printerBrand: "epson",
+    cashDrawerPin: "0",
+    cutDelayMs: 500,
     linklyTerminal: "PAX model",
     linklyAcquirer: "Example Bank",
     linklyConnection: "ethernet",
@@ -196,10 +202,58 @@ test("loads Linkly planning fields from local register preferences", () => {
   assert.deepEqual(getLocalHardwareSettings(), {
     printer: "Receipt Printer",
     cashDrawer: true,
+    printerBrand: "epson",
+    cashDrawerPin: "0",
+    cutDelayMs: 500,
     linklyTerminal: "PAX model",
     linklyAcquirer: "Example Bank",
     linklyConnection: "ethernet",
   });
+});
+
+test("maps Epson drawer settings to the Shopfront-style kick code", () => {
+  assert.equal(
+    formatCashDrawerKickCode({ printerBrand: "epson", cashDrawerPin: "0" }),
+    "27, 112, 0, 25, 250",
+  );
+});
+
+test("sends raw kick bytes through the local bridge", async () => {
+  const jobs: unknown[][] = [];
+  setWindow({
+    qz: {
+      websocket: { isActive: () => true },
+      configs: { create: (printer: string) => ({ printer }) },
+      print: async (config: unknown, data: unknown[]) => { jobs.push([config, ...data]); },
+    },
+  });
+
+  await printRawBytesThroughLocalBridge("Receipt Printer", [27, 112, 0, 25, 250]);
+  assert.equal(jobs.length, 1);
+  assert.deepEqual((jobs[0]?.[1] as { data: string })?.data, "1b700019fa");
+});
+
+test("opens the cash drawer with configured printer settings", async () => {
+  const jobs: unknown[][] = [];
+  setWindow({
+    qz: {
+      websocket: { isActive: () => true },
+      configs: { create: (printer: string) => ({ printer }) },
+      print: async (config: unknown, data: unknown[]) => { jobs.push([config, ...data]); },
+    },
+  });
+
+  await testOpenCashDrawer({
+    printer: "EPSON TM-T82II Receipt",
+    cashDrawer: true,
+    printerBrand: "epson",
+    cashDrawerPin: "0",
+    cutDelayMs: 500,
+    linklyTerminal: "",
+    linklyAcquirer: "",
+    linklyConnection: "",
+  });
+  assert.equal(jobs.length, 1);
 });
 
 test("formats a completed sale receipt as plain text for the local bridge", () => {
@@ -251,6 +305,9 @@ test("prints sale receipts through QZ when a printer is configured", async () =>
   values.set("orithos.hardware.settings.v1", JSON.stringify({
     printer: "Receipt Printer",
     cashDrawer: false,
+    printerBrand: "epson",
+    cashDrawerPin: "0",
+    cutDelayMs: 500,
     linklyTerminal: "",
     linklyAcquirer: "",
     linklyConnection: "",
@@ -276,6 +333,9 @@ test("falls back to the browser print dialog when the local bridge is unavailabl
   values.set("orithos.hardware.settings.v1", JSON.stringify({
     printer: "Receipt Printer",
     cashDrawer: false,
+    printerBrand: "epson",
+    cashDrawerPin: "0",
+    cutDelayMs: 500,
     linklyTerminal: "",
     linklyAcquirer: "",
     linklyConnection: "",
@@ -295,6 +355,9 @@ test("summarises printer readiness from saved preferences and bridge state", () 
   values.set("orithos.hardware.settings.v1", JSON.stringify({
     printer: "Kitchen",
     cashDrawer: true,
+    printerBrand: "epson",
+    cashDrawerPin: "0",
+    cutDelayMs: 500,
     linklyTerminal: "",
     linklyAcquirer: "",
     linklyConnection: "",
@@ -306,7 +369,7 @@ test("summarises printer readiness from saved preferences and bridge state", () 
 
   const items = getHardwareReadinessItems();
   assert.equal(items.find((item) => item.id === "printer")?.status, "Ready · Kitchen");
-  assert.equal(items.find((item) => item.id === "drawer")?.status, "Attached; auto-open disabled");
+  assert.equal(items.find((item) => item.id === "drawer")?.status, "Attached; register auto-open disabled");
 });
 
 test("notifies same-tab settings subscribers after a local preference is saved", () => {
@@ -315,7 +378,16 @@ test("notifies same-tab settings subscribers after a local preference is saved",
   let notifications = 0;
   const unsubscribe = subscribeLocalHardwareSettings(() => { notifications += 1; });
 
-  saveLocalHardwareSettings({ printer: "Printer", cashDrawer: true, linklyTerminal: "", linklyAcquirer: "", linklyConnection: "" });
+  saveLocalHardwareSettings({
+    printer: "Printer",
+    cashDrawer: true,
+    printerBrand: "epson",
+    cashDrawerPin: "0",
+    cutDelayMs: 500,
+    linklyTerminal: "",
+    linklyAcquirer: "",
+    linklyConnection: "",
+  });
   unsubscribe();
 
   assert.equal(notifications, 1);

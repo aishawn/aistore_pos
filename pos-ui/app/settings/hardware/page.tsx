@@ -39,7 +39,7 @@ export default function HardwareSettingsPage() {
   return (
     <AdminPageLayout
       title="Hardware"
-      subtitle="Company defaults and this register's device connections"
+      subtitle="Local hardware connect and company defaults for this store"
       toolbar={<DevicesSettingsTabs activeHref="/settings/hardware" />}
     >
       {error && <p className="mb-3 text-sm text-red-700">{error}</p>}

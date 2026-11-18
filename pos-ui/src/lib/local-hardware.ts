@@ -23,9 +23,14 @@ export type LocalHardwareState = {
   error: string | null;
 };
 
-type HardwareSettings = {
+export type ReceiptPrinterBrand = "epson" | "star" | "generic";
+
+export type HardwareSettings = {
   printer: string;
   cashDrawer: boolean;
+  printerBrand: ReceiptPrinterBrand;
+  cashDrawerPin: "0" | "1";
+  cutDelayMs: number;
   linklyTerminal: string;
   linklyAcquirer: string;
   linklyConnection: string;
@@ -36,6 +41,9 @@ export const BARCODE_SCANNER_TEST_KEY = "orithos-barcode-scanner-tested";
 const EMPTY_SETTINGS: HardwareSettings = {
   printer: "",
   cashDrawer: false,
+  printerBrand: "epson",
+  cashDrawerPin: "0",
+  cutDelayMs: 500,
   linklyTerminal: "",
   linklyAcquirer: "",
   linklyConnection: "",
@@ -134,6 +142,55 @@ export async function printThroughLocalBridge(printer: string, data: string): Pr
   const qz = typeof window !== "undefined" ? window.qz : undefined;
   if (!qz?.websocket.isActive()) throw new Error("Connect the QZ Tray local bridge before printing.");
   await qz.print(qz.configs.create(printer, { encoding: "UTF-8" }), [data]);
+}
+
+export function resolveCashDrawerKickBytes(settings: Pick<HardwareSettings, "printerBrand" | "cashDrawerPin">): number[] {
+  if (settings.printerBrand === "star") return [7];
+  const pin = settings.cashDrawerPin === "1" ? 1 : 0;
+  return [27, 112, pin, 25, 250];
+}
+
+export function formatCashDrawerKickCode(settings: Pick<HardwareSettings, "printerBrand" | "cashDrawerPin">): string {
+  return resolveCashDrawerKickBytes(settings).join(", ");
+}
+
+function bytesToQzHex(bytes: number[]): string {
+  return bytes.map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+export async function printRawBytesThroughLocalBridge(printer: string, bytes: number[]): Promise<void> {
+  const qz = typeof window !== "undefined" ? window.qz : undefined;
+  if (!qz?.websocket.isActive()) throw new Error("Connect the QZ Tray local bridge before printing.");
+  await qz.print(qz.configs.create(printer), [{
+    type: "raw",
+    format: "command",
+    flavor: "hex",
+    data: bytesToQzHex(bytes),
+  }]);
+}
+
+export async function testOpenCashDrawer(settings: HardwareSettings): Promise<void> {
+  if (!settings.printer) throw new Error("Select a receipt printer first.");
+  if (!settings.cashDrawer) throw new Error("Turn on cash drawer for the selected printer first.");
+  await printRawBytesThroughLocalBridge(settings.printer, resolveCashDrawerKickBytes(settings));
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/** Test print with optional paper cut after brand-specific delay (ESC/POS GS V). */
+export async function printReceiptTestThroughLocalBridge(settings: HardwareSettings): Promise<void> {
+  if (!settings.printer) throw new Error("Select a receipt printer first.");
+  const body = "Orithos POS hardware test\n\n";
+  await printThroughLocalBridge(settings.printer, body);
+  const delay = Number.isFinite(settings.cutDelayMs) ? Math.max(0, Math.min(settings.cutDelayMs, 10_000)) : 500;
+  await sleep(delay);
+  if (settings.printerBrand === "star") {
+    await printRawBytesThroughLocalBridge(settings.printer, [27, 100, 3]);
+  } else {
+    await printRawBytesThroughLocalBridge(settings.printer, [29, 86, 0]);
+  }
 }
 
 export type SaleReceiptPlainTextInput = {
@@ -266,7 +323,7 @@ export function getHardwareReadinessItems(): HardwareReadinessItem[] {
       : ({ status: "Configured; connect QZ on Hardware", tone: "warn" as const });
 
   const drawer = settings.cashDrawer
-    ? ({ status: "Attached; auto-open disabled", tone: "warn" as const })
+    ? ({ status: "Attached; register auto-open disabled", tone: "warn" as const })
     : ({ status: "Not configured", tone: "muted" as const });
 
   const scanner = scannerTested
@@ -300,9 +357,15 @@ export function getLocalHardwareSettings(): HardwareSettings {
 export function parseLocalHardwareSettings(raw: string): HardwareSettings {
   try {
     const value = JSON.parse(raw || "null") as Partial<HardwareSettings> | null;
+    const brand = value?.printerBrand;
+    const pin = value?.cashDrawerPin;
+    const cutDelay = typeof value?.cutDelayMs === "number" ? value.cutDelayMs : Number(value?.cutDelayMs);
     return {
       printer: typeof value?.printer === "string" ? value.printer : "",
       cashDrawer: value?.cashDrawer === true,
+      printerBrand: brand === "epson" || brand === "star" || brand === "generic" ? brand : "epson",
+      cashDrawerPin: pin === "1" ? "1" : "0",
+      cutDelayMs: Number.isFinite(cutDelay) ? Math.max(0, Math.min(cutDelay, 10_000)) : 500,
       linklyTerminal: typeof value?.linklyTerminal === "string" ? value.linklyTerminal : "",
       linklyAcquirer: typeof value?.linklyAcquirer === "string" ? value.linklyAcquirer : "",
       linklyConnection: typeof value?.linklyConnection === "string" ? value.linklyConnection : "",
