@@ -23,7 +23,7 @@ class ReportQueryServiceSalesHistoryTaxTest {
     private static final LocalDate DAY = LocalDate.of(2026, 11, 12);
 
     @Test
-    void usesCompleteLineTaxWhenSaleHeaderTaxWasNotImported() {
+    void queriesCompleteLineTaxBeforeFallingBackToSaleHeaderTax() {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
         doReturn(1).when(jdbc).queryForObject(anyString(), eq(Integer.class), anyLong(), anyLong());
         doReturn(List.of(Map.of(
@@ -39,7 +39,8 @@ class ReportQueryServiceSalesHistoryTaxTest {
         Map<String, Object> row = ((List<Map<String, Object>>) report.get("days")).getFirst();
         assertEquals(true, row.get("taxAvailable"));
         assertEquals(new BigDecimal("1.00"), row.get("tax"));
-        verify(jdbc).queryForList(org.mockito.ArgumentMatchers.contains("COALESCE(s.total_tax, line.tax)"),
+        verify(jdbc).queryForList(org.mockito.ArgumentMatchers.contains(
+                        "line.item_count > 0 AND line.tax_missing_count = 0"),
                 any(Object.class), any(Object.class), any(Object.class));
     }
 
