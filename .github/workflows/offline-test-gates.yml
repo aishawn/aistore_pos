@@ -49,16 +49,16 @@ jobs:
       - name: Install UI dependencies
         id: install
         run: npm ci
+      - name: Install Chromium
+        id: browser
+        if: steps.install.outcome == 'success'
+        run: npx playwright install --with-deps chromium
       - run: mkdir -p ../reports/test-runs
       - id: timer
         run: echo "started=$(date +%s)" >> "$GITHUB_OUTPUT"
       - name: Unit tests
         id: test
         run: npm run test:unit:ci
-      - name: Check JUnit failures
-        id: junit
-        if: always()
-        run: python ../scripts/testing/check_junit.py ../reports/test-runs/pos-ui.xml
       - name: Type check
         id: typecheck
         if: always()
@@ -67,11 +67,19 @@ jobs:
         id: lint
         if: always()
         run: npm run lint
+      - name: Browser and accessibility smoke
+        id: e2e
+        if: steps.browser.outcome == 'success'
+        run: npm run test:e2e
+      - name: Check all UI JUnit reports
+        id: junit_all
+        if: always()
+        run: python ../scripts/testing/check_junit.py ../reports/test-runs/pos-ui.xml test-results/e2e-junit.xml
       - name: Write test manifest
         if: always()
         working-directory: ${{ github.workspace }}
         env:
-          SUITE_STATUS: ${{ steps.install.outcome != 'success' && 'BLOCKED' || (steps.test.outcome == 'success' && steps.junit.outcome == 'success' && steps.typecheck.outcome == 'success' && steps.lint.outcome == 'success' && 'PASS' || 'FAIL') }}
+          SUITE_STATUS: ${{ steps.install.outcome != 'success' && 'BLOCKED' || (steps.browser.outcome != 'success' && 'BLOCKED' || (steps.test.outcome == 'success' && steps.junit_all.outcome == 'success' && steps.typecheck.outcome == 'success' && steps.lint.outcome == 'success' && steps.e2e.outcome == 'success' && 'PASS' || 'FAIL')) }}
         run: python scripts/testing/report.py --suite pos-ui --status "$SUITE_STATUS" --environment github-actions --duration-seconds "$(( $(date +%s) - ${{ steps.timer.outputs.started || 0 }} ))" --output reports/test-runs/pos-ui.json
       - uses: actions/upload-artifact@v4
         if: always()
@@ -80,6 +88,8 @@ jobs:
           path: |
             reports/test-runs/pos-ui.json
             reports/test-runs/pos-ui.xml
+            pos-ui/test-results/e2e-junit.xml
+            pos-ui/test-results/artifacts/
           if-no-files-found: warn
 
   java:

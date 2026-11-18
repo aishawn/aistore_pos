@@ -7,7 +7,7 @@
 | 离线提交门禁 | 已落地 | POS UI/API、Crawler、Forecast、AI harness 与 AI Gateway/Worker 各自执行；UI JUnit 失败计数也作为门禁判定；CI 上传脱敏 JSON 与 JUnit 工件 |
 | OpenAPI 合约入口 | 已落地 | Schemathesis wrapper 仅接受 allowlist host 且只跑 GET；需在本地 Compose 上手动启动 |
 | k6 只读冒烟 | 已落地 | 默认 localhost，逐步升压，只读版本端点 |
-| Playwright + axe | 待接入 | 需要锁定浏览器依赖和本地登录测试 fixture；未获得 fixture 前不接触 Demo |
+| Playwright + axe | 已接入基础冒烟 | CI 和本地启动 Next dev，登录页跑标签断言与 axe；认证业务页仍待本地 Compose 测试账号 fixture |
 | PostgreSQL/Redis Testcontainers | 待接入 | 需要先把现有 API 集成测试与可重置容器数据连起来，不能以空容器连通性冒充业务集成覆盖 |
 | Promptfoo 在线比较 | 待接入 | 在线费用预算与可用 provider 配置需由手动批次提供；离线 CI 不加载模型密钥 |
 | Demo SHA 验收 | 手动流程 | 继续使用现有只读 UAT 脚本；写操作独立触发并记录清理 |
@@ -17,6 +17,7 @@
 | 范围 | 命令 | 运行环境 |
 |---|---|---|
 | POS UI 单测、类型、Lint | `cd pos-ui; npm ci; npm run test:unit; npm run typecheck; npm run lint` | Node 24 |
+| POS UI 浏览器冒烟 | `cd pos-ui; npx playwright install chromium; npm run test:e2e` | 本地 Next dev，登录页 |
 | POS API | `cd pos-api; mvn -B clean verify` | Java 21 |
 | Crawler | `cd shopfront_crawler; pip install -e ".[test]"; pytest -q` | Python 3.12 |
 | Forecast | `cd forecast-service; pip install -r requirements.txt pytest; pytest -q` | Python 3.12 |
@@ -33,8 +34,8 @@ GitHub Actions 默认跟随提交门禁，也可在 Actions 页面手动重跑 `
 ## 集成与浏览器测试
 
 - 本地使用专属 Compose project 和可重置 PostgreSQL/Redis，不连接 Demo 或生产数据库；Java 集成测试补充 Testcontainers 后再纳入提交门禁。
-- Playwright Test 使用 `baseURL` 指向本地 Compose 前端；登录凭据只从 CI secrets 注入，禁止保存/上传 storage state。覆盖登录、报表只读、助手问答、库存只读及收银草稿；提交销售/采购等写入只允许隔离数据集。
-- 浏览器套件通过 `@axe-core/playwright` 检查登录、报表、助手和库存的关键页面。无凭据或服务不可用时结果为 `BLOCKED`，不得自动跳到 Demo。
+- Playwright Test 当前启动本地 Next dev，对登录表单执行无凭据 UI 检查。取得本地 Compose auth fixture 后，再逐步覆盖报表只读、助手问答、库存只读及收银草稿；不得自动跳到 Demo，也不保存/上传登录 storage state。
+- `@axe-core/playwright` 当前检查登录页；报表、助手和库存待本地数据 fixture 可重复后纳入。提交业务写入只允许隔离数据集。
 - Schemathesis 从 POS API 的 OpenAPI 文档生成边界请求，只指向显式 allowlist host；包装器只放行 GET。安装 `pip install -r scripts/testing/requirements.txt` 后，用 `API_SCHEMA`、`API_BASE_URL` 和 `SCHEMATHESIS_ALLOWED_HOSTS` 指向本地 Compose API 并执行 `python scripts/testing/run_contract_checks.py`。
 
 ## AI 与预测质量

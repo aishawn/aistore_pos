@@ -5,6 +5,9 @@ node_modules/
 
 # Build
 .next/
+.playwright/
+playwright-report/
+test-results/
 .next-aiqa-validation/
 out/
 build/

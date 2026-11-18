@@ -36,6 +36,15 @@ class JUnitReportTests(unittest.TestCase):
             report.write_text('<testsuite tests="1" errors="1"/>', encoding="utf-8")
             self.assertEqual(checker.report_exit_code(report), 1)
 
+    def test_combines_multiple_reports(self):
+        with tempfile.TemporaryDirectory() as temp:
+            passed = Path(temp) / "passed.xml"
+            failed = Path(temp) / "failed.xml"
+            passed.write_text('<testsuite tests="2"/>', encoding="utf-8")
+            failed.write_text('<testsuite tests="1" failures="1"/>', encoding="utf-8")
+            self.assertEqual(checker.combined_failure_counts([passed, failed]), (3, 1, 0))
+            self.assertEqual(checker.report_exit_code([passed, failed]), 1)
+
 
 if __name__ == "__main__":
     unittest.main()

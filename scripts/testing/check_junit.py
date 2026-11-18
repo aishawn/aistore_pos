@@ -22,17 +22,27 @@ def failure_counts(path: Path) -> tuple[int, int, int]:
     return tests, failures, errors
 
 
-def report_exit_code(path: Path) -> int:
-    _, failures, errors = failure_counts(path)
+def combined_failure_counts(paths: list[Path]) -> tuple[int, int, int]:
+    totals = [0, 0, 0]
+    for path in paths:
+        counts = failure_counts(path)
+        totals = [total + count for total, count in zip(totals, counts)]
+    return tuple(totals)
+
+
+def report_exit_code(paths: Path | list[Path]) -> int:
+    if isinstance(paths, Path):
+        paths = [paths]
+    _, failures, errors = combined_failure_counts(paths)
     return 1 if failures or errors else 0
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("report", type=Path)
+    parser.add_argument("report", type=Path, nargs="+")
     args = parser.parse_args()
     try:
-        tests, failures, errors = failure_counts(args.report)
+        tests, failures, errors = combined_failure_counts(args.report)
     except (ET.ParseError, OSError, ValueError) as error:
         print(f"invalid JUnit report: {error}", file=sys.stderr)
         return 2
