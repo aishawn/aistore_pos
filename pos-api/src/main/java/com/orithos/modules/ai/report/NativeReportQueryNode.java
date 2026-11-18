@@ -140,6 +140,9 @@ public class NativeReportQueryNode implements NodeAction {
         metrics.put("grossProfit", hasData && canViewCost ? overview.get("grossProfit") : null);
         metrics.put("costAvailable", canViewCost && Boolean.TRUE.equals(overview.get("costAvailable")));
         if (!canViewCost) metrics.put("profitUnavailableReason", "permission");
+        else if (!Boolean.TRUE.equals(overview.get("taxAvailable"))) {
+            metrics.put("profitUnavailableReason", "tax");
+        }
         metrics.put("transactions", hasData ? overview.get("transactions") : null);
         metrics.put("dataAsOf", overview.get("dataAsOf"));
         metrics.put("dataSource", normalizedDataSource(overview));

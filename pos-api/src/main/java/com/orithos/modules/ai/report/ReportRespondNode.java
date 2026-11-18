@@ -83,12 +83,19 @@ public class ReportRespondNode implements NodeAction {
         }
         Object profit = row.get("grossProfit");
         String range = rangeText(from, to);
-        if (Boolean.FALSE.equals(row.get("costAvailable")) || profit == null) {
+        if (Boolean.FALSE.equals(row.get("costAvailable")) || profit == null
+                || profit.toString().isBlank()) {
             if ("permission".equals(row.get("profitUnavailableReason"))) {
                 return chinese
                         ? range + "营业额 AUD " + money(sales) + "；毛利暂不可用，因为当前账号没有查看成本数据的权限。数据来源：Orithos POS 报表。"
                         : "Sales for " + range + " were AUD " + money(sales)
                             + "; gross profit is unavailable because your account cannot view cost data. Source: Orithos POS report.";
+            }
+            if ("tax".equals(row.get("profitUnavailableReason"))) {
+                return chinese
+                        ? range + "营业额 AUD " + money(sales) + "；毛利暂不可用，销售税额数据不完整。数据来源：Orithos POS 报表。"
+                        : "Sales for " + range + " were AUD " + money(sales)
+                            + "; gross profit is unavailable because sale tax data is incomplete. Source: Orithos POS report.";
             }
             return chinese
                     ? range + "营业额 AUD " + money(sales) + "；毛利暂不可用，销售成本数据不完整。数据来源：Orithos POS 报表。"
@@ -98,9 +105,9 @@ public class ReportRespondNode implements NodeAction {
         String profitText = money(ReportQueryService.toDecimal(profit));
         return chinese
                 ? range + "营业额 AUD " + money(sales) + "，毛利 AUD " + profitText
-                    + "（营业额减成本，含 GST）。数据来源：Orithos POS 报表。"
+                    + "（税前营业额减成本）。数据来源：Orithos POS 报表。"
                 : "Sales for " + range + " were AUD " + money(sales) + " and gross profit was AUD " + profitText
-                    + " (sales less cost, GST inclusive). Source: Orithos POS report.";
+                    + " (ex-GST sales less cost). Source: Orithos POS report.";
     }
 
     @SuppressWarnings("unchecked")
@@ -128,21 +135,27 @@ public class ReportRespondNode implements NodeAction {
         if (!costComplete) {
             boolean permissionDenied = "permission".equals(first.get("profitUnavailableReason"))
                     || "permission".equals(second.get("profitUnavailableReason"));
+            boolean taxIncomplete = "tax".equals(first.get("profitUnavailableReason"))
+                    || "tax".equals(second.get("profitUnavailableReason"));
             return comparison + (chinese
                     ? permissionDenied
                         ? "。毛利对比暂不可用，因为当前账号没有查看成本数据的权限。数据来源：Orithos POS 报表。"
-                        : "。毛利对比暂不可用，因为至少一个日期的销售成本数据不完整。数据来源：Orithos POS 报表。"
+                        : taxIncomplete
+                            ? "。毛利对比暂不可用，因为至少一个日期的销售税额数据不完整。数据来源：Orithos POS 报表。"
+                            : "。毛利对比暂不可用，因为至少一个日期的销售成本数据不完整。数据来源：Orithos POS 报表。"
                     : permissionDenied
                         ? ". Gross profit comparison is unavailable because your account cannot view cost data. Source: Orithos POS report."
-                        : ". Gross profit comparison is unavailable because sale cost data is incomplete for at least one date. Source: Orithos POS report.");
+                        : taxIncomplete
+                            ? ". Gross profit comparison is unavailable because sale tax data is incomplete for at least one date. Source: Orithos POS report."
+                            : ". Gross profit comparison is unavailable because sale cost data is incomplete for at least one date. Source: Orithos POS report.");
         }
         return comparison + (chinese
                 ? "；毛利分别为 AUD " + money(ReportQueryService.toDecimal(first.get("grossProfit")))
                     + " 和 AUD " + money(ReportQueryService.toDecimal(second.get("grossProfit")))
-                    + "（营业额减成本，含 GST）。数据来源：Orithos POS 报表。"
+                    + "（税前营业额减成本）。数据来源：Orithos POS 报表。"
                 : "; gross profit was AUD " + money(ReportQueryService.toDecimal(first.get("grossProfit")))
                     + " and AUD " + money(ReportQueryService.toDecimal(second.get("grossProfit")))
-                    + " (sales less cost, GST inclusive). Source: Orithos POS report.");
+                    + " (ex-GST sales less cost). Source: Orithos POS report.");
     }
 
     private String formatSeries(List<Map<String, Object>> rows, String metricKey, String label,

@@ -52,7 +52,29 @@ class ReportRespondNodeTest {
                 "costAvailable", true, "transactions", 4)), "2026-10-16", "2026-10-16");
         when(state.value("intent", String.class)).thenReturn(Optional.of("report_sales"));
 
-        assertEquals("Sales for 2026-10-16 were AUD 125.50 and gross profit was AUD 40.25 (sales less cost, GST inclusive). Source: Orithos POS report.",
+        assertEquals("Sales for 2026-10-16 were AUD 125.50 and gross profit was AUD 40.25 (ex-GST sales less cost). Source: Orithos POS report.",
+                node.apply(state).get("answer"));
+    }
+
+    @Test
+    void authoritativeSalesAnswerUsesChineseExGstGrossProfitBasis() {
+        OverAllState state = state("", List.of(Map.of("sales", 125.50, "grossProfit", 40.25,
+                "costAvailable", true, "transactions", 4)), "2026-10-16", "2026-10-16");
+        when(state.value("intent", String.class)).thenReturn(Optional.of("report_sales"));
+        when(state.value("question", String.class)).thenReturn(Optional.of("昨天毛利是多少？"));
+
+        assertEquals("2026-10-16营业额 AUD 125.50，毛利 AUD 40.25（税前营业额减成本）。数据来源：Orithos POS 报表。",
+                node.apply(state).get("answer"));
+    }
+
+    @Test
+    void authoritativeSalesDoesNotReportProfitWhenTaxCoverageIsIncomplete() {
+        OverAllState state = state("", List.of(Map.of("sales", 125.50, "grossProfit", "",
+                "costAvailable", true, "profitUnavailableReason", "tax", "transactions", 4)),
+                "2026-10-16", "2026-10-16");
+        when(state.value("intent", String.class)).thenReturn(Optional.of("report_sales"));
+
+        assertEquals("Sales for 2026-10-16 were AUD 125.50; gross profit is unavailable because sale tax data is incomplete. Source: Orithos POS report.",
                 node.apply(state).get("answer"));
     }
 
@@ -84,7 +106,7 @@ class ReportRespondNodeTest {
                 "second", Map.of("sales", 120.00, "grossProfit", 35.00, "costAvailable", true, "transactions", 3))),
                 "2026-10-14", "2026-10-15");
         when(state.value("intent", String.class)).thenReturn(Optional.of("report_sales"));
-        assertEquals("Sales on 2026-10-14 were AUD 100.00; sales on 2026-10-15 were AUD 120.00; gross profit was AUD 30.00 and AUD 35.00 (sales less cost, GST inclusive). Source: Orithos POS report.",
+        assertEquals("Sales on 2026-10-14 were AUD 100.00; sales on 2026-10-15 were AUD 120.00; gross profit was AUD 30.00 and AUD 35.00 (ex-GST sales less cost). Source: Orithos POS report.",
                 node.apply(state).get("answer"));
     }
 

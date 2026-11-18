@@ -439,13 +439,14 @@ public class ReportQueryService {
                                          THEN s.total_price ELSE 0 END), 0) AS sales_amount,
                        COALESCE(SUM(CASE WHEN COALESCE(s.total_price, 0) < 0 OR s.refund_reason IS NOT NULL
                                          THEN ABS(s.total_price) ELSE 0 END), 0) AS refund_amount,
-                       COALESCE(SUM(s.total_tax), 0) AS tax,
+                       COALESCE(SUM(COALESCE(s.total_tax, line.tax)), 0) AS tax,
                        COALESCE(SUM(COALESCE(s.total_discount, 0)), 0) AS discount,
                        COUNT(*) FILTER (WHERE COALESCE(s.total_price, 0) >= 0 AND s.refund_reason IS NULL)
                            AS transaction_count,
                        COUNT(*) FILTER (WHERE COALESCE(s.total_price, 0) < 0 OR s.refund_reason IS NOT NULL)
                            AS refund_transaction_count,
-                       COUNT(*) FILTER (WHERE s.total_tax IS NULL) AS tax_missing_count,
+                       COUNT(*) FILTER (WHERE s.total_tax IS NULL AND
+                         (line.line_count = 0 OR line.missing_tax_count > 0)) AS tax_missing_count,
                        COUNT(*) FILTER (WHERE s.total_cost IS NULL AND
                          (line.line_count = 0 OR line.missing_cost_count > 0)) AS cost_missing_count,
                        COALESCE(SUM(COALESCE(s.total_cost, line.cost, 0)), 0) AS cost,
@@ -454,7 +455,9 @@ public class ReportQueryService {
                 LEFT JOIN LATERAL (
                   SELECT COUNT(*) AS line_count,
                          SUM(si.cost * si.quantity) AS cost,
-                         COUNT(*) FILTER (WHERE si.cost IS NULL) AS missing_cost_count
+                         COUNT(*) FILTER (WHERE si.cost IS NULL) AS missing_cost_count,
+                         SUM(si.tax) AS tax,
+                         COUNT(*) FILTER (WHERE si.tax IS NULL) AS missing_tax_count
                   FROM sale_item si
                   WHERE si.sale_id = s.id AND si.outlet_id = s.outlet_id
                 ) line ON TRUE
@@ -555,9 +558,10 @@ public class ReportQueryService {
             day.put("cost", dayCostAvailable ? money(row.get("cost")) : null);
             day.put("tax", dayTaxAvailable ? money(row.get("tax")) : null);
             day.put("discount", money(row.get("discount")));
-            // Shopfront sales-report Profit = revenue - cost (tax inclusive).
-            day.put("grossProfit", dayCostAvailable
-                    ? money(toDecimal(row.get("revenue")).subtract(toDecimal(row.get("cost"))))
+            // Shelf revenue includes GST; gross profit uses ex-GST revenue.
+            day.put("grossProfit", dayCostAvailable && dayTaxAvailable
+                    ? money(toDecimal(row.get("revenue")).subtract(toDecimal(row.get("tax")))
+                        .subtract(toDecimal(row.get("cost"))))
                     : null);
             day.put("salesAmount", money(row.containsKey("sales_amount")
                     ? row.get("sales_amount") : row.get("revenue")));
@@ -585,10 +589,12 @@ public class ReportQueryService {
         result.put("costAvailable", costMissingCount == 0);
         result.put("reportDataStatus", daily.isEmpty() ? "no_data"
                 : costMissingCount > 0 || taxMissingCount > 0 || !salesBreakdownComplete ? "incomplete" : "available");
-        result.put("grossProfit", costMissingCount == 0 ? money(revenue.subtract(cost)) : null);
-        result.put("profitMargin", costMissingCount == 0 && revenue.signum() > 0
-                ? revenue.subtract(cost).multiply(new BigDecimal("100"))
-                    .divide(revenue, 2, RoundingMode.HALF_UP)
+        BigDecimal netRevenue = revenue.subtract(tax);
+        result.put("grossProfit", costMissingCount == 0 && taxMissingCount == 0
+                ? money(netRevenue.subtract(cost)) : null);
+        result.put("profitMargin", costMissingCount == 0 && taxMissingCount == 0 && netRevenue.signum() > 0
+                ? netRevenue.subtract(cost).multiply(new BigDecimal("100"))
+                    .divide(netRevenue, 2, RoundingMode.HALF_UP)
                 : null);
         result.put("averageSale", transactions > 0
                 ? money(salesAmount.divide(BigDecimal.valueOf(transactions), 2, RoundingMode.HALF_UP))

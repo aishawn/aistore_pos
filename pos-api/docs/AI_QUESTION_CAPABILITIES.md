@@ -4,7 +4,7 @@ The assistant is read-only. Report answers use the authenticated Orithos outlet;
 
 | Questions | Supported behavior | Source and limits |
 |---|---|---|
-| Sales/revenue and gross profit, including Chinese and English date phrasing | Returns sales and, when the user has cost permission and costs are complete, gross profit. Supports comparison of exactly two explicit dates. | Shared `ReportQueryService.nativeOverview` used by `/api/reports/native-overview`; Adelaide business dates; revenue less cost, GST inclusive. Missing cost or permission makes profit unavailable, never zero-filled. |
+| Sales/revenue and gross profit, including Chinese and English date phrasing | Returns sales and, when the user has cost permission and tax/cost data is complete, gross profit. Supports comparison of exactly two explicit dates. | Shared `ReportQueryService.nativeOverview` used by `/api/reports/native-overview`; Adelaide business dates; ex-GST revenue less cost. Missing tax, cost or permission makes profit unavailable, never zero-filled. |
 | Sales by product category, quantity, average ticket | Fixed allowlisted read-only report templates | Outlet-scoped `ai_rpt_*` views. Category names are matched against product/category names. |
 | Stock lookup, dead stock, stock value | Fixed allowlisted read-only report templates | Current Orithos inventory snapshot. Stock value requires cost permission and excludes/marks products without recorded positive cost. |
 | Product lookup and count | Native product search/count | Current outlet catalogue; no cross-outlet lookup. |

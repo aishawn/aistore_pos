@@ -1,5 +1,11 @@
 # 门店助手、语音与历史：验证与效果
 
+## 2026-11-18 Demo 毛利口径回归
+
+Demo 只读复现源码/运行版本 `228166e8ba44ddde32ab21cec1547bbf94fa42bc` 的错误：Adelaide 2026-11-17 含 GST 销售额 AUD 4,241.48、GST AUD 364.92、成本 AUD 2,974.97；线上助手返回毛利 AUD 1,266.51，正确的税前毛利应为 AUD 901.59。中英文单日问法均把毛利描述为含 GST；请求没有 POS 业务写入。原始检查由本轮 Demo API 核查记录，助手查询会生成审计/会话记录。
+
+候选修正覆盖聚合报表、AI 单日及双日期回答、税字段缺失处理和中英文口径。定向 Java 21 回归先在旧实现上失败 6 项，再在修正后通过 34/34（`NativeOverviewPayloadTest`、`ReportRespondNodeTest`）。此结果为本地定向 Maven 测试，不是完整 `mvn -B clean verify`、部署或线上复测。部署和 Demo 复验待候选进入 `main` 后进行；详见[本轮记录](../../../../test-sessions/2026-11-18-ai-gross-profit-tax-basis.md)。
+
 ## 2026-11-14 全目录答案断言覆盖审计
 
 对 `.local/ai-eval/skr-utterances-full-expected-402-473e7b6f.jsonl` 的 402 条目录做离线覆盖检查。208 条属于需要核对答案内容的事实型意图，其中 151 条缺少正向 `answerIncludes` 或 `answerRegex`：`report_adhoc` 36、`report_stock` 37、`report_sales` 24、`qa` 30、`unknown` 8、`report_aov` 4、`search_product` 4、`search_customer` 4、`report_qty` 2、`report_dead_stock` 2。

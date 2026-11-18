@@ -957,7 +957,7 @@ public class ClassifyQueryNode implements NodeAction {
                 Use null for unused slots. Use entity_action only for read-only list/search/view requests. Any create, edit, delete, import, receive, save, confirm, price change, or inventory adjustment must use guided_action with a page route; the assistant never writes business data.
                 Creating a user/customer (创建一个用户/客户) → intent guided_action, entity=customer, op=create (query optional; page collects required fields and user confirms Save).
                 Creating a product (创建商品/产品) → intent guided_action, entity=product, op=create (query optional; page collects required fields and user confirms Save).
-                For sales/revenue/profit/quantity/stock/dead-stock/average-ticket questions use report_* intents (not qa). Sales and gross-profit answers use the audited Orithos report; profit is revenue minus cost, GST inclusive, and may be unavailable when costs are incomplete. Dates as YYYY-MM-DD when known.
+                For sales/revenue/profit/quantity/stock/dead-stock/average-ticket questions use report_* intents (not qa). Sales and gross-profit answers use the audited Orithos report; gross profit is ex-GST revenue minus cost, and may be unavailable when tax or cost coverage is incomplete. Dates as YYYY-MM-DD when known.
                 Ticket counts (几笔订单 / how many tickets) → report_aov (tickets field). Rankings / mixed metrics / day-vs-day → report_adhoc.
                 Prefer the nearest report_* template over report_adhoc when one fits.
                 For route prefer path like /orders or key like orders from allowed list.
