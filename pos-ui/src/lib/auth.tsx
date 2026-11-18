@@ -4,6 +4,7 @@ import { setNativeReadIdentity, clearNativeReadCache } from "./native-read-cache
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { api, isLocalPreviewSession, refreshAccessToken, registerAuthFailureHandler } from "@/lib/api";
 import { clearRegisterContext, type WorkContextSelection } from "@/lib/work-context";
+import { clearRegisterStartupPromptAcks } from "@/lib/odoo-register-startup";
 export type StoreRoleCode = "ADMIN" | "MANAGER" | "CLERK" | "NONE" | string;
 
 export interface AuthUser {
@@ -208,6 +209,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const normalized = normalizeUser(res.user);
     setUser(normalized);
     if (typeof localStorage !== "undefined") localStorage.setItem(USER_KEY, JSON.stringify(normalized));
+    clearRegisterStartupPromptAcks();
     return res;
   }, []);
 
@@ -230,6 +232,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
     if (typeof localStorage !== "undefined") localStorage.removeItem(USER_KEY);
     clearRegisterContext();
+    clearRegisterStartupPromptAcks();
     if (typeof sessionStorage !== "undefined") sessionStorage.setItem(SKIP_SESSION_RECOVER_KEY, "1");
     if (typeof document !== "undefined") document.cookie = "orithos_local_preview=;path=/;max-age=0;samesite=lax";
   }, []);
