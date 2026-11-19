@@ -112,7 +112,7 @@ export function NativeCustomerViewModal({
   return (
     <div
       role="presentation"
-      className="fixed inset-0 z-[75] grid place-items-center bg-black/55 p-2 sm:p-4"
+      className="fixed inset-0 z-[75] grid place-items-center bg-black/40 p-2 sm:p-4"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
@@ -121,7 +121,7 @@ export function NativeCustomerViewModal({
         role="dialog"
         aria-modal="true"
         aria-label={customer?.name ? `${customer.name} customer details` : "Customer details"}
-        className="flex max-h-[94dvh] min-h-[min(560px,90dvh)] w-full max-w-[1500px] flex-col overflow-hidden border border-[var(--oh-border)] bg-white shadow-2xl"
+        className="flex max-h-[94dvh] min-h-[min(560px,90dvh)] w-full max-w-[1500px] flex-col overflow-hidden rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] shadow-2xl"
       >
         <header className="flex min-h-14 items-center justify-between gap-3 border-b border-[var(--oh-border)] px-4 py-2 sm:px-6">
           <div className="min-w-0">

@@ -26,7 +26,7 @@ export function OdooCloseRegisterModal({
   return (
     <div
       role="presentation"
-      className="fixed inset-0 z-[70] grid place-items-center bg-slate-950/50 p-2 sm:p-4 md:p-6"
+      className="fixed inset-0 z-[70] grid place-items-center bg-black/40 p-2 sm:p-4 md:p-6"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) requestClose();
       }}

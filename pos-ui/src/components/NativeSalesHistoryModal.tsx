@@ -18,7 +18,7 @@ export function NativeSalesHistoryModal({
   return (
     <div
       role="presentation"
-      className="fixed inset-0 z-[70] grid place-items-center bg-slate-950/50 p-2 sm:p-4"
+      className="fixed inset-0 z-[70] grid place-items-center bg-black/40 p-2 sm:p-4"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}

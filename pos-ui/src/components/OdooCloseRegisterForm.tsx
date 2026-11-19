@@ -612,7 +612,7 @@ export function OdooCloseRegisterForm({
       )}
 
       {confirming && selected?.session && (
-        <div className={cn("fixed inset-0 grid place-items-center bg-slate-950/50 p-4", isModal ? "z-[80]" : "z-50")}>
+        <div className={cn("fixed inset-0 grid place-items-center bg-black/40 p-4", isModal ? "z-[80]" : "z-50")}>
           <section
             role="alertdialog"
             aria-modal="true"
