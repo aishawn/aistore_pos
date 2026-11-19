@@ -2,6 +2,7 @@ package com.orithos.modules.report;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.mockito.ArgumentCaptor;
 
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -13,6 +14,8 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -24,6 +27,21 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class NativeOverviewCacheTest {
+
+    @Test
+    void scopesInventoryAggregationToTheRequestedOutlet() {
+        JdbcTemplate jdbc = jdbc();
+        ReportQueryService service = new ReportQueryService(jdbc, Clock.systemUTC(), Duration.ofSeconds(10));
+
+        service.nativeOverview(55L, 87L, LocalDate.of(2026, 11, 12), LocalDate.of(2026, 11, 12));
+
+        ArgumentCaptor<String> sql = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<Object[]> parameters = ArgumentCaptor.forClass(Object[].class);
+        verify(jdbc).queryForMap(sql.capture(), parameters.capture());
+        assertTrue(sql.getValue().matches("(?s).*FROM product_inventory\\s+WHERE outlet_id = \\?\\s+GROUP BY product_id.*"),
+                "inventory aggregation must exclude records from other outlets");
+        assertArrayEquals(new Object[]{87L, 87L}, parameters.getValue());
+    }
 
     @Test
     void cachesWithinTenantOutletAndPeriodAndReturnsIndependentPayloads() {

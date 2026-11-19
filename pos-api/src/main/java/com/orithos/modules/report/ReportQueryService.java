@@ -408,12 +408,13 @@ public class ReportQueryService {
                 LEFT JOIN (
                     SELECT product_id, SUM(quantity) AS total_qty
                     FROM product_inventory
+                    WHERE outlet_id = ?
                     GROUP BY product_id
                 ) inv ON inv.product_id = p.id
                 WHERE p.outlet_id = ?
                   AND p.deleted_at IS NULL
                   AND p.status = 'ACTIVE'
-                """, outletId);
+                """, outletId, outletId);
         Map<String, Object> payload = nativeOverviewPayload(from, to, daily, products, inventory);
         payload.put("dataAsOf", nativeOverviewDataAsOf(daily));
         cache(nativeOverviewCache, cacheKey, now, payload);
