@@ -1,6 +1,19 @@
 const AUTHORITATIVE_SOURCE = "orithos_ledger";
 const BUSINESS_TIMEZONE = "Australia/Adelaide";
 
+export function previousCompleteBusinessWeek(today) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(today)) throw new Error("INVALID_BUSINESS_DATE");
+  const date = new Date(`${today}T12:00:00Z`);
+  if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== today) {
+    throw new Error("INVALID_BUSINESS_DATE");
+  }
+  const daysSinceMonday = (date.getUTCDay() + 6) % 7;
+  date.setUTCDate(date.getUTCDate() - daysSinceMonday - 7);
+  const from = date.toISOString().slice(0, 10);
+  date.setUTCDate(date.getUTCDate() + 6);
+  return { from, to: date.toISOString().slice(0, 10) };
+}
+
 function numericValues(value, found = []) {
   if (Array.isArray(value)) {
     for (const item of value) numericValues(item, found);

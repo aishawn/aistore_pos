@@ -5,6 +5,7 @@ import {
   singleProductStockAcceptance,
   nativeOverviewAcceptance,
   productCountAcceptance,
+  previousCompleteBusinessWeek,
   stockValueHonestyAcceptance,
 } from "./orithos-report-assertions.mjs";
 
@@ -21,6 +22,18 @@ const report = {
   revenue: 4127.55,
   averageSale: 28.47,
 };
+
+test("previous complete business week is Monday to Sunday in Adelaide calendar dates", () => {
+  assert.deepEqual(previousCompleteBusinessWeek("2026-11-20"), {
+    from: "2026-11-09",
+    to: "2026-11-15",
+  });
+  assert.deepEqual(previousCompleteBusinessWeek("2026-11-16"), {
+    from: "2026-11-09",
+    to: "2026-11-15",
+  });
+  assert.throws(() => previousCompleteBusinessWeek("2026-02-30"), /INVALID_BUSINESS_DATE/);
+});
 
 test("Orithos native overview requires source, Adelaide timezone, date range, and comparable totals", () => {
   assert.deepEqual(nativeOverviewAcceptance(report, period), {
