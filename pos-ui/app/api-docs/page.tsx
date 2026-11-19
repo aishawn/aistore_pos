@@ -29,33 +29,20 @@ export default function ApiDocsPage() {
         </article>
 
         <article className="flex flex-col items-start gap-3 border-t border-[var(--oh-border)] pt-5 md:border-l md:border-t-0 md:pl-6 md:pt-0">
-          <div className="flex items-center gap-2 font-semibold"><ShieldCheck size={18} className="text-[var(--oh-primary)]" aria-hidden="true" /> Partner API v1</div>
+          <div className="flex items-center gap-2 font-semibold"><ShieldCheck size={18} className="text-[var(--oh-primary)]" aria-hidden="true" /> Partner integrations</div>
           <p className="text-sm leading-6 text-[var(--oh-muted)]">
-            A separately authorized integration API. OAuth2 client credentials and assigned scopes apply to one configured merchant and outlet; callers cannot select a different tenant or outlet in requests.
+            Partner integrations are provisioned separately from the POS application API. Contact Orithos to confirm availability and receive the current contract, scopes, and onboarding details.
           </p>
-          <a className={contractLinkClass} href="/integrations-openapi.json" target="_blank" rel="noreferrer">
-            Partner OpenAPI JSON <ArrowUpRight size={15} aria-hidden="true" />
-          </a>
+          <Link href="https://orithos.com.au/help?topic=integrations" target="_blank" rel="noreferrer" className={contractLinkClass}>
+            Partner integration support <ArrowUpRight size={15} aria-hidden="true" />
+          </Link>
         </article>
       </section>
 
       <section className="max-w-3xl border-b border-[var(--oh-border)] py-6">
-        <h2 className="text-lg font-semibold">Partner access</h2>
-        <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm leading-6 text-[var(--oh-muted)]">
-          <li>Contact Orithos to request an integration and describe the merchant, outlet, and data flows required.</li>
-          <li>After approval, Orithos provisions a client and grants only the required scopes. Keep the client secret on a trusted server and never expose it in a browser or public repository.</li>
-          <li>Request a bearer token from <code className="text-[var(--oh-text)]">POST /api/integrations/v1/oauth2/token</code> using HTTP Basic client authentication and <code className="text-[var(--oh-text)]">grant_type=client_credentials</code>.</li>
-          <li>Send the token as <code className="text-[var(--oh-text)]">Authorization: Bearer …</code>. Use the OpenAPI contract for available scopes, fields, and endpoint details.</li>
-        </ol>
-      </section>
-
-      <section className="max-w-3xl border-b border-[var(--oh-border)] py-6">
-        <h2 className="text-lg font-semibold">Available partner operations</h2>
+        <h2 className="text-lg font-semibold">Legacy API</h2>
         <p className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">
-          The current contract covers products, prices, inventory, and the authorized outlet, plus externally settled sale and refund registration and inventory adjustments. Write requests require an <code className="text-[var(--oh-text)]">Idempotency-Key</code> so safe retries can be detected.
-        </p>
-        <p className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">
-          Sale and refund endpoints record transactions already settled by the partner. They do not authorize EFTPOS payments or replace Orithos checkout. The legacy <code className="text-[var(--oh-text)]">/api/pos/v1/*</code> API remains retired and returns HTTP 410.
+          The legacy <code className="text-[var(--oh-text)]">/api/pos/v1/*</code> API is retired and returns HTTP 410. Do not use legacy API tokens or endpoints; request the current approved integration contract through Help &amp; Support.
         </p>
       </section>
 

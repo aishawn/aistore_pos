@@ -48,6 +48,7 @@ const NO_STORE_PAGE_PREFIXES = ["/platform/stores/", "/reports/closures/"];
 
 /** Routes that must stay reachable without a session. */
 const PUBLIC_PREFIXES = [
+  "/api-docs",
   "/login",
   "/signup",
   "/auth/bootstrap",
