@@ -13,8 +13,7 @@ internal static class LinklyConnectorWebApp
     {
         var listenUrl = Environment.GetEnvironmentVariable("ORITHOS_CONNECTOR_URL")
             ?? AgentVersion.DefaultEftposListen;
-        var orithosApiUrl = (Environment.GetEnvironmentVariable("ORITHOS_API_URL") ?? "http://127.0.0.1:8080").TrimEnd('/');
-        var connectorToken = Environment.GetEnvironmentVariable("ORITHOS_CONNECTOR_TOKEN") ?? "";
+        var settings = ConnectorLocalSettings.Load();
         var autoApproveMs = int.TryParse(Environment.GetEnvironmentVariable("CONNECTOR_AUTO_APPROVE_MS"), out var parsedMs)
             ? Math.Max(0, parsedMs)
             : 800;
@@ -46,12 +45,32 @@ internal static class LinklyConnectorWebApp
 
         app.MapGet("/v1/health", () => Results.Json(new { ok = true }, json));
 
-        app.MapGet("/v1/status", () => Results.Json(new
+        app.MapGet("/v1/status", () =>
         {
-            linklyClient = string.IsNullOrWhiteSpace(connectorToken) ? "waiting-for-token" : "simulated-ready",
-            terminal = "ready",
-            detail = "Built into Orithos Hardware Connect; configure ORITHOS_CONNECTOR_TOKEN after saving EFTPOS in settings.",
-        }, json));
+            var hasToken = settings.HasConnectorToken();
+            return Results.Json(new
+            {
+                linklyClient = hasToken ? "simulated-ready" : "waiting-for-token",
+                terminal = "ready",
+                tokenConfigured = hasToken,
+                detail = hasToken
+                    ? "Ready for Orithos test payments on this PC."
+                    : "Save EFTPOS in Hardware settings — token syncs automatically (Hardware Connect 1.1.1+).",
+            }, json);
+        });
+
+        app.MapPost("/v1/config", async (HttpRequest request) =>
+        {
+            var body = await JsonSerializer.DeserializeAsync<ConnectorConfigRequest>(request.Body, json, cancellationToken);
+            if (body is null)
+            {
+                return Results.BadRequest(new { error = "Invalid JSON" });
+            }
+
+            settings.Apply(body.OrithosApiUrl, body.ConnectorToken, persist: true);
+            var hasToken = settings.HasConnectorToken();
+            return Results.Json(new { saved = true, tokenConfigured = hasToken }, json);
+        });
 
         app.MapPost("/v1/query", async (HttpRequest request) =>
         {
@@ -61,6 +80,7 @@ internal static class LinklyConnectorWebApp
                 return Results.BadRequest(new { error = "attemptId and connectorChallenge are required" });
             }
 
+            var snap = settings.Snapshot();
             _ = Task.Run(async () =>
             {
                 if (autoApproveMs > 0)
@@ -69,8 +89,8 @@ internal static class LinklyConnectorWebApp
                 }
 
                 await PostCallbackAsync(
-                    orithosApiUrl,
-                    connectorToken,
+                    snap.ApiUrl,
+                    snap.Token,
                     body.AttemptId,
                     body.ConnectorChallenge,
                     "APPROVED",
@@ -89,6 +109,7 @@ internal static class LinklyConnectorWebApp
                 return Results.BadRequest(new { error = "attemptId and connectorChallenge are required" });
             }
 
+            var snap = settings.Snapshot();
             _ = Task.Run(async () =>
             {
                 if (autoApproveMs > 0)
@@ -97,8 +118,8 @@ internal static class LinklyConnectorWebApp
                 }
 
                 await PostCallbackAsync(
-                    orithosApiUrl,
-                    connectorToken,
+                    snap.ApiUrl,
+                    snap.Token,
                     body.AttemptId,
                     body.ConnectorChallenge,
                     "APPROVED",
@@ -149,6 +170,8 @@ internal static class LinklyConnectorWebApp
             Console.Error.WriteLine($"Orithos callback error: {ex.Message}");
         }
     }
+
+    private sealed record ConnectorConfigRequest(string? OrithosApiUrl, string? ConnectorToken);
 
     private sealed record ConnectorTxnRequest(long AttemptId, string? OrderUuid, string? ConnectorChallenge);
 }

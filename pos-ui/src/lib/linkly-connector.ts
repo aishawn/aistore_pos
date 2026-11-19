@@ -4,7 +4,15 @@ export type ConnectorStatus = {
   linklyClient?: string;
   terminal?: string;
   detail?: string;
+  tokenConfigured?: boolean;
 };
+
+export type ConnectorLocalConfigPayload = {
+  orithosApiUrl: string;
+  connectorToken: string;
+};
+
+type LoopbackRequestInit = RequestInit & { targetAddressSpace?: "loopback" | "local" | "public" };
 
 export type ConnectorPurchaseRequest = {
   attemptId: number;
@@ -61,6 +69,27 @@ export async function requestConnectorQuery(
   if (!response.ok) {
     const text = await response.text().catch(() => "");
     throw new Error(text || `Connector query failed (${response.status}).`);
+  }
+}
+
+/** Push token and store API URL to Hardware Connect on this PC (no Windows env vars). */
+export async function pushConnectorLocalConfig(
+  baseUrl: string,
+  payload: ConnectorLocalConfigPayload,
+): Promise<void> {
+  const target = `${normaliseBase(baseUrl)}/v1/config`;
+  const init: LoopbackRequestInit = {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+    cache: "no-store",
+    mode: "cors",
+    targetAddressSpace: "loopback",
+  };
+  const response = await fetch(target, init);
+  if (!response.ok) {
+    const text = await response.text().catch(() => "");
+    throw new Error(text || `Could not apply connector settings (${response.status}). Update Hardware Connect to 1.1.1+.`);
   }
 }
 

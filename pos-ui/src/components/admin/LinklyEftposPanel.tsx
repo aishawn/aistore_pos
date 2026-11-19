@@ -14,7 +14,12 @@ import {
   saveRegisterEftposBinding,
   type RegisterEftposBinding,
 } from "@/lib/eftpos-api";
-import { fetchConnectorStatus, probeConnectorHealth, requestConnectorPurchase } from "@/lib/linkly-connector";
+import {
+  fetchConnectorStatus,
+  probeConnectorHealth,
+  pushConnectorLocalConfig,
+  requestConnectorPurchase,
+} from "@/lib/linkly-connector";
 import { resolveLocalNetworkAccessState, type LocalNetworkAccessState } from "@/lib/local-network-access";
 import { useHardwareLoopbackReady } from "@/components/admin/hardware-loopback-context";
 
@@ -57,6 +62,29 @@ export function LinklyEftposPanel({ canEdit }: Props) {
   const [diagBusy, setDiagBusy] = useState(false);
   const loopbackReady = useHardwareLoopbackReady();
   const [revealedToken, setRevealedToken] = useState<string | null>(null);
+
+  const resolveStoreApiOrigin = useCallback(
+    () => (typeof window !== "undefined" ? window.location.origin : "https://skr.orithos.com.au"),
+    [],
+  );
+
+  const applyConnectorToLocalPc = useCallback(
+    async (baseUrl: string, token: string | null | undefined) => {
+      const trimmed = token?.trim();
+      if (!trimmed || !loopbackReady) return false;
+      try {
+        await pushConnectorLocalConfig(baseUrl, {
+          connectorToken: trimmed,
+          orithosApiUrl: resolveStoreApiOrigin(),
+        });
+        return true;
+      } catch (cause) {
+        setNotice(cause instanceof Error ? cause.message : "Could not sync token to this PC.");
+        return false;
+      }
+    },
+    [loopbackReady, resolveStoreApiOrigin],
+  );
 
   const refreshDiagnostics = useCallback(async (baseUrl: string) => {
     const access = await resolveLocalNetworkAccessState();
@@ -106,9 +134,15 @@ export function LinklyEftposPanel({ canEdit }: Props) {
           acquirer: next.acquirer ?? "",
           rotateConnectorToken: false,
         });
-        setRevealedToken(readConnectorTokenHint(registerId));
+        const hinted = readConnectorTokenHint(registerId);
+        setRevealedToken(hinted);
+        const baseUrl = next.connectorBaseUrl || defaultDraft.connectorBaseUrl;
         if (loopbackReady) {
-          return refreshDiagnostics(next.connectorBaseUrl || defaultDraft.connectorBaseUrl);
+          if (hinted) {
+            void applyConnectorToLocalPc(baseUrl, hinted).then(() => refreshDiagnostics(baseUrl));
+          } else {
+            return refreshDiagnostics(baseUrl);
+          }
         }
         setConnectorHealth("unknown");
         setConnectorStatus("Allow local network access, then refresh diagnostics.");
@@ -116,7 +150,7 @@ export function LinklyEftposPanel({ canEdit }: Props) {
       })
       .catch((cause) => setError(cause instanceof Error ? cause.message : "Could not load EFTPOS binding"))
       .finally(() => setLoadBusy(false));
-  }, [registerId, refreshDiagnostics, loopbackReady]);
+  }, [registerId, refreshDiagnostics, loopbackReady, applyConnectorToLocalPc]);
 
   async function saveBinding() {
     if (!canEdit || !registerId) return;
@@ -136,14 +170,25 @@ export function LinklyEftposPanel({ canEdit }: Props) {
         rotateConnectorToken: draft.rotateConnectorToken,
       });
       setBinding(saved);
-      if (saved.revealedConnectorToken) {
-        saveConnectorTokenForRegister(registerId, saved.revealedConnectorToken);
-        setRevealedToken(saved.revealedConnectorToken);
-        setNotice("Binding saved. Set ORITHOS_CONNECTOR_TOKEN for your Windows user on this PC (Hardware Connect tray app reads it).");
+      let token = saved.revealedConnectorToken;
+      if (token) {
+        saveConnectorTokenForRegister(registerId, token);
+        setRevealedToken(token);
       } else {
-        setNotice("EFTPOS binding saved for this register.");
+        token = readConnectorTokenHint(registerId);
       }
-      if (loopbackReady) await refreshDiagnostics(saved.connectorBaseUrl);
+      const baseUrl = saved.connectorBaseUrl || defaultDraft.connectorBaseUrl;
+      if (loopbackReady && token) {
+        const synced = await applyConnectorToLocalPc(baseUrl, token);
+        setNotice(
+          synced
+            ? "Saved. Connector token applied on this PC — try Test $1.00."
+            : "Saved on the server. Update Hardware Connect to 1.1.1+ to auto-apply the token.",
+        );
+        await refreshDiagnostics(baseUrl);
+      } else {
+        setNotice("EFTPOS saved for this register.");
+      }
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Save failed");
     } finally {
@@ -250,7 +295,7 @@ export function LinklyEftposPanel({ canEdit }: Props) {
 
         {connectorHealth === "offline" && !draft.paymentsEnabled && (
           <p className="text-xs text-[var(--oh-muted)]">
-            Start Orithos Hardware Connect on this PC (same install as the receipt printer). EFTPOS uses port 9167; printers use 9170.
+            Run Hardware Connect on this PC, then enable EFTPOS below and Save — the token syncs automatically (v1.1.1+).
           </p>
         )}
         {error && <p role="alert" className="text-sm text-red-800">{error}</p>}
@@ -344,13 +389,23 @@ export function LinklyEftposPanel({ canEdit }: Props) {
                 Rotate connector token on save
               </label>
             )}
-            {revealedToken && (
-              <label className="grid gap-1 text-sm font-medium">
-                Connector token
-                <input readOnly value={revealedToken} className="h-10 rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 font-mono text-xs" />
-                <span className="text-xs font-normal text-[var(--oh-muted)]">Set ORITHOS_CONNECTOR_TOKEN on the EFTPOS PC.</span>
-              </label>
-            )}
+            {canEdit && revealedToken ? (
+              <button
+                type="button"
+                className="inline-flex min-h-9 items-center rounded-md border border-[var(--oh-border)] px-3 text-xs font-semibold"
+                onClick={() => {
+                  const base = draft.connectorBaseUrl || defaultDraft.connectorBaseUrl;
+                  void applyConnectorToLocalPc(base, revealedToken).then((ok) => {
+                    if (ok) {
+                      setNotice("Token re-applied on this PC.");
+                      void refreshDiagnostics(base);
+                    }
+                  });
+                }}
+              >
+                Re-apply token on this PC
+              </button>
+            ) : null}
           </div>
         </details>
         </div>
