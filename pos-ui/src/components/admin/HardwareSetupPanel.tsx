@@ -51,7 +51,9 @@ export function HardwareSetupPanel() {
   });
   const [scanTest, setScanTest] = useState("");
   const [notice, setNotice] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [connectBusy, setConnectBusy] = useState(false);
+  const [actionBusy, setActionBusy] = useState(false);
+  const busy = connectBusy || actionBusy;
   const [scaleReader, setScaleReader] = useState<string | null>(null);
   const [scaleReading, setScaleReading] = useState(false);
   const scaleAbort = useRef<AbortController | null>(null);
@@ -93,7 +95,7 @@ export function HardwareSetupPanel() {
   }
 
   async function connect() {
-    setBusy(true);
+    setConnectBusy(true);
     setNotice(null);
     try {
       const next = await connectLocalHardware();
@@ -129,24 +131,24 @@ export function HardwareSetupPanel() {
         );
       }
     } finally {
-      setBusy(false);
+      setConnectBusy(false);
     }
   }
 
   async function testPrint() {
-    setBusy(true);
+    setActionBusy(true);
     try {
       await printReceiptTestThroughLocalBridge(draft);
       setNotice("Test print submitted. Confirm paper and cut at the printer.");
     } catch (cause) {
       setNotice(cause instanceof Error ? cause.message : "Print job failed.");
     } finally {
-      setBusy(false);
+      setActionBusy(false);
     }
   }
 
   async function testDrawer() {
-    setBusy(true);
+    setActionBusy(true);
     try {
       const active = dirty ? draft : savedSettings;
       await testOpenCashDrawer(active);
@@ -154,7 +156,7 @@ export function HardwareSetupPanel() {
     } catch (cause) {
       setNotice(cause instanceof Error ? cause.message : "Cash drawer test failed.");
     } finally {
-      setBusy(false);
+      setActionBusy(false);
     }
   }
 
@@ -279,15 +281,15 @@ export function HardwareSetupPanel() {
           <button
             type="button"
             onClick={() => void connect()}
-            disabled={busy}
+            disabled={connectBusy}
             className={
               state.connected
                 ? "inline-flex min-h-10 items-center gap-2 rounded-md border border-[var(--oh-border)] px-3 text-sm font-semibold disabled:opacity-50"
                 : "inline-flex min-h-10 items-center gap-2 rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white disabled:opacity-50"
             }
           >
-            <RefreshCw size={15} className={busy ? "animate-spin" : undefined} aria-hidden="true" />
-            {busy ? "Connecting…" : state.connected ? "Refresh printers" : "Connect local bridge"}
+            <RefreshCw size={15} className={connectBusy ? "animate-spin" : undefined} aria-hidden="true" />
+            {connectBusy ? "Connecting…" : state.connected ? "Refresh printers" : "Connect local bridge"}
           </button>
         </div>
         {state.bridge !== "orithos-hc" && (

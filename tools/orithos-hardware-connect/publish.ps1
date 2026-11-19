@@ -1,6 +1,10 @@
-﻿$ErrorActionPreference = "Stop"
+﻿param(
+  [string]$DotNetExe = "dotnet"
+)
+
+$ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot
-dotnet publish .\OrithosHardwareConnect.csproj -c Release -r win-x64 `
+& $DotNetExe publish .\OrithosHardwareConnect.csproj -c Release -r win-x64 `
   --self-contained true `
   -p:PublishSingleFile=true `
   -p:IncludeNativeLibrariesForSelfExtract=true `
