@@ -21,6 +21,7 @@
   isolation: isolate;
 }
 .ov-page.ov-radial {
+  min-height: 100dvh;
   background-color: #f4f7fb;
   background-image:
     linear-gradient(115deg, #f6f9fddf 0%, #f6f9fd87 48%, #edf5ffc4 100%),
@@ -394,9 +395,10 @@
 }
 .ov-radial .ov-container {
   min-height: 100%;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
-  padding-bottom: 88px;
+  padding-bottom: 16px;
 }
 .ov-radial-area {
   flex: 1;
@@ -883,6 +885,7 @@
   grid-template-columns: minmax(0, 1fr) minmax(320px, 460px);
   gap: 28px;
   align-items: stretch;
+  flex: 1 1 auto;
   min-height: 520px;
 }
 .ov-radial-main {
@@ -1099,6 +1102,13 @@
 .ov-insights-empty { display: flex; align-items: center; gap: 9px; min-height: 72px; padding: 10px 6px; color: var(--ov-muted); font-size: 14px; }
 .ov-insights-empty svg { color: #159a72; }
 .ov-ai-bar { display: flex; align-items: center; gap: 10px; min-height: 66px; margin-top: 22px; padding: 8px 10px 8px 18px; border: 1px solid #ffffff; border-radius: 36px; background: #ffffffd4; box-shadow: 0 16px 42px #e96b2524, inset 0 1px #fff; backdrop-filter: blur(16px); }
+@media (min-width: 768px) {
+  .ov-radial .ov-ai-bar.ov-ai-mobile-dock {
+    width: 100%;
+    margin-top: auto;
+    flex-shrink: 0;
+  }
+}
 .ov-ai-bar-spark { flex: 0 0 auto; color: var(--brand-orange); }
 .ov-ai-bar input { min-width: 0; flex: 1; height: 44px; border: 0; outline: 0; background: transparent; color: var(--ov-ink); font-size: 14px; }
 .ov-ai-bar input::placeholder { color: #6b7485; opacity: 1; }
