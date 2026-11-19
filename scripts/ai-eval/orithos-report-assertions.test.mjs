@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   assistantReportAcceptance,
+  singleProductStockAcceptance,
   nativeOverviewAcceptance,
   productCountAcceptance,
   stockValueHonestyAcceptance,
@@ -121,4 +122,33 @@ test("product count matches the authenticated active catalogue without requiring
   assert.equal(result.passed, true);
   assert.equal(productCountAcceptance(response, { total: 10855, status: "ACTIVE" }).passed, false);
   assert.equal(productCountAcceptance(response, { total: 10854, status: "ALL" }).passed, false);
+});
+
+test("single-product stock answer matches the current quantity with provenance and freshness", () => {
+  const result = singleProductStockAcceptance({
+    intent: "report_stock",
+    answer: "Sample Shiraz: -13 (inventory updated: 2026-11-20T04:15:00Z)",
+    dataSource: "orithos_ledger",
+    storeScope: "current_authenticated_store",
+    report_data_as_of: "2026-11-20T04:15:00Z",
+    writeRequests: [],
+  }, { name: "Sample Shiraz", quantity: -13 });
+
+  assert.equal(result.passed, true);
+  assert.equal(result.answerQuantity, -13);
+});
+
+test("single-product stock answer rejects quantity, scope, and write mismatches", () => {
+  const result = singleProductStockAcceptance({
+    intent: "report_stock",
+    answer: "Sample Shiraz: 0 (inventory update time unknown; verify before relying on it)",
+    dataSource: "orithos_ledger",
+    storeScope: "another_store",
+    writeRequests: ["POST /api/sales"],
+  }, { name: "Sample Shiraz", quantity: -13 });
+
+  assert.equal(result.checks.quantityMatches, false);
+  assert.equal(result.checks.storeScope, false);
+  assert.equal(result.checks.noWrites, false);
+  assert.equal(result.passed, false);
 });

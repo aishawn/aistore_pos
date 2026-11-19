@@ -111,3 +111,33 @@ export function productCountAcceptance(assistant, catalogue) {
       && Array.isArray(assistant?.writeRequests) && assistant.writeRequests.length === 0,
   };
 }
+
+export function singleProductStockAcceptance(assistant, expected) {
+  const answer = assistant?.answer ?? "";
+  const name = typeof expected?.name === "string" ? expected.name.trim() : "";
+  const nameIndex = name ? answer.toLowerCase().indexOf(name.toLowerCase()) : -1;
+  const afterName = nameIndex < 0 ? "" : answer.slice(nameIndex + name.length);
+  const quantityMatch = afterName.match(/^\s*(?:库存\s*)?[:：]\s*(-?\d+(?:\.\d+)?)/i);
+  const answerQuantity = quantityMatch ? Number(quantityMatch[1]) : null;
+  const expectedQuantity = Number(expected?.quantity);
+  const dataAsOf = assistant?.dataAsOf ?? assistant?.report_data_as_of ?? assistant?.reportDataAsOf;
+  const freshnessHonest = Boolean(dataAsOf)
+    || /inventory update time unknown|库存更新时间未知/i.test(answer);
+  const checks = {
+    intent: assistant?.intent === "report_stock",
+    exactProductVisible: nameIndex >= 0,
+    quantityMatches: Number.isFinite(expectedQuantity) && answerQuantity === expectedQuantity,
+    route: assistant?.route == null,
+    dataSource: assistant?.dataSource === "orithos_ledger",
+    storeScope: assistant?.storeScope === "current_authenticated_store",
+    freshnessHonest,
+    noWrites: Array.isArray(assistant?.writeRequests) && assistant.writeRequests.length === 0,
+  };
+  return {
+    checks,
+    expectedQuantity: Number.isFinite(expectedQuantity) ? expectedQuantity : null,
+    answerQuantity,
+    dataAsOfPresent: Boolean(dataAsOf),
+    passed: Object.values(checks).every(Boolean),
+  };
+}
