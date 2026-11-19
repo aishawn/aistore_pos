@@ -196,15 +196,24 @@ public class ReportRespondNode implements NodeAction {
     private String formatStock(List<Map<String, Object>> rows, String query, boolean chinese) {
         StringBuilder sb = new StringBuilder();
         String label = query == null || query.isBlank() ? (chinese ? "当前库存" : "Stock") : query;
-        sb.append(chinese ? label + "库存：" : label + ": ");
+        boolean exactSingleProduct = rows.size() == 1 && query != null
+                && query.trim().equalsIgnoreCase(String.valueOf(rows.get(0).get("name")).trim());
+        if (!exactSingleProduct) {
+            sb.append(chinese ? label + "库存：" : label + ": ");
+        }
         int n = Math.min(rows.size(), 8);
         for (int i = 0; i < n; i++) {
             Map<String, Object> row = rows.get(i);
             if (i > 0) {
                 sb.append(chinese ? "；" : "; ");
             }
-            sb.append(row.getOrDefault("name", "")).append(" ")
-                    .append(ReportQueryService.toDecimal(row.get("quantity")).stripTrailingZeros().toPlainString());
+            String name = String.valueOf(row.getOrDefault("name", ""));
+            if (exactSingleProduct) {
+                sb.append(name).append(chinese ? "库存：" : ": ");
+            } else {
+                sb.append(name).append(" ");
+            }
+            sb.append(ReportQueryService.toDecimal(row.get("quantity")).stripTrailingZeros().toPlainString());
         }
         if (rows.size() > n) {
             sb.append(chinese ? "……另有 " : " …and ").append(rows.size() - n)

@@ -216,6 +216,28 @@ class ReportRespondNodeTest {
     }
 
     @Test
+    void exactEnglishStockLookupDoesNotRepeatTheProductName() {
+        String product = "-196 LEMON P/F 6% 330ML";
+        OverAllState stock = state("", List.of(Map.of("name", product, "quantity", 100)));
+        when(stock.value("intent", String.class)).thenReturn(Optional.of("report_stock"));
+        when(stock.value("question", String.class)).thenReturn(Optional.of("How many are in stock?"));
+        when(stock.value("slots")).thenReturn(Optional.of(Map.of("query", product)));
+
+        assertEquals(product + ": 100", node.apply(stock).get("answer"));
+    }
+
+    @Test
+    void exactChineseStockLookupDoesNotRepeatTheProductName() {
+        String product = "-196 LEMON P/F 6% 330ML";
+        OverAllState stock = state("", List.of(Map.of("name", product, "quantity", 100)));
+        when(stock.value("intent", String.class)).thenReturn(Optional.of("report_stock"));
+        when(stock.value("question", String.class)).thenReturn(Optional.of("该商品还剩多少库存？"));
+        when(stock.value("slots")).thenReturn(Optional.of(Map.of("query", product)));
+
+        assertEquals(product + "库存：100", node.apply(stock).get("answer"));
+    }
+
+    @Test
     void deadStockAndCashValueAnswersFollowChineseQuestionLanguage() {
         OverAllState deadStock = state("", List.of(Map.of("name", "Wine", "on_hand", 3, "sold_qty", 0)));
         when(deadStock.value("intent", String.class)).thenReturn(Optional.of("report_dead_stock"));
