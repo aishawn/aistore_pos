@@ -101,6 +101,14 @@ export function LocalNetworkAccessGate({ children }: { children: React.ReactNode
           <div className="grid gap-3 sm:grid-cols-2 sm:gap-4">
             <div className="rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] p-4">
               <p className="text-sm font-semibold text-[var(--oh-text)]">
+                <span className="text-[var(--oh-muted)]">Step 1 ·</span> Register agent
+              </p>
+              <div className="mt-2">
+                <HardwareConnectInstallCard compact />
+              </div>
+            </div>
+            <div className="rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] p-4">
+              <p className="text-sm font-semibold text-[var(--oh-text)]">
                 <span className="text-[var(--oh-muted)]">Step 2 ·</span> Browser
               </p>
               <ul className="mt-2 space-y-1.5 text-sm leading-snug text-[var(--oh-text)]">
@@ -117,14 +125,6 @@ export function LocalNetworkAccessGate({ children }: { children: React.ReactNode
                 </li>
               </ul>
               <p className="mt-3 text-xs leading-5 text-[var(--oh-muted)]">Chrome 142+ or Edge 143+.</p>
-            </div>
-            <div className="rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] p-4">
-              <p className="text-sm font-semibold text-[var(--oh-text)]">
-                <span className="text-[var(--oh-muted)]">Step 1 ·</span> Register agent
-              </p>
-              <div className="mt-2">
-                <HardwareConnectInstallCard compact />
-              </div>
             </div>
           </div>
 
