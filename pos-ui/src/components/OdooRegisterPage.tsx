@@ -1,13 +1,13 @@
 "use client";
 
-/** Classic register shell; data path is Orithos (`@/lib/odoo-api`), not Odoo ERP. */
+/** Classic register shell; data path is Orithos (`@/lib/retail-api`), not Odoo ERP. */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Banknote, Check, CircleAlert, DoorClosed, LoaderCircle, Printer, RefreshCw, X } from "lucide-react";
 import { SalesMenu } from "@/components/SalesMenu";
 import { useCloseRegisterUiOptional } from "@/components/CloseRegisterUiProvider";
 import { useSalesHistoryUiOptional } from "@/components/SalesHistoryUiProvider";
-import { ODOO_REGISTER_CLOSED_EVENT } from "@/components/OdooCloseRegisterForm";
+import { REGISTER_CLOSED_EVENT } from "@/lib/register-events";
 import { RegisterSellCartAside } from "@/components/register-sell/RegisterSellCartAside";
 import { RegisterSellCatalogWorkspace } from "@/components/register-sell/RegisterSellCatalogWorkspace";
 import { RegisterSellParkedList } from "@/components/register-sell/RegisterSellParkedList";
@@ -23,28 +23,28 @@ import {
   type WorkspaceTab,
 } from "@/components/register-sell/shared";
 import {
-  getOdooPosBootstrap,
-  openOdooPosSession,
-  getOdooSession,
-  quoteOdooPosOrder,
-  postOdooSessionCash,
-  searchOdooRecords,
-  submitOdooPosOrder,
-  recoverOdooPosOrder,
-  OdooCheckoutPendingError,
+  getRetailPosBootstrap,
+  openRetailPosSession,
+  getRetailSession,
+  quoteRetailOrder,
+  postRetailSessionCash,
+  searchRetailRecords,
+  submitRetailOrder,
+  recoverRetailOrder,
+  RetailCheckoutPendingError,
   readQuoteFromSignature,
-  type OdooCheckoutRequest,
-  type OdooCustomerRecord,
-  type OdooCheckoutQuote,
-  type OdooPosBootstrap,
-  type OdooPosCategoryRecord,
-  type OdooProductRecord,
-} from "@/lib/odoo-api";
+  type RetailCheckoutRequest,
+  type RetailCustomerRecord,
+  type RetailCheckoutQuote,
+  type RetailPosBootstrap,
+  type RetailPosCategoryRecord,
+  type RetailProductRecord,
+} from "@/lib/retail-api";
 import { KeyboardIcon, ParkingIcon } from "@/components/icons";
 import { cn } from "@/lib/utils";
 import { friendlyProductName } from "@/lib/product-display-name";
 import { splitMoney } from "@/lib/sell-screen";
-import { formatOdooDateTime } from "@/lib/odoo-date";
+import { formatStoreDateTime } from "@/lib/retail-date";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
 import { useAuth } from "@/lib/auth";
 import {
@@ -87,7 +87,7 @@ const HIDE_OOS_KEY = "orithos-odoo-hide-oos-v1";
 const CATALOG_DENSITY_KEY = "orithos-odoo-catalog-density-v1";
 
 type ActiveCartDraft = {
-  pendingOrder?: OdooCheckoutRequest | null;
+  pendingOrder?: RetailCheckoutRequest | null;
   lines: CartLine[];
   paymentMethodId: number | null;
   customer: { id: number; name: string } | null;
@@ -157,9 +157,9 @@ export function OdooRegisterPage() {
   const { hasPermission } = useAuth();
   const canSell = hasPermission("sell.checkout");
   const canDiscount = hasPermission("sell.discount");
-  const [bootstrap, setBootstrap] = useState<OdooPosBootstrap | null>(null);
+  const [bootstrap, setBootstrap] = useState<RetailPosBootstrap | null>(null);
   const [configId, setConfigId] = useState<number | null>(null);
-  const [odooUserId, setOdooUserId] = useState<string | null>(null);
+  const [registerUserId, setRegisterUserId] = useState<string | null>(null);
   const [paymentMethodId, setPaymentMethodId] = useState<number | null>(null);
   const [isOnline, setIsOnline] = useState(true);
   const [connected, setConnected] = useState<boolean | null>(null);
@@ -167,11 +167,11 @@ export function OdooRegisterPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [query, setQuery] = useState("");
   const [categoryId, setCategoryId] = useState<number | null>(null);
-  const [posCategories, setPosCategories] = useState<OdooPosCategoryRecord[]>([]);
+  const [posCategories, setPosCategories] = useState<RetailPosCategoryRecord[]>([]);
   const [categoriesError, setCategoriesError] = useState<string | null>(null);
   const [categoriesLoading, setCategoriesLoading] = useState(false);
   const [categoryRetryKey, setCategoryRetryKey] = useState(0);
-  const [products, setProducts] = useState<OdooProductRecord[]>([]);
+  const [products, setProducts] = useState<RetailProductRecord[]>([]);
   const [productsHasNext, setProductsHasNext] = useState(false);
   const [productsLoadingMore, setProductsLoadingMore] = useState(false);
   const [productActiveIndex, setProductActiveIndex] = useState(-1);
@@ -181,21 +181,21 @@ export function OdooRegisterPage() {
   const [hideOutOfStock, setHideOutOfStock] = useState(true);
   const [catalogDensity, setCatalogDensity] = useState<CatalogDensity>("grid");
   const [prefsHydrated, setPrefsHydrated] = useState(false);
-  const [customers, setCustomers] = useState<OdooCustomerRecord[]>([]);
+  const [customers, setCustomers] = useState<RetailCustomerRecord[]>([]);
   const [customerQuery, setCustomerQuery] = useState("");
   const [customerSearchLoading, setCustomerSearchLoading] = useState(false);
   const [customerSearchError, setCustomerSearchError] = useState<string | null>(null);
   const [customerSearchKey, setCustomerSearchKey] = useState(0);
   const [customerActiveIndex, setCustomerActiveIndex] = useState(-1);
-  const [customer, setCustomer] = useState<OdooCustomerRecord | null>(null);
+  const [customer, setCustomer] = useState<RetailCustomerRecord | null>(null);
   const [lines, setLines] = useState<CartLine[]>([]);
-  const [quote, setQuote] = useState<OdooCheckoutQuote | null>(null);
+  const [quote, setQuote] = useState<RetailCheckoutQuote | null>(null);
   const [quotedFingerprint, setQuotedFingerprint] = useState<string | null>(null);
   const [quoteLoading, setQuoteLoading] = useState(false);
   const [quoteFailure, setQuoteFailure] = useState<{ fingerprint: string; message: string } | null>(null);
   const [quoteRetryKey, setQuoteRetryKey] = useState(0);
   const [busy, setBusy] = useState(false);
-  const [pendingCheckout, setPendingCheckout] = useState<OdooCheckoutRequest | null>(null);
+  const [pendingCheckout, setPendingCheckout] = useState<RetailCheckoutRequest | null>(null);
   const checkoutBusy = useRef(false);
   const productSearchRef = useRef<HTMLInputElement | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -257,10 +257,10 @@ export function OdooRegisterPage() {
     else setRefreshing(true);
     setError(null);
     try {
-      const user = await getOdooSession();
+      const user = await getRetailSession();
       if (revision !== loadRevision.current) return;
       setConnected(Boolean(user));
-      setOdooUserId(user?.id ?? null);
+      setRegisterUserId(user?.id ?? null);
       if (!user) {
         setBootstrap(null);
         selectedConfigIdRef.current = null;
@@ -269,7 +269,7 @@ export function OdooRegisterPage() {
         setPaymentMethodId(null);
         return;
       }
-      let data = await getOdooPosBootstrap();
+      let data = await getRetailPosBootstrap();
       if (revision !== loadRevision.current) return;
       setBootstrap(data);
       let rememberedId: number | null = null;
@@ -294,8 +294,8 @@ export function OdooRegisterPage() {
         });
         active = remembered;
       } else if (active && !active.session) {
-        await openOdooPosSession(active.id);
-        data = await getOdooPosBootstrap();
+        await openRetailPosSession(active.id);
+        data = await getRetailPosBootstrap();
         if (revision !== loadRevision.current) return;
         active = data.configs.find((item) => item.id === active?.id) ?? data.configs[0];
       }
@@ -362,8 +362,8 @@ export function OdooRegisterPage() {
 
   useEffect(() => {
     const onRegisterClosed = () => { void loadPos(); };
-    window.addEventListener(ODOO_REGISTER_CLOSED_EVENT, onRegisterClosed);
-    return () => window.removeEventListener(ODOO_REGISTER_CLOSED_EVENT, onRegisterClosed);
+    window.addEventListener(REGISTER_CLOSED_EVENT, onRegisterClosed);
+    return () => window.removeEventListener(REGISTER_CLOSED_EVENT, onRegisterClosed);
   }, [loadPos]);
 
   function requestCloseRegister() {
@@ -387,24 +387,24 @@ export function OdooRegisterPage() {
 
   useEffect(() => {
     setParkedLoaded(false);
-    if (!connected || !odooUserId) {
+    if (!connected || !registerUserId) {
       setParkedSales([]);
       setParkedLoaded(true);
       return;
     }
     try {
-      setParkedSales(readParkedSales().filter((sale) => sale.ownerUserId === odooUserId));
+      setParkedSales(readParkedSales().filter((sale) => sale.ownerUserId === registerUserId));
       setParkedLoaded(true);
     } catch {
       setParkedSales([]);
       setError("Parked sales could not be read from this terminal. Check browser storage settings.");
       setParkedLoaded(true);
     }
-  }, [connected, odooUserId]);
+  }, [connected, registerUserId]);
 
   useEffect(() => {
-    if (!connected || !odooUserId || configId === null) return;
-    const key = `${ACTIVE_CART_KEY}:${odooUserId}:${configId}`;
+    if (!connected || !registerUserId || configId === null) return;
+    const key = `${ACTIVE_CART_KEY}:${registerUserId}:${configId}`;
     if (restoredDraftKey.current === key) return;
     restoredDraftKey.current = key;
     setHydratedDraftKey(key);
@@ -442,11 +442,11 @@ export function OdooRegisterPage() {
     } catch {
       setDraftNotice({ kind: "read_error", message: "A saved cart draft could not be read from this device." });
     }
-  }, [bootstrap, configId, connected, odooUserId]);
+  }, [bootstrap, configId, connected, registerUserId]);
 
   useEffect(() => {
-    if (!connected || !odooUserId || configId === null) return;
-    const key = `${ACTIVE_CART_KEY}:${odooUserId}:${configId}`;
+    if (!connected || !registerUserId || configId === null) return;
+    const key = `${ACTIVE_CART_KEY}:${registerUserId}:${configId}`;
     if (hydratedDraftKey !== key) return;
     try {
       if (!lines.length && !customer && !cashTendered) {
@@ -458,7 +458,7 @@ export function OdooRegisterPage() {
     } catch {
       setDraftNotice({ kind: "save_error", message: "This device could not save the active cart draft." });
     }
-  }, [cashTendered, configId, connected, customer, hydratedDraftKey, lines, odooUserId, paymentMethodId, pendingCheckout]);
+  }, [cashTendered, configId, connected, customer, hydratedDraftKey, lines, registerUserId, paymentMethodId, pendingCheckout]);
 
   useEffect(() => {
     if (!prefsHydrated) return;
@@ -478,7 +478,7 @@ export function OdooRegisterPage() {
     setProductsLoadingMore(false);
     const timer = window.setTimeout(async () => {
       try {
-        const result = await searchOdooRecords<OdooProductRecord>("products", {
+        const result = await searchRetailRecords<RetailProductRecord>("products", {
           query,
           limit: PRODUCT_PAGE_SIZE,
           offset: 0,
@@ -513,7 +513,7 @@ export function OdooRegisterPage() {
     let cancelled = false;
     setCategoriesLoading(true);
     setCategoriesError(null);
-    void searchOdooRecords<OdooPosCategoryRecord>("posCategories", { limit: 100 })
+    void searchRetailRecords<RetailPosCategoryRecord>("posCategories", { limit: 100 })
       .then((result) => { if (!cancelled) { setPosCategories(result.items); setCategoriesError(null); } })
       .catch((cause) => { if (!cancelled) setCategoriesError(cause instanceof Error ? cause.message : "Product categories could not be loaded."); })
       .finally(() => { if (!cancelled) setCategoriesLoading(false); });
@@ -535,7 +535,7 @@ export function OdooRegisterPage() {
     setCustomerSearchLoading(true);
     const timer = window.setTimeout(async () => {
       try {
-        const result = await searchOdooRecords<OdooCustomerRecord>("customers", { query: term, limit: 12 });
+        const result = await searchRetailRecords<RetailCustomerRecord>("customers", { query: term, limit: 12 });
         if (revision === customerSearchRevision.current) setCustomers(result.items);
       } catch (cause) {
         if (revision === customerSearchRevision.current) {
@@ -549,7 +549,7 @@ export function OdooRegisterPage() {
     return () => window.clearTimeout(timer);
   }, [customerQuery, connected, customerSearchKey]);
 
-  function selectCustomer(nextCustomer: OdooCustomerRecord) {
+  function selectCustomer(nextCustomer: RetailCustomerRecord) {
     customerSearchRevision.current += 1;
     setCustomerSearchLoading(false);
     setCustomerSearchError(null);
@@ -611,7 +611,7 @@ export function OdooRegisterPage() {
   });
   const paymentMethods = selectedConfig?.paymentMethods ?? [];
   const selectedCompanyId = Array.isArray(selectedConfig?.company) ? selectedConfig.company[0] : null;
-  const visibleParkedSales = parkedSales.filter((sale) => sale.ownerUserId === odooUserId
+  const visibleParkedSales = parkedSales.filter((sale) => sale.ownerUserId === registerUserId
     && sale.companyId === selectedCompanyId
     && (sale.registerId === undefined ? sale.registerName === selectedConfig?.name : sale.registerId === configId));
   const parkedActionSale = parkedAction ? parkedSales.find((sale) => sale.id === parkedAction.saleId) : null;
@@ -655,7 +655,7 @@ export function OdooRegisterPage() {
     setQuotedFingerprint(null);
     setQuoteLoading(true);
     const timer = window.setTimeout(() => {
-      void quoteOdooPosOrder({
+      void quoteRetailOrder({
         configId: selectedConfig.id,
         paymentMethodId,
         customerId: customer?.id ?? null,
@@ -683,7 +683,7 @@ export function OdooRegisterPage() {
   }, [connected, currentQuoteFingerprint, customer, isOnline, lines, paymentMethodId, quoteRetryKey, selectedConfig]);
 
   function formatStoreDate(value: string, timezone: string) {
-    return formatOdooDateTime(value, timezone);
+    return formatStoreDateTime(value, timezone);
   }
 
   async function submitCashOut() {
@@ -699,7 +699,7 @@ export function OdooRegisterPage() {
     setCashOutBusy(true);
     setError(null);
     try {
-      await postOdooSessionCash({
+      await postRetailSessionCash({
         configId: selectedConfig.id,
         direction: "out",
         amount: Math.round(amount * 100) / 100,
@@ -721,7 +721,7 @@ export function OdooRegisterPage() {
     setProductsLoadingMore(true);
     setProductsError(null);
     try {
-      const result = await searchOdooRecords<OdooProductRecord>("products", {
+      const result = await searchRetailRecords<RetailProductRecord>("products", {
         query,
         limit: PRODUCT_PAGE_SIZE,
         offset: products.length,
@@ -744,7 +744,7 @@ export function OdooRegisterPage() {
     }
   }
 
-  function addProduct(product: OdooProductRecord, packFactor = 1) {
+  function addProduct(product: RetailProductRecord, packFactor = 1) {
     const label = friendlyProductName(product.display_name || product.name);
     if (!product.available_in_pos) {
       setError(`${label} is not available for POS sale.`);
@@ -817,7 +817,7 @@ export function OdooRegisterPage() {
     try {
       // Barcode scanners usually send Enter after the final character. Search
       // immediately instead of relying on the debounced text search response.
-      const result = await searchOdooRecords<OdooProductRecord>("products", {
+      const result = await searchRetailRecords<RetailProductRecord>("products", {
         query: query.trim(),
         limit: PRODUCT_PAGE_SIZE,
         sellCatalogue: true,
@@ -858,12 +858,12 @@ export function OdooRegisterPage() {
   }
 
   function saveParkedSales(next: ParkedSale[]) {
-    if (!odooUserId) {
+    if (!registerUserId) {
       setError("Connect an Orithos staff account before saving a parked sale.");
       return false;
     }
     try {
-      const otherUsersSales = readParkedSales().filter((sale) => sale.ownerUserId !== odooUserId);
+      const otherUsersSales = readParkedSales().filter((sale) => sale.ownerUserId !== registerUserId);
       localStorage.setItem(PARKED_SALES_KEY, JSON.stringify([...otherUsersSales, ...next]));
       setParkedSales(next);
       setError(null);
@@ -875,14 +875,14 @@ export function OdooRegisterPage() {
   }
 
   function parkCurrentSale() {
-    if (!lines.length || !selectedConfig || selectedCompanyId === null || !odooUserId) return false;
+    if (!lines.length || !selectedConfig || selectedCompanyId === null || !registerUserId) return false;
     if (parkedSales.length >= 50) {
       setError("This terminal has reached its 50 parked sale limit. Resume or discard an older sale first.");
       return false;
     }
     const sale: ParkedSale = {
       id: crypto.randomUUID(),
-      ownerUserId: odooUserId,
+      ownerUserId: registerUserId,
       companyId: selectedCompanyId,
       companyName: Array.isArray(selectedConfig.company) ? selectedConfig.company[1] : "Company",
       registerName: selectedConfig.name,
@@ -952,7 +952,7 @@ export function OdooRegisterPage() {
     return formatStoreDate(value, timezone || selectedConfig?.timezone || "Australia/Adelaide");
   }
 
-  function persistPendingOrder(request: OdooCheckoutRequest) {
+  function persistPendingOrder(request: RetailCheckoutRequest) {
     if (!hydratedDraftKey) throw new Error("Wait for this terminal's draft to load before finalising.");
     try {
       const saved = JSON.parse(localStorage.getItem(hydratedDraftKey) ?? "null");
@@ -964,7 +964,7 @@ export function OdooRegisterPage() {
     setPendingCheckout(request);
   }
 
-  function isCardCheckoutRequest(request: OdooCheckoutRequest): boolean {
+  function isCardCheckoutRequest(request: RetailCheckoutRequest): boolean {
     return Boolean(cardMethod && request.paymentMethodId === cardMethod.id);
   }
 
@@ -995,7 +995,7 @@ export function OdooRegisterPage() {
       }
       const stableOrderUuid = activeRequest?.orderUuid ?? orderUuid.current ?? crypto.randomUUID();
       orderUuid.current = stableOrderUuid;
-      const request: OdooCheckoutRequest = activeRequest ?? {
+      const request: RetailCheckoutRequest = activeRequest ?? {
         configId: selectedConfig.id,
         paymentMethodId: paymentMethodId!,
         orderUuid: stableOrderUuid,
@@ -1026,8 +1026,8 @@ export function OdooRegisterPage() {
         });
         setEftposPaymentNotice(null);
       }
-      const result = activeRequest ? await recoverOdooPosOrder(request) : await submitOdooPosOrder(request);
-      if (!result) throw new OdooCheckoutPendingError(request);
+      const result = activeRequest ? await recoverRetailOrder(request) : await submitRetailOrder(request);
+      if (!result) throw new RetailCheckoutPendingError(request);
       setPendingCheckout(null);
       const completed: CompletedReceipt = {
         reference: result.receipt,
@@ -1074,7 +1074,7 @@ export function OdooRegisterPage() {
       setEftposPaymentNotice(null);
       const terminalPending = cause instanceof Error
         && /pending on the terminal|Do not charge again|declined or cancelled/i.test(cause.message);
-      if (cause instanceof OdooCheckoutPendingError) setPendingCheckout(cause.order);
+      if (cause instanceof RetailCheckoutPendingError) setPendingCheckout(cause.order);
       else if (terminalPending) {
         /* keep pending order for recovery */
       } else {
@@ -1209,15 +1209,15 @@ export function OdooRegisterPage() {
   const finaliseTitle = canFinalise ? "Complete this sale in Orithos" : finaliseLabel;
 
   async function confirmOpenRegister() {
-    if (!registerStartupPrompt || !odooUserId) return;
-    writeRegisterStartupPromptAck(odooUserId);
+    if (!registerStartupPrompt || !registerUserId) return;
+    writeRegisterStartupPromptAck(registerUserId);
     const { configId, needsOpen } = registerStartupPrompt;
     setRegisterStartupPrompt(null);
     if (!needsOpen) return;
     setRefreshing(true);
     setError(null);
     try {
-      await openOdooPosSession(configId);
+      await openRetailPosSession(configId);
       await loadPos(false);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not open this register.");
@@ -1225,8 +1225,8 @@ export function OdooRegisterPage() {
   }
 
   function requestChangeRegister() {
-    if (!odooUserId) return;
-    writeRegisterStartupPromptAck(odooUserId);
+    if (!registerUserId) return;
+    writeRegisterStartupPromptAck(registerUserId);
     setRegisterStartupPrompt(null);
     window.setTimeout(() => {
       registerSelectRef.current?.focus();
@@ -1253,8 +1253,8 @@ export function OdooRegisterPage() {
     setCatalogHome(true);
     setSelectedLineKey(null);
     setPendingRegisterId(null);
-    if (odooUserId) {
-      try { localStorage.setItem(`${REGISTER_SELECTION_KEY}:${odooUserId}`, String(id)); } catch { /* Keep the current selection for this session. */ }
+    if (registerUserId) {
+      try { localStorage.setItem(`${REGISTER_SELECTION_KEY}:${registerUserId}`, String(id)); } catch { /* Keep the current selection for this session. */ }
     }
   }
 
