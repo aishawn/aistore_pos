@@ -6,7 +6,7 @@
 
 销售数据的新鲜度和完整性仍不能确认，接口状态保持 `incomplete`。组合查询没有可信 `dataAsOf`；不得用查询执行时间或单独的库存更新时间冒充销售来源水位，因此完整性验收 BLOCKED。详见[本轮记录](../../../../test-sessions/2026-11-19-ai-dead-stock-answer-copy.md)。
 
-后续审计发现，空滞销列表会被通用逻辑误标为 `no_data`，即使缺少可信新鲜度信息。现已修正为无 `dataAsOf` 时 `report_dead_stock` 一律 `incomplete`，空结果回答明确表示无法确认是否确实没有滞销商品。Java 21 定向回归 46/46 PASS；修正尚未部署，线上状态须待自动部署后核验。
+后续审计发现，空滞销列表会被通用逻辑误标为 `no_data`，即使缺少可信新鲜度信息。现已修正为无 `dataAsOf` 时 `report_dead_stock` 一律 `incomplete`，空结果回答明确表示无法确认是否确实没有滞销商品。Java 21 定向回归 46/46 PASS。Demo/SKR 公开版本接口均确认前后端运行 `66de47da`；本轮缺少已登录助手凭据且浏览器 URL 校验不可用，修复后的认证问答尚未在线复测。组合数据源仍无权威 `dataAsOf`，完整性保持 BLOCKED。
 
 ## 2026-11-18 Demo 毛利口径回归
 

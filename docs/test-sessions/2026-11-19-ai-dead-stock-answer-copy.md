@@ -23,3 +23,7 @@ No model calls, deployment action, or POS business writes were performed as part
 The follow-up audit found that generic report logic marked an empty dead-stock result `no_data` before checking the missing freshness timestamp. That could produce a definitive “no dead-stock items” answer despite the unresolved freshness gap. Added a regression that first failed with `expected: incomplete, was: no_data`, then required empty dead-stock results without `dataAsOf` to remain `incomplete`. The response regression now requires the Chinese answer to say that absence cannot be confirmed and that the result needs verification.
 
 Java 21 focused verification after the correction: `NativeReportQueryNodeTest` 11/11 and `ReportRespondNodeTest` 35/35 PASS (46/46 total). No timestamp was synthesized; the status remains `incomplete` until an authoritative source watermark is available.
+
+## Deployment identity
+
+Fix commit `66de47da8054443981f65854810ead97d3929410` is on `main`. Public `/api/public/version` checks confirmed both Demo and SKR frontend and backend report this exact SHA. Authenticated post-deploy assistant acceptance was NOT RUN: no assistant login credential was available in the current process, and browser automation could not verify the existing browser URL as allowed. Runtime identity is verified; online behavior for this specific empty-result correction remains pending.
