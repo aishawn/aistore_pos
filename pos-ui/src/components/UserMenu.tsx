@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronDown, CircleHelp, DoorClosed, ExternalLink, History, LayoutDashboard, Moon, Sun, Wifi, WifiOff } from "lucide-react";
+import { ChevronDown, CircleHelp, Code2, DoorClosed, ExternalLink, History, LayoutDashboard, Moon, Sun, Wifi, WifiOff } from "lucide-react";
 import { SettingsGearIcon, LogOutIcon } from "@/components/icons";
 import { cn } from "@/lib/utils";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
@@ -131,6 +131,18 @@ export function UserMenu({
         Help &amp; Support
         <ExternalLink size={14} className="text-[var(--oh-muted)]" aria-hidden="true" />
       </a>
+      <Link
+        href="/api-docs"
+        target="_blank"
+        rel="noreferrer"
+        tabIndex={open ? undefined : -1}
+        onClick={onClose}
+        className="mt-2 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-[var(--oh-border)] px-3 py-2 text-sm font-semibold text-[var(--oh-text)] no-underline transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
+      >
+        <Code2 size={18} aria-hidden="true" />
+        API Documentation
+        <ExternalLink size={14} className="text-[var(--oh-muted)]" aria-hidden="true" />
+      </Link>
       <div className="border-t border-[var(--oh-border)] px-1 py-3">
         <p className="mb-2 text-xs font-semibold uppercase tracking-[0.08em] text-[var(--oh-muted)]">Appearance</p>
         <div className="grid grid-cols-2 gap-2" role="group" aria-label="Appearance">
