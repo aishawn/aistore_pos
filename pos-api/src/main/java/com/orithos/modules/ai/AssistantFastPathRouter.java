@@ -118,6 +118,7 @@ public final class AssistantFastPathRouter {
                     + "how many units of stock do we have|current stock (?:quantity|units)|"
                     + "how many products? (?:have )?negative stock|"
                     + "当前库存(?:有|是)?多少(?:件|个|数量)|现在库存(?:有|是)?多少(?:件|个|数量)|"
+                    + "(?:当前|现在)(?:商品)?有多少库存|"
                     + "有多少商品库存是负数|有多少(?:件|个)?库存是负数|负库存(?:商品|库存)?有多少(?:件|个|数量)?)"
                     + "[?.!。！？]*$",
             Pattern.CASE_INSENSITIVE);

@@ -139,6 +139,7 @@ class AssistantFastPathRouterTest {
     void routesAggregateStockQuestionsToAnExplicitDataQualityAnswer() {
         for (String question : new String[]{
                 "当前库存有多少件？",
+                "当前有多少库存",
                 "How many units are currently in stock?",
                 "有多少商品库存是负数？",
                 "How many products have negative stock?"
