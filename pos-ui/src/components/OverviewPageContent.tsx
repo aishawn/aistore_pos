@@ -342,7 +342,6 @@ export function OverviewPageContent({
                 {canReport ? (
                   <OverviewWeeklyTrend
                     sales={data?.weeklyTrend ?? []}
-                    margin={data?.weeklyTrend ?? []}
                     loading={loading && !data}
                   />
                 ) : null}
