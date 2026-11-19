@@ -78,11 +78,11 @@ CREATE OR REPLACE VIEW ai_rpt_inventory_cost AS
 SELECT
     p.id AS product_id,
     p.outlet_id,
-    CASE WHEN p.cost_percentage <> 0 THEN NULL ELSE
+    (CASE WHEN p.cost_percentage <> 0 THEN NULL ELSE
         COALESCE(pc.average_cost, pc.cost,
             CASE WHEN p.shopfront_source_updated_at IS NULL OR p.case_cost IS NOT NULL
                  THEN p.cost END)
-    END AS cost,
+    END)::NUMERIC(14,4) AS cost,
     CASE WHEN p.cost_percentage <> 0 THEN NULL ELSE p.case_cost END AS case_cost,
     p.case_quantity
 FROM product p

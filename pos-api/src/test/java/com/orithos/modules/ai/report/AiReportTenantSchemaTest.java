@@ -2,9 +2,12 @@ package com.orithos.modules.ai.report;
 
 import org.junit.jupiter.api.Test;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -36,5 +39,17 @@ class AiReportTenantSchemaTest {
         assertTrue(AiReportTenantProvisioner.VIEW_COLUMNS.get("ai_rpt_inventory").contains("updated_at"));
         assertTrue(AiReportTenantProvisioner.VIEW_COLUMNS.get("ai_rpt_inventory_cost").contains("case_cost"));
         assertTrue(AiReportTenantProvisioner.VIEW_COLUMNS.get("ai_rpt_inventory_cost").contains("case_quantity"));
+    }
+
+    @Test
+    void inventoryCostMigrationKeepsTheExistingViewColumnType() throws IOException {
+        try (var stream = AiReportTenantSchemaTest.class.getResourceAsStream(
+                "/db/migration_ai_report_views.sql")) {
+            assertNotNull(stream);
+            String migration = new String(stream.readAllBytes(), StandardCharsets.UTF_8);
+            assertTrue(migration.contains(")::NUMERIC(14,4) AS cost"));
+            assertTrue(migration.contains("END AS case_cost"));
+            assertTrue(migration.contains("p.case_quantity"));
+        }
     }
 }
