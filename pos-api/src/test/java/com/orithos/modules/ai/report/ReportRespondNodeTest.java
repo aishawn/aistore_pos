@@ -294,7 +294,7 @@ class ReportRespondNodeTest {
     }
 
     @Test
-    void stockAnswerLabelsTotalAsAtLeastWhenTheResultLimitIsReached() {
+    void stockAnswerLabelsSubtotalWhenTheResultLimitIsReached() {
         String asOf = "2026-11-19T06:15:00Z";
         List<Map<String, Object>> rows = new java.util.ArrayList<>();
         for (int i = 0; i < 50; i++) {
@@ -306,7 +306,24 @@ class ReportRespondNodeTest {
         when(stock.value("slots")).thenReturn(Optional.of(Map.of("query", "Shiraz")));
 
         String answer = String.valueOf(node.apply(stock).get("answer"));
-        assertTrue(answer.startsWith("Shiraz total at least 100 units (first 50 matches):"));
+        assertTrue(answer.startsWith("Shiraz subtotal 100 units (first 50 matches):"));
+    }
+
+    @Test
+    void stockAnswerDoesNotCallTruncatedNegativeInventoryTotalALowerBound() {
+        String asOf = "2026-11-19T06:15:00Z";
+        List<Map<String, Object>> rows = new java.util.ArrayList<>();
+        for (int i = 0; i < 50; i++) {
+            rows.add(Map.of("name", "Shiraz " + i, "quantity", i == 0 ? -1413 : 0, "dataAsOf", asOf));
+        }
+        OverAllState stock = state("", rows);
+        when(stock.value("intent", String.class)).thenReturn(Optional.of("report_stock"));
+        when(stock.value("question", String.class)).thenReturn(Optional.of("西拉现在有多少库存"));
+        when(stock.value("slots")).thenReturn(Optional.of(Map.of("query", "Shiraz")));
+
+        String answer = String.valueOf(node.apply(stock).get("answer"));
+        assertTrue(answer.startsWith("Shiraz库存小计 -1413 件（前50个匹配商品）："));
+        assertTrue(!answer.contains("至少"));
     }
 
     @Test

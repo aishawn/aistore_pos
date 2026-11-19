@@ -247,15 +247,13 @@ public class ReportRespondNode implements NodeAction {
             String totalText = total.stripTrailingZeros().toPlainString();
             boolean resultLimitReached = rows.size() >= STOCK_RESULT_LIMIT;
             if (chinese) {
-                sb.append(label).append("库存合计")
-                        .append(resultLimitReached ? "至少 " : " ")
+                sb.append(label).append(resultLimitReached ? "库存小计 " : "库存合计 ")
                         .append(totalText).append(" 件");
                 sb.append(resultLimitReached
-                        ? "（已匹配前50个商品）："
+                        ? "（前50个匹配商品）："
                         : "（" + rows.size() + " 个商品）：");
             } else {
-                sb.append(label).append(" total ")
-                        .append(resultLimitReached ? "at least " : "")
+                sb.append(label).append(resultLimitReached ? " subtotal " : " total ")
                         .append(totalText).append(" units");
                 sb.append(resultLimitReached
                         ? " (first 50 matches): "
