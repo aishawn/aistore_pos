@@ -60,6 +60,7 @@ const PUBLIC_PREFIXES = [
   "/api/auth/reset-token",
   "/api/auth/bootstrap",
   "/api/public",
+  "/downloads",
   "/enapi.json",
   "/openapi.json",
 ];

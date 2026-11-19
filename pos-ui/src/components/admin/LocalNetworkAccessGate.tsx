@@ -10,6 +10,8 @@ import {
   watchHardwareNetworkAccess,
   type LocalNetworkAccessState,
 } from "@/lib/local-network-access";
+import { HardwareConnectInstallCard } from "@/components/admin/HardwareConnectInstallCard";
+import { HardwareLoopbackProvider } from "@/components/admin/hardware-loopback-context";
 
 export function LocalNetworkAccessGate({ children }: { children: React.ReactNode }) {
   const [accessState, setAccessState] = useState<LocalNetworkAccessState | "loading">("loading");
@@ -119,6 +121,9 @@ export function LocalNetworkAccessGate({ children }: { children: React.ReactNode
             {hint}
           </p>
         ) : null}
+        <div className="mt-5 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] px-4 py-3">
+          <HardwareConnectInstallCard compact />
+        </div>
         <div className="mt-6 flex flex-wrap gap-2">
           <button
             type="button"
@@ -144,9 +149,9 @@ export function LocalNetworkAccessGate({ children }: { children: React.ReactNode
   const readyForHardware = accessState === "granted" || accessState === "unsupported";
 
   return (
-    <>
+    <HardwareLoopbackProvider loopbackReady={readyForHardware}>
       {portalReady && dialog ? createPortal(dialog, document.body) : dialog}
       {readyForHardware ? <div>{children}</div> : null}
-    </>
+    </HardwareLoopbackProvider>
   );
 }

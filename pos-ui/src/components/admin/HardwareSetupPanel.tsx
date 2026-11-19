@@ -21,7 +21,8 @@ import {
   supportsBarcodeDetection,
   markBarcodeScannerTested,
 } from "@/lib/local-hardware";
-import { getOrithosHardwareConnectDownloadUrl } from "@/lib/hardware-connect-download";
+import { HardwareConnectInstallCard } from "@/components/admin/HardwareConnectInstallCard";
+import { useHardwareLoopbackReady } from "@/components/admin/hardware-loopback-context";
 
 const emptySettings: HardwareSettings = {
   printer: "",
@@ -61,6 +62,7 @@ export function HardwareSetupPanel() {
   const [qzScriptError, setQzScriptError] = useState(false);
   const [loadQzFallback, setLoadQzFallback] = useState(false);
   const autoConnectAttempted = useRef(false);
+  const loopbackReady = useHardwareLoopbackReady();
 
   function applyBridgeFallback(next: LocalHardwareState) {
     if (next.bridge === "orithos-hc") {
@@ -79,10 +81,10 @@ export function HardwareSetupPanel() {
   useEffect(() => () => scaleAbort.current?.abort(), []);
 
   useEffect(() => {
-    if (autoConnectAttempted.current) return;
+    if (!loopbackReady || autoConnectAttempted.current) return;
     autoConnectAttempted.current = true;
     void connect().catch(() => undefined);
-  }, []);
+  }, [loopbackReady]);
 
   const dirty = JSON.stringify(draft) !== JSON.stringify(savedSettings);
 
@@ -186,7 +188,6 @@ export function HardwareSetupPanel() {
     setNotice("Scale diagnostic stopped. The serial port is being closed.");
   }
 
-  const hcDownloadUrl = typeof window !== "undefined" ? getOrithosHardwareConnectDownloadUrl() : null;
   const activePrinter = dirty ? draft.printer : savedSettings.printer;
   const printerReady = Boolean(state.connected && activePrinter && state.printers.includes(activePrinter));
   const printerNames = [...new Set([...state.printers, ...(activePrinter ? [activePrinter] : [])])];
@@ -253,36 +254,20 @@ export function HardwareSetupPanel() {
               );
             })}
         </ul>
-        {!state.connected && (
+        {state.bridge !== "orithos-hc" && (
           <div
             role="status"
-            className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-950"
+            className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-amber-950"
           >
-            <p className="font-semibold">Install Orithos Hardware Connect (this register)</p>
-            <ol className="mt-2 list-decimal space-y-1 pl-5 text-xs sm:text-sm">
-              <li>
-                Download and run the Windows installer (tray app, port{" "}
-                <span className="font-mono">9170</span>).
-              </li>
-              <li>Allow Windows Firewall on private networks when prompted, then sign back into Windows if required.</li>
-              <li>
-                Allow <span className="font-semibold">local network access</span> for this site in Chrome, then click{" "}
-                <span className="font-semibold">Connect local bridge</span> and choose your receipt printer.
-              </li>
-            </ol>
-            {hcDownloadUrl ? (
-              <a
-                href={hcDownloadUrl}
-                className="mt-3 inline-flex min-h-10 items-center gap-2 rounded-md bg-amber-900 px-4 text-sm font-semibold text-amber-50"
-              >
-                <ExternalLink size={15} aria-hidden="true" />
-                Download for Windows
-              </a>
-            ) : null}
+            {state.connected ? (
+              <p className="text-sm font-semibold">Optional: switch to Orithos Hardware Connect (preferred over QZ Tray).</p>
+            ) : (
+              <HardwareConnectInstallCard />
+            )}
             <details className="mt-3 text-xs text-amber-950/90">
-              <summary className="cursor-pointer font-medium">IT: install from repository</summary>
+              <summary className="cursor-pointer font-medium">IT: publish installer to this site</summary>
               <p className="mt-1 font-mono leading-5">
-                tools\orithos-hardware-connect\bundle-register.ps1 → upload zip to /downloads/orithos-hardware-connect-latest.zip
+                tools\orithos-hardware-connect\stage-ui-download.ps1 → pos-ui/public/downloads (then deploy)
               </p>
             </details>
           </div>
@@ -445,7 +430,7 @@ export function HardwareSetupPanel() {
           </pre>
         )}
       </details>
-      {loadQzFallback ? (
+      {loopbackReady && loadQzFallback ? (
         <Script
           src="https://cdn.jsdelivr.net/npm/qz-tray@2.3.0/qz-tray.js"
           strategy="lazyOnload"

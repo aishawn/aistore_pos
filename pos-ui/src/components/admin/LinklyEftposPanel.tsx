@@ -16,6 +16,7 @@ import {
 } from "@/lib/eftpos-api";
 import { fetchConnectorStatus, probeConnectorHealth, requestConnectorPurchase } from "@/lib/linkly-connector";
 import { resolveLocalNetworkAccessState, type LocalNetworkAccessState } from "@/lib/local-network-access";
+import { useHardwareLoopbackReady } from "@/components/admin/hardware-loopback-context";
 
 type Props = {
   canEdit: boolean;
@@ -51,7 +52,10 @@ export function LinklyEftposPanel({ canEdit }: Props) {
   const [connectorStatus, setConnectorStatus] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [loadBusy, setLoadBusy] = useState(false);
+  const [actionBusy, setActionBusy] = useState(false);
+  const [diagBusy, setDiagBusy] = useState(false);
+  const loopbackReady = useHardwareLoopbackReady();
   const [revealedToken, setRevealedToken] = useState<string | null>(null);
 
   const refreshDiagnostics = useCallback(async (baseUrl: string) => {
@@ -89,7 +93,7 @@ export function LinklyEftposPanel({ canEdit }: Props) {
   useEffect(() => {
     if (!registerId) return;
     savePreferredEftposRegisterId(registerId);
-    setBusy(true);
+    setLoadBusy(true);
     void getRegisterEftposBinding(registerId)
       .then((next) => {
         setBinding(next);
@@ -103,15 +107,20 @@ export function LinklyEftposPanel({ canEdit }: Props) {
           rotateConnectorToken: false,
         });
         setRevealedToken(readConnectorTokenHint(registerId));
-        return refreshDiagnostics(next.connectorBaseUrl || defaultDraft.connectorBaseUrl);
+        if (loopbackReady) {
+          return refreshDiagnostics(next.connectorBaseUrl || defaultDraft.connectorBaseUrl);
+        }
+        setConnectorHealth("unknown");
+        setConnectorStatus("Allow local network access, then refresh diagnostics.");
+        return undefined;
       })
       .catch((cause) => setError(cause instanceof Error ? cause.message : "Could not load EFTPOS binding"))
-      .finally(() => setBusy(false));
-  }, [registerId, refreshDiagnostics]);
+      .finally(() => setLoadBusy(false));
+  }, [registerId, refreshDiagnostics, loopbackReady]);
 
   async function saveBinding() {
     if (!canEdit || !registerId) return;
-    setBusy(true);
+    setActionBusy(true);
     setError(null);
     setNotice(null);
     try {
@@ -134,17 +143,30 @@ export function LinklyEftposPanel({ canEdit }: Props) {
       } else {
         setNotice("EFTPOS binding saved for this register.");
       }
-      await refreshDiagnostics(saved.connectorBaseUrl);
+      if (loopbackReady) await refreshDiagnostics(saved.connectorBaseUrl);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Save failed");
     } finally {
-      setBusy(false);
+      setActionBusy(false);
+    }
+  }
+
+  async function refreshDiagnosticsClick() {
+    if (!loopbackReady) {
+      setNotice("Allow local network access first, then refresh diagnostics.");
+      return;
+    }
+    setDiagBusy(true);
+    try {
+      await refreshDiagnostics(draft.connectorBaseUrl || defaultDraft.connectorBaseUrl);
+    } finally {
+      setDiagBusy(false);
     }
   }
 
   async function runTestPayment() {
     if (!registerId || !binding?.paymentsEnabled) return;
-    setBusy(true);
+    setActionBusy(true);
     setError(null);
     setNotice(null);
     const orderUuid = crypto.randomUUID();
@@ -171,10 +193,11 @@ export function LinklyEftposPanel({ canEdit }: Props) {
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Test payment failed");
     } finally {
-      setBusy(false);
+      setActionBusy(false);
     }
   }
 
+  const busy = loadBusy || actionBusy || diagBusy;
   const paymentsReady = Boolean(binding?.paymentsEnabled);
   const lnaLabel = lna === "granted" ? "Granted" : lna === "denied" ? "Denied" : lna === "prompt" ? "Needs prompt" : "Check browser";
   const connectorLabel = connectorHealth === "reachable" ? "Running" : connectorHealth === "offline" ? "Not reachable" : connectorHealth === "error" ? "Error" : "Unknown";
@@ -189,10 +212,10 @@ export function LinklyEftposPanel({ canEdit }: Props) {
         <button
           type="button"
           disabled={busy || !registerId}
-          onClick={() => void refreshDiagnostics(draft.connectorBaseUrl)}
+          onClick={() => void refreshDiagnosticsClick()}
           className="inline-flex min-h-10 items-center gap-2 rounded-md border border-[var(--oh-border)] px-3 text-sm font-semibold disabled:opacity-50"
         >
-          <RefreshCw size={15} className={busy ? "animate-spin" : undefined} aria-hidden="true" />
+          <RefreshCw size={15} className={diagBusy ? "animate-spin" : undefined} aria-hidden="true" />
           Refresh diagnostics
         </button>
       </div>
@@ -285,12 +308,12 @@ export function LinklyEftposPanel({ canEdit }: Props) {
 
       <div className="mt-4 flex flex-wrap gap-2">
         {canEdit && (
-          <button type="button" onClick={() => void saveBinding()} disabled={busy} className="inline-flex min-h-10 items-center gap-2 rounded-md bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white disabled:opacity-50">
+          <button type="button" onClick={() => void saveBinding()} disabled={loadBusy || actionBusy} className="inline-flex min-h-10 items-center gap-2 rounded-md bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white disabled:opacity-50">
             <Save size={15} aria-hidden="true" />
             Save EFTPOS binding
           </button>
         )}
-        <button type="button" onClick={() => void runTestPayment()} disabled={busy || !paymentsReady} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-[var(--oh-border)] px-3 text-sm font-semibold disabled:opacity-50">
+        <button type="button" onClick={() => void runTestPayment()} disabled={loadBusy || actionBusy || !paymentsReady} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-[var(--oh-border)] px-3 text-sm font-semibold disabled:opacity-50">
           <CreditCard size={15} aria-hidden="true" />
           Test $1.00 (lab)
         </button>
