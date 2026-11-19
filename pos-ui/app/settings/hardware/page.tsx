@@ -40,27 +40,22 @@ export default function HardwareSettingsPage() {
   return (
     <AdminPageLayout
       title="Hardware"
-      subtitle="Set up printers and EFTPOS on this register"
+      subtitle="Printer and EFTPOS on this register (browser + QZ Tray, like Shopfront Hardware Connect)"
       toolbar={<DevicesSettingsTabs activeHref="/settings/hardware" />}
       showRelatedAside={false}
     >
       {error && <p className="mb-3 text-sm text-red-700">{error}</p>}
       {notice && <p className="mb-3 text-sm text-emerald-800">{notice}</p>}
-      <nav aria-label="Hardware setup steps" className="mb-5 flex flex-wrap gap-2">
-        <span className="inline-flex min-h-9 items-center rounded-full bg-[var(--oh-primary)] px-3 text-xs font-semibold text-white">
-          1 · Receipt printer
-        </span>
-        <span className="inline-flex min-h-9 items-center rounded-full border border-[var(--oh-border)] bg-white px-3 text-xs font-semibold text-[var(--oh-text)]">
-          2 · EFTPOS pairing
-        </span>
-        <span className="inline-flex min-h-9 items-center rounded-full border border-dashed border-[var(--oh-border)] px-3 text-xs font-medium text-[var(--oh-muted)]">
-          Optional · Scanner & scale tests
-        </span>
-      </nav>
-      <details className="mb-6 rounded-lg border border-[var(--oh-border)] px-4 py-3">
+      <LocalNetworkAccessGate>
+        <div className="space-y-8">
+          <HardwareSetupPanel />
+          <LinklyEftposPanel canEdit={canEdit} />
+        </div>
+      </LocalNetworkAccessGate>
+      <details className="mt-8 rounded-lg border border-[var(--oh-border)] px-4 py-3">
         <summary className="cursor-pointer text-sm font-semibold text-[var(--oh-text)]">Advanced company hardware settings</summary>
         <p className="my-3 text-sm text-[var(--oh-muted)]">
-          This legacy JSON is shared through Orithos and is separate from the printer and drawer selected on this register.
+          Legacy JSON in Orithos; printer selection above is per browser on this PC.
         </p>
         <textarea
           aria-label="Company hardware settings JSON"
@@ -75,12 +70,6 @@ export default function HardwareSettingsPage() {
           </button>
         )}
       </details>
-      <LocalNetworkAccessGate>
-        <div className="space-y-8">
-          <HardwareSetupPanel />
-          <LinklyEftposPanel canEdit={canEdit} />
-        </div>
-      </LocalNetworkAccessGate>
     </AdminPageLayout>
   );
 }

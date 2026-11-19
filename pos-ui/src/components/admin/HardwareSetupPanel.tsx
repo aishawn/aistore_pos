@@ -6,8 +6,10 @@ import { ExternalLink, RefreshCw, Save } from "lucide-react";
 import {
   connectLocalHardware,
   formatCashDrawerKickCode,
+  getHardwareReadinessSnapshot,
   getLocalHardwareSettingsSnapshot,
   parseLocalHardwareSettings,
+  type HardwareReadinessItem,
   printReceiptTestThroughLocalBridge,
   readSerialDiagnostic,
   saveLocalHardwareSettings,
@@ -33,7 +35,11 @@ const emptySettings: HardwareSettings = {
 
 export function HardwareSetupPanel() {
   const settingsSnapshot = useSyncExternalStore(subscribeLocalHardwareSettings, getLocalHardwareSettingsSnapshot, () => "");
+  const readinessSnapshot = useSyncExternalStore(subscribeLocalHardwareSettings, getHardwareReadinessSnapshot, () => "");
   const savedSettings = settingsSnapshot ? parseLocalHardwareSettings(settingsSnapshot) : emptySettings;
+  const readiness: HardwareReadinessItem[] = readinessSnapshot
+    ? (JSON.parse(readinessSnapshot) as HardwareReadinessItem[])
+    : [];
   const [draft, setDraft] = useState<HardwareSettings>(savedSettings);
   const [state, setState] = useState<LocalHardwareState>({ qzAvailable: false, connected: false, printers: [], error: null });
   const [scanTest, setScanTest] = useState("");
@@ -128,11 +134,11 @@ export function HardwareSetupPanel() {
     setNotice("Scale diagnostic stopped. The serial port is being closed.");
   }
 
-  const bridgeStatus = state.connected
-    ? `${state.printers.length} printer(s) found`
-    : state.qzAvailable
-      ? "QZ loaded — connect the bridge"
-      : "Install QZ Tray, then connect";
+  const activePrinter = dirty ? draft.printer : savedSettings.printer;
+  const printerReady = Boolean(state.connected && activePrinter && state.printers.includes(activePrinter));
+  const printerNames = [...new Set([...state.printers, ...(activePrinter ? [activePrinter] : [])])];
+  const readinessToneClass = (tone: HardwareReadinessItem["tone"]) =>
+    tone === "ok" ? "bg-emerald-50 text-emerald-900" : tone === "warn" ? "bg-amber-50 text-amber-950" : "bg-slate-100 text-slate-700";
 
   return (
     <div className="space-y-6">
@@ -140,9 +146,11 @@ export function HardwareSetupPanel() {
         <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[var(--oh-border)] pb-4">
           <div>
             <h2 id="hardware-connect-title" className="text-base font-semibold text-[var(--oh-text)]">
-              Step 1 · Receipt printer
+              Hardware connect settings
             </h2>
-            <p className="mt-1 text-xs text-[var(--oh-muted)]">QZ Tray on this PC · settings stay in this browser</p>
+            <p className="mt-1 text-xs text-[var(--oh-muted)]">
+              Local bridge: QZ Tray · {state.connected ? `${state.printers.length} Windows printer(s)` : "not connected"}
+            </p>
           </div>
           <div className="flex flex-wrap gap-2">
             <button
@@ -165,20 +173,38 @@ export function HardwareSetupPanel() {
           </div>
         </div>
 
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm text-[var(--oh-muted)]">
-            Bridge status: <span className="font-medium text-[var(--oh-text)]">{bridgeStatus}</span>
-          </p>
-          <div className="flex flex-wrap gap-2">
-            <a href="https://qz.io/download/" target="_blank" rel="noreferrer" className="inline-flex min-h-10 items-center gap-2 rounded-md border border-[var(--oh-border)] px-3 text-sm font-medium"><ExternalLink size={15} /> Get QZ Tray</a>
-            <button type="button" onClick={() => void connect()} disabled={busy} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-[var(--oh-border)] px-3 text-sm font-semibold disabled:opacity-50"><RefreshCw size={15} className={busy ? "animate-spin" : undefined} /> {busy ? "Connecting…" : "Connect local bridge"}</button>
+        <ul className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          {readiness
+            .filter((item) => item.id !== "eftpos")
+            .map((item) => {
+              const live =
+                item.id === "printer" && printerReady
+                  ? { status: `Ready · ${activePrinter}`, tone: "ok" as const }
+                  : item;
+              return (
+                <li key={item.id} className={`rounded-md px-3 py-2 text-sm ${readinessToneClass(live.tone)}`}>
+                  <span className="block text-xs font-medium opacity-80">{item.label}</span>
+                  <span className="font-semibold">{live.status}</span>
+                </li>
+              );
+            })}
+        </ul>
+        {!state.connected && (
+          <div className="mt-3 flex flex-wrap justify-end gap-2">
+            <a href="https://qz.io/download/" target="_blank" rel="noreferrer" className="inline-flex min-h-10 items-center gap-2 rounded-md border border-[var(--oh-border)] px-3 text-sm font-medium">
+              <ExternalLink size={15} aria-hidden="true" />
+              Get QZ Tray
+            </a>
+            <button type="button" onClick={() => void connect()} disabled={busy} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-[var(--oh-border)] px-3 text-sm font-semibold disabled:opacity-50">
+              <RefreshCw size={15} className={busy ? "animate-spin" : undefined} aria-hidden="true" />
+              {busy ? "Connecting…" : "Connect local bridge"}
+            </button>
           </div>
-        </div>
+        )}
         {state.error && <p role="alert" className="mt-3 text-sm text-red-800">{state.error}</p>}
         {notice && <p role="status" className="mt-3 text-sm text-[var(--oh-text-secondary)]">{notice}</p>}
 
-        <h3 className="mb-3 mt-6 text-sm font-semibold text-[var(--oh-text)]">Receipt printer</h3>
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="mt-6 grid gap-3 sm:grid-cols-2">
           <label className="grid gap-1 text-sm font-medium">
             Printer
             <select
@@ -188,7 +214,11 @@ export function HardwareSetupPanel() {
               className="h-10 rounded-md border border-[var(--oh-border)] bg-white px-3 disabled:opacity-50"
             >
               <option value="">{state.connected ? "Select local printer" : "Connect bridge to list printers"}</option>
-              {state.printers.map((printer) => <option key={printer} value={printer}>{printer}</option>)}
+              {printerNames.map((printer) => (
+                <option key={printer} value={printer}>
+                  {printer}
+                </option>
+              ))}
             </select>
           </label>
           <label className="grid gap-1 text-sm font-medium">

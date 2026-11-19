@@ -327,8 +327,8 @@ export function getHardwareReadinessItems(): HardwareReadinessItem[] {
     : ({ status: "Not configured", tone: "muted" as const });
 
   const scanner = scannerTested
-    ? ({ status: "Keyboard wedge tested", tone: "ok" as const })
-    : ({ status: "Keyboard wedge (not tested)", tone: "warn" as const });
+    ? ({ status: "Tested on this page", tone: "ok" as const })
+    : ({ status: "USB keyboard wedge (ready on Sell)", tone: "ok" as const });
 
   const eftposFields = Boolean(
     settings.linklyTerminal.trim() || settings.linklyAcquirer.trim() || settings.linklyConnection.trim(),
