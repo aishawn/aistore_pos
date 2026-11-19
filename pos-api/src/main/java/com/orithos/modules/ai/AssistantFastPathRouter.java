@@ -113,6 +113,14 @@ public final class AssistantFastPathRouter {
                     + "(?:库存|存货)(?:总)?价值(?:多少|是多少|有多高)?|"
                     + "哪些(?:商品|产品)?库存价值(?:最高|最大))[?.!。！？]*$",
             Pattern.CASE_INSENSITIVE);
+    private static final Pattern AGGREGATE_STOCK_QUESTION = Pattern.compile(
+            "^(?:how many units (?:are )?(?:currently )?(?:in stock|on hand)|"
+                    + "how many units of stock do we have|current stock (?:quantity|units)|"
+                    + "how many products? (?:have )?negative stock|"
+                    + "当前库存(?:有|是)?多少(?:件|个|数量)|现在库存(?:有|是)?多少(?:件|个|数量)|"
+                    + "有多少商品库存是负数|有多少(?:件|个)?库存是负数|负库存(?:商品|库存)?有多少(?:件|个|数量)?)"
+                    + "[?.!。！？]*$",
+            Pattern.CASE_INSENSITIVE);
     private static final Pattern CATEGORY_QUANTITY = Pattern.compile(
             "^how much\\s+(.+?)\\s+sold\\s+(?:this|last)\\s+week\\??$|^本周(.+?)(?:卖了多少|销量(?:是多少)?)$",
             Pattern.CASE_INSENSITIVE);
@@ -315,6 +323,19 @@ public final class AssistantFastPathRouter {
                     "",
                     "",
                     "",
+                    "");
+        }
+        if (AGGREGATE_STOCK_QUESTION.matcher(normalized).matches()) {
+            boolean chinese = normalized.matches(".*[\\u3400-\\u9fff].*");
+            return new Match(
+                    "qa",
+                    chinese
+                            ? "库存汇总与逐项库存数据存在不一致，暂不能可靠给出总件数或负库存数量。已打开库存列表供核查。"
+                            : "The inventory summary does not match item-level stock data, so I cannot give a reliable total or negative-stock count. The stock list is open for review.",
+                    Map.of(),
+                    "/stock/list",
+                    "",
+                    "aggregate_stock_data_quality",
                     "");
         }
         if (TODAY_SALES.matcher(normalized).matches()) {

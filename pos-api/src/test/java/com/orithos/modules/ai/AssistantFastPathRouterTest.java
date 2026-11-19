@@ -135,6 +135,22 @@ class AssistantFastPathRouterTest {
     }
 
     @Test
+    void routesAggregateStockQuestionsToAnExplicitDataQualityAnswer() {
+        for (String question : new String[]{
+                "当前库存有多少件？",
+                "How many units are currently in stock?",
+                "有多少商品库存是负数？",
+                "How many products have negative stock?"
+        }) {
+            AssistantFastPathRouter.Match match = AssistantFastPathRouter.maybeMatch(question);
+            assertNotNull(match, question);
+            assertEquals("qa", match.intent(), question);
+            assertEquals("/stock/list", match.route(), question);
+            assertEquals("aggregate_stock_data_quality", match.panel(), question);
+        }
+    }
+
+    @Test
     void routesCategoryQuantityQuestionsWithTheirCategorySlot() {
         assertEquals("red wine",
                 AssistantFastPathRouter.maybeMatch("How much red wine sold this week?").slots().get("category"));
