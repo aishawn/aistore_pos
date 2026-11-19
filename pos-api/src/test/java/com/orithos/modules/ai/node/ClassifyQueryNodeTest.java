@@ -1014,10 +1014,10 @@ class ClassifyQueryNodeTest {
         assertDeterministicResult(node, "昨天的定价报告", "report_adhoc", "");
         assertDeterministicResult(node, "上周价格历史", "report_adhoc", "");
         assertDeterministicResult(node, "昨天价格历史", "report_adhoc", "");
-        assertDeterministicResult(node, "发票还有吗？", "report_adhoc", "");
-        assertDeterministicResult(node, "收到发票了吗？", "report_adhoc", "");
-        assertDeterministicResult(node, "Did the supplier invoice arrive?", "report_adhoc", "");
-        assertDeterministicResult(node, "How many supplier bills did we receive?", "report_adhoc", "");
+        assertDeterministicResult(node, "发票还有吗？", "qa", "/purchases?tab=invoices");
+        assertDeterministicResult(node, "收到发票了吗？", "qa", "/purchases?tab=invoices");
+        assertDeterministicResult(node, "Did the supplier invoice arrive?", "qa", "/purchases?tab=invoices");
+        assertDeterministicResult(node, "How many supplier bills did we receive?", "qa", "/purchases?tab=invoices");
         assertDeterministicResult(node, "查看批量改价", "navigate", "/stock/bulk-price-edit");
         assertDeterministicResult(node, "Can you review prices for Shiraz?", "navigate", "/stock/capped-pricing");
         assertDeterministicResult(node, "Show me the price suggestions", "navigate", "/stock/capped-pricing");
@@ -1046,6 +1046,13 @@ class ClassifyQueryNodeTest {
         assertDeterministicResult(node, "AI会自动改价吗", "qa", "");
         assertDeterministicResult(node, "AI能推荐红酒吗", "qa", "");
         assertDeterministicResult(node, "AI能识别供应商发票吗", "qa", "");
+
+        OverAllState invoiceState = mock(OverAllState.class);
+        when(invoiceState.value("question", String.class)).thenReturn(Optional.of("Did the supplier invoice arrive?"));
+        Map<String, Object> invoiceResult = node.apply(invoiceState);
+        assertTrue(((String) invoiceResult.get("intent_summary")).contains("cannot confirm supplier email"));
+        assertTrue(((String) invoiceResult.get("intent_summary")).contains("Purchases > Invoices"));
+        assertEquals("deterministic", invoiceResult.get("route_source"));
 
         verifyNoInteractions(chatClient, config, sanitizer, properties);
     }

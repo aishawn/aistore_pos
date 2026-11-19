@@ -194,6 +194,15 @@ public class ClassifyQueryNode implements NodeAction {
             return out;
         }
 
+        if (isInvoiceArrivalQuestion(question)) {
+            boolean chinese = isChinese(question);
+            String answer = chinese
+                    ? "我只能核对 Orithos 中已录入的发票扫描记录，无法确认供应商是否发送了邮件或外部门户是否收到。请在采购 > 发票中查看记录。"
+                    : "I can only check invoice scans recorded in Orithos; I cannot confirm supplier email or external portal delivery. Check Purchases > Invoices for recorded scans.";
+            log.info("Invoice-arrival question answered with recorded-scan limitation");
+            return shortcutResult("qa", answer, Map.of(), "", "", "/purchases?tab=invoices", "");
+        }
+
         // Explicit write requests must never reach a shortcut or the model.
         // Both paths can otherwise produce a harmless-looking read-only route
         // for words such as “submit”, “save” or “receive”.
@@ -551,6 +560,20 @@ public class ClassifyQueryNode implements NodeAction {
 
     private static boolean isInvoiceWriteTarget(String question) {
         return question != null && question.matches("(?is).*(?:invoice|bill|发票|账单).*");
+    }
+
+    private static boolean isInvoiceArrivalQuestion(String question) {
+        if (question == null) return false;
+        String normalized = question.toLowerCase(Locale.ROOT);
+        if (normalized.matches("(?is).*(?:\\b(?:ai|assistant)\\b.*\\b(?:read|scan|recognize|recognise|process|support)\\b|"
+                + "ai.*(?:识别|读取|扫描|处理|支持)).*")) return false;
+        boolean englishQuestion = question.matches("(?is)^\\s*(?:did|do we|does the|have (?:we|the|our|you)|has (?:the|our)|did you|are there|is there|how many)\\b.*"
+                + "(?=.*\\b(?:arriv\\w*|receiv\\w*|any|exist\\w*|there|have|get)\\b)"
+                + ".*\\b(?:invoice|invoices|bill|bills)\\b.*");
+        boolean chineseQuestion = question.matches("(?is).*(?:发票|账单).*(?:收到|有没有|还有吗|到没|到了吗|吗|是否存在).*"
+                + "|.*(?:有收到|收到).*(?:发票|账单).*(?:吗|没有|没).*"
+                + "|.*(?:发票|账单).*(?:收到|有没有|还有吗|到没|到了吗|是否存在).*");
+        return englishQuestion || chineseQuestion;
     }
 
     private static boolean isOrderWriteTarget(String question) {
