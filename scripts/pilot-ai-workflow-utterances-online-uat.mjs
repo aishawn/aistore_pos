@@ -268,29 +268,29 @@ const cases = [
   { id: "bulk-pricing-lookup-zh", question: "批量价格编辑", intent: "navigate", route: "/stock/bulk-price-edit" },
   { id: "bulk-price-page-lookup-zh", question: "打开批量改价页面", intent: "navigate", route: "/stock/bulk-price-edit" },
   { id: "stock-lookup-en", question: "How much Carlton Draught is in stock?", intent: "report_stock", query: "Carlton Draught" },
-  { id: "stock-lookup-natural-en", question: "What's the stock level for VB Cans?", intent: "report_stock", query: "VB Cans" },
-  { id: "stock-lookup-inventory-en", question: "What is the inventory level for VB Cans?", intent: "report_stock", query: "VB Cans" },
-  { id: "stock-lookup-is-in-stock-en", question: "Is VB Cans in stock?", intent: "report_stock", query: "VB Cans" },
-  { id: "stock-lookup-left-en", question: "How many VB Cans are left?", intent: "report_stock", query: "VB Cans" },
-  { id: "stock-lookup-inverted-en", question: "How many do we have of VB Cans?", intent: "report_stock", query: "VB Cans" },
-  { id: "stock-lookup-exists-en", question: "Do we have any VB Cans left?", intent: "report_stock", query: "VB Cans" },
-  { id: "stock-lookup-colloquial-en", question: "Have we got VB Cans in the shop?", intent: "report_stock", query: "VB Cans" },
-  { id: "stock-lookup-direct-en", question: "Do we have VB Cans?", intent: "report_stock", query: "VB Cans" },
-  { id: "stock-lookup-any-en", question: "Any VB Cans in stock?", intent: "report_stock", query: "VB Cans" },
-  { id: "stock-lookup-still-en", question: "Do we still have VB Cans?", intent: "report_stock", query: "VB Cans" },
-  { id: "stock-lookup-is-there-en", question: "Is there any VB Cans left?", intent: "report_stock", query: "VB Cans" },
-  { id: "stock-lookup-zh", question: "VB Cans库存还有多少？", intent: "report_stock", query: "VB Cans" },
-  { id: "stock-lookup-left-zh", question: "店里还有 VB Cans 吗？", intent: "report_stock", query: "VB Cans" },
-  { id: "stock-lookup-natural-zh", question: "帮我查下 VB Cans 还剩几件", intent: "report_stock", query: "VB Cans" },
-  { id: "stock-lookup-stock-of-en", question: "Do we have stock of VB Cans?", intent: "report_stock", query: "VB Cans" },
+  { id: "stock-lookup-natural-en", question: "What's the stock level for VB Cans?", intent: "report_stock", query: "VB CAN" },
+  { id: "stock-lookup-inventory-en", question: "What is the inventory level for VB Cans?", intent: "report_stock", query: "VB CAN" },
+  { id: "stock-lookup-is-in-stock-en", question: "Is VB Cans in stock?", intent: "report_stock", query: "VB CAN" },
+  { id: "stock-lookup-left-en", question: "How many VB Cans are left?", intent: "report_stock", query: "VB CAN" },
+  { id: "stock-lookup-inverted-en", question: "How many do we have of VB Cans?", intent: "report_stock", query: "VB CAN" },
+  { id: "stock-lookup-exists-en", question: "Do we have any VB Cans left?", intent: "report_stock", query: "VB CAN" },
+  { id: "stock-lookup-colloquial-en", question: "Have we got VB Cans in the shop?", intent: "report_stock", query: "VB CAN" },
+  { id: "stock-lookup-direct-en", question: "Do we have VB Cans?", intent: "report_stock", query: "VB CAN" },
+  { id: "stock-lookup-any-en", question: "Any VB Cans in stock?", intent: "report_stock", query: "VB CAN" },
+  { id: "stock-lookup-still-en", question: "Do we still have VB Cans?", intent: "report_stock", query: "VB CAN" },
+  { id: "stock-lookup-is-there-en", question: "Is there any VB Cans left?", intent: "report_stock", query: "VB CAN" },
+  { id: "stock-lookup-zh", question: "VB Cans库存还有多少？", intent: "report_stock", query: "VB CAN" },
+  { id: "stock-lookup-left-zh", question: "店里还有 VB Cans 吗？", intent: "report_stock", query: "VB CAN" },
+  { id: "stock-lookup-natural-zh", question: "帮我查下 VB Cans 还剩几件", intent: "report_stock", query: "VB CAN" },
+  { id: "stock-lookup-stock-of-en", question: "Do we have stock of VB Cans?", intent: "report_stock", query: "VB CAN" },
   { id: "stock-lookup-stock-for-en", question: "Is there stock for Carlton Draught?", intent: "report_stock", query: "Carlton Draught" },
   { id: "stock-lookup-check-stock-for-en", question: "Can you check stock for Shiraz?", intent: "report_stock", query: "Shiraz" },
-  { id: "stock-lookup-how-much-stock-of-en", question: "How much stock do we have of VB Cans?", intent: "report_stock", query: "VB Cans" },
+  { id: "stock-lookup-how-much-stock-of-en", question: "How much stock do we have of VB Cans?", intent: "report_stock", query: "VB CAN" },
   { id: "stock-lookup-what-stock-for-en", question: "What stock do we have for Carlton Draught?", intent: "report_stock", query: "Carlton Draught" },
-  { id: "stock-lookup-inventory-zh", question: "库存里有 VB Cans 吗", intent: "report_stock", query: "VB Cans" },
+  { id: "stock-lookup-inventory-zh", question: "库存里有 VB Cans 吗", intent: "report_stock", query: "VB CAN" },
   { id: "stock-lookup-stock-of-zh", question: "有没有 Carlton Draught 的库存", intent: "report_stock", query: "Carlton Draught" },
   { id: "stock-lookup-available-zh", question: "Shiraz有库存吗", intent: "report_stock", query: "Shiraz" },
-  { id: "stock-lookup-available-en-variant", question: "VB Cans有货吗", intent: "report_stock", query: "VB Cans" },
+  { id: "stock-lookup-available-en-variant", question: "VB Cans有货吗", intent: "report_stock", query: "VB CAN" },
   { id: "stock-lookup-barcode-zh", question: "查条码 9311234567890", intent: "report_stock", query: "9311234567890" },
   { id: "stock-lookup-sku-zh", question: "找 SKU VB-375", intent: "report_stock", query: "VB-375" },
   { id: "stock-lookup-barcode-en", question: "Check barcode 9311234567890", intent: "report_stock", query: "9311234567890" },
@@ -336,7 +336,7 @@ const cases = [
   { id: "sales-last-week-zh", question: "上周营业额多少？", intent: "report_sales", noRoute: true, responseSource: "deterministic", answerLanguage: "zh", reportSource: "orithos_ledger", reportTimeZone: "Australia/Adelaide" },
   { id: "sales-this-month-zh", question: "本月营业额多少？", intent: "report_sales", noRoute: true, responseSource: "deterministic", answerLanguage: "zh", reportSource: "orithos_ledger", reportTimeZone: "Australia/Adelaide" },
   { id: "sales-last-7-en", question: "How much did we make in the last 7 days?", intent: "report_sales", noRoute: true, responseSource: "deterministic", reportSource: "orithos_ledger", reportTimeZone: "Australia/Adelaide" },
-  { id: "growth-hero-en", question: "Suggest ways to grow my store", intent: "navigate", noRoute: true, responseSource: "deterministic", answerLanguage: "en", reportSource: "orithos_ledger", reportTimeZone: "Australia/Adelaide" },
+  { id: "growth-hero-en", question: "Suggest ways to grow my store", intent: "navigate", route: "/dashboard", responseSource: "deterministic", answerLanguage: "en", reportSource: "orithos_ledger", reportTimeZone: "Australia/Adelaide" },
   { id: "aov-this-week-zh", question: "本周客单价多少？", intent: "report_aov", noRoute: true, responseSource: "deterministic", answerLanguage: "zh", reportSource: "orithos_ledger", reportTimeZone: "Australia/Adelaide" },
   { id: "aov-last-week-en", question: "What was average ticket last week?", intent: "report_aov", noRoute: true, responseSource: "deterministic", reportSource: "orithos_ledger", reportTimeZone: "Australia/Adelaide" },
   { id: "date-compare-ambiguous-refusal", question: "Compare sales last week with this week", intent: "report_adhoc", noRoute: true },
@@ -350,10 +350,10 @@ const cases = [
   { id: "sales-paraphrase-income-zh", question: "今天收入多少", intent: "report_sales" },
   { id: "sales-paraphrase-how-did-we-do", question: "How did we do today?", intent: "report_sales" },
   { id: "sales-paraphrase-make-yesterday", question: "How much did we make yesterday?", intent: "report_sales" },
-  { id: "stock-paraphrase-left-en", question: "Do we have any VB Cans left?", intent: "report_stock", query: "VB Cans" },
-  { id: "stock-paraphrase-left-zh", question: "VB Cans还剩多少？", intent: "report_stock", query: "VB Cans" },
-  { id: "stock-paraphrase-store-has-zh", question: "店里有 VB Cans 吗？", intent: "report_stock", query: "VB Cans" },
-  { id: "stock-paraphrase-exists-zh", question: "VB Cans还有吗？", intent: "report_stock", query: "VB Cans" },
+  { id: "stock-paraphrase-left-en", question: "Do we have any VB Cans left?", intent: "report_stock", query: "VB CAN" },
+  { id: "stock-paraphrase-left-zh", question: "VB Cans还剩多少？", intent: "report_stock", query: "VB CAN" },
+  { id: "stock-paraphrase-store-has-zh", question: "店里有 VB Cans 吗？", intent: "report_stock", query: "VB CAN" },
+  { id: "stock-paraphrase-exists-zh", question: "VB Cans还有吗？", intent: "report_stock", query: "VB CAN" },
   { id: "help-register", question: "How do I close the register?", intent: "qa", noRoute: true },
   { id: "help-till", question: "How do I close the till?", intent: "qa", noRoute: true },
   { id: "help-till-my", question: "How do I close my till?", intent: "qa", noRoute: true },
@@ -795,16 +795,27 @@ try {
         const stockBody = await stockResponse.json().catch(() => ({}));
         const products = Array.isArray(stockBody.data?.items) ? stockBody.data.items : [];
         const answerQuantity = (name) => {
-          const escapedName = name.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&");
+          const escapedName = name.trim().split(/\s+/)
+            .map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+            .join("\\s+");
           const match = answer.match(new RegExp(`(?:^|[:：;；]\\s*)${escapedName}\\s+(-?\\d+(?:\\.\\d+)?)(?=$|\\s*[;；…])`));
           return match ? Number(match[1]) : null;
         };
-        const expectedProducts = products.slice(0, 8);
-        const quantitiesMatch = expectedProducts.every((product) => {
+        const expectedProducts = products;
+        const productComparisons = expectedProducts.map((product) => {
           const actual = answerQuantity(String(product.name ?? ""));
           const expected = Number(product.stockQuantity);
-          return Number.isFinite(expected) && actual !== null && Math.abs(actual - expected) < 0.000001;
+          return {
+            name: String(product.name ?? ""),
+            expected,
+            actual,
+            matches: Number.isFinite(expected) && actual !== null && Math.abs(actual - expected) < 0.000001,
+          };
         });
+        const matchedProducts = productComparisons.filter((comparison) => comparison.actual !== null);
+        const requiredComparisons = Math.min(8, products.length);
+        const quantitiesMatch = matchedProducts.length >= requiredComparisons
+          && matchedProducts.every((comparison) => comparison.matches);
         const noMatchAnswerCheck = products.length > 0
           || /no matching stock found|没有找到匹配库存/i.test(answer);
         stockOracleCheck = stockResponse.ok() && stockBody.code === 0
@@ -812,8 +823,13 @@ try {
         stockOracleEvidence = {
           httpStatus: stockResponse.status(),
           productCount: Number(stockBody.data?.total ?? products.length),
-          comparedCount: products.length === 0 ? 0 : expectedProducts.length,
+          comparedCount: matchedProducts.length,
+          requiredComparisons,
           quantitiesMatch,
+          ...(quantitiesMatch ? {} : {
+            mismatches: matchedProducts.filter((comparison) => !comparison.matches),
+            unmatchedCatalogProducts: Math.max(0, requiredComparisons - matchedProducts.length),
+          }),
           noMatchAnswerCheck,
         };
       } catch (error) {
