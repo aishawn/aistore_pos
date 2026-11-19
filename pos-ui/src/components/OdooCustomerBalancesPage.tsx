@@ -30,7 +30,7 @@ export function OdooCustomerBalancesPage() {
   const [invoiceOffset, setInvoiceOffset] = useState(0);
   const [invoiceHasNext, setInvoiceHasNext] = useState(false);
   const [connected, setConnected] = useState<boolean | null>(null);
-  const [items, setItems] = useState<OdooCustomerBalanceRecord[]>([]);
+  const [items, setItems] = useState<RetailCustomerBalanceRecord[]>([]);
   const [query, setQuery] = useState("");
   const debouncedQuery = useDebouncedValue(query, 250);
   const [owingOnly, setOwingOnly] = useState(true);
@@ -39,8 +39,8 @@ export function OdooCustomerBalancesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
-  const [selected, setSelected] = useState<OdooCustomerBalanceRecord | null>(null);
-  const [invoices, setInvoices] = useState<OdooCustomerInvoiceRecord[]>([]);
+  const [selected, setSelected] = useState<RetailCustomerBalanceRecord | null>(null);
+  const [invoices, setInvoices] = useState<RetailCustomerInvoiceRecord[]>([]);
   const [invoiceLoading, setInvoiceLoading] = useState(false);
   const [invoiceError, setInvoiceError] = useState<string | null>(null);
 
@@ -61,7 +61,7 @@ export function OdooCustomerBalancesPage() {
     setLoading(true);
     setError(null);
     try {
-      const page = await getOdooCustomerBalances({
+      const page = await getRetailCustomerBalances({
         query: debouncedQuery,
         owingOnly,
         offset,
@@ -81,14 +81,14 @@ export function OdooCustomerBalancesPage() {
   useEffect(() => { void load(); }, [load, refreshKey]);
   useEffect(() => { setOffset(0); }, [debouncedQuery, owingOnly]);
 
-  const openStatements = useCallback(async (customer: OdooCustomerBalanceRecord, nextOffset = 0) => {
+  const openStatements = useCallback(async (customer: RetailCustomerBalanceRecord, nextOffset = 0) => {
     const request = ++invoiceRevision.current;
     setInvoiceOffset(nextOffset);
     setSelected(customer);
     setInvoiceLoading(true);
     setInvoiceError(null);
     try {
-      const result = await getOdooCustomerInvoices(customer.id, true, nextOffset);
+      const result = await getRetailCustomerInvoices(customer.id, true, nextOffset);
       if (request !== invoiceRevision.current) return;
       setInvoices(result.items);
       setInvoiceHasNext(result.hasNext);
