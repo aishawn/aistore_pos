@@ -141,6 +141,8 @@ class NativeOverviewPayloadTest {
         assertEquals(49748L, result.get("inventoryUnits"));
         assertEquals(2970L, result.get("inventoryCaseLevel"));
         assertEquals(15645L, result.get("inventoryItemLevel"));
+        assertEquals(8L, result.get("inventoryPositiveSkuCount"));
+        assertEquals(10L, result.get("inventorySkuCount"));
         assertEquals(2L, result.get("negativeStockProducts"));
         assertEquals("negative_stock", result.get("inventoryStatus"));
     }

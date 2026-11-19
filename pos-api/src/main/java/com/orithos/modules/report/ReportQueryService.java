@@ -631,6 +631,8 @@ public class ReportQueryService {
                 ? toDecimal(inventory.get("item_level_total")).setScale(0, RoundingMode.HALF_UP).longValue()
                 : null);
         result.put("inventorySkuCount", inventoryPresent ? toDecimal(inventory.get("sku_count")).longValue() : null);
+        result.put("inventoryPositiveSkuCount", inventoryPresent
+                ? toDecimal(inventory.get("positive_skus")).longValue() : null);
         result.put("negativeStockProducts", inventoryPresent ? negativeSkus : null);
         result.put("inventoryStatus", !inventoryPresent ? "unavailable"
                 : negativeSkus > 0 ? "negative_stock" : "complete");

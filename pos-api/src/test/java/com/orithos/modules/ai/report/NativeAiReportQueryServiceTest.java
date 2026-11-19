@@ -66,6 +66,27 @@ class NativeAiReportQueryServiceTest {
     }
 
     @Test
+    void stockSummaryUsesOutletScopedAuthoritativeOverview() {
+        TenantContext tenant = tenant(Set.of(TenantContext.PERM_QUERY));
+        when(reportQuery.nativeOverview(55L, 87L, window.from().toLocalDate(),
+                window.toExclusive().minusNanos(1).toLocalDate())).thenReturn(Map.of(
+                "inventoryAvailable", true, "inventoryUnits", 53409L,
+                "inventoryPositiveSkuCount", 3063L, "negativeStockProducts", 5373L,
+                "inventorySkuCount", 10859L, "dataSource", "orithos_ledger"));
+
+        NativeAiReportQueryService.Result result = service.query(tenant, "report_stock_summary", Map.of(), window);
+
+        assertEquals(null, result.error());
+        assertEquals(53_409L, result.rows().get(0).get("positiveUnits"));
+        assertEquals(3_063L, result.rows().get(0).get("positiveSkus"));
+        assertEquals(5_373L, result.rows().get(0).get("negativeSkus"));
+        assertEquals(10_859L, result.rows().get(0).get("totalSkus"));
+        verify(reportQuery).nativeOverview(55L, 87L, window.from().toLocalDate(),
+                window.toExclusive().minusNanos(1).toLocalDate());
+        verify(dataSources, never()).jdbc(anyLong());
+    }
+
+    @Test
     void averageTicketDoesNotTurnAnEmptyPeriodIntoZeroAverage() {
         TenantContext tenant = tenant(Set.of(TenantContext.PERM_QUERY));
         when(reportQuery.nativeOverview(55L, 87L, window.from().toLocalDate(),

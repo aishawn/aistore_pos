@@ -13,7 +13,8 @@ import java.util.Set;
 public class ReportTemplateRegistry {
 
     public static final Set<String> TEMPLATE_INTENTS = Set.of(
-            "report_sales", "report_qty", "report_aov", "report_stock", "report_dead_stock", "report_stock_value"
+            "report_sales", "report_qty", "report_aov", "report_stock", "report_stock_summary",
+            "report_dead_stock", "report_stock_value"
     );
 
     /** Classifier often stuffs the metric word into category ("销量"), which matches no product. */

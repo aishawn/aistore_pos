@@ -89,6 +89,25 @@ public class NativeAiReportQueryService {
                         "sales", grossSales)), stringValue(overview.get("dataAsOf")),
                         stringValue(overview.get("dataSource")));
             }
+            if ("report_stock_summary".equals(intent)) {
+                Map<String, Object> overview = reportQueryService.nativeOverview(tenant.vendorId(),
+                        tenant.requireOutletId(), window.from().toLocalDate(),
+                        window.toExclusive().minusNanos(1).toLocalDate());
+                if (!Boolean.TRUE.equals(overview.get("inventoryAvailable"))
+                        || !(overview.get("inventoryUnits") instanceof Number)
+                        || !(overview.get("inventorySkuCount") instanceof Number)
+                        || !(overview.get("inventoryPositiveSkuCount") instanceof Number)
+                        || !(overview.get("negativeStockProducts") instanceof Number)) {
+                    return Result.fail("AUTHORITATIVE_REPORT_INCOMPLETE");
+                }
+                return Result.ok(List.of(Map.of(
+                        "positiveUnits", overview.get("inventoryUnits"),
+                        "positiveSkus", overview.get("inventoryPositiveSkuCount"),
+                        "negativeSkus", overview.get("negativeStockProducts"),
+                        "totalSkus", overview.get("inventorySkuCount"),
+                        "dataSource", stringValue(overview.get("dataSource")))),
+                        null, stringValue(overview.get("dataSource")));
+            }
             ReportTemplateRegistry.BoundSql bound = templates.bind(intent, tenant, slots, window);
             if (bound.error() != null) return Result.fail(bound.error());
             QueryCacheKey key = QueryCacheKey.of(tenant, intent, slots, window);

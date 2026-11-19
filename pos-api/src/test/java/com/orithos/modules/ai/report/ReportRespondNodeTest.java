@@ -203,6 +203,18 @@ class ReportRespondNodeTest {
     }
 
     @Test
+    void stockSummarySeparatesPositiveUnitsFromNegativeSkuAnomalies() {
+        OverAllState state = state("", List.of(Map.of("positiveUnits", 53409L, "positiveSkus", 3063L,
+                "negativeSkus", 5373L, "totalSkus", 10859L)));
+        when(state.value("intent", String.class)).thenReturn(Optional.of("report_stock_summary"));
+        when(state.value("question", String.class)).thenReturn(Optional.of("当前库存有多少件？"));
+
+        assertEquals("当前有正库存 53409 件，涉及 3063 个商品；10859 个有效商品中有 5373 个商品库存为负。"
+                        + "负库存属于数据异常，建议核查库存记录。数据来源：Orithos POS 当前门店库存。",
+                node.apply(state).get("answer"));
+    }
+
+    @Test
     void deadStockAnswerDisclosesUnknownSalesFreshnessWhenRowsExist() {
         OverAllState state = state("", List.of(Map.of("name", "Wine", "on_hand", 3, "sold_qty", 0)),
                 "2026-10-01", "2026-10-30");

@@ -88,12 +88,30 @@ public class ReportRespondNode implements NodeAction {
                     : formatSeries(rows, "sales", "Sales", from, to);
             case "report_aov" -> formatAov(rows.get(0), from, to, chinese);
             case "report_stock" -> formatStock(rows, slots.get("query"), chinese);
+            case "report_stock_summary" -> formatStockSummary(rows.get(0), chinese);
             case "report_dead_stock" -> formatDead(rows, slots.getOrDefault("days", "30"), from, to, chinese);
             case "report_stock_value" -> formatStockValue(rows, chinese);
             case "report_qty" -> formatQuantitySeries(rows, from, to);
             case "report_adhoc" -> formatAdhoc(rows, from, to);
             default -> formatSeries(rows, "sales", "Sales", from, to);
         };
+    }
+
+    private String formatStockSummary(Map<String, Object> row, boolean chinese) {
+        String units = ReportQueryService.toDecimal(row.get("positiveUnits")).stripTrailingZeros().toPlainString();
+        String positiveSkus = ReportQueryService.toDecimal(row.get("positiveSkus")).stripTrailingZeros().toPlainString();
+        String negativeSkus = ReportQueryService.toDecimal(row.get("negativeSkus")).stripTrailingZeros().toPlainString();
+        String totalSkus = ReportQueryService.toDecimal(row.get("totalSkus")).stripTrailingZeros().toPlainString();
+        if (chinese) {
+            return "当前有正库存 " + units + " 件，涉及 " + positiveSkus + " 个商品；"
+                    + totalSkus + " 个有效商品中有 " + negativeSkus + " 个商品库存为负。"
+                    + ("0".equals(negativeSkus) ? "" : "负库存属于数据异常，建议核查库存记录。")
+                    + "数据来源：Orithos POS 当前门店库存。";
+        }
+        return "Current positive on-hand stock is " + units + " units across " + positiveSkus
+                + " products. " + negativeSkus + " of " + totalSkus + " active products have negative stock."
+                + ("0".equals(negativeSkus) ? "" : " Negative stock is an anomaly; review the inventory records.")
+                + " Source: Orithos POS inventory for the current store.";
     }
 
     private String formatAuthoritativeSales(Map<String, Object> row, String from, String to, boolean chinese) {

@@ -13,13 +13,21 @@ public final class ReportAdhocRouter {
 
     private static final Set<String> OVERRIDE_FROM = Set.of(
             "report_sales", "report_qty", "report_aov", "report_stock", "report_dead_stock",
-            "qa", "unknown", "navigate", "report_adhoc"
+            "report_stock_summary",
+            "product_count", "qa", "unknown", "navigate", "report_adhoc"
     );
 
     /** Ticket / order counts are available via average-ticket (includes tickets). */
     private static final Pattern TICKET_COUNT = Pattern.compile(
             "几笔|笔订单|笔单|订单数|单数|多少单|"
                     + "how many tickets|how many orders|how many transactions|ticket count|transaction count|number of (?:tickets|orders|sales|transactions)",
+            Pattern.CASE_INSENSITIVE
+    );
+    private static final Pattern STOCK_SUMMARY = Pattern.compile(
+            "(?is).*(?:库存(?:总量|总数|数量|件数|有多少|多少件|多少个|多少商品)|(?:多少|多少件|多少个).{0,8}库存|负库存商品数|有多少商品库存是负数|当前库存有多少件|"
+                    + "how many (?:units|items|products).*(?:stock|inventory)|how much (?:stock|inventory) do (?:we|i|our store) have|"
+                    + "(?:stock|inventory).*(?:total|quantity|units|count)|(?:total|on-hand) (?:stock|inventory)|"
+                    + "what is (?:our )?(?:total|current) inventory|how many products? (?:have )?negative stock).*",
             Pattern.CASE_INSENSITIVE
     );
 
@@ -82,6 +90,7 @@ public final class ReportAdhocRouter {
         if (TICKET_COUNT.matcher(q).find()) {
             return false;
         }
+        if (STOCK_SUMMARY.matcher(q).matches()) return false;
         if (isRawSqlStatement(question)) {
             return true;
         }
@@ -116,6 +125,9 @@ public final class ReportAdhocRouter {
             return intent;
         }
         String q = question.toLowerCase(Locale.ROOT);
+        if (STOCK_SUMMARY.matcher(q).matches() && canOverride(intent)) {
+            return "report_stock_summary";
+        }
         if (SALES_COMPARISON.matcher(q).matches() && !MIXED_METRICS.matcher(q).matches()
                 && ExplicitReportDates.parsePair(question).isPresent() && canOverride(intent)) {
             return "report_sales";

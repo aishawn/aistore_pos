@@ -60,6 +60,20 @@ class ReportAdhocRouterTest {
     }
 
     @Test
+    void aggregateStockQuestionsUseTheAuthoritativeSummaryWithoutCapturingProductLookups() {
+        for (String question : new String[]{
+                "当前库存有多少件？", "有多少商品库存是负数？", "库存总量是多少",
+                "How many units are in stock?", "How many products have negative stock?",
+                "What is our total inventory?"
+        }) {
+            assertFalse(ReportAdhocRouter.shouldUseNl2Sql(question), question);
+            assertEquals("report_stock_summary", ReportAdhocRouter.maybeOverride(question, "product_count"), question);
+        }
+        assertEquals("report_stock", ReportAdhocRouter.maybeOverride("How much stock does Shiraz have?", "report_stock"));
+        assertEquals("report_stock", ReportAdhocRouter.maybeOverride("库存 Shiraz 有多少？", "report_stock"));
+    }
+
+    @Test
     void grossProfitQuestionsUseTheAuthoritativeSalesReportPath() {
         for (String question : new String[]{"昨天利润如何？", "昨天销量如何？利润如何？",
                 "昨天销售额如何？利润如何？", "昨天毛利多少",

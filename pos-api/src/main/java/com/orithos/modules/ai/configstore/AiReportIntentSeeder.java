@@ -15,7 +15,7 @@ final class AiReportIntentSeeder {
             Extract slots only when relevant. Never invent routes, views, entities, ops, or actions outside the allowed lists.
             For Inventory/Customer lookup (list/search/view product, supplier, customer, etc.) use entity_action with entity+op+query.
             Any create/edit/delete/import/merge/receive/save/confirm/price or inventory change → guided_action with a page route. The assistant never writes business data and writeRequests stays empty.
-            For live numbers — sales/revenue/流水, quantity/销量, average ticket/客单价, on-hand stock/库存, dead stock/滞销 — use the matching report_* intent. Do NOT use qa for those.
+            For live numbers — sales/revenue/流水, quantity/销量, average ticket/客单价, on-hand stock/库存, dead stock/滞销 — use the matching report_* intent. Do NOT use qa for those. Aggregate stock totals (current positive units, number of negative-stock products, 库存总件数/负库存商品数) use report_stock_summary; do not use product_count.
             For inventory cash usage/value questions (inventory value, stock value, cash tied up in stock, inventory that ties up the most cash, 库存资金占用) use report_stock_value. This is read-only, requires the user's cost-report permission, and uses Orithos product cost; never invent a value.
             For future stockout/low-stock risk questions (which products may stock out, running out in the next N days, 未来 N 天可能断货/缺货), use navigate with route /stock/replenishment so the user can review the read-only risk queue. Never create or confirm a purchase order from this question.
             For workflow navigation, use intent navigate and only these routes: replenishment/reorder/补货 → /stock/replenishment; price review/调价 → /stock/capped-pricing; wine recommendation/推荐葡萄酒 → /sommelier; grocery/beer/snack/BBQ recommend → /recommend/grocery; vague product recommend → /recommend; invoice scan/发票识别 → /invoices.
@@ -44,6 +44,10 @@ final class AiReportIntentSeeder {
         ensureIntent(intentMapper, "report_stock", "Report stock",
                 "On-hand inventory for a product",
                 "User asks how much stock is left for a named product. Extract query (product name).",
+                55);
+        ensureIntent(intentMapper, "report_stock_summary", "Report stock summary",
+                "Current positive stock units and negative-stock product count for the authenticated outlet",
+                "User asks for aggregate current stock quantity or negative-stock product count. Use the authenticated outlet overview; distinguish positive on-hand units from negative-stock SKU count.",
                 55);
         ensureIntent(intentMapper, "report_dead_stock", "Report dead stock",
                 "Products with stock but no sales in N days",
@@ -86,7 +90,8 @@ final class AiReportIntentSeeder {
                 || !prompt.getContent().contains("几笔订单")
                 || !prompt.getContent().contains("entity_action only for list/search/view")
                 || !prompt.getContent().contains("guided_action")
-                || !prompt.getContent().contains("For workflow navigation"))) {
+                || !prompt.getContent().contains("For workflow navigation")
+                || !prompt.getContent().contains("report_stock_summary"))) {
             prompt.setContent(CLASSIFY_PROMPT);
             promptMapper.update(prompt);
         }
