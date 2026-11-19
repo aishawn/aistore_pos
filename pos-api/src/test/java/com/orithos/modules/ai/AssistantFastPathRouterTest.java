@@ -6,6 +6,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
@@ -147,6 +148,8 @@ class AssistantFastPathRouterTest {
             assertEquals("qa", match.intent(), question);
             assertEquals("/stock/list", match.route(), question);
             assertEquals("aggregate_stock_data_quality", match.panel(), question);
+            assertFalse(match.summary().contains("存在不一致"), question);
+            assertFalse(match.summary().contains("does not match"), question);
         }
     }
 

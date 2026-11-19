@@ -330,8 +330,8 @@ public final class AssistantFastPathRouter {
             return new Match(
                     "qa",
                     chinese
-                            ? "库存汇总与逐项库存数据存在不一致，暂不能可靠给出总件数或负库存数量。已打开库存列表供核查。"
-                            : "The inventory summary does not match item-level stock data, so I cannot give a reliable total or negative-stock count. The stock list is open for review.",
+                            ? "目前无法可靠提供全店库存总件数或负库存数量。已打开库存列表供逐项核查。"
+                            : "I cannot reliably provide a store-wide stock total or negative-stock count right now. The stock list is open for item-level review.",
                     Map.of(),
                     "/stock/list",
                     "",
