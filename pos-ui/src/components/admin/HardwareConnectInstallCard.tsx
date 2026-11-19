@@ -107,7 +107,7 @@ export function HardwareConnectInstallCard({ compact }: Props) {
     <div className="text-sm leading-6">
       <p className="font-semibold text-[var(--oh-text)]">Install Orithos Hardware Connect on this register</p>
       <p className="mt-1 text-[var(--oh-muted)]">
-        One download, double‑click to install. You can do this while you fix browser access above.
+        Same model as Shopfront: one local app for the browser — no QZ Tray popups. Install while you fix browser access above.
       </p>
       {body}
       <p className="mt-3 text-sm text-[var(--oh-muted)]">

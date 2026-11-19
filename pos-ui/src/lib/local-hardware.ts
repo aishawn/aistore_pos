@@ -4,6 +4,12 @@ const ORITHOS_HARDWARE_CONNECT_BASE = "http://127.0.0.1:9170";
 const LOOPBACK_PROBE_MS = 2_500;
 const LOCAL_BRIDGE_CONNECT_MS = 8_000;
 
+/** Shopfront-style default: only Orithos Hardware Connect; set NEXT_PUBLIC_ORITHOS_QZ_FALLBACK=true for legacy QZ. */
+export function isQzTrayFallbackEnabled(): boolean {
+  const raw = process.env.NEXT_PUBLIC_ORITHOS_QZ_FALLBACK?.trim().toLowerCase();
+  return raw === "1" || raw === "true" || raw === "yes";
+}
+
 type LoopbackRequestInit = RequestInit & { targetAddressSpace?: "loopback" | "local" | "public" };
 
 function loopbackHardwareConnectFetch(path: string, init?: RequestInit): Promise<Response> {
@@ -255,6 +261,18 @@ export async function connectLocalHardware(): Promise<LocalHardwareState> {
       printers: hardwareConnect.printers,
       error: null,
       hardwareConnectVersion: hardwareConnect.version,
+    });
+  }
+
+  if (!isQzTrayFallbackEnabled()) {
+    activeLocalBridge = null;
+    return finishLocalHardwareConnect({
+      bridge: null,
+      qzAvailable: false,
+      connected: false,
+      printers: [],
+      error: null,
+      hardwareConnectVersion: null,
     });
   }
 

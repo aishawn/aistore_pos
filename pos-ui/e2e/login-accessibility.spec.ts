@@ -40,17 +40,14 @@ test("hardware setup reports bridge availability without enabling Linkly payment
       return original(descriptor);
     };
   });
-  await page.route("https://cdn.jsdelivr.net/npm/qz-tray@2.3.0/qz-tray.js", (route) => route.abort());
-  const qzLoadFailure = page.waitForEvent("requestfailed", (request) => request.url().includes("cdn.jsdelivr.net/npm/qz-tray@2.3.0/qz-tray.js"));
   await page.goto("/settings/hardware");
-  await qzLoadFailure;
 
   await expect(page.getByRole("heading", { name: "Hardware connect settings" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Test open cash drawer" })).toBeVisible();
   await expect(page.getByLabel("Cash drawer kick code")).toHaveValue("27, 112, 0, 25, 250");
   await page.getByRole("button", { name: "Connect local bridge" }).click();
   await expect(page.getByRole("status").filter({
-    hasText: /QZ Tray browser library failed to load|QZ Tray is not installed or unavailable in this browser/,
+    hasText: /Start Orithos Hardware Connect on this PC/,
   })).toBeVisible({ timeout: 15_000 });
   await expect(page.getByRole("heading", { name: "EFTPOS terminal pairing" })).toBeVisible();
   await expect(page.getByText(/RS232.*not supported/i)).toBeVisible();

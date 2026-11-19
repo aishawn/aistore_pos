@@ -7,6 +7,7 @@ import {
   connectLocalHardware,
   formatCashDrawerKickCode,
   getHardwareReadinessSnapshot,
+  isQzTrayFallbackEnabled,
   getLocalHardwareSettingsSnapshot,
   parseLocalHardwareSettings,
   type HardwareReadinessItem,
@@ -73,7 +74,7 @@ export function HardwareSetupPanel() {
       setLoadQzFallback(false);
       return;
     }
-    if (!next.connected) {
+    if (!next.connected && isQzTrayFallbackEnabled()) {
       setLoadQzFallback(true);
     }
   }
@@ -132,9 +133,9 @@ export function HardwareSetupPanel() {
         setNotice(next.error);
       } else if (!next.qzAvailable && !next.error) {
         setNotice(
-          qzScriptError
+          isQzTrayFallbackEnabled() && qzScriptError
             ? "Start Orithos Hardware Connect on this PC, or install QZ Tray, then connect again."
-            : "Orithos Hardware Connect (port 9170) and QZ Tray are not reachable on this register.",
+            : "Start Orithos Hardware Connect on this PC (tray icon), allow local network access in the browser, then connect again.",
         );
       }
     } finally {
@@ -250,11 +251,11 @@ export function HardwareSetupPanel() {
             role="status"
             className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-amber-950"
           >
-            {state.connected ? (
+            {state.connected && isQzTrayFallbackEnabled() ? (
               <p className="text-sm font-semibold">Optional: switch to Orithos Hardware Connect (preferred over QZ Tray).</p>
-            ) : (
+            ) : !state.connected ? (
               <HardwareConnectInstallCard />
-            )}
+            ) : null}
             <details className="mt-3 text-xs text-amber-950/90">
               <summary className="cursor-pointer font-medium">IT: publish installer to this site</summary>
               <p className="mt-1 font-mono leading-5">

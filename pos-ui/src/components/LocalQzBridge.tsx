@@ -2,16 +2,17 @@
 
 import { useEffect, useRef, useState } from "react";
 import Script from "next/script";
-import { connectLocalHardware } from "@/lib/local-hardware";
+import { connectLocalHardware, isQzTrayFallbackEnabled } from "@/lib/local-hardware";
 
 const QZ_FALLBACK_DELAY_MS = 4_000;
 
-/** Probes Orithos Hardware Connect first; defers QZ Tray until HC is clearly unavailable. */
+/** Loads QZ Tray only when legacy fallback is explicitly enabled. Default path is Orithos Hardware Connect. */
 export function LocalQzBridge() {
   const attempted = useRef(false);
   const [loadQz, setLoadQz] = useState(false);
 
   useEffect(() => {
+    if (!isQzTrayFallbackEnabled()) return;
     if (attempted.current) return;
     attempted.current = true;
     void (async () => {
@@ -23,7 +24,7 @@ export function LocalQzBridge() {
     })();
   }, []);
 
-  if (!loadQz) return null;
+  if (!isQzTrayFallbackEnabled() || !loadQz) return null;
 
   return (
     <Script

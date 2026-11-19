@@ -35,8 +35,13 @@ afterEach(() => {
   Object.defineProperty(globalThis, "window", { configurable: true, value: originalWindow });
   globalThis.localStorage?.clear();
   globalThis.fetch = originalFetch;
+  delete process.env.NEXT_PUBLIC_ORITHOS_QZ_FALLBACK;
   resetLocalBridgeStateForTests();
 });
+
+function enableQzTrayFallbackForTests() {
+  process.env.NEXT_PUBLIC_ORITHOS_QZ_FALLBACK = "true";
+}
 
 function setWindow(value: unknown) {
   Object.defineProperty(globalThis, "window", { configurable: true, writable: true, value });
@@ -95,6 +100,7 @@ test("prefers Orithos Hardware Connect when the local agent responds", async () 
 });
 
 test("connects to QZ Tray and returns discovered printers", async () => {
+  enableQzTrayFallbackForTests();
   mockHardwareConnectOffline();
   let connected = false;
   setWindow({
@@ -116,6 +122,7 @@ test("connects to QZ Tray and returns discovered printers", async () => {
 });
 
 test("returns a readable error when QZ Tray cannot connect", async () => {
+  enableQzTrayFallbackForTests();
   mockHardwareConnectOffline();
   setWindow({
     isSecureContext: true,

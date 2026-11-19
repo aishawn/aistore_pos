@@ -1,5 +1,7 @@
 "use client";
 
+import { isQzTrayFallbackEnabled } from "@/lib/local-hardware";
+
 export type LocalNetworkAccessState = "granted" | "prompt" | "denied" | "unsupported";
 
 const LOOPBACK_PERMISSION = "loopback-network";
@@ -85,17 +87,21 @@ function probeLoopbackWebSocket(port = 8181): Promise<void> {
   });
 }
 
-/** User-gesture probe for QZ / localhost; triggers the browser prompt when required. */
+/** User-gesture probe for localhost agents; triggers the browser prompt when required. */
 export async function probeLoopbackAccess(): Promise<void> {
   if (typeof window === "undefined") return;
-  await probeLoopbackWebSocket(8181);
+  if (isQzTrayFallbackEnabled()) {
+    await probeLoopbackWebSocket(8181);
+  }
   const init: AddressSpaceRequestInit = {
     method: "GET",
     mode: "cors",
     cache: "no-store",
     targetAddressSpace: "loopback",
   };
-  for (const url of ["http://127.0.0.1:9170/v1/health", "http://127.0.0.1:8181/", "http://127.0.0.1:9167/v1/health"]) {
+  const loopbackUrls = ["http://127.0.0.1:9170/v1/health", "http://127.0.0.1:9167/v1/health"];
+  if (isQzTrayFallbackEnabled()) loopbackUrls.push("http://127.0.0.1:8181/");
+  for (const url of loopbackUrls) {
     try {
       await fetch(url, init);
     } catch {
