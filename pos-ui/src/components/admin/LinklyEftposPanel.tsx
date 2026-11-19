@@ -197,6 +197,12 @@ export function LinklyEftposPanel({ canEdit }: Props) {
         </button>
       </div>
 
+      {connectorHealth === "offline" && (
+        <p className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800">
+          No Linkly connector on this PC — expected on the EFTPOS register. Printer and scanner setup above still works; card tests need{" "}
+          <span className="font-mono">tools/orithos-linkly-connector</span> tonight on the other machine.
+        </p>
+      )}
       {error && <p role="alert" className="mt-3 text-sm text-red-800">{error}</p>}
       {notice && <p role="status" className="mt-3 text-sm text-emerald-800">{notice}</p>}
 
