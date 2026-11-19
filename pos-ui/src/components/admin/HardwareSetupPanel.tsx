@@ -21,6 +21,7 @@ import {
   supportsBarcodeDetection,
   markBarcodeScannerTested,
 } from "@/lib/local-hardware";
+import { getOrithosHardwareConnectDownloadUrl } from "@/lib/hardware-connect-download";
 
 const emptySettings: HardwareSettings = {
   printer: "",
@@ -185,6 +186,7 @@ export function HardwareSetupPanel() {
     setNotice("Scale diagnostic stopped. The serial port is being closed.");
   }
 
+  const hcDownloadUrl = typeof window !== "undefined" ? getOrithosHardwareConnectDownloadUrl() : null;
   const activePrinter = dirty ? draft.printer : savedSettings.printer;
   const printerReady = Boolean(state.connected && activePrinter && state.printers.includes(activePrinter));
   const printerNames = [...new Set([...state.printers, ...(activePrinter ? [activePrinter] : [])])];
@@ -256,19 +258,33 @@ export function HardwareSetupPanel() {
             role="status"
             className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-950"
           >
-            <p className="font-semibold">Set up the local print agent</p>
+            <p className="font-semibold">Install Orithos Hardware Connect (this register)</p>
             <ol className="mt-2 list-decimal space-y-1 pl-5 text-xs sm:text-sm">
               <li>
-                Install .NET 8 Runtime on this register (optional script:{" "}
-                <span className="font-mono">tools\orithos-hardware-connect\install-runtime.ps1</span>).
+                Download and run the Windows installer (tray app, port{" "}
+                <span className="font-mono">9170</span>).
               </li>
+              <li>Allow Windows Firewall on private networks when prompted, then sign back into Windows if required.</li>
               <li>
-                Install agent: <span className="font-mono">install.ps1</span> (tray + logon) from{" "}
-                <span className="font-mono">tools\orithos-hardware-connect</span>, or dev{" "}
-                <span className="font-mono">run-dev.ps1</span>.
+                Allow <span className="font-semibold">local network access</span> for this site in Chrome, then click{" "}
+                <span className="font-semibold">Connect local bridge</span> and choose your receipt printer.
               </li>
-              <li>Click <span className="font-semibold">Connect local bridge</span> above and choose your receipt printer.</li>
             </ol>
+            {hcDownloadUrl ? (
+              <a
+                href={hcDownloadUrl}
+                className="mt-3 inline-flex min-h-10 items-center gap-2 rounded-md bg-amber-900 px-4 text-sm font-semibold text-amber-50"
+              >
+                <ExternalLink size={15} aria-hidden="true" />
+                Download for Windows
+              </a>
+            ) : null}
+            <details className="mt-3 text-xs text-amber-950/90">
+              <summary className="cursor-pointer font-medium">IT: install from repository</summary>
+              <p className="mt-1 font-mono leading-5">
+                tools\orithos-hardware-connect\bundle-register.ps1 → upload zip to /downloads/orithos-hardware-connect-latest.zip
+              </p>
+            </details>
           </div>
         )}
         <div className="mt-3 flex flex-wrap justify-end gap-2">
@@ -292,13 +308,9 @@ export function HardwareSetupPanel() {
             {connectBusy ? "Connecting…" : state.connected ? "Refresh printers" : "Connect local bridge"}
           </button>
         </div>
-        {state.bridge !== "orithos-hc" && (
-          <p className="mt-2 text-xs text-[var(--oh-muted)]">
-            Preferred: on this PC install .NET 8, then run{" "}
-            <span className="font-mono">tools\orithos-hardware-connect\run-dev.ps1</span> (listens on{" "}
-            <span className="font-mono">127.0.0.1:9170</span>).
-          </p>
-        )}
+        {state.bridge !== "orithos-hc" && state.connected ? (
+          <p className="mt-2 text-xs text-[var(--oh-muted)]">Connected via QZ Tray. Orithos Hardware Connect is preferred when installed.</p>
+        ) : null}
         {state.error && <p role="alert" className="mt-3 text-sm text-red-800">{state.error}</p>}
         {notice && <p role="status" className="mt-3 text-sm text-[var(--oh-text-secondary)]">{notice}</p>}
 
