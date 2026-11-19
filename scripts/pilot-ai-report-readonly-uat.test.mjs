@@ -17,6 +17,11 @@ test("report readonly UAT evaluates dynamic stock questions in English and Chine
   assert.match(suiteSource, /\$\{stockSample\.name\}现在有多少库存/);
 });
 
+test("report readonly UAT reconciles Chinese sales answers with the native report", () => {
+  assert.ok(suiteSource.includes('assistant("昨天营业额是多少？")'));
+  assert.ok(suiteSource.includes("assistantReportAcceptance(salesChinese"));
+});
+
 test("on-hand summary reconciles positive SKU, case and item totals with native overview", () => {
   const result = inventorySummaryAcceptance({
     productCount: 3063,
