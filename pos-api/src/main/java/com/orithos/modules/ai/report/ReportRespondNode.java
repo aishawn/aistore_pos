@@ -44,7 +44,7 @@ public class ReportRespondNode implements NodeAction {
                     ? (chinese ? "无法确认所选期间是否确实没有滞销商品。" : "I cannot confirm that there were no dead-stock items for the selected period.")
                     : answer;
             answer += chinese
-                    ? " 销售数据更新时间及完整性无法确认，以上结果需核实。"
+                    ? "销售数据更新时间及完整性无法确认，以上结果需核实。"
                     : " Sales data freshness and completeness could not be confirmed; verify these results.";
         }
         result.put("answer", answer);
@@ -64,8 +64,15 @@ public class ReportRespondNode implements NodeAction {
                 case "report_aov" -> chinese
                         ? rangeText(from, to) + "没有已完成销售记录。数据来源：Orithos POS 报表。"
                         : "No completed sales found for " + rangeText(from, to) + ". Source: Orithos POS report.";
-                case "report_dead_stock" -> "No dead-stock items found for the selected period."
-                        + " Try asking for dead stock last 60 days if you want a wider window.";
+                case "report_dead_stock" -> {
+                    if (!chinese) {
+                        yield "No dead-stock items found for the selected period."
+                                + " Try asking for dead stock last 60 days if you want a wider window.";
+                    }
+                    String dateRange = chineseDateRange(from, to);
+                    yield "所选期间未发现符合条件的滞销商品。"
+                            + (dateRange.isBlank() ? "" : "销售统计区间：" + dateRange + "。");
+                }
                 case "report_stock_value" -> "No on-hand products with a recorded cost were found.";
                 default -> "No completed sales found for " + rangeText(from, to)
                         + ". Try a wider range — for example ask: sales last 7 days"
@@ -261,13 +268,23 @@ public class ReportRespondNode implements NodeAction {
     private String formatDead(List<Map<String, Object>> rows, String days, String from, String to, boolean chinese) {
         String prefix = rows.size() == 50 ? "Top 50 " : rows.size() + " ";
         if (chinese) {
-            String count = rows.size() == 50 ? "前 50 个" : rows.size() + " 个";
-            return "最近" + days + "天有" + count + "滞销商品（当前库存大于 0，销量为 0）。"
-                    + "数据来源：Orithos 当前库存和 POS 销售；销售区间：" + rangeText(from, to) + "。";
+            String summary = rows.size() == 50
+                    ? "最近" + days + "天内符合条件的滞销商品，最多展示前50个"
+                    : "最近" + days + "天内，发现 " + rows.size() + " 个滞销商品";
+            String dateRange = chineseDateRange(from, to);
+            return summary + "（当前库存大于0，期间销量为0）。"
+                    + "数据来源：Orithos 当前库存及 POS 销售记录"
+                    + (dateRange.isBlank() ? "。" : "；销售统计区间：" + dateRange + "。");
         }
         return prefix + "dead-stock item(s) in the last " + days
                 + " days (on hand > 0, qty sold = 0)."
                 + " Source: Orithos on-hand stock and POS sales; sales period: " + rangeText(from, to) + ".";
+    }
+
+    private static String chineseDateRange(String from, String to) {
+        if (from == null || from.isBlank()) return to == null ? "" : to;
+        if (to == null || to.isBlank() || from.equals(to)) return from;
+        return from + " 至 " + to;
     }
 
     private String formatStockValue(List<Map<String, Object>> rows, boolean chinese) {

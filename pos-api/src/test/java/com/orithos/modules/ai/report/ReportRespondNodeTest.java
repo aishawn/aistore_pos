@@ -212,21 +212,22 @@ class ReportRespondNodeTest {
 
         String answer = (String) node.apply(state).get("answer");
 
-        org.junit.jupiter.api.Assertions.assertTrue(answer.contains("销售数据更新时间及完整性无法确认"));
-        org.junit.jupiter.api.Assertions.assertTrue(answer.contains("需核实"));
+        assertEquals("最近30天内，发现 1 个滞销商品（当前库存大于0，期间销量为0）。"
+                        + "数据来源：Orithos 当前库存及 POS 销售记录；销售统计区间：2026-10-01 至 2026-10-30。"
+                        + "销售数据更新时间及完整性无法确认，以上结果需核实。",
+                answer);
     }
 
     @Test
     void emptyDeadStockResultDoesNotClaimNoItemsWhenSalesFreshnessIsUnknown() {
         OverAllState state = state("", List.of(), "2026-10-01", "2026-10-30");
         when(state.value("intent", String.class)).thenReturn(Optional.of("report_dead_stock"));
-        when(state.value("question", String.class)).thenReturn(Optional.of("Any dead stock?"));
+        when(state.value("question", String.class)).thenReturn(Optional.of("有哪些滞销商品？"));
         when(state.value("report_data_status", String.class)).thenReturn(Optional.of("incomplete"));
 
         String answer = (String) node.apply(state).get("answer");
 
-        org.junit.jupiter.api.Assertions.assertFalse(answer.startsWith("No dead-stock items found"));
-        org.junit.jupiter.api.Assertions.assertTrue(answer.contains("Sales data freshness and completeness could not be confirmed"));
+        assertEquals("无法确认所选期间是否确实没有滞销商品。销售数据更新时间及完整性无法确认，以上结果需核实。", answer);
     }
 
     @Test
@@ -295,15 +296,40 @@ class ReportRespondNodeTest {
         OverAllState deadStock = state("", List.of(Map.of("name", "Wine", "on_hand", 3, "sold_qty", 0)));
         when(deadStock.value("intent", String.class)).thenReturn(Optional.of("report_dead_stock"));
         when(deadStock.value("question", String.class)).thenReturn(Optional.of("连续30天没有销售的商品有哪些？"));
-        String deadAnswer = (String) node.apply(deadStock).get("answer");
-        org.junit.jupiter.api.Assertions.assertTrue(deadAnswer.contains("滞销商品"));
-        org.junit.jupiter.api.Assertions.assertTrue(deadAnswer.contains("Orithos"));
-        org.junit.jupiter.api.Assertions.assertTrue(deadAnswer.contains("2026-10-20"));
+        assertEquals("最近30天内，发现 1 个滞销商品（当前库存大于0，期间销量为0）。"
+                        + "数据来源：Orithos 当前库存及 POS 销售记录；销售统计区间：2026-10-20。",
+                node.apply(deadStock).get("answer"));
 
         OverAllState stockValue = state("", List.of(Map.of("name", "Wine", "inventory_value", 12.5)));
         when(stockValue.value("intent", String.class)).thenReturn(Optional.of("report_stock_value"));
         when(stockValue.value("question", String.class)).thenReturn(Optional.of("哪些库存占用了最多现金？"));
         org.junit.jupiter.api.Assertions.assertTrue(((String) node.apply(stockValue).get("answer")).contains("库存资金占用"));
+    }
+
+    @Test
+    void chineseDeadStockTopFiftyUsesNaturalCountAndDateRange() {
+        List<Map<String, Object>> rows = java.util.stream.IntStream.range(0, 50)
+                .mapToObj(index -> Map.<String, Object>of("name", "Wine " + index, "on_hand", 3, "sold_qty", 0))
+                .toList();
+        OverAllState deadStock = state("", rows, "2026-10-21", "2026-11-19");
+        when(deadStock.value("intent", String.class)).thenReturn(Optional.of("report_dead_stock"));
+        when(deadStock.value("question", String.class)).thenReturn(Optional.of("连续30天没有销售的商品有哪些？"));
+        when(deadStock.value("report_data_status", String.class)).thenReturn(Optional.of("incomplete"));
+
+        assertEquals("最近30天内符合条件的滞销商品，最多展示前50个（当前库存大于0，期间销量为0）。"
+                        + "数据来源：Orithos 当前库存及 POS 销售记录；销售统计区间：2026-10-21 至 2026-11-19。"
+                        + "销售数据更新时间及完整性无法确认，以上结果需核实。",
+                node.apply(deadStock).get("answer"));
+    }
+
+    @Test
+    void emptyChineseDeadStockResultStaysInChinese() {
+        OverAllState deadStock = state("", List.of());
+        when(deadStock.value("intent", String.class)).thenReturn(Optional.of("report_dead_stock"));
+        when(deadStock.value("question", String.class)).thenReturn(Optional.of("有哪些滞销商品？"));
+
+        assertEquals("所选期间未发现符合条件的滞销商品。销售统计区间：2026-10-20。",
+                node.apply(deadStock).get("answer"));
     }
 
     @Test
