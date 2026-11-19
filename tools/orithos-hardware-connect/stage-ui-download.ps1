@@ -5,15 +5,20 @@ Set-Location $PSScriptRoot
 $root = Resolve-Path (Join-Path $PSScriptRoot "..\..\pos-ui\public\downloads")
 New-Item -ItemType Directory -Force -Path $root | Out-Null
 
-$zip = Join-Path $PSScriptRoot "dist\OrithosHardwareConnect-1.0.0-win-x64.zip"
+$zip = Join-Path $PSScriptRoot "dist\OrithosHardwareConnect-1.1.0-win-x64.zip"
 if (-not (Test-Path $zip)) { throw "Missing bundle zip: $zip" }
 
 $dest = Join-Path $root "orithos-hardware-connect-latest.zip"
 Copy-Item -Path $zip -Destination $dest -Force
 
+$setupExe = Join-Path $PSScriptRoot "dist\OrithosHardwareConnect-1.1.0-win-x64-Setup.exe"
+if (Test-Path $setupExe) {
+  Copy-Item -Path $setupExe -Destination (Join-Path $root "OrithosHardwareConnect-Setup.exe") -Force
+}
+
 $meta = @{
   product = "Orithos Hardware Connect"
-  version = "1.0.0.0"
+  version = "1.1.0.0"
   downloadPath = "/downloads/orithos-hardware-connect-latest"
   stagedAt = (Get-Date).ToString("o")
 } | ConvertTo-Json -Compress

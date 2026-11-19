@@ -54,8 +54,14 @@ internal static class AgentHost
 
         if (consoleMode)
         {
-            Console.WriteLine($"{AgentVersion.Product} {AgentVersion.DisplayVersion} listening on {Environment.GetEnvironmentVariable("ORITHOS_HC_URL") ?? AgentVersion.DefaultListen}");
-            HardwareConnectWebApp.RunAsync(CancellationToken.None).GetAwaiter().GetResult();
+            var hcUrl = Environment.GetEnvironmentVariable("ORITHOS_HC_URL") ?? AgentVersion.DefaultListen;
+            var eftposUrl = Environment.GetEnvironmentVariable("ORITHOS_CONNECTOR_URL") ?? AgentVersion.DefaultEftposListen;
+            Console.WriteLine($"{AgentVersion.Product} {AgentVersion.DisplayVersion}");
+            Console.WriteLine($"Printers: {hcUrl}");
+            Console.WriteLine($"EFTPOS:   {eftposUrl}");
+            Task.WhenAll(
+                HardwareConnectWebApp.RunAsync(CancellationToken.None),
+                LinklyConnectorWebApp.RunAsync(CancellationToken.None)).GetAwaiter().GetResult();
             return;
         }
 

@@ -139,7 +139,7 @@ export function LinklyEftposPanel({ canEdit }: Props) {
       if (saved.revealedConnectorToken) {
         saveConnectorTokenForRegister(registerId, saved.revealedConnectorToken);
         setRevealedToken(saved.revealedConnectorToken);
-        setNotice("Binding saved. Copy the connector token into the Orithos Linkly Connector on this PC.");
+        setNotice("Binding saved. Set ORITHOS_CONNECTOR_TOKEN for your Windows user on this PC (Hardware Connect tray app reads it).");
       } else {
         setNotice("EFTPOS binding saved for this register.");
       }
@@ -250,7 +250,7 @@ export function LinklyEftposPanel({ canEdit }: Props) {
 
         {connectorHealth === "offline" && !draft.paymentsEnabled && (
           <p className="text-xs text-[var(--oh-muted)]">
-            Run Orithos Linkly Connector on the EFTPOS register PC. Receipt printer setup above is independent.
+            Start Orithos Hardware Connect on this PC (same install as the receipt printer). EFTPOS uses port 9167; printers use 9170.
           </p>
         )}
         {error && <p role="alert" className="text-sm text-red-800">{error}</p>}

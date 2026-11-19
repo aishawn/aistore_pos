@@ -1,3 +1,4 @@
+// Dev-only: production EFTPOS bridge runs inside Orithos Hardware Connect (127.0.0.1:9167).
 import http from "node:http";
 
 const HOST = process.env.CONNECTOR_HOST || "127.0.0.1";

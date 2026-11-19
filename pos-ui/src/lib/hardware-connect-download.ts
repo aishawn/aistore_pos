@@ -1,6 +1,6 @@
 /** Published Windows one-click setup (public GitHub release). */
 export const ORITHOS_HC_OFFICIAL_WINDOWS_URL =
-  "https://github.com/aishawn/aistore_pos/releases/download/hardware-connect-latest/OrithosHardwareConnect-1.0.0-win-x64-Setup.exe";
+  "https://github.com/aishawn/aistore_pos/releases/download/hardware-connect-latest/OrithosHardwareConnect-1.1.0-win-x64-Setup.exe";
 
 const HC_SETUP_ROUTE_PATH = "/downloads/orithos-hardware-connect-setup";
 const HC_ONECLICK_ROUTE_PATH = "/downloads/orithos-hardware-connect-oneclick";

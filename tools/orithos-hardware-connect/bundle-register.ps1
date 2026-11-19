@@ -13,7 +13,7 @@ function Resolve-DotNet {
 }
 
 & "$PSScriptRoot\publish.ps1" -DotNetExe (Resolve-DotNet)
-$version = "1.0.0"
+$version = "1.1.0"
 $stage = Join-Path $PSScriptRoot "dist\OrithosHardwareConnect-$version-win-x64"
 if (Test-Path $stage) { Remove-Item $stage -Recurse -Force }
 New-Item -ItemType Directory -Force -Path $stage | Out-Null

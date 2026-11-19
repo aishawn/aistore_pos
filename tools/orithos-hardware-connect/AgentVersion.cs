@@ -10,4 +10,6 @@ internal static class AgentVersion
         Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "1.0.0.0";
 
     public const string DefaultListen = "http://127.0.0.1:9170/";
+
+    public const string DefaultEftposListen = "http://127.0.0.1:9167/";
 }

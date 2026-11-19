@@ -95,8 +95,8 @@ export function HardwareConnectInstallCard({ compact }: Props) {
     return (
       <div className="text-sm">
         <p className="text-xs leading-5 text-[var(--oh-muted)]">
-          Install once on this PC so printers and EFTPOS can talk to the browser (tray icon, port{" "}
-          <span className="font-mono">9170</span>).
+          One installer for this register: receipt printers (port <span className="font-mono">9170</span>) and EFTPOS (
+          <span className="font-mono">9167</span>). Tray icon when running.
         </p>
         {body}
       </div>

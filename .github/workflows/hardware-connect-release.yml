@@ -26,6 +26,8 @@ jobs:
         run: |
           Set-Location tools/orithos-hardware-connect
           ./bundle-register.ps1
+          $version = (Select-Xml -Path ./OrithosHardwareConnect.csproj -XPath "//Version").Node.InnerText.Trim()
+          "HC_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append
 
       - name: Optional Authenticode sign
         shell: pwsh
@@ -38,7 +40,7 @@ jobs:
             exit 0
           }
           Set-Location tools/orithos-hardware-connect
-          ./sign-install.ps1 -ZipPath ./dist/OrithosHardwareConnect-1.0.0-win-x64.zip
+          ./sign-install.ps1 -ZipPath "./dist/OrithosHardwareConnect-$env:HC_VERSION-win-x64.zip"
 
       - name: Publish rolling release asset
         uses: softprops/action-gh-release@v2
@@ -46,9 +48,11 @@ jobs:
           tag_name: hardware-connect-latest
           name: Orithos Hardware Connect (latest Windows x64)
           body: |
-            Self-contained Orithos Hardware Connect bundle for register PCs.
-            Install: unzip and run install.ps1, then Setup → Hardware in Chrome.
-          files: tools/orithos-hardware-connect/dist/OrithosHardwareConnect-1.0.0-win-x64.zip
+            Self-contained Orithos register agent for Windows: receipt printers (9170) and EFTPOS bridge (9167) in one install.
+            Install: run OrithosHardwareConnect-*-Setup.exe, allow browser local network access, then Settings → Hardware.
+          files: |
+            tools/orithos-hardware-connect/dist/OrithosHardwareConnect-${{ env.HC_VERSION }}-win-x64.zip
+            tools/orithos-hardware-connect/dist/OrithosHardwareConnect-${{ env.HC_VERSION }}-win-x64-Setup.exe
           make_latest: false
           draft: false
           prerelease: false

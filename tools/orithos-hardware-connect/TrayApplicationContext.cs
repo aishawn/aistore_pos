@@ -6,11 +6,13 @@ internal sealed class TrayApplicationContext : ApplicationContext
 {
     private readonly NotifyIcon trayIcon;
     private readonly CancellationTokenSource webHostCts = new();
-    private readonly Task webHostTask;
+    private readonly Task hardwareWebHostTask;
+    private readonly Task linklyWebHostTask;
 
     public TrayApplicationContext()
     {
-        webHostTask = Task.Run(() => HardwareConnectWebApp.RunAsync(webHostCts.Token), webHostCts.Token);
+        hardwareWebHostTask = Task.Run(() => HardwareConnectWebApp.RunAsync(webHostCts.Token), webHostCts.Token);
+        linklyWebHostTask = Task.Run(() => LinklyConnectorWebApp.RunAsync(webHostCts.Token), webHostCts.Token);
 
         var settingsUrl = Environment.GetEnvironmentVariable("ORITHOS_HC_SETTINGS_URL")
             ?? "https://skr.orithos.com.au/settings/hardware";
@@ -27,7 +29,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
         menu.Items.Add("About", null, (_, _) =>
         {
             MessageBox.Show(
-                $"{AgentVersion.Product} {AgentVersion.DisplayVersion}\nListening on {Environment.GetEnvironmentVariable("ORITHOS_HC_URL") ?? AgentVersion.DefaultListen}",
+                $"{AgentVersion.Product} {AgentVersion.DisplayVersion}\nPrinters: {Environment.GetEnvironmentVariable("ORITHOS_HC_URL") ?? AgentVersion.DefaultListen}\nEFTPOS: {Environment.GetEnvironmentVariable("ORITHOS_CONNECTOR_URL") ?? AgentVersion.DefaultEftposListen}",
                 AgentVersion.Product,
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Information);
@@ -58,7 +60,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
         webHostCts.Cancel();
         try
         {
-            webHostTask.Wait(TimeSpan.FromSeconds(3));
+            Task.WaitAll([hardwareWebHostTask, linklyWebHostTask], TimeSpan.FromSeconds(3));
         }
         catch
         {

@@ -7,12 +7,16 @@
     <OutputType>WinExe</OutputType>
     <AssemblyName>OrithosHardwareConnect</AssemblyName>
     <RootNamespace>Orithos.HardwareConnect</RootNamespace>
-    <Version>1.0.0</Version>
-    <Description>Orithos local hardware agent (Windows printers, cash drawer kick)</Description>
+    <Version>1.1.0</Version>
+    <Description>Orithos register agent: printers, cash drawer, and local EFTPOS bridge</Description>
     <ApplicationIcon />
     <PublishTrimmed>false</PublishTrimmed>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="System.Drawing.Common" Version="8.0.10" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Remove="bin/**;obj/**;dist/**;publish/**" />
+    <None Remove="bin/**;obj/**;dist/**;publish/**" />
   </ItemGroup>
 </Project>
