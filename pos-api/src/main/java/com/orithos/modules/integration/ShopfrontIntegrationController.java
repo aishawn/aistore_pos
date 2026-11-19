@@ -2034,11 +2034,32 @@ public class ShopfrontIntegrationController {
             rowsSql = "SELECT m.source_product_id AS source_id,p.name,p.mdb_id AS sku,p.status, "
                     + "p.cost,p.case_cost,p.shopfront_catalog_confirmed AS catalog_confirmed,p.case_quantity,p.tax_rate_id,product_tax.name AS tax_rate_name, "
                     + "p.cost_tax_rate_id,cost_tax.name AS cost_tax_rate_name,p.cost_percentage, "
+                    + "category.name AS category_name,brand.name AS brand_name,family.name AS family_name,p.description,p.image, "
+                    + "COALESCE(p.alternate_images::text,'[]') AS alternate_images, "
+                    + "(p.track_inventory<>0) AS track_inventory,(p.use_scales<>0) AS use_scales, "
+                    + "(p.use_barcode_templates<>0) AS use_barcode_templates, "
+                    + "(p.prevent_manual_discounts<>0) AS prevent_manual_discounts,(p.use_price_label<>0) AS use_price_label, "
+                    + "(p.request_quantity<>0) AS request_quantity, "
+                    + "(p.request_price<>0) AS request_price,p.order_notes,p.invoice_notes, "
                     + "p.updated_at AS pos_updated_at,p.shopfront_source_updated_at AS source_updated_at, "
                     + "COALESCE((SELECT jsonb_agg(jsonb_build_object('code',pb.code,'quantity',pb.quantity) ORDER BY pb.code)::text "
                     + "FROM product_barcode pb WHERE pb.product_id=p.id AND pb.outlet_id=p.outlet_id),'[]') AS barcodes "
+                    + ",COALESCE((SELECT jsonb_agg(jsonb_build_object('quantity',pp.quantity,'price',pp.price,'price_ex',pp.price_ex) ORDER BY pp.quantity,pp.price)::text "
+                    + "FROM product_price pp WHERE pp.product_id=p.id AND pp.outlet_id=p.outlet_id),'[]') AS prices "
+                    + ",COALESCE((SELECT jsonb_agg(t.name ORDER BY LOWER(t.name),t.name)::text FROM product_tag pt "
+                    + "JOIN tag t ON t.id=pt.tag_id AND t.outlet_id=p.outlet_id AND t.deleted_at IS NULL "
+                    + "WHERE pt.product_id=p.id AND pt.outlet_id=p.outlet_id),'[]') AS tags "
+                    + ",COALESCE((SELECT jsonb_agg(jsonb_build_object('source_id',sm.source_id,'code',ps.code,"
+                    + "'minimum_order_quantity',ps.minimum_order_quantity) ORDER BY sm.source_id)::text "
+                    + "FROM product_supplier ps JOIN shopfront_supplier_business_mapping sm ON sm.supplier_id=ps.supplier_id "
+                    + "AND sm.outlet_id=ps.outlet_id AND sm.store_key=? JOIN supplier sup ON sup.id=ps.supplier_id "
+                    + "AND sup.outlet_id=ps.outlet_id AND sup.deleted_at IS NULL "
+                    + "WHERE ps.product_id=p.id AND ps.outlet_id=p.outlet_id),'[]') AS suppliers "
                     + "FROM shopfront_product_mapping m JOIN product p "
                     + "ON p.id=m.pos_product_id AND p.outlet_id=? AND p.deleted_at IS NULL "
+                    + "LEFT JOIN category ON category.id=p.category_id AND category.outlet_id=p.outlet_id AND category.deleted_at IS NULL "
+                    + "LEFT JOIN brand ON brand.id=p.brand_id AND brand.outlet_id=p.outlet_id AND brand.deleted_at IS NULL "
+                    + "LEFT JOIN family ON family.id=p.family_id AND family.outlet_id=p.outlet_id AND family.deleted_at IS NULL "
                     + "LEFT JOIN tax_rate product_tax ON product_tax.id=p.tax_rate_id "
                     + "AND product_tax.outlet_id=p.outlet_id AND product_tax.deleted_at IS NULL "
                     + "LEFT JOIN tax_rate cost_tax ON cost_tax.id=p.cost_tax_rate_id "
@@ -2046,7 +2067,7 @@ public class ShopfrontIntegrationController {
                     + "WHERE m.store_key=? AND m.status='MAPPED' "
                     + "ORDER BY m.source_product_id LIMIT ? OFFSET ?";
             countArgs = new Object[]{outletId, storeKey};
-            rowArgs = new Object[]{outletId, storeKey, size, (page - 1) * size};
+            rowArgs = new Object[]{storeKey, outletId, storeKey, size, (page - 1) * size};
         } else if ("inventory".equals(type)) {
             countSql = "SELECT COUNT(*) FROM shopfront_product_mapping m JOIN product_inventory pi "
                     + "ON pi.product_id=m.pos_product_id AND pi.outlet_id=? "
@@ -3770,10 +3791,10 @@ public class ShopfrontIntegrationController {
         String productStatus = normalizeShopfrontProductStatus(sourceStatus, sourceDeleted);
         String alternateImages = item.has("alternate_images") ? objectMapper.writeValueAsString(item.get("alternate_images")) : "[]";
         if (productId == null) {
-            String sql = "INSERT INTO product (name,type,status,description,category_id,brand_id,family_id,tax_rate_id,cost_tax_rate_id,cost,case_cost,case_quantity,cost_percentage,shopfront_catalog_confirmed,shopfront_source_updated_at,track_inventory,use_scales,use_barcode_templates,prevent_manual_discounts,request_price,request_quantity,order_notes,invoice_notes,image,alternate_images,mdb_id,outlet_id,shopfront_managed) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?::jsonb,?,?,TRUE) RETURNING id";
-            productId = jdbc.queryForObject(sql, Long.class, name, type, productStatus, description, categoryId, brandId, familyId, taxRateId, costTaxRateId, costIsVerified ? cost : null, costIsVerified ? caseCost : null, caseQuantity, flag(item, "cost_percentage", false), item.path("catalog_confirmed").asBoolean(false), text(item, "source_updated_at"), flag(item, "track_inventory", true), flag(item, "use_scales", false), flag(item, "use_barcode_templates", false), flag(item, "prevent_manual_discounts", false), flag(item, "request_price", false), flag(item, "request_quantity", false), text(item, "order_notes"), text(item, "invoice_notes"), image, alternateImages, mdbId, outletId);
+            String sql = "INSERT INTO product (name,type,status,description,category_id,brand_id,family_id,tax_rate_id,cost_tax_rate_id,cost,case_cost,case_quantity,cost_percentage,shopfront_catalog_confirmed,shopfront_source_updated_at,track_inventory,use_scales,use_barcode_templates,prevent_manual_discounts,request_price,request_quantity,order_notes,invoice_notes,image,alternate_images,mdb_id,outlet_id,use_price_label,shopfront_managed) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?::jsonb,?,?,?,TRUE) RETURNING id";
+            productId = jdbc.queryForObject(sql, Long.class, name, type, productStatus, description, categoryId, brandId, familyId, taxRateId, costTaxRateId, costIsVerified ? cost : null, costIsVerified ? caseCost : null, caseQuantity, flag(item, "cost_percentage", false), item.path("catalog_confirmed").asBoolean(false), text(item, "source_updated_at"), flag(item, "track_inventory", true), flag(item, "use_scales", false), flag(item, "use_barcode_templates", false), flag(item, "prevent_manual_discounts", false), flag(item, "request_price", false), flag(item, "request_quantity", false), text(item, "order_notes"), text(item, "invoice_notes"), image, alternateImages, mdbId, outletId, flag(item, "use_price_label", false));
         } else {
-            batch.productUpdates.put(productId, new Object[]{name, type, productStatus, description, categoryId, brandId, familyId, taxRateId, costTaxRateId, costIsVerified, cost, costIsVerified, caseCost, caseQuantity, flag(item, "cost_percentage", false), item.path("catalog_confirmed").asBoolean(false), text(item, "source_updated_at"), flag(item, "track_inventory", true), flag(item, "use_scales", false), flag(item, "use_barcode_templates", false), flag(item, "prevent_manual_discounts", false), flag(item, "request_price", false), flag(item, "request_quantity", false), text(item, "order_notes"), text(item, "invoice_notes"), image, alternateImages, mdbId, outletId, productId});
+            batch.productUpdates.put(productId, new Object[]{name, type, productStatus, description, categoryId, brandId, familyId, taxRateId, costTaxRateId, costIsVerified, cost, costIsVerified, caseCost, caseQuantity, flag(item, "cost_percentage", false), item.path("catalog_confirmed").asBoolean(false), text(item, "source_updated_at"), flag(item, "track_inventory", true), flag(item, "use_scales", false), flag(item, "use_barcode_templates", false), flag(item, "prevent_manual_discounts", false), flag(item, "request_price", false), flag(item, "request_quantity", false), text(item, "order_notes"), text(item, "invoice_notes"), image, alternateImages, mdbId, outletId, flag(item, "use_price_label", false), productId});
         }
         collectProductPrices(productId, item, outletId, batch);
         collectProductBarcodes(productId, item, batch);
@@ -3791,7 +3812,7 @@ public class ShopfrontIntegrationController {
                 temporaryNames.add(new Object[]{"__sf_sync_" + reservation + "_" + index++, outletId, productId});
             }
             jdbc.batchUpdate("UPDATE product SET name=? WHERE outlet_id=? AND id=?", temporaryNames);
-            jdbc.batchUpdate("UPDATE product SET name=?,type=?,status=?,description=?,category_id=?,brand_id=?,family_id=?,tax_rate_id=?,cost_tax_rate_id=?,cost=CASE WHEN ? THEN ? ELSE NULL END,case_cost=CASE WHEN ? THEN CAST(? AS numeric) ELSE NULL END,case_quantity=?,cost_percentage=?,shopfront_catalog_confirmed=?,shopfront_source_updated_at=?,track_inventory=?,use_scales=?,use_barcode_templates=?,prevent_manual_discounts=?,request_price=?,request_quantity=?,order_notes=?,invoice_notes=?,image=COALESCE(?,image),alternate_images=?::jsonb,mdb_id=?,outlet_id=?,shopfront_managed=TRUE WHERE id=?",
+            jdbc.batchUpdate("UPDATE product SET name=?,type=?,status=?,description=?,category_id=?,brand_id=?,family_id=?,tax_rate_id=?,cost_tax_rate_id=?,cost=CASE WHEN ? THEN ? ELSE NULL END,case_cost=CASE WHEN ? THEN CAST(? AS numeric) ELSE NULL END,case_quantity=?,cost_percentage=?,shopfront_catalog_confirmed=?,shopfront_source_updated_at=?,track_inventory=?,use_scales=?,use_barcode_templates=?,prevent_manual_discounts=?,request_price=?,request_quantity=?,order_notes=?,invoice_notes=?,image=COALESCE(?,image),alternate_images=?::jsonb,mdb_id=?,outlet_id=?,use_price_label=?,shopfront_managed=TRUE WHERE id=?",
                     new ArrayList<>(batch.productUpdates.values()));
         }
 

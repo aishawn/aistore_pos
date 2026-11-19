@@ -369,6 +369,7 @@ class ShopfrontIntegrationControllerTest {
                 {"source_id":"current-1","name":"Current item","sku":"123456","catalog_confirmed":true,
                  "cost_authority":"catalog_verified","cost_contract":"case-and-unit-cost-v1",
                  "cost":43.5258,"case_cost":522.31,"case_quantity":12,
+                 "use_price_label":true,
                  "source_updated_at":"2026-10-29T13:19:56+08:00"}
                 """), "skr", 87L, new java.util.HashMap<>(), 123L, batch);
 
@@ -383,6 +384,7 @@ class ShopfrontIntegrationControllerTest {
         assertEquals(Boolean.TRUE, updates.get(123L)[11]);
         assertEquals(new java.math.BigDecimal("522.31"), updates.get(123L)[12]);
         assertEquals(123456, updates.get(123L)[27]);
+        assertEquals(1, updates.get(123L)[29]);
 
         upsert.invoke(controller, new ObjectMapper().readTree("""
                 {"source_id":"historical-1","name":"Historical item"}
@@ -433,7 +435,19 @@ class ShopfrontIntegrationControllerTest {
         verify(jdbc).queryForList(contains("p.shopfront_source_updated_at AS source_updated_at"), any(Object[].class));
         verify(jdbc).queryForList(contains("product_barcode"), any(Object[].class));
         verify(jdbc).queryForList(contains("AS barcodes"), any(Object[].class));
+        verify(jdbc).queryForList(contains("category_name"), any(Object[].class));
+        verify(jdbc).queryForList(contains("AS prices"), any(Object[].class));
+        verify(jdbc).queryForList(contains("AS tags"), any(Object[].class));
+        verify(jdbc).queryForList(contains("AS suppliers"), any(Object[].class));
+        verify(jdbc).queryForList(contains("track_inventory"), any(Object[].class));
         verify(jdbc, never()).queryForList(contains("p.sku"), any(Object[].class));
+        ArgumentCaptor<Object[]> productQueryArgs = ArgumentCaptor.forClass(Object[].class);
+        verify(jdbc).queryForList(contains("category_name"), productQueryArgs.capture());
+        assertEquals("skr", productQueryArgs.getValue()[0]);
+        assertEquals(48L, productQueryArgs.getValue()[1]);
+        assertEquals("skr", productQueryArgs.getValue()[2]);
+        assertEquals(2500, productQueryArgs.getValue()[3]);
+        assertEquals(0, productQueryArgs.getValue()[4]);
     }
 
     @Test
