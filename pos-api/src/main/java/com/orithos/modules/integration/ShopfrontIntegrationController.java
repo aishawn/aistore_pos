@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.orithos.common.ApiResult;
 import com.orithos.modules.customer.NativeCustomerImportService;
+import com.orithos.modules.platform.DemoSandboxService;
+import com.orithos.modules.platform.ShopfrontProductMappingCloneService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DuplicateKeyException;
@@ -88,6 +90,7 @@ public class ShopfrontIntegrationController {
     private final String token;
     private final boolean enabled;
     private final boolean businessWriteEnabled;
+    private final DemoSandboxService demoSandboxService;
 
     @Autowired
     public ShopfrontIntegrationController(
@@ -95,6 +98,7 @@ public class ShopfrontIntegrationController {
             ObjectMapper objectMapper,
             ShopfrontNativeSaleImporter nativeSaleImporter,
             NativeCustomerImportService nativeCustomerImportService,
+            DemoSandboxService demoSandboxService,
             @Value("${app.shopfront.integration-token:}") String token,
             @Value("${app.shopfront.integration-enabled:false}") boolean enabled,
             @Value("${app.shopfront.business-write-enabled:false}") boolean businessWriteEnabled) {
@@ -102,6 +106,7 @@ public class ShopfrontIntegrationController {
         this.objectMapper = objectMapper;
         this.nativeSaleImporter = nativeSaleImporter;
         this.nativeCustomerImportService = nativeCustomerImportService;
+        this.demoSandboxService = demoSandboxService;
         this.token = token;
         this.enabled = enabled;
         this.businessWriteEnabled = businessWriteEnabled;
@@ -113,7 +118,9 @@ public class ShopfrontIntegrationController {
             String token,
             boolean enabled) {
         this(jdbc, objectMapper, new ShopfrontNativeSaleImporter(jdbc),
-                new NativeCustomerImportService(jdbc), token, enabled, false);
+                new NativeCustomerImportService(jdbc),
+                new DemoSandboxService(jdbc, new ShopfrontProductMappingCloneService(jdbc), ""),
+                token, enabled, false);
     }
 
     public ShopfrontIntegrationController(
@@ -123,7 +130,9 @@ public class ShopfrontIntegrationController {
             boolean enabled,
             boolean businessWriteEnabled) {
         this(jdbc, objectMapper, new ShopfrontNativeSaleImporter(jdbc),
-                new NativeCustomerImportService(jdbc), token, enabled, businessWriteEnabled);
+                new NativeCustomerImportService(jdbc),
+                new DemoSandboxService(jdbc, new ShopfrontProductMappingCloneService(jdbc), ""),
+                token, enabled, businessWriteEnabled);
     }
 
     @GetMapping("/mappings")
@@ -4771,7 +4780,34 @@ public class ShopfrontIntegrationController {
             @RequestHeader("X-Shopfront-Integration-Token") String supplied,
             @RequestBody JsonNode body) {
         authorize(supplied);
-        return gone("Product mappings are created independently when the crawler imports each POS target");
+        return legacyCloneProductMappings(supplied, body);
+    }
+
+    @PostMapping("/demo:purge-local")
+    public ApiResult<Map<String, Object>> purgeDemoLocalWrites(
+            @RequestHeader("X-Shopfront-Integration-Token") String supplied) {
+        authorize(supplied);
+        return ApiResult.ok(demoSandboxService.purgeLocalWrites());
+    }
+
+    @PostMapping("/demo:rebaseline")
+    public ApiResult<Map<String, Object>> rebaselineDemo(
+            @RequestHeader("X-Shopfront-Integration-Token") String supplied,
+            @RequestBody(required = false) JsonNode body) {
+        authorize(supplied);
+        List<String> steps = new ArrayList<>();
+        int limit = body == null ? 1500 : body.path("limit").asInt(1500);
+        if (body != null && body.path("steps").isArray()) {
+            for (JsonNode step : body.path("steps")) {
+                if (step != null && step.isTextual() && !step.asText().isBlank()) {
+                    steps.add(step.asText());
+                }
+            }
+        }
+        if (steps.isEmpty()) {
+            steps = List.of("purge", "queue_sync", "clone_mappings", "verify");
+        }
+        return ApiResult.ok(demoSandboxService.rebaseline(steps, limit));
     }
 
     private void authorize(String supplied) {

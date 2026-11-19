@@ -3267,6 +3267,9 @@ async def push_pos_snapshot(
         odoo_batches = 0
         target_sale_batches = {target_name: 0 for target_name in clients}
         sales_batch_size = max(1, min(250, int(settings.pos_sales_import_batch_size)))
+        sales_store_keys = [store_key]
+        if secondary_store_key and secondary_store_key != store_key:
+            sales_store_keys.append(secondary_store_key)
         offset = max(0, int(sales_offset or 0))
         while include_sales and offset < total_sales:
             sales = db.scalars(sales_query.offset(offset).limit(sales_batch_size)).all()
@@ -3276,18 +3279,20 @@ async def push_pos_snapshot(
             db.commit()
             try:
                 for target_name, client in clients.items():
-                    sales_payload = {"store_key": store_key, "items": items}
-                    if sales_reconcile_job:
-                        sales_payload["business_write"] = False
-                    response = await client.upsert_sales(jsonable_encoder(sales_payload))
-                    validate_pos_import_receipt(response, len(items), "sales")
-                    result["sales_batch_audit"].append({
-                        "target": target_name,
-                        "offset": offset,
-                        "payload_count": len(items),
-                        "response": sales_response_audit(response),
-                    })
-                    target_sale_batches[target_name] += 1
+                    for sales_store in sales_store_keys:
+                        sales_payload = {"store_key": sales_store, "items": items}
+                        if sales_reconcile_job:
+                            sales_payload["business_write"] = False
+                        response = await client.upsert_sales(jsonable_encoder(sales_payload))
+                        validate_pos_import_receipt(response, len(items), "sales")
+                        audit_key = target_name if sales_store == store_key else f"{target_name}:{sales_store}"
+                        result["sales_batch_audit"].append({
+                            "target": audit_key,
+                            "offset": offset,
+                            "payload_count": len(items),
+                            "response": sales_response_audit(response),
+                        })
+                        target_sale_batches[target_name] += 1
                 sale_batches += 1
             except Exception as exc:
                 result["mirror_errors"].append(f"sales batch {offset}, target {target_name}: {exc!r}")

@@ -950,11 +950,11 @@ class ShopfrontIntegrationControllerTest {
     }
 
     @Test
-    void refusesCloningProductMappingsThroughTheRetiredEndpoint() {
+    void rejectsCloneProductMappingsWithoutStoreKeys() {
         var controller = new ShopfrontIntegrationController(mock(JdbcTemplate.class), new ObjectMapper(), "token", true, true);
         var error = assertThrows(ResponseStatusException.class,
                 () -> controller.cloneProductMappings("token", new ObjectMapper().createObjectNode()));
-        assertEquals(HttpStatus.GONE, error.getStatusCode());
+        assertEquals(HttpStatus.BAD_REQUEST, error.getStatusCode());
     }
 
     @Test
