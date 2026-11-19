@@ -59,9 +59,17 @@ internal static class RegisterAgentInstaller
             throw new InvalidOperationException("Could not resolve the installer location.");
         }
 
+        var runningExe = Environment.ProcessPath;
+        if (string.IsNullOrWhiteSpace(runningExe) || !File.Exists(runningExe))
+        {
+            throw new InvalidOperationException("Could not locate the installer executable.");
+        }
+
         Directory.CreateDirectory(InstallDir);
         StopRunningAgent();
         Thread.Sleep(500);
+
+        File.Copy(runningExe, InstalledExePath, overwrite: true);
 
         foreach (var file in Directory.EnumerateFiles(sourceDir))
         {
@@ -69,12 +77,18 @@ internal static class RegisterAgentInstaller
             if (string.Equals(name, "install.ps1", StringComparison.OrdinalIgnoreCase)
                 || string.Equals(name, "uninstall.ps1", StringComparison.OrdinalIgnoreCase)
                 || string.Equals(name, "REGISTER-README.txt", StringComparison.OrdinalIgnoreCase)
-                || string.Equals(name, "Install-Orithos-Hardware-Connect.cmd", StringComparison.OrdinalIgnoreCase))
+                || string.Equals(name, "Install-Orithos-Hardware-Connect.cmd", StringComparison.OrdinalIgnoreCase)
+                || name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
             {
                 continue;
             }
 
             File.Copy(file, Path.Combine(InstallDir, name), overwrite: true);
+        }
+
+        if (!File.Exists(InstalledExePath))
+        {
+            throw new InvalidOperationException($"Could not install agent at {InstalledExePath}.");
         }
 
         RegisterStartup(InstalledExePath);
@@ -96,7 +110,16 @@ internal static class RegisterAgentInstaller
 
     public static void LaunchInstalledAgent()
     {
-        Process.Start(new ProcessStartInfo(InstalledExePath) { UseShellExecute = true });
+        if (!File.Exists(InstalledExePath))
+        {
+            throw new FileNotFoundException("Installed agent is missing.", InstalledExePath);
+        }
+
+        Process.Start(new ProcessStartInfo(InstalledExePath)
+        {
+            UseShellExecute = true,
+            WorkingDirectory = InstallDir,
+        });
     }
 
     private static void StopRunningAgent()
