@@ -84,29 +84,40 @@ export function HardwareSetupPanel() {
   async function connect() {
     setBusy(true);
     setNotice(null);
-    const next = await connectLocalHardware();
-    setState(next);
-    if (next.connected) {
-      setDraft((current) => {
-        if (current.printer && next.printers.includes(current.printer)) return current;
-        if (savedSettings.printer && next.printers.includes(savedSettings.printer)) {
-          return { ...current, printer: savedSettings.printer };
-        }
-        if (next.printers.length === 1) return { ...current, printer: next.printers[0] };
-        return current;
-      });
-    }
-    setBusy(false);
-    if (next.bridge === "orithos-hc") {
-      setNotice(`Orithos Hardware Connect ${next.hardwareConnectVersion ?? ""} · ${next.printers.length} printer(s) found.`.trim());
-    } else if (next.connected) {
-      setNotice(`QZ Tray connected; ${next.printers.length} printer(s) found.`);
-    } else if (!next.qzAvailable && !next.error) {
-      setNotice(
-        qzScriptError
-          ? "Start Orithos Hardware Connect on this PC, or install QZ Tray, then connect again."
-          : "Orithos Hardware Connect (port 9170) and QZ Tray are not reachable on this register.",
-      );
+    try {
+      const next = await connectLocalHardware();
+      setState(next);
+      if (next.connected) {
+        setDraft((current) => {
+          let printer = current.printer;
+          if (printer && next.printers.includes(printer)) {
+            /* keep */
+          } else if (savedSettings.printer && next.printers.includes(savedSettings.printer)) {
+            printer = savedSettings.printer;
+          } else if (next.printers.length === 1) {
+            printer = next.printers[0];
+          }
+          const cashDrawer = savedSettings.printer ? current.cashDrawer : current.cashDrawer || true;
+          return printer !== current.printer || cashDrawer !== current.cashDrawer
+            ? { ...current, printer, cashDrawer }
+            : current;
+        });
+      }
+      if (next.bridge === "orithos-hc") {
+        setNotice(`Orithos Hardware Connect ${next.hardwareConnectVersion ?? ""} · ${next.printers.length} printer(s) found.`.trim());
+      } else if (next.connected) {
+        setNotice(`QZ Tray connected; ${next.printers.length} printer(s) found.`);
+      } else if (next.error) {
+        setNotice(next.error);
+      } else if (!next.qzAvailable && !next.error) {
+        setNotice(
+          qzScriptError
+            ? "Start Orithos Hardware Connect on this PC, or install QZ Tray, then connect again."
+            : "Orithos Hardware Connect (port 9170) and QZ Tray are not reachable on this register.",
+        );
+      }
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -221,7 +232,7 @@ export function HardwareSetupPanel() {
               );
             })}
         </ul>
-        {!state.connected && !busy && (
+        {!state.connected && (
           <div
             role="status"
             className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-950"
@@ -399,7 +410,12 @@ export function HardwareSetupPanel() {
           </pre>
         )}
       </details>
-      <Script src="https://cdn.jsdelivr.net/npm/qz-tray@2.3.0/qz-tray.js" strategy="afterInteractive" onError={() => setQzScriptError(true)} />
+      <Script
+        src="https://cdn.jsdelivr.net/npm/qz-tray@2.3.0/qz-tray.js"
+        strategy="afterInteractive"
+        onLoad={() => void connect().catch(() => undefined)}
+        onError={() => setQzScriptError(true)}
+      />
     </div>
   );
 }

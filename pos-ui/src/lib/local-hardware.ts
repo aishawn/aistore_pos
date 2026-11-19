@@ -1,17 +1,38 @@
 "use client";
 
 const ORITHOS_HARDWARE_CONNECT_BASE = "http://127.0.0.1:9170";
+const LOOPBACK_PROBE_MS = 2_500;
+const LOCAL_BRIDGE_CONNECT_MS = 8_000;
 
 type LoopbackRequestInit = RequestInit & { targetAddressSpace?: "loopback" | "local" | "public" };
 
 function loopbackHardwareConnectFetch(path: string, init?: RequestInit): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), LOOPBACK_PROBE_MS);
   const request: LoopbackRequestInit = {
     cache: "no-store",
     mode: "cors",
     targetAddressSpace: "loopback",
+    signal: controller.signal,
     ...init,
   };
-  return fetch(`${ORITHOS_HARDWARE_CONNECT_BASE}${path}`, request);
+  return fetch(`${ORITHOS_HARDWARE_CONNECT_BASE}${path}`, request).finally(() => clearTimeout(timer));
+}
+
+function withBridgeTimeout<T>(label: string, promise: Promise<T>): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`${label} timed out. Is the local agent running?`)), LOCAL_BRIDGE_CONNECT_MS);
+    void promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (cause) => {
+        clearTimeout(timer);
+        reject(cause);
+      },
+    );
+  });
 }
 
 async function probeOrithosHardwareConnect(): Promise<{
@@ -243,8 +264,10 @@ export async function connectLocalHardware(): Promise<LocalHardwareState> {
   }
 
   try {
-    if (!qz.websocket.isActive()) await qz.websocket.connect({ retries: 1, delay: 500 });
-    const printers = await qz.printers.find();
+    if (!qz.websocket.isActive()) {
+      await withBridgeTimeout("QZ Tray connection", qz.websocket.connect({ retries: 0, delay: 0 }));
+    }
+    const printers = await withBridgeTimeout("QZ Tray printer scan", qz.printers.find());
     activeLocalBridge = "qz";
     return finishLocalHardwareConnect({
       bridge: "qz",
