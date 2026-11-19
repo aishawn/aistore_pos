@@ -1,5 +1,11 @@
 # 门店助手、语音与历史：验证与效果
 
+## 2026-11-19 滞销回答中文回归
+
+提交 `e58b6bc6` 修复中文滞销回答的日期连接词及空结果英文文案；不改变查询口径。Java 21 `ReportRespondNodeTest` 35/35 PASS，`git diff --check` PASS。Demo、SKR 只读复测中英文问题均进入 deterministic `report_dead_stock`，无模型回退、无 POS 业务写请求；中文日期使用“至”，空结果保持中文。在线问答会生成常规审计/会话记录。
+
+销售数据的新鲜度和完整性仍不能确认，接口状态保持 `incomplete`。组合查询没有可信 `dataAsOf`；不得用查询执行时间或单独的库存更新时间冒充销售来源水位，因此完整性验收 BLOCKED。详见[本轮记录](../../../../test-sessions/2026-11-19-ai-dead-stock-answer-copy.md)。
+
 ## 2026-11-18 Demo 毛利口径回归
 
 Demo 只读复现源码/运行版本 `228166e8ba44ddde32ab21cec1547bbf94fa42bc` 的错误：Adelaide 2026-11-17 含 GST 销售额 AUD 4,241.48、GST AUD 364.92、成本 AUD 2,974.97；线上助手返回毛利 AUD 1,266.51，正确的税前毛利应为 AUD 901.59。中英文单日问法均把毛利描述为含 GST；请求没有 POS 业务写入。原始检查由本轮 Demo API 核查记录，助手查询会生成审计/会话记录。
