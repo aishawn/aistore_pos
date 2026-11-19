@@ -842,14 +842,7 @@ public class ClassifyQueryNode implements NodeAction {
 
     private RawIntent callModel(String system, String userPrompt, AiTenantContext tenant) {
         if (aiGateway != null && tenant != null) {
-            AiCompletion<String> completion = aiGateway.complete(tenant, AiTask.CLASSIFICATION,
-                    new PromptVersion(IntentConfigService.PROMPT_CLASSIFY, "runtime", ""),
-                    system + "\n\n" + userPrompt, String.class);
-            RawIntent parsed = parseRawJson(completion.value());
-            if (parsed.intent() != null && !parsed.intent().isBlank()) {
-                return parsed;
-            }
-            throw new IllegalStateException("AI gateway returned invalid classify output");
+            return classifyThroughGateway(aiGateway, tenant, system + "\n\n" + userPrompt);
         }
             // Prefer plain JSON text for consistent structured output across remote models.
         try {
@@ -898,6 +891,23 @@ public class ClassifyQueryNode implements NodeAction {
 
         return new RawIntent("unknown", "model returned empty intent",
                 null, null, null, null, null, null, null, null, null, null, null);
+    }
+
+    static RawIntent classifyThroughGateway(AiGateway gateway, AiTenantContext tenant, String input) {
+        PromptVersion prompt = new PromptVersion(IntentConfigService.PROMPT_CLASSIFY, "runtime", "");
+        AiCompletion<String> completion = gateway.complete(tenant, AiTask.CLASSIFICATION, prompt, input, String.class);
+        RawIntent parsed = parseRawJson(completion.value());
+        if (parsed.intent() != null && !parsed.intent().isBlank()) return parsed;
+
+        AiCompletion<LlmIntentOutput> structured = gateway.completeStructured(
+                tenant, AiTask.CLASSIFICATION, prompt, input, LlmIntentOutput.class);
+        LlmIntentOutput entity = structured.value();
+        if (entity.intent() == null || entity.intent().isBlank()) {
+            throw new IllegalStateException("AI gateway returned invalid classify output");
+        }
+        return new RawIntent(entity.intent(), entity.summary(), entity.query(), entity.route(), entity.view(),
+                entity.panel(), entity.action(), entity.entity(), entity.op(), entity.from(), entity.to(),
+                entity.days(), entity.category());
     }
 
     private static AiTenantContext tenantContext(OverAllState state) {
