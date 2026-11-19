@@ -227,6 +227,13 @@ public class ClassifyQueryNode implements NodeAction {
             return shortcutResult(lastIntent, "Follow-up report", slots, "", "", "", "");
         }
 
+        AssistantFastPathRouter.Match fast = AssistantFastPathRouter.maybeMatch(question);
+        if (fast != null && "aggregate_stock_data_quality".equals(fast.panel())) {
+            log.info("Aggregate-stock fast-path (skipped product count and classify LLM)");
+            return shortcutResult(fast.intent(), fast.summary(), fast.slots(), fast.panel(), fast.view(),
+                    fast.route(), fast.action());
+        }
+
         // Product catalogue count before other product lookup shortcuts.
         if (isProductCountUtterance(question)) {
             log.info("Product-count fast-path (skipped classify LLM)");
@@ -274,7 +281,6 @@ public class ClassifyQueryNode implements NodeAction {
                     Map.of(), "", "", "", "");
         }
 
-        AssistantFastPathRouter.Match fast = AssistantFastPathRouter.maybeMatch(question);
         if (fast != null) {
             log.info("Fast-path intent={} (skipped classify LLM)", fast.intent());
             if ("search_product".equals(fast.intent())

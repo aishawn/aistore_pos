@@ -80,6 +80,32 @@ class ClassifyQueryNodeTest {
     }
 
     @Test
+    void aggregateNegativeStockQuestionPrecedesProductCountShortcut() {
+        ChatClient chatClient = mock(ChatClient.class);
+        IntentConfigService config = mock(IntentConfigService.class);
+        IntentSanitizeService sanitizer = mock(IntentSanitizeService.class);
+        AiProperties properties = mock(AiProperties.class);
+        NativeAiReportQueryService reports = mock(NativeAiReportQueryService.class);
+        TenantContext tenant = new TenantContext(9L, 8L, 7L, List.of(7L), Set.of(TenantContext.PERM_QUERY));
+        AssistantTenantContext.set(tenant);
+        when(reports.countSellableProducts(tenant))
+                .thenReturn(new NativeAiReportQueryService.ProductCountResult(286, null));
+        ClassifyQueryNode node = new ClassifyQueryNode(chatClient, config, sanitizer, properties,
+                reports, null);
+        OverAllState state = mock(OverAllState.class);
+        when(state.value("question", String.class)).thenReturn(Optional.of("有多少商品库存是负数？"));
+
+        Map<String, Object> result = node.apply(state);
+
+        assertEquals("qa", result.get("intent"));
+        assertEquals("/stock/list", result.get("ui_route"));
+        assertEquals("目前无法可靠提供全店库存总件数或负库存数量。已打开库存列表供逐项核查。",
+                result.get("intent_summary"));
+        verify(reports, never()).countSellableProducts(tenant);
+        verifyNoInteractions(chatClient, config, sanitizer, properties);
+    }
+
+    @Test
     void repeatedStockRelativeFollowUpUsesHistoricalRefusalFromConversationHistory() {
         ChatClient chatClient = mock(ChatClient.class);
         IntentConfigService config = mock(IntentConfigService.class);
