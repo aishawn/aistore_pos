@@ -68,7 +68,6 @@ public class SommelierController {
     @PostMapping("/recommend")
     public ApiResult<RecommendResponse> recommend(@Valid @RequestBody RecommendRequest request) {
         var tenant = tenantContextFactory.fromSecurity();
-        if (providerQuota != null) providerQuota.acquire(tenant, AiProviderQuotaService.estimate(String.valueOf(request)));
         return ApiResult.ok(sommelierService.recommend(request, tenant));
     }
 
@@ -113,7 +112,6 @@ public class SommelierController {
     @PostMapping("/similar")
     public ApiResult<SimilarResponse> similar(@Valid @RequestBody SimilarRequest request) {
         var tenant = tenantContextFactory.fromSecurity();
-        if (providerQuota != null) providerQuota.acquire(tenant, AiProviderQuotaService.estimate(String.valueOf(request)));
         return ApiResult.ok(sommelierService.similar(request, tenant));
     }
 
