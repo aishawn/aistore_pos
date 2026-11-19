@@ -132,6 +132,27 @@ export async function watchLocalNetworkAccess(onChange: (state: LocalNetworkAcce
   };
 }
 
+/** User-facing hint when Chromium is too old to surface LNA UI (Chrome 142+, Edge 143+). */
+export function localNetworkAccessBrowserHint(): string | null {
+  const ua = runtimeWindow()?.navigator.userAgent ?? "";
+  const edge = ua.match(/\bEdg\/(\d+)/);
+  if (edge) {
+    const major = Number(edge[1]);
+    if (major < 143) {
+      return `This device reports Edge ${major}. Update to Edge 143 or newer, then reload.`;
+    }
+    return null;
+  }
+  const chrome = ua.match(/\bChrome\/(\d+)/);
+  if (chrome) {
+    const major = Number(chrome[1]);
+    if (major < 142) {
+      return `This device reports Chrome ${major}. Update to Chrome 142 or newer, then reload.`;
+    }
+  }
+  return null;
+}
+
 export async function watchHardwareNetworkAccess(onChange: (state: LocalNetworkAccessState) => void): Promise<() => void> {
   const initial = await resolveHardwareNetworkAccessState();
   onChange(initial);

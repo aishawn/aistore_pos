@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Info, RefreshCw } from "lucide-react";
 import {
+  localNetworkAccessBrowserHint,
   probeLoopbackAccess,
   resolveHardwareNetworkAccessState,
   watchHardwareNetworkAccess,
@@ -15,6 +16,7 @@ export function LocalNetworkAccessGate({ children }: { children: React.ReactNode
   const [busy, setBusy] = useState(false);
   const [hint, setHint] = useState<string | null>(null);
   const [portalReady, setPortalReady] = useState(false);
+  const browserHint = typeof window !== "undefined" ? localNetworkAccessBrowserHint() : null;
 
   useEffect(() => {
     setPortalReady(true);
@@ -41,7 +43,9 @@ export function LocalNetworkAccessGate({ children }: { children: React.ReactNode
     setHint(null);
     try {
       if (accessState === "denied") {
-        setHint("This site is blocked. Open the icon beside the address bar, turn on Local network access, then reload.");
+        setHint(
+          "Open the site controls icon → Site settings (网站设置) → Local network access (本地网络访问权限) → Allow, then reload.",
+        );
         return;
       }
       await probeLoopbackAccess();
@@ -51,7 +55,7 @@ export function LocalNetworkAccessGate({ children }: { children: React.ReactNode
         setHint("Access granted. You can configure printers and EFTPOS below.");
       } else if (next === "prompt") {
         setHint(
-          "Check the top of the browser window for an Allow / Block prompt. If none appears, open the site controls beside the address bar, turn on Local network access, then reload.",
+          "Look for an Allow / Block bar at the top of the browser. If you only see 网站设置 in the menu, open Site settings and set Local network access (本地网络访问权限) to Allow, then reload.",
         );
       } else if (next === "denied") {
         setHint("Access was denied. Turn on Local network access in site settings and reload.");
@@ -89,16 +93,29 @@ export function LocalNetworkAccessGate({ children }: { children: React.ReactNode
           </div>
         </div>
         <ol className="mt-5 list-decimal space-y-2 pl-5 text-sm leading-6 text-[var(--oh-text)]">
-          <li>Select the site controls icon to the left of the address bar.</li>
+          <li>Click the site controls icon to the left of the address bar (查看网站信息).</li>
           <li>
-            Turn on <span className="font-semibold">Local network access</span>
+            Open <span className="font-semibold">Site settings</span> (网站设置) — the toggle is usually{" "}
+            <em>not</em> shown in the short menu you see first.
+          </li>
+          <li>
+            Set <span className="font-semibold">Local network access</span> (本地网络访问权限) to{" "}
+            <span className="font-semibold">Allow</span>
             {accessState === "denied" ? " (currently blocked for this site)" : ""}.
           </li>
-          <li>Reload this page after saving the permission.</li>
+          <li>Return here and use <span className="font-semibold">Reload page</span>.</li>
         </ol>
         <p className="mt-4 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 py-2 text-xs leading-5 text-[var(--oh-muted)]">
-          In Chrome or Edge, the toggle is usually labelled <span className="font-medium text-[var(--oh-text)]">Local network access</span> in site settings beside the address bar.
+          Requires <span className="font-medium text-[var(--oh-text)]">Chrome 142+</span> or{" "}
+          <span className="font-medium text-[var(--oh-text)]">Edge 143+</span>. You can also allow{" "}
+          <span className="font-medium text-[var(--oh-text)]">skr.orithos.com.au</span> under Chrome → Settings →
+          Privacy and security → Site settings → Local network access.
         </p>
+        {browserHint ? (
+          <p role="alert" className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm leading-6 text-amber-950">
+            {browserHint}
+          </p>
+        ) : null}
         {hint ? (
           <p role="status" className="mt-4 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm leading-6 text-sky-950">
             {hint}

@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import { afterEach, test } from "node:test";
-import { resolveHardwareNetworkAccessState, resolveLocalNetworkAccessState } from "./local-network-access.ts";
+import {
+  localNetworkAccessBrowserHint,
+  resolveHardwareNetworkAccessState,
+  resolveLocalNetworkAccessState,
+} from "./local-network-access.ts";
 
 const originalWindow = globalThis.window;
 
@@ -46,6 +50,17 @@ test("hardware gate grants when loopback is granted even if local is still promp
   });
   assert.equal(await resolveLocalNetworkAccessState(), "prompt");
   assert.equal(await resolveHardwareNetworkAccessState(), "granted");
+});
+
+test("flags Chromium builds below the LNA UI baseline", () => {
+  setWindow({
+    navigator: { userAgent: "Mozilla/5.0 Chrome/141.0.0.0" },
+  });
+  assert.match(localNetworkAccessBrowserHint() ?? "", /Chrome 141/);
+  setWindow({
+    navigator: { userAgent: "Mozilla/5.0 Chrome/143.0.0.0 Edg/143.0.0.0" },
+  });
+  assert.equal(localNetworkAccessBrowserHint(), null);
 });
 
 test("returns denied when either granular permission is denied", async () => {
