@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -251,7 +252,7 @@ class ReportRespondNodeTest {
         when(stock.value("slots")).thenReturn(Optional.of(Map.of(
                 "query", "Shiraz", "from", "2026-11-13", "to", "2026-11-14")));
 
-        assertEquals("Shiraz库存：Blickinstal Black on Black Shiraz 750ML 3（库存更新时间未知，请核实）",
+        assertEquals("Shiraz库存合计 3 件（1 个商品）：Blickinstal Black on Black Shiraz 750ML 3（库存更新时间未知，请核实）",
                 node.apply(stock).get("answer"));
     }
 
@@ -266,6 +267,46 @@ class ReportRespondNodeTest {
 
         assertEquals(product + ": 100 (inventory updated: 2026-11-19T06:15:00Z)",
                 node.apply(stock).get("answer"));
+    }
+
+    @Test
+    void stockAnswerSummarizesMultipleProductMatchesInBothLanguages() {
+        String asOf = "2026-11-19T06:15:00Z";
+        List<Map<String, Object>> rows = List.of(
+                Map.of("name", "A Shiraz", "quantity", 3, "dataAsOf", asOf),
+                Map.of("name", "B Shiraz", "quantity", 5, "dataAsOf", asOf));
+        OverAllState english = state("", rows);
+        when(english.value("intent", String.class)).thenReturn(Optional.of("report_stock"));
+        when(english.value("question", String.class)).thenReturn(Optional.of("How much Shiraz stock?"));
+        when(english.value("slots")).thenReturn(Optional.of(Map.of("query", "Shiraz")));
+
+        assertEquals("Shiraz total 8 units across 2 products: A Shiraz 3; B Shiraz 5 (inventory updated: "
+                        + asOf + ")",
+                node.apply(english).get("answer"));
+
+        OverAllState chinese = state("", rows);
+        when(chinese.value("intent", String.class)).thenReturn(Optional.of("report_stock"));
+        when(chinese.value("question", String.class)).thenReturn(Optional.of("西拉现在有多少库存"));
+        when(chinese.value("slots")).thenReturn(Optional.of(Map.of("query", "Shiraz")));
+
+        assertEquals("Shiraz库存合计 8 件（2 个商品）：A Shiraz 3；B Shiraz 5（库存更新于 " + asOf + "）",
+                node.apply(chinese).get("answer"));
+    }
+
+    @Test
+    void stockAnswerLabelsTotalAsAtLeastWhenTheResultLimitIsReached() {
+        String asOf = "2026-11-19T06:15:00Z";
+        List<Map<String, Object>> rows = new java.util.ArrayList<>();
+        for (int i = 0; i < 50; i++) {
+            rows.add(Map.of("name", "Shiraz " + i, "quantity", 2, "dataAsOf", asOf));
+        }
+        OverAllState stock = state("", rows);
+        when(stock.value("intent", String.class)).thenReturn(Optional.of("report_stock"));
+        when(stock.value("question", String.class)).thenReturn(Optional.of("How much Shiraz stock?"));
+        when(stock.value("slots")).thenReturn(Optional.of(Map.of("query", "Shiraz")));
+
+        String answer = String.valueOf(node.apply(stock).get("answer"));
+        assertTrue(answer.startsWith("Shiraz total at least 100 units (first 50 matches):"));
     }
 
     @Test

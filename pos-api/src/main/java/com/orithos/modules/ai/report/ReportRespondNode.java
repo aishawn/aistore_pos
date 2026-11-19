@@ -15,6 +15,8 @@ import java.util.stream.Collectors;
 @Component
 public class ReportRespondNode implements NodeAction {
 
+    private static final int STOCK_RESULT_LIMIT = 50;
+
     private final AiReportAuditService auditService;
 
     public ReportRespondNode(AiReportAuditService auditService) {
@@ -239,7 +241,26 @@ public class ReportRespondNode implements NodeAction {
         boolean exactSingleProduct = rows.size() == 1 && query != null
                 && query.trim().equalsIgnoreCase(String.valueOf(rows.get(0).get("name")).trim());
         if (!exactSingleProduct) {
-            sb.append(chinese ? label + "库存：" : label + ": ");
+            BigDecimal total = rows.stream()
+                    .map(row -> ReportQueryService.toDecimal(row.get("quantity")))
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            String totalText = total.stripTrailingZeros().toPlainString();
+            boolean resultLimitReached = rows.size() >= STOCK_RESULT_LIMIT;
+            if (chinese) {
+                sb.append(label).append("库存合计")
+                        .append(resultLimitReached ? "至少 " : " ")
+                        .append(totalText).append(" 件");
+                sb.append(resultLimitReached
+                        ? "（已匹配前50个商品）："
+                        : "（" + rows.size() + " 个商品）：");
+            } else {
+                sb.append(label).append(" total ")
+                        .append(resultLimitReached ? "at least " : "")
+                        .append(totalText).append(" units");
+                sb.append(resultLimitReached
+                        ? " (first 50 matches): "
+                        : " across " + rows.size() + " products: ");
+            }
         }
         int n = Math.min(rows.size(), 8);
         for (int i = 0; i < n; i++) {
