@@ -134,6 +134,27 @@ const MAX_RFQ_QUANTITY = 100_000;
 const REPLENISHMENT_CACHE_PREFIX = "orithos-replenishment-cache-v2:";
 const REPLENISHMENT_CACHE_MAX_AGE_MS = 48 * 60 * 60 * 1000;
 
+function compareRfqPriority(a: ReplenishmentProduct, b: ReplenishmentProduct) {
+  const riskOrder: Record<string, number> = { HIGH: 0, MEDIUM: 1, LOW: 2, UNKNOWN: 3 };
+  const ar = riskOrder[a.risk ?? "UNKNOWN"] ?? 4;
+  const br = riskOrder[b.risk ?? "UNKNOWN"] ?? 4;
+  if (ar !== br) return ar - br;
+  if (b.suggestedQuantity !== a.suggestedQuantity) return b.suggestedQuantity - a.suggestedQuantity;
+  return a.id - b.id;
+}
+
+function defaultRfqSelectionIds(products: ReplenishmentProduct[]) {
+  return products
+    .filter((product) => product.suggestedQuantity > 0 && product.recommendationStatus === "READY")
+    .sort(compareRfqPriority)
+    .slice(0, MAX_RFQ_LINES)
+    .map((product) => product.id);
+}
+
+function isRfqReady(product: ReplenishmentProduct) {
+  return product.suggestedQuantity > 0 && product.recommendationStatus === "READY";
+}
+
 function riskLabel(risk: ReplenishmentProduct["risk"]) {
   const labels = { LOW: "Low risk", MEDIUM: "Review", HIGH: "High risk", UNKNOWN: "Unknown risk" };
   return risk ? labels[risk] : "Risk unavailable";
@@ -250,7 +271,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
       const generatedAt = Date.parse(cached.data.generatedAt);
       if (!Number.isFinite(generatedAt) || Date.now() - generatedAt > REPLENISHMENT_CACHE_MAX_AGE_MS) return;
       setData(cached.data);
-      setSelectedIds(new Set(cached.data.products.filter((product) => product.suggestedQuantity > 0).map((product) => product.id)));
+      setSelectedIds(new Set(defaultRfqSelectionIds(cached.data.products)));
       setLoading(false);
     } catch { /* Ignore malformed browser cache and fetch a fresh plan. */ }
   }, [authReady, cacheKey, user]);
@@ -278,9 +299,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
       setData(payload);
       setStoreTimezone(payload.salesHistory?.timezone ?? "Australia/Adelaide");
       try { window.localStorage.setItem(cacheKey, JSON.stringify({ savedAt: Date.now(), data: payload })); } catch { /* Storage is optional. */ }
-      setSelectedIds(new Set(payload.products
-        .filter((product) => product.suggestedQuantity > 0 && product.recommendationStatus !== "REVIEW_DATA")
-        .map((product) => product.id)));
+      setSelectedIds(new Set(defaultRfqSelectionIds(payload.products)));
     } catch (cause) {
       if (revision === requestRevision.current) {
       setError(cause instanceof DOMException && cause.name === "AbortError"
@@ -369,7 +388,8 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
     () => orderReadyItems.filter((product) => selectedIds.has(product.id)),
     [orderReadyItems, selectedIds],
   );
-  const selectedCount = Math.min(selectedSuggested.length, MAX_RFQ_LINES);
+  const rfqLineCount = Math.min(selectedSuggested.length, MAX_RFQ_LINES);
+  const rfqSelectionTrimmed = selectedSuggested.length > MAX_RFQ_LINES;
   const selectedRfqLines = rfqLines.filter((line) => line.quantity > 0);
   const planCoverageDays = data?.coverageDays ?? coverageDays;
   const planReady = Boolean(data) && !loading && !refreshing && !error && data?.coverageDays === coverageDays;
@@ -377,21 +397,30 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
   const canCreateRfq = draftRfqEnabled && planReady && selectedSuggested.length > 0;
 
   const visibleSelectableIds = useMemo(
-    () => pageItems
-      .filter((product) => product.suggestedQuantity > 0 && product.recommendationStatus !== "REVIEW_DATA")
-      .map((product) => product.id),
+    () => pageItems.filter(isRfqReady).map((product) => product.id),
     [pageItems],
   );
   const allVisibleSelected = visibleSelectableIds.length > 0 && visibleSelectableIds.every((id) => selectedIds.has(id));
   const someVisibleSelected = visibleSelectableIds.some((id) => selectedIds.has(id));
+
+  function orderReadySelectedCount(ids: Set<number>) {
+    return orderReadyItems.filter((product) => ids.has(product.id)).length;
+  }
 
   function toggleSelectAllVisible() {
     setSelectedIds((current) => {
       const next = new Set(current);
       if (allVisibleSelected) {
         for (const id of visibleSelectableIds) next.delete(id);
-      } else {
-        for (const id of visibleSelectableIds) next.add(id);
+        return next;
+      }
+      let slots = MAX_RFQ_LINES - orderReadySelectedCount(current);
+      for (const id of visibleSelectableIds) {
+        if (slots <= 0) break;
+        if (!next.has(id)) {
+          next.add(id);
+          slots -= 1;
+        }
       }
       return next;
     });
@@ -400,8 +429,13 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
   function toggleSelectProduct(productId: number) {
     setSelectedIds((current) => {
       const next = new Set(current);
-      if (next.has(productId)) next.delete(productId);
-      else next.add(productId);
+      if (next.has(productId)) {
+        next.delete(productId);
+        return next;
+      }
+      const product = data?.products.find((item) => item.id === productId);
+      if (product && isRfqReady(product) && orderReadySelectedCount(current) >= MAX_RFQ_LINES) return current;
+      next.add(productId);
       return next;
     });
   }
@@ -409,7 +443,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
   function openRfqDialog() {
     if (!canCreateRfq) return;
     rfqRequestId.current = crypto.randomUUID();
-    const lines = selectedSuggested.slice(0, MAX_RFQ_LINES).map((product) => ({
+    const lines = [...selectedSuggested].sort(compareRfqPriority).slice(0, MAX_RFQ_LINES).map((product) => ({
       productId: product.id,
       name: friendlyProductName(product.name),
       unit: product.unit,
@@ -537,8 +571,8 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
   );
 
   return (
-    <Container className="relative flex h-full min-h-0 flex-col gap-4 overflow-y-auto p-4 md:gap-5 md:p-6">
-      <header className="flex flex-wrap items-end justify-between gap-3">
+    <Container className={`relative flex h-full min-h-0 flex-col overflow-y-auto ${embedded ? "gap-3 p-3 md:p-4" : "gap-4 p-4 md:gap-5 md:p-6"}`}>
+      <header className={`flex flex-wrap items-start justify-between gap-3 ${embedded ? "rounded-lg border border-[var(--oh-border)] bg-white px-3 py-3 shadow-[var(--oh-shadow-card)] md:px-4" : ""}`}>
         <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-[.12em] text-[var(--oh-muted)]">Stock planning · {data?.company}</p>
           <div className="mt-1 flex flex-wrap items-center gap-2">
@@ -548,38 +582,39 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
               type="button"
               onClick={() => setMethodOpen(true)}
               aria-label="How this estimate works"
-              className="grid h-9 w-9 place-items-center rounded-md text-[var(--oh-muted)] outline-none hover:bg-[var(--oh-paper)] hover:text-[var(--oh-text)] focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)]"
+              className="grid h-8 w-8 place-items-center rounded-md text-[var(--oh-muted)] outline-none hover:bg-[var(--oh-paper)] hover:text-[var(--oh-text)] focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)]"
             >
-              <CircleHelp size={18} aria-hidden="true" />
+              <CircleHelp size={17} aria-hidden="true" />
             </button>
           </div>
-          <p className="mt-1 text-xs text-[var(--oh-muted)]">
-            {planCoverageDays}-day coverage
-            {data?.generatedAt ? ` · Updated ${formatOdooDateTime(data.generatedAt, storeTimezone)}` : ""}
+          <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[var(--oh-muted)]">
+            <span>{planCoverageDays}-day coverage</span>
+            {data?.generatedAt ? <span>· Updated {formatOdooDateTime(data.generatedAt, storeTimezone)}</span> : null}
+            <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${data?.inventoryHistory?.status === "FRESH" ? "bg-emerald-50 text-emerald-800" : "bg-amber-50 text-amber-900"}`}>
+              Inventory {data?.inventoryHistory?.status === "FRESH" ? "OK" : "check"}
+            </span>
+            <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${draftRfqEnabled ? "bg-sky-50 text-sky-800" : "bg-slate-100 text-slate-700"}`}>{draftRfqEnabled ? "Draft RFQ" : "Preview"}</span>
           </p>
           {data?.forecast?.enabled && data?.forecast?.status === "AVAILABLE" && (
-            <p className="mt-1 text-xs text-[var(--oh-muted)]">
-              Forecast service {data.forecast.status.toLowerCase()} · model version {data.forecast.modelVersion ?? "unknown"}. Products with insufficient history remain explicitly marked for human review and are excluded from automatic purchase quantities.
-            </p>
+            <details className="mt-1 text-xs text-[var(--oh-muted)]">
+              <summary className="cursor-pointer font-medium text-[var(--oh-text-secondary)] hover:text-[var(--oh-text)]">Forecast inputs & assumptions</summary>
+              <div className="mt-2 space-y-1 leading-5">
+                <p>Forecast {data.forecast.status.toLowerCase()} · model {data.forecast.modelVersion ?? "unknown"}.</p>
+                <p role="status">
+                  Sales: {data.forecast.sourceVersion?.startsWith("odoo_pos_order_line_local_complete_days") ? "POS order lines" : "source unavailable"} · {data.salesHistory?.startDate ?? "—"} to before {data.salesHistory?.endDateExclusive ?? "—"} · {data.historyDays} {data.salesHistory?.completeDaysOnly ? "complete days" : "days"} · {data.salesHistory?.timezone ?? "—"}
+                  {data.salesHistory?.refunds === "SIGNED_NET_UNITS" ? " · refunds netted" : ""}.
+                </p>
+                {data.products.length > 0 && (
+                  <p role="status">
+                    History: {number.format(forecastReadinessSummary.valid)} valid · {number.format(forecastReadinessSummary.insufficientHistory)} need more history · {number.format(forecastReadinessSummary.lowConfidence)} low confidence.
+                  </p>
+                )}
+                {data.forecast.costPolicy && (
+                  <p>Assumptions: holding {number.format(data.forecast.costPolicy.annualHoldingRate * 100)}% / yr · slow-stock {number.format(data.forecast.costPolicy.annualObsolescenceRate * 100)}% / yr · service {number.format(data.forecast.costPolicy.serviceLevel * 100)}%.</p>
+                )}
+              </div>
+            </details>
           )}
-          {data?.forecast?.enabled && data?.forecast?.status === "AVAILABLE" && (
-            <p className="mt-1 text-xs text-[var(--oh-muted)]" role="status">
-              Sales input: {data.forecast.sourceVersion?.startsWith("odoo_pos_order_line_local_complete_days") ? "Odoo POS order lines" : "source unavailable"} · {data.salesHistory?.startDate ?? "start date unavailable"} to before {data.salesHistory?.endDateExclusive ?? "end date unavailable"} · {data.historyDays} {data.salesHistory?.completeDaysOnly ? "complete days" : "days"} · {data.salesHistory?.timezone ?? "timezone unavailable"}
-              {data.salesHistory?.refunds === "SIGNED_NET_UNITS" ? " · refunds netted" : ""}.
-            </p>
-          )}
-          {data?.forecast?.enabled && data?.forecast?.status === "AVAILABLE" && data.products.length > 0 && (
-            <p className="mt-1 text-xs text-[var(--oh-muted)]" role="status">
-              History readiness: {number.format(forecastReadinessSummary.valid)} valid · {number.format(forecastReadinessSummary.insufficientHistory)} need more history · {number.format(forecastReadinessSummary.lowConfidence)} low confidence. These counts are informational; review gates remain active.
-            </p>
-          )}
-          {data?.forecast?.costPolicy && <p className="mt-1 text-xs text-[var(--oh-muted)]">Planning assumptions to review: holding {number.format(data.forecast.costPolicy.annualHoldingRate * 100)}% / year · slow-stock risk {number.format(data.forecast.costPolicy.annualObsolescenceRate * 100)}% / year · target service {number.format(data.forecast.costPolicy.serviceLevel * 100)}%.</p>}
-          <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold">
-            <span className={`rounded-full px-2.5 py-1 ${data?.inventoryHistory?.status === "FRESH" ? "bg-emerald-50 text-emerald-800" : "bg-amber-50 text-amber-900"}`}>
-              Inventory snapshot {data?.inventoryHistory?.status === "FRESH" ? "OK" : "check"}
-            </span>
-            <span className={`rounded-full px-2.5 py-1 ${draftRfqEnabled ? "bg-sky-50 text-sky-800" : "bg-slate-100 text-slate-700"}`}>{draftRfqEnabled ? "Draft RFQ" : "Preview"}</span>
-          </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <button
@@ -650,8 +685,8 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
         </div>
       )}
 
-      <section aria-label="Replenishment summary" className="grid gap-4 rounded-lg border border-[var(--oh-border)] bg-white px-4 py-4 text-sm shadow-[var(--oh-shadow-card)] md:grid-cols-3">
-        <div>
+      <section aria-label="Replenishment summary" className="grid gap-3 rounded-lg border border-[var(--oh-border)] bg-white px-4 py-3 text-sm shadow-[var(--oh-shadow-card)] md:grid-cols-3 md:gap-0 md:divide-x md:divide-[var(--oh-border)]">
+        <div className="md:pr-4">
           <p className="text-xs font-medium uppercase tracking-wide text-[var(--oh-muted)]">Ready to order</p>
           <p className="mt-1 text-3xl font-semibold tabular-nums leading-none text-[var(--oh-text)]">{number.format(orderReadyItems.length)}</p>
           <p className="mt-1 text-xs text-[var(--oh-muted)]">{number.format(totalOrderReadyUnits)} units suggested</p>
@@ -665,16 +700,16 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
         <button
           type="button"
           onClick={() => setListFilter("out_of_stock")}
-          className="rounded-md text-left outline-none transition hover:bg-[var(--oh-surface)] focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)] md:-mx-2 md:px-2 md:py-1"
+          className="rounded-md text-left outline-none transition hover:bg-[var(--oh-surface)] focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)] md:px-4"
         >
           <p className="text-xs font-medium uppercase tracking-wide text-[var(--oh-muted)]">OOS with sales</p>
           <p className="mt-1 text-3xl font-semibold tabular-nums leading-none text-red-700">{number.format(outOfStockWithDemand)}</p>
-          <p className="mt-1 text-xs text-[var(--oh-muted)]">Tap to filter list</p>
+          <p className="mt-1 text-xs text-[var(--oh-muted)]">View in list</p>
         </button>
-        <div>
-          <p className="text-xs font-medium uppercase tracking-wide text-[var(--oh-muted)]">Needs review</p>
-          <p className="mt-1 text-3xl font-semibold tabular-nums leading-none text-amber-900">{number.format(data?.reviewRequiredCount ?? 0)}</p>
-          <p className="mt-1 text-xs text-[var(--oh-muted)]">Stock, cost, or data fixes — not in RFQ totals</p>
+        <div className="md:pl-4">
+          <p className="text-xs font-medium uppercase tracking-wide text-[var(--oh-muted)]">Catalog data flags</p>
+          <p className="mt-1 text-2xl font-semibold tabular-nums leading-none text-[var(--oh-text-secondary)]">{number.format(data?.reviewRequiredCount ?? 0)}</p>
+          <p className="mt-1 text-xs text-[var(--oh-muted)]">Across full catalogue · not in RFQ totals</p>
           {(data?.reviewRequiredCount ?? 0) > 0 && (
             <div className="mt-2 flex flex-wrap gap-1.5">
               <button type="button" onClick={() => setListFilter("urgent")} className="rounded-md border border-[var(--oh-border)] bg-white px-2 py-1 text-xs font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)]">Urgent · {number.format(urgentRiskCount)}</button>
@@ -693,30 +728,22 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
       </section>
 
       <section className="flex shrink-0 flex-col rounded-lg border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)] xl:min-h-0 xl:flex-1 xl:overflow-hidden">
-        <header className="flex flex-col gap-3 border-b border-[var(--oh-border)] px-4 py-3 md:px-5">
-          <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-            <div>
-              <h2 className="text-sm font-semibold text-[var(--oh-text)]">
-                {listFilter === "all" ? "All products" : listFilter === "urgent" ? "Urgent" : listFilter === "out_of_stock" ? "Out of stock with sales" : listFilter === "missing_data" ? "Missing cost or lead time" : listFilter === "review" ? "Review data" : "Ready to order"}
-              </h2>
-              <p className="mt-0.5 text-xs text-[var(--oh-muted)]">
-                {number.format(filteredItems.length)} lines
-                {selectedSuggested.length > 0 ? ` · ${number.format(selectedSuggested.length)} selected` : ""}
-                {selectedSuggested.length > MAX_RFQ_LINES ? ` (max ${MAX_RFQ_LINES})` : ""}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={openRfqDialog}
-              disabled={!canCreateRfq}
-               title={!draftRfqEnabled ? "Draft RFQ creation is disabled in this environment" : undefined}
-              className="inline-flex min-h-11 items-center justify-center gap-2 whitespace-nowrap rounded-md bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white outline-none hover:bg-[var(--oh-primary-hover)] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-50"
-            >
-               <ShoppingCart size={16} /> {draftRfqEnabled ? "Create draft RFQ" : "Draft RFQ disabled"} <span className="rounded-full bg-black/10 px-1.5 py-0.5 text-xs">{selectedCount}</span>
-            </button>
+        <header className="flex flex-col gap-2.5 border-b border-[var(--oh-border)] px-4 py-3 md:px-5">
+          <div>
+            <h2 className="text-sm font-semibold text-[var(--oh-text)]">
+              {listFilter === "all" ? "All products" : listFilter === "urgent" ? "Urgent" : listFilter === "out_of_stock" ? "Out of stock with sales" : listFilter === "missing_data" ? "Missing cost or lead time" : listFilter === "review" ? "Review data" : "Ready to order"}
+            </h2>
+            <p className="mt-0.5 text-xs text-[var(--oh-muted)]">
+              {number.format(filteredItems.length)} lines
+              {selectedSuggested.length > 0 ? ` · ${number.format(selectedSuggested.length)} selected` : ""}
+              {rfqSelectionTrimmed ? ` · draft uses top ${MAX_RFQ_LINES} by priority` : draftRfqEnabled ? ` · up to ${MAX_RFQ_LINES} per draft` : ""}
+            </p>
+            {rfqSelectionTrimmed && (
+              <p className="mt-1 text-xs text-amber-800">Only the highest-priority {MAX_RFQ_LINES} lines go into one draft RFQ. Deselect lines or run another draft for the rest.</p>
+            )}
           </div>
           <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
-            <label className="flex h-11 min-w-0 flex-1 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-3 focus-within:border-[var(--oh-primary)] focus-within:ring-2 focus-within:ring-[var(--oh-primary)]/15">
+            <label className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-3 focus-within:border-[var(--oh-primary)] focus-within:ring-2 focus-within:ring-[var(--oh-primary)]/15">
               <Search size={16} className="shrink-0 text-[var(--oh-muted)]" aria-hidden="true" />
               <input
                 value={query}
@@ -731,13 +758,11 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
                 </button>
               ) : null}
             </label>
-            <label className="grid w-full gap-1 text-xs font-medium text-[var(--oh-muted)] lg:w-[200px] lg:flex-none">
-              Filter
-              <select
+            <select
                 value={listFilter}
                 onChange={(event) => setListFilter(event.target.value as ListFilter)}
                 aria-label="Filter replenishment list"
-                className="h-11 rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm font-normal text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15"
+                className="h-10 w-full rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15 lg:w-[220px] lg:flex-none"
               >
                 <option value="suggestions">Ready to order</option>
                 <option value="urgent">Urgent risks ({number.format(urgentRiskCount)})</option>
@@ -747,14 +772,22 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
                 <option value="slow_stock">Slow or overstocked</option>
                 <option value="all">All products</option>
               </select>
-            </label>
             <button
               type="button"
               onClick={() => setShowMoreColumns((value) => !value)}
               aria-pressed={showMoreColumns}
-              className="inline-flex h-11 items-center justify-center rounded-md border border-[var(--oh-border)] px-3 text-sm font-semibold text-[var(--oh-text)] outline-none hover:bg-[var(--oh-surface)] focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)] lg:self-end"
+              className="inline-flex h-10 shrink-0 items-center justify-center rounded-md border border-[var(--oh-border)] px-3 text-sm font-semibold text-[var(--oh-text)] outline-none hover:bg-[var(--oh-surface)] focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)]"
             >
               {showMoreColumns ? "Fewer columns" : "More columns"}
+            </button>
+            <button
+              type="button"
+              onClick={openRfqDialog}
+              disabled={!canCreateRfq}
+              title={!draftRfqEnabled ? "Draft RFQ creation is disabled in this environment" : undefined}
+              className="inline-flex h-10 w-full shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white outline-none hover:bg-[var(--oh-primary-hover)] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-50 lg:ml-auto lg:w-auto"
+            >
+              <ShoppingCart size={16} aria-hidden="true" /> {draftRfqEnabled ? "Create draft RFQ" : "Draft RFQ disabled"} <span className="rounded-full bg-black/15 px-1.5 py-0.5 text-xs tabular-nums">{rfqLineCount}</span>
             </button>
           </div>
         </header>
@@ -781,7 +814,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
           ) : pageItems.map((product) => {
             const label = friendlyProductName(product.name);
             const skuShort = truncateSku(product.sku);
-            const selectable = product.suggestedQuantity > 0 && product.recommendationStatus !== "REVIEW_DATA";
+            const selectable = isRfqReady(product);
             const checked = selectedIds.has(product.id);
             return (
               <article key={product.id} className="p-4">
@@ -830,7 +863,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
                       type="button"
                       aria-expanded={expandedReasonId === product.id}
                       onClick={() => setExpandedReasonId((current) => current === product.id ? null : product.id)}
-                      className="mt-2 inline-flex min-h-11 items-center rounded-sm font-semibold text-[var(--oh-orange-dark)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)]"
+                      className="mt-2 inline-flex min-h-9 items-center rounded-sm text-sm font-semibold text-[var(--oh-orange-dark)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)]"
                     >
                       {expandedReasonId === product.id ? "Hide explanation" : "Explain suggestion"}
                     </button>
@@ -915,10 +948,10 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
               ) : pageItems.map((product) => {
                 const label = friendlyProductName(product.name);
                 const skuShort = truncateSku(product.sku);
-                const selectable = product.suggestedQuantity > 0 && product.recommendationStatus !== "REVIEW_DATA";
+                const selectable = isRfqReady(product);
                 return (
                   <tr key={product.id} className="hover:bg-sky-50/40">
-                    <td className="px-3 py-3">
+                    <td className="px-3 py-2.5 align-top">
                       <input
                         type="checkbox"
                         checked={selectedIds.has(product.id)}
@@ -928,13 +961,17 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
                         className="h-4 w-4 rounded border-[var(--oh-border)] text-[var(--oh-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-40"
                       />
                     </td>
-                    <td className="px-4 py-3">
-                      <span className="block font-medium text-[var(--oh-text)]" title={product.name}>{label}</span>
+                    <td className="px-4 py-2.5 align-top">
+                      <span className="block font-medium leading-snug text-[var(--oh-text)]" title={product.name}>{label}</span>
                       <span className="mt-0.5 block text-xs text-[var(--oh-muted)]">{skuShort ? <span title={product.sku || undefined}>SKU {skuShort} · </span> : ""}{product.unit}</span>
-                      <span className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${riskClass(product.risk)}`}>{riskLabel(product.risk)}</span>
-                          {product.attentionLevel && <span className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${attentionClass(product.attentionLevel)}`} title={product.attentionReasons?.join(", ")}>{attentionLabel(product.attentionLevel)}</span>}
+                      <div className="mt-1.5 flex flex-wrap gap-1">
+                        <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold leading-tight ${riskClass(product.risk)}`}>{riskLabel(product.risk)}</span>
+                        {product.attentionLevel && product.attentionLevel !== "LOW" && (
+                          <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold leading-tight ${attentionClass(product.attentionLevel)}`} title={product.attentionReasons?.join(", ")}>{attentionLabel(product.attentionLevel)}</span>
+                        )}
+                      </div>
                     </td>
-                    <td className="px-4 py-3 text-right tabular-nums text-[var(--oh-text-secondary)]">{number.format(product.soldUnits)}</td>
+                    <td className="px-4 py-2.5 text-right tabular-nums text-[var(--oh-text-secondary)] align-top">{number.format(product.soldUnits)}</td>
                     {showMoreColumns && (
                       <>
                         <td className="px-4 py-3 text-right tabular-nums text-[var(--oh-text-secondary)]">{number.format(product.unitsPerDay)}</td>
@@ -958,7 +995,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
                         type="button"
                         aria-expanded={expandedReasonId === product.id}
                         onClick={() => setExpandedReasonId((current) => current === product.id ? null : product.id)}
-                        className="inline-flex min-h-11 items-center rounded-sm font-semibold text-[var(--oh-orange-dark)] outline-none hover:underline focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)]"
+                        className="inline-flex min-h-9 items-center rounded-sm text-sm font-semibold text-[var(--oh-orange-dark)] outline-none hover:underline focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)]"
                       >
                         {expandedReasonId === product.id ? "Hide" : "Explain"}
                       </button>
