@@ -56,7 +56,18 @@ export function HardwareSetupPanel() {
   const [scaleReading, setScaleReading] = useState(false);
   const scaleAbort = useRef<AbortController | null>(null);
   const [qzScriptError, setQzScriptError] = useState(false);
+  const [loadQzFallback, setLoadQzFallback] = useState(false);
   const autoConnectAttempted = useRef(false);
+
+  function applyBridgeFallback(next: LocalHardwareState) {
+    if (next.bridge === "orithos-hc") {
+      setLoadQzFallback(false);
+      return;
+    }
+    if (!next.connected) {
+      setLoadQzFallback(true);
+    }
+  }
 
   useEffect(() => {
     setDraft(settingsSnapshot ? parseLocalHardwareSettings(settingsSnapshot) : emptySettings);
@@ -87,6 +98,7 @@ export function HardwareSetupPanel() {
     try {
       const next = await connectLocalHardware();
       setState(next);
+      applyBridgeFallback(next);
       if (next.connected) {
         setDraft((current) => {
           let printer = current.printer;
@@ -194,6 +206,11 @@ export function HardwareSetupPanel() {
                   : "not connected"}
               {state.connected ? ` · ${state.printers.length} Windows printer(s)` : ""}
             </p>
+            {state.bridge === "orithos-hc" && state.connected ? (
+              <p className="mt-2 inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-900">
+                Agent running on this register
+              </p>
+            ) : null}
           </div>
           <div className="flex flex-wrap gap-2">
             <button
@@ -244,15 +261,16 @@ export function HardwareSetupPanel() {
                 <span className="font-mono">tools\orithos-hardware-connect\install-runtime.ps1</span>).
               </li>
               <li>
-                Start <span className="font-mono">Orithos Hardware Connect</span> (dev:{" "}
-                <span className="font-mono">run-dev.ps1</span> in the repo).
+                Install agent: <span className="font-mono">install.ps1</span> (tray + logon) from{" "}
+                <span className="font-mono">tools\orithos-hardware-connect</span>, or dev{" "}
+                <span className="font-mono">run-dev.ps1</span>.
               </li>
               <li>Click <span className="font-semibold">Connect local bridge</span> above and choose your receipt printer.</li>
             </ol>
           </div>
         )}
         <div className="mt-3 flex flex-wrap justify-end gap-2">
-          {state.bridge !== "orithos-hc" && (
+          {loadQzFallback && state.bridge !== "orithos-hc" && (
             <a href="https://qz.io/download/" target="_blank" rel="noreferrer" className="inline-flex min-h-10 items-center gap-2 rounded-md border border-[var(--oh-border)] px-3 text-sm font-medium">
               <ExternalLink size={15} aria-hidden="true" />
               Get QZ Tray (fallback)
@@ -413,12 +431,14 @@ export function HardwareSetupPanel() {
           </pre>
         )}
       </details>
-      <Script
-        src="https://cdn.jsdelivr.net/npm/qz-tray@2.3.0/qz-tray.js"
-        strategy="afterInteractive"
-        onLoad={() => void connect().catch(() => undefined)}
-        onError={() => setQzScriptError(true)}
-      />
+      {loadQzFallback ? (
+        <Script
+          src="https://cdn.jsdelivr.net/npm/qz-tray@2.3.0/qz-tray.js"
+          strategy="lazyOnload"
+          onLoad={() => void connect().catch(() => undefined)}
+          onError={() => setQzScriptError(true)}
+        />
+      ) : null}
     </div>
   );
 }

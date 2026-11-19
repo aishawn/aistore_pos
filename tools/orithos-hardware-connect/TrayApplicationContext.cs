@@ -1,0 +1,82 @@
+using System.Diagnostics;
+
+namespace Orithos.HardwareConnect;
+
+internal sealed class TrayApplicationContext : ApplicationContext
+{
+    private readonly NotifyIcon trayIcon;
+    private readonly CancellationTokenSource webHostCts = new();
+    private readonly Task webHostTask;
+
+    public TrayApplicationContext()
+    {
+        webHostTask = Task.Run(() => HardwareConnectWebApp.RunAsync(webHostCts.Token), webHostCts.Token);
+
+        var settingsUrl = Environment.GetEnvironmentVariable("ORITHOS_HC_SETTINGS_URL")
+            ?? "https://skr.orithos.com.au/settings/hardware";
+
+        trayIcon = new NotifyIcon
+        {
+            Icon = SystemIcons.Application,
+            Visible = true,
+            Text = $"{AgentVersion.Product} {AgentVersion.DisplayVersion}",
+        };
+
+        var menu = new ContextMenuStrip();
+        menu.Items.Add("Open Hardware settings", null, (_, _) => OpenUrl(settingsUrl));
+        menu.Items.Add("About", null, (_, _) =>
+        {
+            MessageBox.Show(
+                $"{AgentVersion.Product} {AgentVersion.DisplayVersion}\nListening on {Environment.GetEnvironmentVariable("ORITHOS_HC_URL") ?? AgentVersion.DefaultListen}",
+                AgentVersion.Product,
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information);
+        });
+        menu.Items.Add(new ToolStripSeparator());
+        menu.Items.Add("Exit", null, (_, _) => Exit());
+
+        trayIcon.ContextMenuStrip = menu;
+        trayIcon.DoubleClick += (_, _) => OpenUrl(settingsUrl);
+    }
+
+    private static void OpenUrl(string url)
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+        }
+        catch
+        {
+            /* ignore */
+        }
+    }
+
+    private void Exit()
+    {
+        trayIcon.Visible = false;
+        trayIcon.Dispose();
+        webHostCts.Cancel();
+        try
+        {
+            webHostTask.Wait(TimeSpan.FromSeconds(3));
+        }
+        catch
+        {
+            /* ignore */
+        }
+
+        webHostCts.Dispose();
+        Application.Exit();
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            trayIcon.Dispose();
+            webHostCts.Dispose();
+        }
+
+        base.Dispose(disposing);
+    }
+}

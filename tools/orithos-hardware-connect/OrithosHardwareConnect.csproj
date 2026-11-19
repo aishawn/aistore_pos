@@ -3,10 +3,14 @@
     <TargetFramework>net8.0-windows</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <UseWindowsForms>true</UseWindowsForms>
+    <OutputType>WinExe</OutputType>
     <AssemblyName>OrithosHardwareConnect</AssemblyName>
     <RootNamespace>Orithos.HardwareConnect</RootNamespace>
-    <Version>0.1.0</Version>
+    <Version>1.0.0</Version>
     <Description>Orithos local hardware agent (Windows printers, cash drawer kick)</Description>
+    <ApplicationIcon />
+    <PublishTrimmed>false</PublishTrimmed>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="System.Drawing.Common" Version="8.0.10" />

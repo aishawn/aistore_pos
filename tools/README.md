@@ -8,4 +8,4 @@ API documentation is served inside the POS at `/api-docs`; the OpenAPI asset is 
 
 ## Orithos Hardware Connect (Windows register agent)
 
-`tools/orithos-hardware-connect` is the Shopfront-style local agent for receipt printers and cash-drawer kicks. It listens on `http://127.0.0.1:9170` and is preferred over QZ Tray when reachable. From that folder on a Windows register: `.\run-dev.ps1` (requires .NET 8 SDK) or publish the project and run the executable at logon.
+`tools/orithos-hardware-connect` is the Shopfront-style local agent (v1, tray icon) for receipt printers and cash-drawer kicks on `http://127.0.0.1:9170`, preferred over QZ Tray. On a register: `.\install.ps1` (publish + per-user logon task + tray), or `.\run-dev.ps1` with .NET 8 SDK, or `.\uninstall.ps1` to remove.
