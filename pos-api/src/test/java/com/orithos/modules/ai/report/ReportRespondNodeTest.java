@@ -203,6 +203,33 @@ class ReportRespondNodeTest {
     }
 
     @Test
+    void deadStockAnswerDisclosesUnknownSalesFreshnessWhenRowsExist() {
+        OverAllState state = state("", List.of(Map.of("name", "Wine", "on_hand", 3, "sold_qty", 0)),
+                "2026-10-01", "2026-10-30");
+        when(state.value("intent", String.class)).thenReturn(Optional.of("report_dead_stock"));
+        when(state.value("question", String.class)).thenReturn(Optional.of("哪些商品滞销？"));
+        when(state.value("report_data_status", String.class)).thenReturn(Optional.of("incomplete"));
+
+        String answer = (String) node.apply(state).get("answer");
+
+        org.junit.jupiter.api.Assertions.assertTrue(answer.contains("销售数据更新时间及完整性无法确认"));
+        org.junit.jupiter.api.Assertions.assertTrue(answer.contains("需核实"));
+    }
+
+    @Test
+    void emptyDeadStockResultDoesNotClaimNoItemsWhenSalesFreshnessIsUnknown() {
+        OverAllState state = state("", List.of(), "2026-10-01", "2026-10-30");
+        when(state.value("intent", String.class)).thenReturn(Optional.of("report_dead_stock"));
+        when(state.value("question", String.class)).thenReturn(Optional.of("Any dead stock?"));
+        when(state.value("report_data_status", String.class)).thenReturn(Optional.of("incomplete"));
+
+        String answer = (String) node.apply(state).get("answer");
+
+        org.junit.jupiter.api.Assertions.assertFalse(answer.startsWith("No dead-stock items found"));
+        org.junit.jupiter.api.Assertions.assertTrue(answer.contains("Sales data freshness and completeness could not be confirmed"));
+    }
+
+    @Test
     void stockAnswerFollowsChineseQuestionLanguage() {
         OverAllState stock = state("", List.of(Map.of(
                 "name", "Blickinstal Black on Black Shiraz 750ML", "quantity", 3)));

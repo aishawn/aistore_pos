@@ -36,8 +36,18 @@ public class ReportRespondNode implements NodeAction {
         Map<String, String> slots = ReportGraphState.slots(state);
         String from = slots.getOrDefault("from", "");
         String to = slots.getOrDefault("to", "");
+        String dataStatus = ReportGraphState.string(state, "report_data_status");
         Map<String, Object> result = new java.util.HashMap<>();
-        result.put("answer", format(intent, rows, from, to, slots, chinese));
+        String answer = format(intent, rows, from, to, slots, chinese);
+        if ("report_dead_stock".equals(intent) && "incomplete".equalsIgnoreCase(dataStatus)) {
+            answer = rows == null || rows.isEmpty()
+                    ? (chinese ? "无法确认所选期间是否确实没有滞销商品。" : "I cannot confirm that there were no dead-stock items for the selected period.")
+                    : answer;
+            answer += chinese
+                    ? " 销售数据更新时间及完整性无法确认，以上结果需核实。"
+                    : " Sales data freshness and completeness could not be confirmed; verify these results.";
+        }
+        result.put("answer", answer);
         if ("report_stock".equals(intent) && rows != null && !rows.isEmpty()) {
             String dataAsOf = trustedStockDataAsOf(rows);
             if (dataAsOf != null) result.put("report_data_as_of", dataAsOf);
