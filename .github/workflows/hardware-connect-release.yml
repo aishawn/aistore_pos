@@ -26,8 +26,21 @@ jobs:
         run: |
           Set-Location tools/orithos-hardware-connect
           ./bundle-register.ps1
+
+      - name: Stage stable release asset names
+        shell: pwsh
+        run: |
+          Set-Location tools/orithos-hardware-connect
           $version = (Select-Xml -Path ./OrithosHardwareConnect.csproj -XPath "//Version").Node.InnerText.Trim()
-          "HC_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append
+          $releaseDir = Join-Path (Get-Location) "dist/release"
+          New-Item -ItemType Directory -Force -Path $releaseDir | Out-Null
+          $setup = Join-Path (Get-Location) "dist/OrithosHardwareConnect-$version-win-x64-Setup.exe"
+          $zip = Join-Path (Get-Location) "dist/OrithosHardwareConnect-$version-win-x64.zip"
+          if (-not (Test-Path $setup)) { throw "Missing setup: $setup" }
+          if (-not (Test-Path $zip)) { throw "Missing zip: $zip" }
+          Copy-Item $setup (Join-Path $releaseDir "OrithosHardwareConnect-Setup.exe") -Force
+          Copy-Item $zip (Join-Path $releaseDir "OrithosHardwareConnect-win-x64.zip") -Force
+          "HC_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
       - name: Optional Authenticode sign
         shell: pwsh
@@ -40,7 +53,7 @@ jobs:
             exit 0
           }
           Set-Location tools/orithos-hardware-connect
-          ./sign-install.ps1 -ZipPath "./dist/OrithosHardwareConnect-$env:HC_VERSION-win-x64.zip"
+          ./sign-install.ps1 -ZipPath ./dist/release/OrithosHardwareConnect-win-x64.zip
 
       - name: Publish rolling release asset
         uses: softprops/action-gh-release@v2
@@ -49,10 +62,10 @@ jobs:
           name: Orithos Hardware Connect (latest Windows x64)
           body: |
             Self-contained Orithos register agent for Windows: receipt printers (9170) and EFTPOS bridge (9167) in one install.
-            Install: run OrithosHardwareConnect-*-Setup.exe, allow browser local network access, then Settings → Hardware.
+            Download OrithosHardwareConnect-Setup.exe (version in install.json on your store).
           files: |
-            tools/orithos-hardware-connect/dist/OrithosHardwareConnect-${{ env.HC_VERSION }}-win-x64.zip
-            tools/orithos-hardware-connect/dist/OrithosHardwareConnect-${{ env.HC_VERSION }}-win-x64-Setup.exe
+            tools/orithos-hardware-connect/dist/release/OrithosHardwareConnect-Setup.exe
+            tools/orithos-hardware-connect/dist/release/OrithosHardwareConnect-win-x64.zip
           make_latest: false
           draft: false
           prerelease: false

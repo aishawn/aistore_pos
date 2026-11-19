@@ -1,6 +1,10 @@
-/** Published Windows one-click setup (public GitHub release). */
+/** Rolling GitHub release asset (stable filename; version in install.json). */
 export const ORITHOS_HC_OFFICIAL_WINDOWS_URL =
-  "https://github.com/aishawn/aistore_pos/releases/download/hardware-connect-latest/OrithosHardwareConnect-1.1.0-win-x64-Setup.exe";
+  "https://github.com/aishawn/aistore_pos/releases/download/hardware-connect-latest/OrithosHardwareConnect-Setup.exe";
+
+/** Last known asset name before stable filenames (kept until CI republishes the release). */
+export const ORITHOS_HC_LEGACY_FALLBACK_URL =
+  "https://github.com/aishawn/aistore_pos/releases/download/hardware-connect-latest/OrithosHardwareConnect-1.0.0-win-x64-Setup.exe";
 
 const HC_SETUP_ROUTE_PATH = "/downloads/orithos-hardware-connect-setup";
 const HC_ONECLICK_ROUTE_PATH = "/downloads/orithos-hardware-connect-oneclick";
@@ -24,6 +28,21 @@ export function getOrithosHardwareConnectDownloadUrl(): string | null {
 
 export function getOrithosHardwareConnectOneClickUrl(): string | null {
   return sameOriginOneClickRouteUrl();
+}
+
+async function probeHttpDownload(url: string): Promise<boolean> {
+  try {
+    const response = await fetch(url, { method: "HEAD", cache: "no-store", redirect: "follow" });
+    if (!response.ok) return false;
+    const type = response.headers.get("content-type") ?? "";
+    const len = Number(response.headers.get("content-length") ?? "0");
+    if (type.includes("zip") || type.includes("octet-stream") || type.includes("application/x-msdownload")) {
+      return len === 0 || len > 500_000;
+    }
+    return false;
+  } catch {
+    return false;
+  }
 }
 
 async function probeSameOriginInstaller(routeUrl: string): Promise<boolean> {
@@ -50,7 +69,7 @@ export async function resolveHardwareConnectDownloadHref(): Promise<string> {
       const response = await fetch(routeUrl, { method: "HEAD", cache: "no-store", redirect: "manual" });
       if (response.status === 307 || response.status === 302 || response.status === 308) {
         const location = response.headers.get("location")?.trim();
-        if (location) return location;
+        if (location && (await probeHttpDownload(location))) return location;
       }
       if (response.ok) {
         const type = response.headers.get("content-type") ?? "";
@@ -62,7 +81,10 @@ export async function resolveHardwareConnectDownloadHref(): Promise<string> {
       /* fall through */
     }
   }
-  return ORITHOS_HC_OFFICIAL_WINDOWS_URL;
+  if (await probeHttpDownload(ORITHOS_HC_OFFICIAL_WINDOWS_URL)) {
+    return ORITHOS_HC_OFFICIAL_WINDOWS_URL;
+  }
+  return ORITHOS_HC_LEGACY_FALLBACK_URL;
 }
 
 /** True when the installer is reachable from this site (hosted file or configured redirect). */
@@ -72,17 +94,7 @@ export async function probeHardwareConnectDownloadAvailable(url: string): Promis
     if (routeUrl && (url === routeUrl || url.startsWith(routeUrl))) {
       return probeSameOriginInstaller(routeUrl);
     }
-    const response = await fetch(url, { method: "HEAD", cache: "no-store", redirect: "manual" });
-    if (response.status === 307 || response.status === 302 || response.status === 308) {
-      return Boolean(response.headers.get("location")?.trim());
-    }
-    if (!response.ok) return false;
-    const type = response.headers.get("content-type") ?? "";
-    const len = Number(response.headers.get("content-length") ?? "0");
-    if (type.includes("zip") || type.includes("octet-stream") || type.includes("application/x-msdownload")) {
-      return len === 0 || len > 500_000;
-    }
-    return false;
+    return probeHttpDownload(url);
   } catch {
     return false;
   }

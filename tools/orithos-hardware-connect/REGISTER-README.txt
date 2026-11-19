@@ -1,4 +1,4 @@
-Orithos Hardware Connect — register install
+Orithos Hardware Connect — register install (release pipeline trigger)
 =========================================
 
 Recommended (one click):
