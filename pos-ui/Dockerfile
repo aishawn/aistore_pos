@@ -64,6 +64,19 @@ ENV BACKEND_URL=${BACKEND_URL}
 
 ENV NODE_ENV=production
 
+# Optional: bake Hardware Connect installer into the image for /downloads/orithos-hardware-connect-latest
+ARG ORITHOS_HC_BUNDLE_URL=
+RUN if [ -n "$ORITHOS_HC_BUNDLE_URL" ]; then \
+  apt-get update \
+  && apt-get install -y --no-install-recommends curl ca-certificates \
+  && mkdir -p public/downloads \
+  && (curl -fsSL "$ORITHOS_HC_BUNDLE_URL" -o public/downloads/orithos-hardware-connect-latest.zip || echo "HC bundle fetch skipped") \
+  && printf '%s\n' "{\"product\":\"Orithos Hardware Connect\",\"version\":\"1.0.0.0\",\"downloadPath\":\"/downloads/orithos-hardware-connect-latest\",\"stagedAt\":\"$(date -Iseconds)\"}" > public/downloads/orithos-hardware-connect.version.json \
+  && apt-get purge -y curl \
+  && apt-get autoremove -y \
+  && rm -rf /var/lib/apt/lists/*; \
+  fi
+
 # Next.js collects completely anonymous telemetry data about general usage.
 # Learn more here: https://nextjs.org/telemetry
 # Uncomment the following line in case you want to disable telemetry during the build.

@@ -2,7 +2,9 @@ import assert from "node:assert/strict";
 import { afterEach, test } from "node:test";
 import {
   connectLocalHardware,
+  formatSaleDocketPlainText,
   formatSaleReceiptPlainText,
+  summarizePostSaleHardwareOutcome,
   getHardwareReadinessItems,
   getLocalHardwareSettings,
   formatCashDrawerKickCode,
@@ -17,10 +19,21 @@ import {
 } from "./local-hardware.ts";
 
 const originalWindow = globalThis.window;
+const originalFetch = globalThis.fetch;
+
+function mockHardwareConnectOffline() {
+  globalThis.fetch = async (input, init) => {
+    if (String(input).includes("127.0.0.1:9170")) {
+      throw new Error("offline");
+    }
+    return originalFetch(input, init);
+  };
+}
 
 afterEach(() => {
   Object.defineProperty(globalThis, "window", { configurable: true, value: originalWindow });
   globalThis.localStorage?.clear();
+  globalThis.fetch = originalFetch;
   resetLocalBridgeStateForTests();
 });
 
@@ -41,6 +54,7 @@ test("refuses a local hardware connection on an insecure origin", async () => {
 });
 
 test("reports QZ Tray as unavailable when its browser library is missing", async () => {
+  mockHardwareConnectOffline();
   setWindow({ isSecureContext: true });
   assert.deepEqual(await connectLocalHardware(), {
     bridge: null,
@@ -80,6 +94,7 @@ test("prefers Orithos Hardware Connect when the local agent responds", async () 
 });
 
 test("connects to QZ Tray and returns discovered printers", async () => {
+  mockHardwareConnectOffline();
   let connected = false;
   setWindow({
     isSecureContext: true,
@@ -100,6 +115,7 @@ test("connects to QZ Tray and returns discovered printers", async () => {
 });
 
 test("returns a readable error when QZ Tray cannot connect", async () => {
+  mockHardwareConnectOffline();
   setWindow({
     isSecureContext: true,
     qz: {
@@ -242,6 +258,10 @@ test("loads Linkly planning fields from local register preferences", () => {
     printerBrand: "epson",
     cashDrawerPin: "0",
     cutDelayMs: 500,
+    autoPrintReceiptOnSale: true,
+    autoOpenDrawerOnCashSale: true,
+    printDocketOnSale: false,
+    docketPrinter: "",
     linklyTerminal: "PAX model",
     linklyAcquirer: "Example Bank",
     linklyConnection: "ethernet",
@@ -313,6 +333,29 @@ test("formats a completed sale receipt as plain text for the local bridge", () =
   assert.match(text, /Change: \$1.00/);
 });
 
+test("formats docket text without payment totals", () => {
+  const text = formatSaleDocketPlainText({
+    companyName: "Demo",
+    reference: "S0002",
+    dateLabel: "19 Nov 2026",
+    session: "Register 1",
+    customerName: "Walk-in",
+    lines: [{ name: "Milk", quantity: 1, total: 5 }],
+  });
+  assert.match(text, /Docket/);
+  assert.match(text, /1 x Milk/);
+  assert.doesNotMatch(text, /\$5\.00/);
+});
+
+test("summarizes failed post-sale hardware outcomes", () => {
+  const message = summarizePostSaleHardwareOutcome({
+    receipt: { channel: "bridge", ok: false, message: "Printer offline" },
+    drawer: { ok: false, message: "Drawer kick failed" },
+  });
+  assert.match(message ?? "", /Printer offline/);
+  assert.match(message ?? "", /Drawer kick failed/);
+});
+
 test("strips printer control characters from dynamic receipt fields", () => {
   const text = formatSaleReceiptPlainText({
     companyName: "Demo\u001b@\u0001Store",
@@ -336,6 +379,7 @@ test("strips printer control characters from dynamic receipt fields", () => {
 });
 
 test("prints sale receipts through QZ when a printer is configured", async () => {
+  mockHardwareConnectOffline();
   const jobs: unknown[][] = [];
   let printed = false;
   const values = new Map<string, string>();
@@ -359,9 +403,10 @@ test("prints sale receipts through QZ when a printer is configured", async () =>
     },
   });
 
-  await printReceiptDocument({ plainText: "Receipt body" });
+  const outcome = await printReceiptDocument({ plainText: "Receipt body" });
   assert.equal(printed, false);
-  assert.equal(jobs.length, 1);
+  assert.equal(outcome.channel, "bridge");
+  assert.equal(jobs.length, 2);
 });
 
 test("prints sale receipts through Hardware Connect when the agent is running", async () => {
@@ -376,7 +421,7 @@ test("prints sale receipts through Hardware Connect when the agent is running", 
     if (url.includes("/v1/printers")) {
       return new Response(JSON.stringify({ printers: ["Receipt Printer"] }), { status: 200, headers: { "Content-Type": "application/json" } });
     }
-    if (url.includes("/v1/print/text")) {
+    if (url.includes("/v1/print/text") || url.includes("/v1/print/raw")) {
       return new Response(JSON.stringify({ printed: true }), { status: 200, headers: { "Content-Type": "application/json" } });
     }
     return originalFetch(input, init);
@@ -408,6 +453,7 @@ test("prints sale receipts through Hardware Connect when the agent is running", 
 });
 
 test("falls back to the browser print dialog when the local bridge is unavailable", async () => {
+  mockHardwareConnectOffline();
   let printed = false;
   const values = new Map<string, string>();
   values.set("orithos.hardware.settings.v1", JSON.stringify({

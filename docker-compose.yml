@@ -101,6 +101,7 @@ services:
         NEXT_PUBLIC_TENANT_BASE_DOMAIN: ${APP_TENANT_BASE_DOMAIN:-orithos.com.au}
         NEXT_PUBLIC_TENANT_SCHEME: ${APP_TENANT_SCHEME:-https}
         BACKEND_URL: ${BACKEND_URL:-http://backend:8080}
+        ORITHOS_HC_BUNDLE_URL: ${ORITHOS_HC_BUNDLE_URL:-https://github.com/aishawn/aistore_pos/releases/download/hardware-connect-latest/OrithosHardwareConnect-1.0.0-win-x64.zip}
     image: orithos-frontend:latest
     restart: unless-stopped
     depends_on:
@@ -144,6 +145,8 @@ services:
       AI_SERVICE_TOKEN: ${AI_SERVICE_TOKEN:-}
       AI_FORECAST_READ_TIMEOUT_MS: ${AI_FORECAST_READ_TIMEOUT_MS:-190000}
       ORITHOS_SHOPFRONT_SYNC_NOTIFY_SECRET: ${ORITHOS_SHOPFRONT_SYNC_NOTIFY_SECRET:-${SHOPFRONT_INTEGRATION_TOKEN:-}}
+      ORITHOS_HC_DOWNLOAD_URL: ${ORITHOS_HC_DOWNLOAD_URL:-}
+      NEXT_PUBLIC_ORITHOS_HC_DOWNLOAD_URL: ${NEXT_PUBLIC_ORITHOS_HC_DOWNLOAD_URL:-}
     volumes:
       - rfq-requests:/var/lib/orithos/rfq
 

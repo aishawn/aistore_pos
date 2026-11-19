@@ -4,7 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import Script from "next/script";
 import { connectLocalHardware } from "@/lib/local-hardware";
 
-/** Probes Orithos Hardware Connect first; loads QZ Tray only when HC is unavailable. */
+const QZ_FALLBACK_DELAY_MS = 4_000;
+
+/** Probes Orithos Hardware Connect first; defers QZ Tray until HC is clearly unavailable. */
 export function LocalQzBridge() {
   const attempted = useRef(false);
   const [loadQz, setLoadQz] = useState(false);
@@ -12,11 +14,13 @@ export function LocalQzBridge() {
   useEffect(() => {
     if (attempted.current) return;
     attempted.current = true;
-    void connectLocalHardware()
-      .then((next) => {
-        if (next.bridge !== "orithos-hc" && !next.connected) setLoadQz(true);
-      })
-      .catch(() => setLoadQz(true));
+    void (async () => {
+      const first = await connectLocalHardware().catch(() => null);
+      if (first?.bridge === "orithos-hc" || first?.connected) return;
+      await new Promise((resolve) => window.setTimeout(resolve, QZ_FALLBACK_DELAY_MS));
+      const second = await connectLocalHardware().catch(() => null);
+      if (second?.bridge !== "orithos-hc" && !second?.connected) setLoadQz(true);
+    })();
   }, []);
 
   if (!loadQz) return null;
@@ -26,7 +30,11 @@ export function LocalQzBridge() {
       src="https://cdn.jsdelivr.net/npm/qz-tray@2.3.0/qz-tray.js"
       strategy="lazyOnload"
       onLoad={() => {
-        void connectLocalHardware().catch(() => undefined);
+        void connectLocalHardware()
+          .then((next) => {
+            if (next.bridge === "orithos-hc") setLoadQz(false);
+          })
+          .catch(() => undefined);
       }}
     />
   );

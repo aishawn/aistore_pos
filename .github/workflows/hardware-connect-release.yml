@@ -1,0 +1,55 @@
+name: Hardware Connect Release
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "tools/orithos-hardware-connect/**"
+      - ".github/workflows/hardware-connect-release.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Build register bundle
+        shell: pwsh
+        run: |
+          Set-Location tools/orithos-hardware-connect
+          ./bundle-register.ps1
+
+      - name: Optional Authenticode sign
+        shell: pwsh
+        env:
+          WINDOWS_SIGNING_CERT_PFX_BASE64: ${{ secrets.WINDOWS_SIGNING_CERT_PFX_BASE64 }}
+          WINDOWS_SIGNING_CERT_PASSWORD: ${{ secrets.WINDOWS_SIGNING_CERT_PASSWORD }}
+        run: |
+          if (-not $env:WINDOWS_SIGNING_CERT_PFX_BASE64) {
+            Write-Host "No signing secret; publishing unsigned bundle."
+            exit 0
+          }
+          Set-Location tools/orithos-hardware-connect
+          ./sign-install.ps1 -ZipPath ./dist/OrithosHardwareConnect-1.0.0-win-x64.zip
+
+      - name: Publish rolling release asset
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: hardware-connect-latest
+          name: Orithos Hardware Connect (latest Windows x64)
+          body: |
+            Self-contained Orithos Hardware Connect bundle for register PCs.
+            Install: unzip and run install.ps1, then Setup → Hardware in Chrome.
+          files: tools/orithos-hardware-connect/dist/OrithosHardwareConnect-1.0.0-win-x64.zip
+          make_latest: false
+          draft: false
+          prerelease: false
+          fail_on_unmatched_files: true

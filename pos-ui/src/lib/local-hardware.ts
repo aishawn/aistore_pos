@@ -129,6 +129,10 @@ export type HardwareSettings = {
   printerBrand: ReceiptPrinterBrand;
   cashDrawerPin: "0" | "1";
   cutDelayMs: number;
+  autoPrintReceiptOnSale: boolean;
+  autoOpenDrawerOnCashSale: boolean;
+  printDocketOnSale: boolean;
+  docketPrinter: string;
   linklyTerminal: string;
   linklyAcquirer: string;
   linklyConnection: string;
@@ -142,6 +146,10 @@ const EMPTY_SETTINGS: HardwareSettings = {
   printerBrand: "epson",
   cashDrawerPin: "0",
   cutDelayMs: 500,
+  autoPrintReceiptOnSale: true,
+  autoOpenDrawerOnCashSale: true,
+  printDocketOnSale: false,
+  docketPrinter: "",
   linklyTerminal: "",
   linklyAcquirer: "",
   linklyConnection: "",
@@ -385,6 +393,26 @@ function cleanReceiptField(value: string): string {
   return value.replace(/[\u0000-\u001f\u007f-\u009f]/g, " ").replace(/\s+/g, " ").trim();
 }
 
+export function formatSaleDocketPlainText(
+  receipt: Pick<SaleReceiptPlainTextInput, "companyName" | "reference" | "dateLabel" | "session" | "lines" | "customerName">,
+): string {
+  const lines = receipt.lines
+    .map((line) => `${line.quantity} x ${cleanReceiptField(line.name)}`)
+    .join("\n");
+  return [
+    cleanReceiptField(receipt.companyName).toUpperCase(),
+    "Docket",
+    cleanReceiptField(receipt.reference),
+    cleanReceiptField(receipt.dateLabel),
+    `Register: ${cleanReceiptField(receipt.session)}`,
+    `Customer: ${cleanReceiptField(receipt.customerName)}`,
+    "",
+    lines,
+    "",
+    "---",
+  ].join("\n");
+}
+
 export function formatSaleReceiptPlainText(receipt: SaleReceiptPlainTextInput): string {
   const lines = receipt.lines
     .map((line) => `${cleanReceiptField(line.name)}\n  ${line.quantity} x ${moneyPlain(line.total)}`)
@@ -417,10 +445,20 @@ export function formatSaleReceiptPlainText(receipt: SaleReceiptPlainTextInput): 
 export type PrintReceiptDocumentOptions = {
   /** When provided, a configured QZ bridge prints raw text before falling back to the browser dialog. */
   plainText?: string;
+  /** When true, never open the browser print dialog (post-checkout automation). */
+  bridgeOnly?: boolean;
 };
 
-export async function printReceiptDocument(options?: PrintReceiptDocumentOptions): Promise<void> {
-  if (typeof window === "undefined") return;
+export type PrintReceiptOutcome = {
+  channel: "bridge" | "browser" | "skipped";
+  ok: boolean;
+  message?: string;
+};
+
+export async function printReceiptDocument(options?: PrintReceiptDocumentOptions): Promise<PrintReceiptOutcome> {
+  if (typeof window === "undefined") {
+    return { channel: "skipped", ok: false, message: "Printing is only available in the browser." };
+  }
 
   const plainText = options?.plainText?.trim();
   if (plainText) {
@@ -429,14 +467,109 @@ export async function printReceiptDocument(options?: PrintReceiptDocumentOptions
     if (settings.printer && bridgeReady) {
       try {
         await printThroughLocalBridge(settings.printer, `${plainText}\n\n`);
-        return;
-      } catch {
-        /* fall through to the system print dialog */
+        const delay = Number.isFinite(settings.cutDelayMs) ? Math.max(0, Math.min(settings.cutDelayMs, 10_000)) : 500;
+        await sleep(delay);
+        if (settings.printerBrand === "star") {
+          await printRawBytesThroughLocalBridge(settings.printer, [27, 100, 3]);
+        } else {
+          await printRawBytesThroughLocalBridge(settings.printer, [29, 86, 0]);
+        }
+        return { channel: "bridge", ok: true };
+      } catch (cause) {
+        const message = cause instanceof Error ? cause.message : "Receipt printer failed.";
+        if (options?.bridgeOnly) return { channel: "bridge", ok: false, message };
+      }
+    } else if (options?.bridgeOnly) {
+      return {
+        channel: "skipped",
+        ok: false,
+        message: settings.printer
+          ? "Local bridge is offline. Open Settings → Hardware and connect, or install Hardware Connect."
+          : "No receipt printer selected on this register.",
+      };
+    }
+  }
+
+  if (options?.bridgeOnly) {
+    return { channel: "skipped", ok: false, message: "Receipt text was empty." };
+  }
+  window.print();
+  return { channel: "browser", ok: true };
+}
+
+export type PostSaleHardwareOutcome = {
+  receipt?: PrintReceiptOutcome;
+  docket?: PrintReceiptOutcome;
+  drawer?: { ok: boolean; message?: string };
+};
+
+function isCashLikePayment(method: string): boolean {
+  return /\bcash\b/i.test(method);
+}
+
+async function openCashDrawerForSale(settings: HardwareSettings): Promise<{ ok: boolean; message?: string }> {
+  try {
+    await testOpenCashDrawer(settings);
+    return { ok: true };
+  } catch (cause) {
+    return { ok: false, message: cause instanceof Error ? cause.message : "Cash drawer failed." };
+  }
+}
+
+/** Non-blocking Sell automation: receipt, optional docket, cash drawer kick. */
+export async function runPostSaleLocalHardwareActions(
+  receipt: SaleReceiptPlainTextInput,
+): Promise<PostSaleHardwareOutcome> {
+  const settings = getLocalHardwareSettings();
+  const outcome: PostSaleHardwareOutcome = {};
+
+  if (settings.autoPrintReceiptOnSale && settings.printer) {
+    outcome.receipt = await printReceiptDocument({
+      plainText: formatSaleReceiptPlainText(receipt),
+      bridgeOnly: true,
+    });
+  }
+
+  if (settings.printDocketOnSale) {
+    const docketPrinter = settings.docketPrinter.trim() || settings.printer;
+    if (docketPrinter) {
+      const docketText = formatSaleDocketPlainText(receipt);
+      try {
+        if (await ensureLocalPrinterBridge()) {
+          await printThroughLocalBridge(docketPrinter, `${docketText}\n\n`);
+          outcome.docket = { channel: "bridge", ok: true };
+        } else {
+          outcome.docket = { channel: "skipped", ok: false, message: "Local bridge offline for docket." };
+        }
+      } catch (cause) {
+        outcome.docket = {
+          channel: "bridge",
+          ok: false,
+          message: cause instanceof Error ? cause.message : "Docket print failed.",
+        };
       }
     }
   }
 
-  window.print();
+  if (
+    settings.autoOpenDrawerOnCashSale
+    && settings.cashDrawer
+    && settings.printer
+    && isCashLikePayment(receipt.paymentMethod)
+  ) {
+    outcome.drawer = await openCashDrawerForSale(settings);
+  }
+
+  return outcome;
+}
+
+export function summarizePostSaleHardwareOutcome(outcome: PostSaleHardwareOutcome): string | null {
+  const issues: string[] = [];
+  if (outcome.receipt && !outcome.receipt.ok) issues.push(outcome.receipt.message ?? "Receipt did not print.");
+  if (outcome.docket && !outcome.docket.ok) issues.push(outcome.docket.message ?? "Docket did not print.");
+  if (outcome.drawer && !outcome.drawer.ok) issues.push(outcome.drawer.message ?? "Cash drawer did not open.");
+  if (!issues.length) return null;
+  return issues.join(" ");
 }
 
 export type HardwareReadinessTone = "ok" | "warn" | "muted";
@@ -536,6 +669,10 @@ export function parseLocalHardwareSettings(raw: string): HardwareSettings {
       printerBrand: brand === "epson" || brand === "star" || brand === "generic" ? brand : "epson",
       cashDrawerPin: pin === "1" ? "1" : "0",
       cutDelayMs: Number.isFinite(cutDelay) ? Math.max(0, Math.min(cutDelay, 10_000)) : 500,
+      autoPrintReceiptOnSale: value?.autoPrintReceiptOnSale !== false,
+      autoOpenDrawerOnCashSale: value?.autoOpenDrawerOnCashSale !== false,
+      printDocketOnSale: value?.printDocketOnSale === true,
+      docketPrinter: typeof value?.docketPrinter === "string" ? value.docketPrinter : "",
       linklyTerminal: typeof value?.linklyTerminal === "string" ? value.linklyTerminal : "",
       linklyAcquirer: typeof value?.linklyAcquirer === "string" ? value.linklyAcquirer : "",
       linklyConnection: typeof value?.linklyConnection === "string" ? value.linklyConnection : "",

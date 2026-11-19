@@ -46,7 +46,12 @@ import { splitMoney } from "@/lib/sell-screen";
 import { formatOdooDateTime } from "@/lib/odoo-date";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
 import { useAuth } from "@/lib/auth";
-import { formatSaleReceiptPlainText, printReceiptDocument } from "@/lib/local-hardware";
+import {
+  formatSaleReceiptPlainText,
+  printReceiptDocument,
+  runPostSaleLocalHardwareActions,
+  summarizePostSaleHardwareOutcome,
+} from "@/lib/local-hardware";
 import { sellDraftNoticePresentation, type SellDraftNoticeKind } from "@/lib/sell-draft-notice";
 import {
   readRegisterStartupPromptAck,
@@ -235,6 +240,7 @@ export function OdooRegisterPage() {
   const [hydratedDraftKey, setHydratedDraftKey] = useState<string | null>(null);
   const [eftposPaymentsEnabled, setEftposPaymentsEnabled] = useState(false);
   const [eftposPaymentNotice, setEftposPaymentNotice] = useState<string | null>(null);
+  const [receiptHardwareNotice, setReceiptHardwareNotice] = useState<string | null>(null);
 
   useEffect(() => {
     if (!draftNotice) return;
@@ -1022,7 +1028,7 @@ export function OdooRegisterPage() {
       const result = activeRequest ? await recoverOdooPosOrder(request) : await submitOdooPosOrder(request);
       if (!result) throw new OdooCheckoutPendingError(request);
       setPendingCheckout(null);
-      setReceipt({
+      const completed: CompletedReceipt = {
         reference: result.receipt,
         total: result.total,
         subtotal: result.subtotal,
@@ -1036,7 +1042,27 @@ export function OdooRegisterPage() {
         session: selectedConfig.session?.name ?? result.session,
         date: result.date,
         timezone: selectedConfig.timezone,
-      });
+      };
+      setReceipt(completed);
+      setReceiptHardwareNotice(null);
+      void runPostSaleLocalHardwareActions({
+        companyName: completed.companyName,
+        reference: completed.reference,
+        dateLabel: formatStoreDate(completed.date, completed.timezone),
+        customerName: completed.customerName,
+        session: completed.session,
+        lines: completed.lines.map((line) => ({ name: line.name, quantity: line.quantity, total: line.total })),
+        subtotal: completed.subtotal,
+        gst: completed.gst,
+        total: completed.total,
+        paymentMethod: completed.paymentMethod,
+        tendered: completed.tendered,
+        change: completed.change,
+      })
+        .then((hw) => setReceiptHardwareNotice(summarizePostSaleHardwareOutcome(hw)))
+        .catch((cause) =>
+          setReceiptHardwareNotice(cause instanceof Error ? cause.message : "Local hardware actions failed."),
+        );
       setLines([]);
       setCustomer(null);
       setCustomerQuery("");
@@ -1712,7 +1738,12 @@ export function OdooRegisterPage() {
           <dl className="mt-4 grid grid-cols-2 gap-y-1.5 text-xs"><dt className="text-[var(--oh-muted)]">Subtotal</dt><dd className="text-right tabular-nums text-[var(--oh-text)]">{money(receipt.subtotal)}</dd><dt className="text-[var(--oh-muted)]">Tax</dt><dd className="text-right tabular-nums text-[var(--oh-text)]">{money(receipt.gst)}</dd><dt className="border-t border-[var(--oh-border)] pt-2 text-sm font-bold text-[var(--oh-text)]">Total</dt><dd className="border-t border-[var(--oh-border)] pt-2 text-right text-sm font-bold tabular-nums text-[var(--oh-text)]">{money(receipt.total)}</dd></dl>
           <section className="mt-4 border-t border-dashed border-[var(--oh-border)] pt-3"><h4 className="text-xs font-semibold text-[var(--oh-text)]">Payment</h4><dl className="mt-2 grid grid-cols-2 gap-y-1.5 text-xs"><dt className="text-[var(--oh-muted)]">Method</dt><dd className="text-right text-[var(--oh-text)]">{receipt.paymentMethod}</dd>{receipt.change > 0 && <><dt className="text-[var(--oh-muted)]">Cash received</dt><dd className="text-right tabular-nums text-[var(--oh-text)]">{money(receipt.tendered)}</dd><dt className="font-semibold text-[var(--oh-text)]">Change</dt><dd className="text-right font-semibold tabular-nums text-[var(--oh-text)]">{money(receipt.change)}</dd></>}</dl></section>
           <p className="mt-5 text-center text-[13px] text-[var(--oh-muted)]">Thank you for shopping with us.</p>
-          <footer className="receipt-print-hidden mt-5 flex gap-2 border-t border-[var(--oh-border)] pt-4"><button type="button" onClick={() => setReceipt(null)} className="h-11 flex-1 rounded-md border border-[var(--oh-border)] text-sm font-semibold text-[var(--oh-text)]">New sale</button><button type="button" onClick={() => void printReceiptDocument({ plainText: formatSaleReceiptPlainText({ companyName: receipt.companyName, reference: receipt.reference, dateLabel: formatStoreDate(receipt.date, receipt.timezone), customerName: receipt.customerName, session: receipt.session, lines: receipt.lines.map((line) => ({ name: line.name, quantity: line.quantity, total: line.total })), subtotal: receipt.subtotal, gst: receipt.gst, total: receipt.total, paymentMethod: receipt.paymentMethod, tendered: receipt.tendered, change: receipt.change }) })} className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-md bg-[var(--oh-primary)] text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)]"><Printer size={16} /> Print receipt</button></footer>
+          {receiptHardwareNotice ? (
+            <p role="alert" className="receipt-print-hidden mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm leading-6 text-amber-950">
+              {receiptHardwareNotice}
+            </p>
+          ) : null}
+          <footer className="receipt-print-hidden mt-5 flex gap-2 border-t border-[var(--oh-border)] pt-4"><button type="button" onClick={() => { setReceipt(null); setReceiptHardwareNotice(null); }} className="h-11 flex-1 rounded-md border border-[var(--oh-border)] text-sm font-semibold text-[var(--oh-text)]">New sale</button><button type="button" onClick={() => void printReceiptDocument({ plainText: formatSaleReceiptPlainText({ companyName: receipt.companyName, reference: receipt.reference, dateLabel: formatStoreDate(receipt.date, receipt.timezone), customerName: receipt.customerName, session: receipt.session, lines: receipt.lines.map((line) => ({ name: line.name, quantity: line.quantity, total: line.total })), subtotal: receipt.subtotal, gst: receipt.gst, total: receipt.total, paymentMethod: receipt.paymentMethod, tendered: receipt.tendered, change: receipt.change }) }).then((outcome) => { if (!outcome.ok) setReceiptHardwareNotice(outcome.message ?? "Receipt did not print."); else setReceiptHardwareNotice(null); })} className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-md bg-[var(--oh-primary)] text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)]"><Printer size={16} /> Print receipt</button></footer>
         </section>
       </div>}
       {parkedAction && parkedActionSale && <div role="presentation" className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) setParkedAction(null); }}>

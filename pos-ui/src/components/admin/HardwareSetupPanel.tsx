@@ -30,6 +30,10 @@ const emptySettings: HardwareSettings = {
   printerBrand: "epson",
   cashDrawerPin: "0",
   cutDelayMs: 500,
+  autoPrintReceiptOnSale: true,
+  autoOpenDrawerOnCashSale: true,
+  printDocketOnSale: false,
+  docketPrinter: "",
   linklyTerminal: "",
   linklyAcquirer: "",
   linklyConnection: "",
@@ -373,6 +377,48 @@ export function HardwareSetupPanel() {
             />
             Cash drawer attached to selected printer
           </label>
+          <label className="flex min-h-10 items-center gap-2 text-sm sm:col-span-2">
+            <input
+              type="checkbox"
+              checked={draft.autoPrintReceiptOnSale}
+              onChange={(event) => setDraft((current) => ({ ...current, autoPrintReceiptOnSale: event.target.checked }))}
+            />
+            Auto-print receipt on Sell checkout
+          </label>
+          <label className="flex min-h-10 items-center gap-2 text-sm sm:col-span-2">
+            <input
+              type="checkbox"
+              checked={draft.autoOpenDrawerOnCashSale}
+              onChange={(event) => setDraft((current) => ({ ...current, autoOpenDrawerOnCashSale: event.target.checked }))}
+            />
+            Auto-open cash drawer on cash sales
+          </label>
+          <label className="flex min-h-10 items-center gap-2 text-sm sm:col-span-2">
+            <input
+              type="checkbox"
+              checked={draft.printDocketOnSale}
+              onChange={(event) => setDraft((current) => ({ ...current, printDocketOnSale: event.target.checked }))}
+            />
+            Also print docket (items only) on checkout
+          </label>
+          {draft.printDocketOnSale ? (
+            <label className="grid gap-1 text-sm font-medium sm:col-span-2">
+              Docket printer (optional)
+              <select
+                value={draft.docketPrinter}
+                onChange={(event) => setDraft((current) => ({ ...current, docketPrinter: event.target.value }))}
+                disabled={!state.connected}
+                className="h-10 rounded-md border border-[var(--oh-border)] bg-white px-3 disabled:opacity-50"
+              >
+                <option value="">Same as receipt printer</option>
+                {printerNames.map((printer) => (
+                  <option key={`docket-${printer}`} value={printer}>
+                    {printer}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
           <button
             type="button"
             onClick={() => void testPrint()}
