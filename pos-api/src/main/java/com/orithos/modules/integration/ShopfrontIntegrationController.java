@@ -3911,11 +3911,11 @@ public class ShopfrontIntegrationController {
         }
 
         if (!batch.productsWithTags.isEmpty()) {
-            deleteProductTags(new ArrayList<>(batch.productsWithTags));
+            deleteProductTags(new ArrayList<>(batch.productsWithTags), outletId);
             List<Object[]> tags = batch.tagsByProduct.values().stream()
                     .flatMap(byTag -> byTag.values().stream()).toList();
             if (!tags.isEmpty()) {
-                jdbc.batchUpdate("INSERT INTO product_tag (product_id,tag_id) VALUES (?,?)", tags);
+                jdbc.batchUpdate("INSERT INTO product_tag (product_id,tag_id,outlet_id) VALUES (?,?,?)", tags);
             }
         }
 
@@ -4254,7 +4254,7 @@ public class ShopfrontIntegrationController {
                 String name = tag.isTextual() ? tag.asText() : text(tag, "name");
                 if (name == null || name.isBlank()) continue;
                 Long tagId = ensureLookup("tag", name, outletId, batch.lookupIds);
-                if (tagId != null) values.put(tagId, new Object[]{productId, tagId});
+                if (tagId != null) values.put(tagId, new Object[]{productId, tagId, outletId});
             }
             batch.tagsByProduct.put(productId, values);
         } catch (Exception e) {
@@ -4266,8 +4266,8 @@ public class ShopfrontIntegrationController {
         deleteByProductIds("product_price", productIds, outletId);
     }
 
-    private void deleteProductTags(List<Long> productIds) {
-        deleteByProductIds("product_tag", productIds, null);
+    private void deleteProductTags(List<Long> productIds, long outletId) {
+        deleteByProductIds("product_tag", productIds, outletId);
     }
 
     private void deleteByProductIds(String table, List<Long> productIds, Long outletId) {

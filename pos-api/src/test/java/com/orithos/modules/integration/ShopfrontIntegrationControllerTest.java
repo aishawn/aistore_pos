@@ -1363,6 +1363,30 @@ class ShopfrontIntegrationControllerTest {
     }
 
     @Test
+    void productTagsAreWrittenAndDeletedWithinTheirOutlet() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        when(jdbc.queryForList(contains("SELECT id FROM tag"), eq(Long.class), any(Object[].class)))
+                .thenReturn(List.of(901L));
+        var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true, true);
+        Class<?> batchType = Class.forName(ShopfrontIntegrationController.class.getName() + "$ProductImportBatch");
+        Constructor<?> constructor = batchType.getDeclaredConstructor();
+        constructor.setAccessible(true);
+        Object batch = constructor.newInstance();
+        Method collect = ShopfrontIntegrationController.class.getDeclaredMethod(
+                "collectProductTags", long.class, JsonNode.class, long.class, batchType);
+        collect.setAccessible(true);
+        collect.invoke(controller, 17L, new ObjectMapper().readTree("{\"tags\":[\"Organic\"]}"), 87L, batch);
+        Method flush = ShopfrontIntegrationController.class.getDeclaredMethod(
+                "flushBusinessProductBatch", batchType, long.class, String.class);
+        flush.setAccessible(true);
+
+        flush.invoke(controller, batch, 87L, "skr");
+
+        verify(jdbc).update(contains("DELETE FROM product_tag WHERE outlet_id=? AND product_id IN"), any(Object[].class));
+        verify(jdbc).batchUpdate(contains("INSERT INTO product_tag (product_id,tag_id,outlet_id) VALUES (?,?,?)"), any(List.class));
+    }
+
+    @Test
     void productImportEnsuresBarcodeAuditTableBeforeProcessing() throws Exception {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
         var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true, true);
