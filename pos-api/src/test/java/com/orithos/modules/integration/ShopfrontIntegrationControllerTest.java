@@ -485,6 +485,39 @@ class ShopfrontIntegrationControllerTest {
     }
 
     @Test
+    void nativeProductCostProjectionAvoidsExpensiveCatalogAggregates() {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        when(jdbc.queryForList(contains("shopfront_store_mapping"), eq("skr")))
+                .thenReturn(List.of(Map.of("outlet_id", 48L, "shopfront_outlet", "skr", "enabled", true)));
+        when(jdbc.queryForObject(contains("COUNT(*)"), eq(Integer.class), any(Object[].class))).thenReturn(1);
+        when(jdbc.queryForList(contains("SELECT m.source_product_id AS source_id"), any(Object[].class)))
+                .thenReturn(List.of(Map.of(
+                        "source_id", "source-1",
+                        "cost", new BigDecimal("12.3400"),
+                        "case_cost", new BigDecimal("74.04"),
+                        "case_quantity", new BigDecimal("6"),
+                        "catalog_confirmed", true)));
+        var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true);
+
+        controller.nativeData("token", "skr", "product_costs", 1, 2500);
+
+        ArgumentCaptor<String> query = ArgumentCaptor.forClass(String.class);
+        verify(jdbc, times(2)).queryForList(query.capture(), any(Object[].class));
+        String rowsQuery = query.getAllValues().stream()
+                .filter(value -> value.contains("SELECT m.source_product_id AS source_id"))
+                .findFirst()
+                .orElseThrow();
+        assertTrue(rowsQuery.contains("p.cost,p.case_cost"));
+        assertTrue(rowsQuery.contains("p.cost_percentage"));
+        assertTrue(rowsQuery.contains("cost_tax_rate_name"));
+        assertFalse(rowsQuery.contains("product_barcode"));
+        assertFalse(rowsQuery.contains("product_price"));
+        assertFalse(rowsQuery.contains("product_tag"));
+        assertFalse(rowsQuery.contains("product_supplier"));
+        verify(jdbc, never()).update(contains("idx_shopfront_native_product_price"));
+    }
+
+    @Test
     void nativeDataRejectsPageSizesAboveReconciliationLimit() {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
         var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true);

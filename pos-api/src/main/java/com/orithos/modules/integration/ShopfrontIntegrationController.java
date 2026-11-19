@@ -2005,8 +2005,8 @@ public class ShopfrontIntegrationController {
         if (page < 1 || size < 1 || size > 2500) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "page must be >= 1 and size must be between 1 and 2500");
         }
-        if (!Set.of("products", "inventory", "sales", "sale_items", "payments", "purchase_orders").contains(type)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "type must be products, inventory, sales, sale_items, payments, or purchase_orders");
+        if (!Set.of("products", "product_costs", "inventory", "sales", "sale_items", "payments", "purchase_orders").contains(type)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "type must be products, product_costs, inventory, sales, sale_items, payments, or purchase_orders");
         }
         ensureMappingTable();
         ensureShadowTables();
@@ -2030,7 +2030,23 @@ public class ShopfrontIntegrationController {
         String rowsSql;
         Object[] countArgs;
         Object[] rowArgs;
-        if ("products".equals(type)) {
+        if ("product_costs".equals(type)) {
+            countSql = "SELECT COUNT(*) FROM shopfront_product_mapping m JOIN product p "
+                    + "ON p.id=m.pos_product_id AND p.outlet_id=? AND p.deleted_at IS NULL "
+                    + "WHERE m.store_key=? AND m.status='MAPPED'";
+            rowsSql = "SELECT m.source_product_id AS source_id,p.cost,p.case_cost,p.cost_percentage, "
+                    + "p.shopfront_catalog_confirmed AS catalog_confirmed,p.case_quantity, "
+                    + "cost_tax.name AS cost_tax_rate_name,p.status, "
+                    + "p.updated_at AS pos_updated_at,p.shopfront_source_updated_at AS source_updated_at "
+                    + "FROM shopfront_product_mapping m JOIN product p "
+                    + "ON p.id=m.pos_product_id AND p.outlet_id=? AND p.deleted_at IS NULL "
+                    + "LEFT JOIN tax_rate cost_tax ON cost_tax.id=p.cost_tax_rate_id "
+                    + "AND cost_tax.outlet_id=p.outlet_id AND cost_tax.deleted_at IS NULL "
+                    + "WHERE m.store_key=? AND m.status='MAPPED' "
+                    + "ORDER BY m.source_product_id LIMIT ? OFFSET ?";
+            countArgs = new Object[]{outletId, storeKey};
+            rowArgs = new Object[]{outletId, storeKey, size, (page - 1) * size};
+        } else if ("products".equals(type)) {
             countSql = "SELECT COUNT(*) FROM shopfront_product_mapping m JOIN product p "
                     + "ON p.id=m.pos_product_id AND p.outlet_id=? AND p.deleted_at IS NULL "
                     + "WHERE m.store_key=? AND m.status='MAPPED'";
