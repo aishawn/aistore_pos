@@ -5,12 +5,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { LoaderCircle, Search, Trash2 } from "lucide-react";
 import {
-  createOdooStockTransfer,
-  getOdooTransfers,
-  OdooApiError,
-  searchOdooRecords,
-  type OdooTransferLocation,
-} from "@/lib/odoo-api";
+  createRetailStockTransfer,
+  getRetailTransfers,
+  RetailApiError,
+  searchRetailRecords,
+  type RetailTransferLocation,
+} from "@/lib/retail-api";
 
 interface Named {
   id: number;
@@ -26,7 +26,7 @@ interface LineDraft {
 
 export function CreateStockTransferPage({ embedded = false }: { embedded?: boolean }) {
   const router = useRouter();
-  const [locations, setLocations] = useState<OdooTransferLocation[]>([]);
+  const [locations, setLocations] = useState<RetailTransferLocation[]>([]);
   const [noteHint, setNoteHint] = useState<string | null>(null);
   const [fromId, setFromId] = useState("");
   const [toId, setToId] = useState("");
@@ -43,13 +43,13 @@ export function CreateStockTransferPage({ embedded = false }: { embedded?: boole
     setLoading(true);
     setError(null);
     try {
-      const bootstrap = await getOdooTransfers();
+      const bootstrap = await getRetailTransfers();
       setLocations(bootstrap.locations);
       setNoteHint(bootstrap.note || null);
       if (bootstrap.locations[0]) setFromId(String(bootstrap.locations[0].id));
       if (bootstrap.locations[1]) setToId(String(bootstrap.locations[1].id));
     } catch (cause) {
-      setError(cause instanceof OdooApiError ? cause.message : "Could not load transfer locations.");
+      setError(cause instanceof RetailApiError ? cause.message : "Could not load transfer locations.");
     } finally {
       setLoading(false);
     }
@@ -67,7 +67,7 @@ export function CreateStockTransferPage({ embedded = false }: { embedded?: boole
     const timer = setTimeout(() => {
       void (async () => {
         try {
-          const page = await searchOdooRecords<Named>("products", { query: query.trim(), limit: 8 });
+          const page = await searchRetailRecords<Named>("products", { query: query.trim(), limit: 8 });
           setHits(page.items ?? []);
         } catch {
           setHits([]);
@@ -82,7 +82,7 @@ export function CreateStockTransferPage({ embedded = false }: { embedded?: boole
     setSaving(true);
     setError(null);
     try {
-      const created = await createOdooStockTransfer({
+      const created = await createRetailStockTransfer({
         fromLocationId: Number(fromId),
         toLocationId: Number(toId),
         note: note.trim() || undefined,
@@ -93,7 +93,7 @@ export function CreateStockTransferPage({ embedded = false }: { embedded?: boole
         ? `/purchases?tab=transfers&created=${encodeURIComponent(created.name)}`
         : `/purchases?tab=transfers&created=${encodeURIComponent(created.name)}`);
     } catch (cause) {
-      setError(cause instanceof OdooApiError ? cause.message : "Could not create transfer.");
+      setError(cause instanceof RetailApiError ? cause.message : "Could not create transfer.");
     } finally {
       setSaving(false);
     }

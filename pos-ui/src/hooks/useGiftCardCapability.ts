@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { getOdooGiftCards } from "@/lib/odoo-api";
+import { getRetailGiftCards } from "@/lib/retail-api";
 import { useAuth } from "@/lib/auth";
 import { isNativePosHost } from "@/lib/native-pos-host";
 
@@ -22,7 +22,7 @@ export function useGiftCardCapability() {
     void Promise.resolve().then(() => {
       if (cancelled) return null;
       setLoading(true); setError(null);
-      return getOdooGiftCards(undefined, 0, 1);
+      return getRetailGiftCards(undefined, 0, 1);
     }).then((page) => { if (!cancelled && page) setAvailable(page.available); })
       .catch((cause) => { if (!cancelled) { setAvailable(null); setError(cause instanceof Error ? cause.message : "Could not check gift cards"); } })
       .finally(() => { if (!cancelled) setLoading(false); });

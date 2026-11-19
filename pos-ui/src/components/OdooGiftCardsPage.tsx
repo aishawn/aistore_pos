@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { AlertCircle, Gift, LoaderCircle, RefreshCw, Search } from "lucide-react";
 import { AdminPageLayout, AdminSecondaryButton } from "@/components/admin/AdminPageLayout";
-import { getOdooGiftCards, getOrithosSession, type OdooGiftCardRecord } from "@/lib/odoo-api";
+import { getRetailGiftCards, getOrithosSession, type RetailGiftCardRecord } from "@/lib/retail-api";
 import { useDebouncedValue } from "@/hooks/useApi";
 
 const PAGE_SIZE = 40;
@@ -15,7 +15,7 @@ export function OdooGiftCardsPage() {
   const [connected, setConnected] = useState<boolean | null>(null);
   const [available, setAvailable] = useState<boolean | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-  const [items, setItems] = useState<OdooGiftCardRecord[]>([]);
+  const [items, setItems] = useState<RetailGiftCardRecord[]>([]);
   const [query, setQuery] = useState("");
   const debouncedQuery = useDebouncedValue(query, 250);
   const [offset, setOffset] = useState(0);
@@ -34,7 +34,7 @@ export function OdooGiftCardsPage() {
     setLoading(true);
     setError(null);
     try {
-      const page = await getOdooGiftCards(debouncedQuery, offset, PAGE_SIZE);
+      const page = await getRetailGiftCards(debouncedQuery, offset, PAGE_SIZE);
       if (request !== revision.current) return;
       setAvailable(page.available);
       setMessage(page.message ?? null);

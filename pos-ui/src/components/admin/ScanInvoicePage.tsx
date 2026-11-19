@@ -18,7 +18,7 @@ import {
   type InvoiceScanPayload,
   type InvoiceScanSourceType,
 } from "@/lib/api";
-import { getOdooSession, searchOdooRecords } from "@/lib/odoo-api";
+import { getRetailSession, searchRetailRecords } from "@/lib/retail-api";
 import { InvoiceWorkflowSteps } from "@/components/admin/InvoiceWorkflowSteps";
 
 interface Named {
@@ -90,9 +90,9 @@ export function ScanInvoicePage() {
     setSuppliersLoading(true);
     setSuppliersError(null);
     try {
-      const session = await getOdooSession();
+      const session = await getRetailSession();
       if (!session) throw new Error("Connect your Orithos staff account to load suppliers.");
-      const page = await searchOdooRecords<Named>("suppliers", { limit: 100 });
+      const page = await searchRetailRecords<Named>("suppliers", { limit: 100 });
       setSuppliers(page.items);
     } catch (cause) {
       setSuppliers([]);
@@ -106,9 +106,9 @@ export function ScanInvoicePage() {
     setOutletsLoading(true);
     setOutletsError(null);
     try {
-      const session = await getOdooSession();
+      const session = await getRetailSession();
       if (!session) throw new Error("Connect your Orithos staff account to load outlets.");
-      const page = await searchOdooRecords<Named>("outlets", { limit: 100 });
+      const page = await searchRetailRecords<Named>("outlets", { limit: 100 });
       setOutlets(page.items);
     } catch (cause) {
       setOutlets([]);

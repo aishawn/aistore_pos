@@ -6,7 +6,7 @@ import Link from "next/link";
 import { X } from "lucide-react";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
 import { api, type Page } from "@/lib/api";
-import type { OdooPricelistRecord } from "@/lib/odoo-api";
+import type { RetailPricelistRecord } from "@/lib/retail-api";
 
 type PriceListDetail = {
   id: number;
@@ -20,7 +20,7 @@ type PriceListDetail = {
   }>;
 };
 
-export function PricelistDetails({ list, onClose }: { list: OdooPricelistRecord; onClose: () => void }) {
+export function PricelistDetails({ list, onClose }: { list: RetailPricelistRecord; onClose: () => void }) {
   const [customerOffset, setCustomerOffset] = useState(0);
   const [detail, setDetail] = useState<PriceListDetail | null>(null);
   const [customers, setCustomers] = useState<Array<{ id: number; name: string }>>([]);

@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { getOdooCustomerGroups, getOdooPricelists } from "@/lib/odoo-api";
+import { getRetailCustomerGroups, getRetailPricelists } from "@/lib/retail-api";
 import { useDebouncedValue } from "@/hooks/useApi";
 
 export function CustomerLookup({ kind, values, onChange, multiple = false, label, initialOptions = [], includeNone = false, noneSelected = false, onNoneChange }: {
@@ -18,7 +18,7 @@ export function CustomerLookup({ kind, values, onChange, multiple = false, label
   const [retry, setRetry] = useState(0);
   useEffect(() => {
     let cancelled = false;
-    const load: (query: string, offset: number, limit: number) => Promise<{ items: { id: number; name: string }[]; hasNext: boolean }> = kind === "groups" ? getOdooCustomerGroups : getOdooPricelists;
+    const load: (query: string, offset: number, limit: number) => Promise<{ items: { id: number; name: string }[]; hasNext: boolean }> = kind === "groups" ? getRetailCustomerGroups : getRetailPricelists;
     void Promise.resolve().then(() => {
       if (cancelled) return null;
       setBusy(true); setError(null);

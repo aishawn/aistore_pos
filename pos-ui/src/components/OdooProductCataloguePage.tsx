@@ -8,22 +8,22 @@ import { createPortal } from "react-dom";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AlertCircle, ArrowDown, ArrowUp, ArrowUpDown, Check, Download, Eye, FileUp, LoaderCircle, PackageSearch, Pencil, Plus, Printer, RefreshCw, Search, Tag, Trash2, X } from "lucide-react";
 import {
-  createOdooProduct,
-  deleteOdooProduct,
-  getOdooPosBootstrap,
+  createRetailProduct,
+  deleteRetailProduct,
+  getRetailPosBootstrap,
   getProductFilterOptions,
   getOrithosSession,
-  importOdooProducts,
-  OdooApiError,
-  searchOdooRecords,
-  updateOdooProduct,
-  type OdooPosCategoryRecord,
-  type OdooPage,
-  type OdooProductRecord,
+  importRetailProducts,
+  RetailApiError,
+  searchRetailRecords,
+  updateRetailProduct,
+  type RetailPosCategoryRecord,
+  type RetailPage,
+  type RetailProductRecord,
   type ProductCatalogueFilters,
   type ProductFilterOptions,
-} from "@/lib/odoo-api";
-import { formatStoreEpoch } from "@/lib/odoo-date";
+} from "@/lib/retail-api";
+import { formatStoreEpoch } from "@/lib/retail-date";
 import { ReportColumnChooser } from "@/components/admin/ReportColumnChooser";
 import { exportStoreProductsCsv } from "@/lib/product-export";
 import { parseProductCsv, type ProductImportRow } from "@/lib/product-csv";
@@ -64,7 +64,7 @@ function parseFilterOptionId(id: string) {
   return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
-function productStatusBadge(product: OdooProductRecord) {
+function productStatusBadge(product: RetailProductRecord) {
   const raw = String(product.shopfront_source_status || (product.active ? "ACTIVE" : "NOT_ACTIVE")).toUpperCase();
   const status = raw === "INACTIVE" || raw === "ARCHIVED" ? "NOT_ACTIVE" : raw;
   const label = PRODUCT_STATUS_OPTIONS.find((option) => option.value === status)?.label ?? status;
@@ -91,7 +91,7 @@ function performanceSourceLabel(source?: string | null) {
   return source;
 }
 
-function ShopfrontCostDetails({ product, showOdooCost = true, compact = false }: { product: OdooProductRecord; showOdooCost?: boolean; compact?: boolean }) {
+function ShopfrontCostDetails({ product, showOdooCost = true, compact = false }: { product: RetailProductRecord; showOdooCost?: boolean; compact?: boolean }) {
   const sourceCost = shopfrontCostValue(product.shopfront_cost);
   const caseQuantity = typeof product.shopfront_case_quantity === "number" && product.shopfront_case_quantity > 0 ? product.shopfront_case_quantity : null;
   const status = product.shopfront_cost_status ?? (product.shopfront_data_status !== "available" ? "unavailable" : sourceCost === null ? "missing" : "available");
@@ -125,7 +125,7 @@ function shopfrontInventoryHeadline(
   return null;
 }
 
-function ShopfrontInventoryDetails({ product }: { product: OdooProductRecord }) {
+function ShopfrontInventoryDetails({ product }: { product: RetailProductRecord }) {
   const sourceQty = typeof product.shopfront_quantity === "number" && Number.isFinite(product.shopfront_quantity) ? product.shopfront_quantity : null;
   const status = product.shopfront_inventory_status ?? (product.shopfront_data_status !== "available" ? "unavailable" : sourceQty === null ? "missing" : "available");
   const trackInventory = product.shopfront_track_inventory;
@@ -173,9 +173,9 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
   const [connectionRetryKey, setConnectionRetryKey] = useState(0);
   const [checkingConnection, setCheckingConnection] = useState(true);
   const [exportBusy, setExportBusy] = useState(false);
-  const [items, setItems] = useState<OdooProductRecord[]>([]);
-  const [printItems, setPrintItems] = useState<OdooProductRecord[] | null>(null);
-  const [categories, setCategories] = useState<OdooPosCategoryRecord[]>([]);
+  const [items, setItems] = useState<RetailProductRecord[]>([]);
+  const [printItems, setPrintItems] = useState<RetailProductRecord[] | null>(null);
+  const [categories, setCategories] = useState<RetailPosCategoryRecord[]>([]);
   const [query, setQuery] = useState(() => searchParams.get("q") ?? "");
   const [debouncedQuery, setDebouncedQuery] = useState(() => searchParams.get("q") ?? "");
   const [categoryId, setCategoryId] = useState<number | null>(null);
@@ -197,7 +197,7 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
   const [catalogueView, setCatalogueView] = useState<CatalogueView>(() =>
     CATALOGUE_VIEWS.some((view) => view.value === requestedView) ? requestedView as CatalogueView : "all",
   );
-  const [viewingProduct, setViewingProduct] = useState<OdooProductRecord | null>(null);
+  const [viewingProduct, setViewingProduct] = useState<RetailProductRecord | null>(null);
   const [sortBy, setSortBy] = useState<InventorySort>(() => {
     if (!inventoryReport) return "name";
     const value = searchParams.get("sort");
@@ -242,7 +242,7 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
   }, [inventoryReport, searchParams]);
   const categoriesChanged = useCallback(() => { setCategoryRetryKey((value) => value + 1); setRefreshKey((value) => value + 1); }, []);
   const stockApplied = useCallback(() => setRefreshKey((value) => value + 1), []);
-  const [editingProduct, setEditingProduct] = useState<OdooProductRecord | null>(null);
+  const [editingProduct, setEditingProduct] = useState<RetailProductRecord | null>(null);
   const [categoriesTouched, setCategoriesTouched] = useState(false);
   const [savingProduct, setSavingProduct] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
@@ -421,7 +421,7 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
     if (connected !== true) return;
     if (dialog === "cost-reconciliation") return;
     let cancelled = false;
-    void getOdooPosBootstrap().then((bootstrap) => {
+    void getRetailPosBootstrap().then((bootstrap) => {
       if (cancelled) return;
       const activeConfig = bootstrap.configs.find((config) => config.session) ?? bootstrap.configs[0];
       if (activeConfig?.timezone) setStoreTimezone(activeConfig.timezone);
@@ -434,10 +434,10 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
   async function loadAllInventoryMatches() {
     if (!snapshotId.current) throw new Error("Inventory snapshot is not ready. Refresh and try again.");
     const categoryIds = categoryId ? (categoryGroups.find((group) => group.some((item) => item.id === categoryId))?.map((item) => item.id) ?? [categoryId]) : undefined;
-    const matches: OdooProductRecord[] = [];
+    const matches: RetailProductRecord[] = [];
     let offset = 0;
     for (;;) {
-      const page = await searchOdooRecords<OdooProductRecord>("products", {
+      const page = await searchRetailRecords<RetailProductRecord>("products", {
         query: debouncedQuery, limit: 100, offset, categoryIds, catalogueView,
         inventoryReport: true, inventoryFilter, sortBy, sortDirection, snapshotId: snapshotId.current,
       });
@@ -449,14 +449,14 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
     return matches;
   }
 
-  function downloadInventoryCsv(products: OdooProductRecord[]) {
+  function downloadInventoryCsv(products: RetailProductRecord[]) {
     const labels: Record<string, string> = { product: "Product", category: "Category", cost: "Pack cost", barcode: "Barcode", sku: "SKU", quantity: "On hand", odoo_quantity: "Orithos inventory", unit: "Unit", price: "Orithos sale price (AUD)", pos: "POS" };
     const cell = (value: string | number) => {
       const text = String(value);
       const safe = /^[=+\-@\t\r]/.test(text) ? `'${text}` : text;
       return `"${safe.replaceAll('"', '""')}"`;
     };
-    const values = (product: OdooProductRecord): Record<string, string | number> => ({
+    const values = (product: RetailProductRecord): Record<string, string | number> => ({
       product: friendlyProductName(product.display_name || product.name),
       category: typeof product.shopfront_source_category === "string" ? product.shopfront_source_category : product.pos_categ_ids.map((id) => categoryNames.get(id) ?? `Category #${id}`).join(", ") || "Uncategorised",
       barcode: product.barcode || "", sku: product.default_code || "", quantity: product.shopfront_quantity ?? "", odoo_quantity: product.qty_available,
@@ -519,7 +519,7 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
     setExpired(false);
     setError(null);
     try {
-      const page = await searchOdooRecords<OdooProductRecord>("products", {
+      const page = await searchRetailRecords<RetailProductRecord>("products", {
         query: debouncedQuery,
         limit: PAGE_SIZE,
         offset: append ? nextOffset.current : 0,
@@ -553,7 +553,7 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
     } catch (cause) {
       if (revision === requestRevision.current) {
         setError(cause instanceof Error ? cause.message : "Could not load Orithos products.");
-        setExpired(cause instanceof OdooApiError && cause.status === 409);
+        setExpired(cause instanceof RetailApiError && cause.status === 409);
       }
     } finally {
       if (revision === requestRevision.current) {
@@ -628,9 +628,9 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
     void (async () => {
       const [categoryPages, options] = await Promise.all([
         (async () => {
-          const all: OdooPosCategoryRecord[] = [];
+          const all: RetailPosCategoryRecord[] = [];
           for (let offset = 0; ; offset += 100) {
-            const page = await searchOdooRecords<OdooPosCategoryRecord>("posCategories", { limit: 100, offset });
+            const page = await searchRetailRecords<RetailPosCategoryRecord>("posCategories", { limit: 100, offset });
             all.push(...page.items);
             if (!page.hasNext) return all;
             if (!page.items.length) throw new Error("Category pagination is unavailable.");
@@ -714,7 +714,7 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
     setDeletingProduct(true);
     setEditError(null);
     try {
-      await deleteOdooProduct(editingProduct.id);
+      await deleteRetailProduct(editingProduct.id);
       setEditingProduct(null);
       setRefreshKey((value) => value + 1);
     } catch (cause) {
@@ -748,7 +748,7 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
         ...(categoriesTouched ? { pos_categ_ids: categoryIds } : {}),
         ...(imageFile instanceof File && imageFile.size ? { image_1920: await prepareProductImage(imageFile) } : {}),
       };
-      await updateOdooProduct(editingProduct.id, values);
+      await updateRetailProduct(editingProduct.id, values);
       setEditingProduct(null);
       setRefreshKey((value) => value + 1);
     } catch (cause) {
@@ -776,7 +776,7 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
     setCreateError(null);
     try {
       const imageFile = form.get("product_image");
-      await createOdooProduct({
+      await createRetailProduct({
         name,
         list_price: price,
         default_code: String(form.get("default_code") ?? "").trim(),
@@ -832,7 +832,7 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
     setImportErrors([]);
     setImportResult(null);
     try {
-      const result = await importOdooProducts(importRows);
+      const result = await importRetailProducts(importRows);
       setImportResult(result);
       if (result.created > 0) setRefreshKey((value) => value + 1);
     } catch (cause) {

@@ -26,13 +26,13 @@ import {
   Trash2,
 } from "lucide-react";
 import {
-  archiveOdooPricelist,
-  createOdooPricelist,
-  getOdooPricelists,
+  archiveRetailPricelist,
+  createRetailPricelist,
+  getRetailPricelists,
   getOrithosSession,
-  updateOdooPricelist,
-  type OdooPricelistRecord,
-} from "@/lib/odoo-api";
+  updateRetailPricelist,
+  type RetailPricelistRecord,
+} from "@/lib/retail-api";
 import { useDebouncedValue } from "@/hooks/useApi";
 
 const PAGE_SIZE = 40;
@@ -40,10 +40,10 @@ const PAGE_SIZE = 40;
 export function OdooPricelistsPage({ embedded = false }: { embedded?: boolean } = {}) {
   const { hasPermission } = useAuth();
   const canManage = hasPermission("customers.pricelists");
-  const [selected, setSelected] = useState<OdooPricelistRecord | null>(null);
+  const [selected, setSelected] = useState<RetailPricelistRecord | null>(null);
   const revision = useRef(0);
   const [connected, setConnected] = useState<boolean | null>(null);
-  const [items, setItems] = useState<OdooPricelistRecord[]>([]);
+  const [items, setItems] = useState<RetailPricelistRecord[]>([]);
   const [total, setTotal] = useState(0);
   const [query, setQuery] = useState("");
   const debouncedQuery = useDebouncedValue(query, 250);
@@ -53,11 +53,11 @@ export function OdooPricelistsPage({ embedded = false }: { embedded?: boolean } 
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editing, setEditing] = useState<OdooPricelistRecord | null>(null);
+  const [editing, setEditing] = useState<RetailPricelistRecord | null>(null);
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-  const [archiving, setArchiving] = useState<OdooPricelistRecord | null>(null);
+  const [archiving, setArchiving] = useState<RetailPricelistRecord | null>(null);
 
   useDialogFocus(dialogOpen, () => { if (!busy) setDialogOpen(false); });
   useDialogFocus(Boolean(archiving), () => { if (!busy) setArchiving(null); });
@@ -72,7 +72,7 @@ export function OdooPricelistsPage({ embedded = false }: { embedded?: boolean } 
     setLoading(true);
     setError(null);
     try {
-      const page = await getOdooPricelists(debouncedQuery, offset, PAGE_SIZE);
+      const page = await getRetailPricelists(debouncedQuery, offset, PAGE_SIZE);
       if (request !== revision.current) return;
       setItems(page.items);
       setTotal(page.total);
@@ -95,7 +95,7 @@ export function OdooPricelistsPage({ embedded = false }: { embedded?: boolean } 
     setDialogOpen(true);
   }
 
-  function openEdit(list: OdooPricelistRecord) {
+  function openEdit(list: RetailPricelistRecord) {
     setEditing(list);
     setName(list.name);
     setFormError(null);
@@ -108,8 +108,8 @@ export function OdooPricelistsPage({ embedded = false }: { embedded?: boolean } 
     setBusy(true);
     setFormError(null);
     try {
-      if (editing) await updateOdooPricelist(editing.id, { name: name.trim() });
-      else await createOdooPricelist(name.trim());
+      if (editing) await updateRetailPricelist(editing.id, { name: name.trim() });
+      else await createRetailPricelist(name.trim());
       setDialogOpen(false);
       setEditing(null);
       setName("");
@@ -126,7 +126,7 @@ export function OdooPricelistsPage({ embedded = false }: { embedded?: boolean } 
     setBusy(true);
     setFormError(null);
     try {
-      await archiveOdooPricelist(archiving.id);
+      await archiveRetailPricelist(archiving.id);
       setArchiving(null);
       setRefreshKey((value) => value + 1);
     } catch (cause) {

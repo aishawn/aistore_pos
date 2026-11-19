@@ -13,19 +13,19 @@ import { FilterSelect } from "@/components/admin/FilterSelect";
 import { useSearchParams } from "next/navigation";
 import { Archive, AlertCircle, Check, Ellipsis, LoaderCircle, Mail, Pencil, Phone, Plus, RefreshCw, Search, UserRound, X } from "lucide-react";
 import {
-  createOdooCustomer,
-  archiveOdooCustomer,
-  getOdooCustomerGroups,
-  getOdooPricelists,
+  createRetailCustomer,
+  archiveRetailCustomer,
+  getRetailCustomerGroups,
+  getRetailPricelists,
   getOrithosSession,
-  searchOdooRecords,
-  updateOdooCustomer,
-  type OdooCustomerGroupRecord,
-  type OdooCustomerRecord,
-  type OdooPricelistRecord,
-} from "@/lib/odoo-api";
+  searchRetailRecords,
+  updateRetailCustomer,
+  type RetailCustomerGroupRecord,
+  type RetailCustomerRecord,
+  type RetailPricelistRecord,
+} from "@/lib/retail-api";
 import { Sparkline } from "@/components/admin/Sparkline";
-import { formatStoreEpoch } from "@/lib/odoo-date";
+import { formatStoreEpoch } from "@/lib/retail-date";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
 import { CustomerViewPage } from "@/components/admin/CustomerViewPage";
 
@@ -63,13 +63,13 @@ export function OdooCustomerDirectoryPage() {
   const [priceListFilter, setPriceListFilter] = useState("");
   const [selectedPriceIds, setSelectedPriceIds] = useState<number[]>([]);
   const [groupsOpen, setGroupsOpen] = useState(false);
-  const [detail, setDetail] = useState<OdooCustomerRecord | null>(null);
+  const [detail, setDetail] = useState<RetailCustomerRecord | null>(null);
   useDialogFocus(Boolean(detail), () => setDetail(null));
   useEffect(() => { if (searchParams.get("manage") === "groups" && canGroups) setGroupsOpen(true); }, [searchParams, canGroups]);
   const [connected, setConnected] = useState<boolean | null>(null);
   const [connectionRetryKey, setConnectionRetryKey] = useState(0);
   const [checkingConnection, setCheckingConnection] = useState(true);
-  const [items, setItems] = useState<OdooCustomerRecord[]>([]);
+  const [items, setItems] = useState<RetailCustomerRecord[]>([]);
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const nextOffset = useRef(0);
@@ -86,8 +86,8 @@ export function OdooCustomerDirectoryPage() {
   const [storeTimezone, setStoreTimezone] = useState("Australia/Adelaide");
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
-  const [pricelists, setPricelists] = useState<OdooPricelistRecord[]>([]);
-  const [groups, setGroups] = useState<OdooCustomerGroupRecord[]>([]);
+  const [pricelists, setPricelists] = useState<RetailPricelistRecord[]>([]);
+  const [groups, setGroups] = useState<RetailCustomerGroupRecord[]>([]);
   const [lookupError, setLookupError] = useState<string | null>(null);
   useDialogFocus(groupsOpen, () => { setGroupsOpen(false); setRefreshKey((value) => value + 1); });
 
@@ -98,7 +98,7 @@ export function OdooCustomerDirectoryPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
-  const [editingCustomer, setEditingCustomer] = useState<OdooCustomerRecord | null>(null);
+  const [editingCustomer, setEditingCustomer] = useState<RetailCustomerRecord | null>(null);
   const [archivingCustomerId, setArchivingCustomerId] = useState<number | null>(null);
   const [selectedGroupIds, setSelectedGroupIds] = useState<number[]>([]);
   useEffect(() => {
@@ -165,8 +165,8 @@ export function OdooCustomerDirectoryPage() {
     setLookupError(null);
     try {
       const [pricePage, groupPage] = await Promise.all([
-        getOdooPricelists(undefined, 0, 100),
-        getOdooCustomerGroups(undefined, 0, 100),
+        getRetailPricelists(undefined, 0, 100),
+        getRetailCustomerGroups(undefined, 0, 100),
       ]);
       setPricelists(pricePage.items.filter((item) => item.active));
       setGroups(groupPage.items);
@@ -200,7 +200,7 @@ export function OdooCustomerDirectoryPage() {
     if (append) setLoadingMore(true); else setLoading(true);
     setError(null);
     try {
-      const page = await searchOdooRecords<OdooCustomerRecord>("customers", {
+      const page = await searchRetailRecords<RetailCustomerRecord>("customers", {
         query: debouncedQuery,
         limit: PAGE_SIZE,
         offset,
@@ -248,7 +248,7 @@ export function OdooCustomerDirectoryPage() {
     void loadLookups();
   }
 
-  function openEdit(customer: OdooCustomerRecord) {
+  function openEdit(customer: RetailCustomerRecord) {
     setEditingCustomer(customer);
     setSelectedPriceIds(Array.isArray(customer.property_product_pricelist) ? [customer.property_product_pricelist[0]] : []);
     setSelectedGroupIds(Array.isArray(customer.category_id) ? customer.category_id : []);
@@ -280,9 +280,9 @@ export function OdooCustomerDirectoryPage() {
         category_id: selectedGroupIds,
       };
       if (editingCustomer) {
-        await updateOdooCustomer(editingCustomer.id, values);
+        await updateRetailCustomer(editingCustomer.id, values);
       } else {
-        await createOdooCustomer(values);
+        await createRetailCustomer(values);
       }
       setCreateOpen(false);
       setEditingCustomer(null);
@@ -295,12 +295,12 @@ export function OdooCustomerDirectoryPage() {
     }
   }
 
-  async function archiveCustomer(customer: OdooCustomerRecord) {
+  async function archiveCustomer(customer: RetailCustomerRecord) {
     if (archivingCustomerId !== null || !window.confirm(`Archive ${customer.name}? It will no longer appear in the active customer directory.`)) return;
     setArchivingCustomerId(customer.id);
     setError(null);
     try {
-      await archiveOdooCustomer(customer.id);
+      await archiveRetailCustomer(customer.id);
       if (detail?.id === customer.id) setDetail(null);
       setRefreshKey((value) => value + 1);
     } catch (cause) {
@@ -310,7 +310,7 @@ export function OdooCustomerDirectoryPage() {
     }
   }
 
-  const groupName = (customer: OdooCustomerRecord) => {
+  const groupName = (customer: RetailCustomerRecord) => {
     if (customer.category_name) return customer.category_name;
     const ids = customer.category_id;
     if (!ids?.length) return "—";
@@ -318,7 +318,7 @@ export function OdooCustomerDirectoryPage() {
     return names.length ? names.join(", ") : `${ids.length} group${ids.length === 1 ? "" : "s"}`;
   };
 
-  const contactCell = (customer: OdooCustomerRecord) => {
+  const contactCell = (customer: RetailCustomerRecord) => {
     const phone = customer.phone || "";
     const email = customer.email || "";
     if (!phone && !email) return "—";

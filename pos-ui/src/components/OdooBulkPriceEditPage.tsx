@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { RefreshCw, X } from "lucide-react";
 import { api } from "@/lib/api";
-import { searchOdooRecords, updateOdooProduct, type OdooProductRecord } from "@/lib/odoo-api";
+import { searchRetailRecords, updateRetailProduct, type RetailProductRecord } from "@/lib/retail-api";
 import { friendlyProductName } from "@/lib/product-display-name";
 
 const money = new Intl.NumberFormat("en-AU", { style: "currency", currency: "AUD" });
@@ -15,7 +15,7 @@ export function OdooBulkPriceEditPage() {
   const params = useSearchParams();
   const [search, setSearch] = useState(params.get("search") ?? "");
   const [offset, setOffset] = useState(0);
-  const [products, setProducts] = useState<OdooProductRecord[]>([]);
+  const [products, setProducts] = useState<RetailProductRecord[]>([]);
   const [hasNext, setHasNext] = useState(false);
   const [draft, setDraft] = useState<Record<number, string>>({});
   const [outcomes, setOutcomes] = useState<Record<number, Outcome>>({});
@@ -31,7 +31,7 @@ export function OdooBulkPriceEditPage() {
     const current = ++revision.current;
     setLoading(true); setError(null); setConfirm(false);
     try {
-      const page = await searchOdooRecords<OdooProductRecord>("products", { query: search, limit: 30, offset });
+      const page = await searchRetailRecords<RetailProductRecord>("products", { query: search, limit: 30, offset });
       if (current !== revision.current) return;
       setProducts(page.items); setHasNext(Boolean(page.hasNext)); setDraft({}); setOutcomes({});
       const id = Number(params.get("productId"));
@@ -67,7 +67,7 @@ export function OdooBulkPriceEditPage() {
         const next = Number(draft[product.id]);
         let outcome: Outcome;
         try {
-          await updateOdooProduct(product.id, { list_price: next });
+          await updateRetailProduct(product.id, { list_price: next });
           outcome = { state: "confirmed", message: "Saved and read back from Orithos." };
         } catch (cause) {
           try {

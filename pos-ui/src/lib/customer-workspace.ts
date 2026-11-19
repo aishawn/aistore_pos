@@ -1,4 +1,4 @@
-import type { OdooCustomerRecord } from "./odoo-api";
+import type { RetailCustomerRecord } from "./retail-api";
 
 export type CustomerSource = {
   id: number; store_key: string; source_id: string; client_id: string | false;
@@ -13,7 +13,7 @@ export type CustomerTransaction = {
   payments: { id: number; reference: string; amount: number | null; status: string }[];
 };
 export type CustomerWorkspace = {
-  customer?: OdooCustomerRecord; groups?: string[]; source?: CustomerSource | null;
+  customer?: RetailCustomerRecord; groups?: string[]; source?: CustomerSource | null;
   timezone?: string; currency?: string; canBalance?: boolean;
   items?: CustomerTransaction[]; hasNext?: boolean; total?: number; state?: "ready" | "unmapped" | "not_synced";
   activities?: { id: number; create_date: string; kind: string; summary: string; create_uid: [number, string] | false }[];

@@ -1,4 +1,7 @@
-/** Orithos POS client: legacy Odoo-shaped types and function names over native `api.ts` endpoints. */
+/**
+ * Legacy Orithos POS client (Odoo-shaped field names).
+ * @deprecated Prefer `@/lib/retail-api` for UI code.
+ */
 import { cachedNativeRead, clearNativeReadCache } from "./native-read-cache";
 import {
   ApiError,

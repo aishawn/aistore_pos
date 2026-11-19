@@ -7,13 +7,13 @@ import { AlertCircle, Check, ChevronLeft, ChevronRight, LoaderCircle, Pencil, Pl
 import { useDialogFocus } from "@/hooks/useDialogFocus";
 import { useAuth } from "@/lib/auth";
 import {
-  createOdooCustomerGroup,
-  deleteOdooCustomerGroup,
-  getOdooCustomerGroups,
+  createRetailCustomerGroup,
+  deleteRetailCustomerGroup,
+  getRetailCustomerGroups,
   getOrithosSession,
-  updateOdooCustomerGroup,
-  type OdooCustomerGroupRecord,
-} from "@/lib/odoo-api";
+  updateRetailCustomerGroup,
+  type RetailCustomerGroupRecord,
+} from "@/lib/retail-api";
 
 const PAGE_SIZE = 40;
 
@@ -25,17 +25,17 @@ export function OdooCustomerGroupsPage({ onClose }: { onClose?: () => void } = {
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [offset, setOffset] = useState(0);
-  const [groups, setGroups] = useState<OdooCustomerGroupRecord[]>([]);
+  const [groups, setGroups] = useState<RetailCustomerGroupRecord[]>([]);
   const [hasNext, setHasNext] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [editorOpen, setEditorOpen] = useState(false);
-  const [editing, setEditing] = useState<OdooCustomerGroupRecord | null>(null);
+  const [editing, setEditing] = useState<RetailCustomerGroupRecord | null>(null);
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-  const [deleting, setDeleting] = useState<OdooCustomerGroupRecord | null>(null);
+  const [deleting, setDeleting] = useState<RetailCustomerGroupRecord | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const requestRevision = useRef(0);
   const queryPending = query.trim() !== debouncedQuery;
@@ -73,7 +73,7 @@ export function OdooCustomerGroupsPage({ onClose }: { onClose?: () => void } = {
     setLoading(true);
     setError(null);
     try {
-      const page = await getOdooCustomerGroups(debouncedQuery, offset, PAGE_SIZE);
+      const page = await getRetailCustomerGroups(debouncedQuery, offset, PAGE_SIZE);
       if (revision !== requestRevision.current) return;
       setGroups(page.items);
       setHasNext(page.hasNext);
@@ -102,7 +102,7 @@ export function OdooCustomerGroupsPage({ onClose }: { onClose?: () => void } = {
     setEditorOpen(true);
   }
 
-  function openEdit(group: OdooCustomerGroupRecord) {
+  function openEdit(group: RetailCustomerGroupRecord) {
     setEditing(group);
     setName(group.name);
     setFormError(null);
@@ -116,8 +116,8 @@ export function OdooCustomerGroupsPage({ onClose }: { onClose?: () => void } = {
     setBusy(true);
     setFormError(null);
     try {
-      if (editing) await updateOdooCustomerGroup(editing.id, nextName);
-      else await createOdooCustomerGroup(nextName);
+      if (editing) await updateRetailCustomerGroup(editing.id, nextName);
+      else await createRetailCustomerGroup(nextName);
       closeEditor();
       setOffset(0);
       setRefreshKey((value) => value + 1);
@@ -133,7 +133,7 @@ export function OdooCustomerGroupsPage({ onClose }: { onClose?: () => void } = {
     setBusy(true);
     setDeleteError(null);
     try {
-      await deleteOdooCustomerGroup(deleting.id);
+      await deleteRetailCustomerGroup(deleting.id);
       setDeleting(null);
       setRefreshKey((value) => value + 1);
     } catch (cause) {

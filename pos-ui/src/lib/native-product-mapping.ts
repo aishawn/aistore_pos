@@ -1,4 +1,4 @@
-import type { OdooProductRecord } from "./odoo-api";
+import type { RetailProductRecord } from "./retail-api";
 
 export type NativeProductRow = {
   id: number;
@@ -23,7 +23,7 @@ export type NativeProductRow = {
   performance30d?: Array<number | string> | null;
 };
 
-export function mapNativeProduct(product: NativeProductRow): OdooProductRecord {
+export function mapNativeProduct(product: NativeProductRow): RetailProductRecord {
   const barcode = product.barcodes?.find((row) => row.code)?.code || false;
   const priceKnown = product.price != null && Number.isFinite(Number(product.price));
   const price = priceKnown ? Number(product.price) : 0;

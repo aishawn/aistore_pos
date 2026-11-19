@@ -1,4 +1,4 @@
-import type { OdooPosCategoryRecord } from "@/lib/odoo-api";
+import type { RetailPosCategoryRecord } from "@/lib/retail-api";
 
 export interface ProductImportRow {
   line: number;
@@ -83,7 +83,7 @@ const HEADER_ALIASES: Record<string, string[]> = {
   category: ["category", "poscategory", "categoryname", "类别", "分类", "商品分类"],
 };
 
-export function parseProductCsv(input: string, categories: OdooPosCategoryRecord[]): ProductCsvResult {
+export function parseProductCsv(input: string, categories: RetailPosCategoryRecord[]): ProductCsvResult {
   const parsed = parseRecords(input);
   if (parsed.error) return { rows: [], errors: [parsed.error] };
   if (parsed.records.length < 2) return { rows: [], errors: ["Add a header row and at least one product row."] };
@@ -98,7 +98,7 @@ export function parseProductCsv(input: string, categories: OdooPosCategoryRecord
   if (columns.price < 0) errors.push("Missing required column: Sale Price (售价).");
   if (errors.length) return { rows: [], errors };
 
-  const categoriesByName = new Map<string, OdooPosCategoryRecord[]>();
+  const categoriesByName = new Map<string, RetailPosCategoryRecord[]>();
   for (const category of categories) {
     const label = normaliseHeader(category.name);
     categoriesByName.set(label, [...(categoriesByName.get(label) ?? []), category]);

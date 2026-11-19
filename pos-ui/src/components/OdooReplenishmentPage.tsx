@@ -15,9 +15,9 @@ import {
   Store,
   X,
 } from "lucide-react";
-import { createOdooDraftRfq, getOdooSuppliers, type OdooDraftRfq, type OdooSupplierOption } from "@/lib/odoo-api";
+import { createRetailDraftRfq, getRetailSuppliers, type RetailDraftRfq, type RetailSupplierOption } from "@/lib/retail-api";
 import { appendReplenishmentAudit, readReplenishmentAudit, type ReplenishmentAuditEntry } from "@/lib/replenishment-audit";
-import { formatOdooDateTime, formatStoreEpoch } from "@/lib/odoo-date";
+import { formatStoreDateTime, formatStoreEpoch } from "@/lib/retail-date";
 import {
   friendlyProductName,
   truncateSku,
@@ -218,12 +218,12 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
   const [rfqOpen, setRfqOpen] = useState(false);
   const [rfqLoadingSuppliers, setRfqLoadingSuppliers] = useState(false);
   const [rfqSubmitting, setRfqSubmitting] = useState(false);
-  const [rfqSuppliers, setRfqSuppliers] = useState<OdooSupplierOption[]>([]);
+  const [rfqSuppliers, setRfqSuppliers] = useState<RetailSupplierOption[]>([]);
   const [rfqSupplierId, setRfqSupplierId] = useState("");
   const [rfqSupplierError, setRfqSupplierError] = useState<string | null>(null);
   const [rfqLines, setRfqLines] = useState<DraftRfqLine[]>([]);
   const [rfqError, setRfqError] = useState<string | null>(null);
-  const [createdRfq, setCreatedRfq] = useState<OdooDraftRfq | null>(null);
+  const [createdRfq, setCreatedRfq] = useState<RetailDraftRfq | null>(null);
   const [auditEntries, setAuditEntries] = useState<ReplenishmentAuditEntry[]>([]);
   const [expandedReasonId, setExpandedReasonId] = useState<number | null>(null);
   const [storeTimezone, setStoreTimezone] = useState("Australia/Adelaide");
@@ -467,7 +467,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
     setRfqSuppliers([]);
     setRfqSupplierId("");
     try {
-      const suppliers = await getOdooSuppliers();
+      const suppliers = await getRetailSuppliers();
       if (revision !== rfqSupplierRevision.current) return;
       setRfqSuppliers(suppliers);
       if (suppliers.length === 1) setRfqSupplierId(String(suppliers[0].id));
@@ -504,7 +504,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
     setRfqSubmitting(true);
     setRfqError(null);
     try {
-      const result = await createOdooDraftRfq({
+      const result = await createRetailDraftRfq({
         requestId: rfqRequestId.current,
         supplierId,
         coverageDays,
@@ -589,7 +589,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
           </div>
           <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[var(--oh-muted)]">
             <span>{planCoverageDays}-day coverage</span>
-            {data?.generatedAt ? <span>· Updated {formatOdooDateTime(data.generatedAt, storeTimezone)}</span> : null}
+            {data?.generatedAt ? <span>· Updated {formatStoreDateTime(data.generatedAt, storeTimezone)}</span> : null}
             <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${data?.inventoryHistory?.status === "FRESH" ? "bg-emerald-50 text-emerald-800" : "bg-amber-50 text-amber-900"}`}>
               Inventory {data?.inventoryHistory?.status === "FRESH" ? "OK" : "check"}
             </span>
@@ -1051,7 +1051,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
                   <div>
                     <p className="font-medium text-[var(--oh-text)]">{entry.rfqName} · {entry.supplierName}</p>
                     <p className="mt-0.5 text-xs text-[var(--oh-muted)]">
-                      {formatOdooDateTime(entry.createdAt, storeTimezone)}
+                      {formatStoreDateTime(entry.createdAt, storeTimezone)}
                       {" · "}{entry.lines.length} lines · {adopted} kept as suggested · {edited} edited · cover {entry.coverageDays}d
                     </p>
                   </div>

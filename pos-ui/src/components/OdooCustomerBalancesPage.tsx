@@ -9,12 +9,12 @@ import { useDialogFocus } from "@/hooks/useDialogFocus";
 import { AlertCircle, ChevronLeft, LoaderCircle, RefreshCw, Search, Wallet, X } from "lucide-react";
 import { AdminPageLayout, AdminSecondaryButton } from "@/components/admin/AdminPageLayout";
 import {
-  getOdooCustomerBalances,
-  getOdooCustomerInvoices,
+  getRetailCustomerBalances,
+  getRetailCustomerInvoices,
   getOrithosSession,
-  type OdooCustomerBalanceRecord,
-  type OdooCustomerInvoiceRecord,
-} from "@/lib/odoo-api";
+  type RetailCustomerBalanceRecord,
+  type RetailCustomerInvoiceRecord,
+} from "@/lib/retail-api";
 import { useDebouncedValue } from "@/hooks/useApi";
 
 const PAGE_SIZE = 40;

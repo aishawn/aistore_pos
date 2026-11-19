@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { RefreshCw, X } from "lucide-react";
 import { AsyncState } from "@/components/admin/AsyncState";
-import { getOdooPriceRules, updateOdooProduct } from "@/lib/odoo-api";
+import { getRetailPriceRules, updateRetailProduct } from "@/lib/retail-api";
 import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
 import { friendlyProductName } from "@/lib/product-display-name";
 import { useDebouncedValue } from "@/hooks/useApi";
@@ -91,7 +91,7 @@ function CappedPriceRowEditor({
     savingRef.current = true;
     setSaving(true);
     try {
-      await updateOdooProduct(Number(row.productId), {
+      await updateRetailProduct(Number(row.productId), {
         list_price: priceNum,
         expectedListPrice: row.currentPrice ?? undefined,
       });
@@ -199,7 +199,7 @@ export function CappedPricingPage() {
     else { setLoading(true); setLoadingMore(false); setHasNext(false); nextOffset.current = 0; scrollRoot.current?.scrollTo({ top: 0 }); }
     setError(null);
     try {
-      const result = await getOdooPriceRules(debouncedSearch, offset, PAGE_SIZE);
+      const result = await getRetailPriceRules(debouncedSearch, offset, PAGE_SIZE);
       if (revision !== requestRevision.current) return;
       if (result.hasNext && !result.items.length) throw new Error("Price rules returned an empty batch. Retry to continue.");
       const rows = result.items.map((item) => ({ ...item, id: item.id, productId: String(item.productId), priceId: String(item.productId) }));

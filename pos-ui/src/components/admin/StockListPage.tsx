@@ -13,7 +13,7 @@ import { friendlyProductName } from "@/lib/product-display-name";
 import { useDebouncedValue } from "@/hooks/useApi";
 import { useShopfrontSyncRefresh } from "@/hooks/useShopfrontSyncRefresh";
 import { exportStoreProductsCsv } from "@/lib/product-export";
-import { searchOdooRecords, updateOdooProduct, type OdooProductCategoryRecord, type OdooProductRecord } from "@/lib/odoo-api";
+import { searchRetailRecords, updateRetailProduct, type RetailProductCategoryRecord, type RetailProductRecord } from "@/lib/retail-api";
 import { validatePositiveMoney } from "@/lib/quantity";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
@@ -116,7 +116,7 @@ function StockListRowEditor({
     savingRef.current = true;
     setSaving(true);
     try {
-      await updateOdooProduct(row.productId, {
+      await updateRetailProduct(row.productId, {
         ...(body.name !== undefined ? { name: String(body.name) } : {}),
         ...(body.list_price !== undefined ? { list_price: Number(body.list_price), expectedListPrice: row.price ?? undefined } : {}),
       });
@@ -228,7 +228,7 @@ function StockListPageInner() {
   }, [searchParams]);
 
   const debouncedSearch = useDebouncedValue(search, 300);
-  const [categoryData, setCategoryData] = useState<OdooProductCategoryRecord[]>([]);
+  const [categoryData, setCategoryData] = useState<RetailProductCategoryRecord[]>([]);
   const [categoryError, setCategoryError] = useState<string | null>(null);
   const [categoriesLoading, setCategoriesLoading] = useState(false);
   const [items, setItems] = useState<StockListRow[]>([]);
@@ -265,7 +265,7 @@ function StockListPageInner() {
       setLoadMoreError(null);
     }
     setError(null);
-    void searchOdooRecords<OdooProductRecord>("products", {
+    void searchRetailRecords<RetailProductRecord>("products", {
       query: debouncedSearch || undefined,
       categoryIds: categoryId ? categoryId.split(",").map(Number).filter((id) => Number.isSafeInteger(id) && id > 0) : undefined,
       stockOnly: inStockOnly,
@@ -305,7 +305,7 @@ function StockListPageInner() {
   const reloadCategories = useCallback(() => {
     setCategoriesLoading(true);
     setCategoryError(null);
-    void searchOdooRecords<OdooProductCategoryRecord>("posCategories", { limit: 100 }).then((result) => setCategoryData(result.items)).catch((cause) => setCategoryError(cause instanceof Error ? cause.message : "Could not load Orithos categories.")).finally(() => setCategoriesLoading(false));
+    void searchRetailRecords<RetailProductCategoryRecord>("posCategories", { limit: 100 }).then((result) => setCategoryData(result.items)).catch((cause) => setCategoryError(cause instanceof Error ? cause.message : "Could not load Orithos categories.")).finally(() => setCategoriesLoading(false));
   }, []);
 
   useShopfrontSyncRefresh(() => {

@@ -5,8 +5,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ArrowUpRight, Check, ExternalLink, FileText, LoaderCircle, RefreshCw, Search, ShoppingCart, X } from "lucide-react";
-import { confirmOdooPurchaseOrder, getOdooPosBootstrap, getOdooPurchaseOrderDetail, receiveOdooPurchaseOrder, searchOdooPurchaseOrders, OdooApiError, type OdooPurchaseOrderDetail, type OdooPurchaseOrderRecord } from "@/lib/odoo-api";
-import { formatOdooDateTime, formatStoreEpoch } from "@/lib/odoo-date";
+import { confirmRetailPurchaseOrder, getRetailPosBootstrap, getRetailPurchaseOrderDetail, receiveRetailPurchaseOrder, searchRetailPurchaseOrders, RetailApiError, type RetailPurchaseOrderDetail, type RetailPurchaseOrderRecord } from "@/lib/retail-api";
+import { formatStoreDateTime, formatStoreEpoch } from "@/lib/retail-date";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
 import { StockTransfersPage } from "@/components/admin/StockTransfersPage";
 import { CreateStockTransferPage } from "@/components/admin/CreateStockTransferPage";
@@ -60,7 +60,7 @@ function purchaseReceiptLabel(status?: string | false) {
 
 function formatDate(value: string | false | undefined, timezone = "Australia/Adelaide") {
   if (!value) return "—";
-  return formatOdooDateTime(value, timezone, { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  return formatStoreDateTime(value, timezone, { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
 function formatMoney(value: number, currency?: [number, string] | false) {
@@ -115,7 +115,7 @@ function OdooNativePurchaseOrdersPage({ embedded = false }: { embedded?: boolean
   const tabParam = searchParams.get("tab");
   const tab = tabParam === "transfer-new" ? "transfer-new" : tabParam === "transfers" ? "transfers" : "orders";
   const [connected, setConnected] = useState<boolean | null>(null);
-  const [items, setItems] = useState<OdooPurchaseOrderRecord[]>([]);
+  const [items, setItems] = useState<RetailPurchaseOrderRecord[]>([]);
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [state, setState] = useState(() => STATUS_OPTIONS.some(([value]) => value === requestedState) ? requestedState! : "all");
@@ -132,7 +132,7 @@ function OdooNativePurchaseOrdersPage({ embedded = false }: { embedded?: boolean
   const [companyScope, setCompanyScope] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
-  const [detail, setDetail] = useState<OdooPurchaseOrderDetail | null>(null);
+  const [detail, setDetail] = useState<RetailPurchaseOrderDetail | null>(null);
   const [detailPurchaseId, setDetailPurchaseId] = useState<number | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
@@ -167,8 +167,8 @@ function OdooNativePurchaseOrdersPage({ embedded = false }: { embedded?: boolean
     setError(null);
     try {
       const [page, bootstrap] = await Promise.all([
-        searchOdooPurchaseOrders({ query: debouncedQuery, state, limit: PAGE_SIZE, offset }),
-        getOdooPosBootstrap().catch(() => null),
+        searchRetailPurchaseOrders({ query: debouncedQuery, state, limit: PAGE_SIZE, offset }),
+        getRetailPosBootstrap().catch(() => null),
       ]);
       if (revision !== requestRevision.current) return;
       const activeConfig = bootstrap?.configs.find((config) => config.session) ?? bootstrap?.configs[0];
@@ -220,7 +220,7 @@ function OdooNativePurchaseOrdersPage({ embedded = false }: { embedded?: boolean
     setReceiveOpen(false);
     setDetailLoading(true);
     try {
-      const result = await getOdooPurchaseOrderDetail(purchaseId);
+      const result = await getRetailPurchaseOrderDetail(purchaseId);
       if (revision === detailRevision.current) {
         setDetail(result);
         // Retain uncertain receipt identity across refreshes; a new backorder is not a retry target.
@@ -286,7 +286,7 @@ function OdooNativePurchaseOrdersPage({ embedded = false }: { embedded?: boolean
       if (!lines.some((line) => line.qtyDone > 0)) throw new Error("Enter at least one quantity to receive.");
       sessionStorage.setItem(`orithos-pending-receipt:${detail.order.id}`, JSON.stringify({ pickingId: detail.receivable.pickingId, lines }));
       submitted = true;
-      const result = await receiveOdooPurchaseOrder(detail.order.id, {
+      const result = await receiveRetailPurchaseOrder(detail.order.id, {
         lines,
       });
       try { sessionStorage.removeItem(`orithos-pending-receipt:${detail.order.id}`); } catch { /* Completed state will be reconciled on refresh. */ }
@@ -294,9 +294,9 @@ function OdooNativePurchaseOrdersPage({ embedded = false }: { embedded?: boolean
       setRefreshKey((value) => value + 1);
       await openDetail(detail.order.id, `Received on ${result.pickingName} (${result.pickingState || "updated"}).`);
     } catch (cause) {
-      if (submitted && (!(cause instanceof OdooApiError) || cause.status >= 500)) setReceiveUnconfirmed(true);
+      if (submitted && (!(cause instanceof RetailApiError) || cause.status >= 500)) setReceiveUnconfirmed(true);
       else if (submitted) { try { sessionStorage.removeItem(`orithos-pending-receipt:${detail.order.id}`); } catch { /* Keep the original error. */ } }
-      setReceiveError(cause instanceof OdooApiError && cause.correlationId
+      setReceiveError(cause instanceof RetailApiError && cause.correlationId
         ? `${cause.message} · Request ID ${cause.correlationId}`
         : cause instanceof Error ? cause.message : "Could not receive this purchase order.");
     } finally {
@@ -310,7 +310,7 @@ function OdooNativePurchaseOrdersPage({ embedded = false }: { embedded?: boolean
     setConfirming(true);
     setConfirmError(null);
     try {
-      await confirmOdooPurchaseOrder(detail.order.id);
+      await confirmRetailPurchaseOrder(detail.order.id);
       setConfirmOpen(false);
       setRefreshKey((value) => value + 1);
       await openDetail(detail.order.id);

@@ -1,1 +1,5 @@
-export { formatOdooDateTime as formatStoreDateTime, formatStoreEpoch } from "./odoo-date";
+export {
+  formatOdooDateTime as formatStoreDateTime,
+  formatOdooGroupedDate as formatStoreGroupedDate,
+  formatStoreEpoch,
+} from "./odoo-date";

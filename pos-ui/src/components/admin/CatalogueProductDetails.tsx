@@ -2,7 +2,7 @@
 
 import { Pencil, X } from "lucide-react";
 import { createPortal } from "react-dom";
-import type { OdooProductRecord } from "@/lib/odoo-api";
+import type { RetailProductRecord } from "@/lib/retail-api";
 import { friendlyProductName } from "@/lib/product-display-name";
 import { productIssues } from "@/lib/product-catalogue";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
@@ -10,7 +10,7 @@ import { ProductImage } from "@/components/ProductImage";
 
 const money = (value: number) => new Intl.NumberFormat("en-AU", { style: "currency", currency: "AUD" }).format(value);
 
-export function CataloguePrice({ product }: { product: OdooProductRecord }) {
+export function CataloguePrice({ product }: { product: RetailProductRecord }) {
   const taxKnown = typeof product.price_included === "number" && Number.isFinite(product.price_included);
   return <span className="inline-flex flex-col tabular-nums">
     <span className={product.list_price === 0 ? "font-semibold text-red-700" : "font-semibold"}>{money(taxKnown ? product.price_included! : product.list_price)}</span>
@@ -18,14 +18,14 @@ export function CataloguePrice({ product }: { product: OdooProductRecord }) {
   </span>;
 }
 
-export function CatalogueIssues({ product }: { product: OdooProductRecord }) {
+export function CatalogueIssues({ product }: { product: RetailProductRecord }) {
   const issues = productIssues(product);
   if (!issues.length) return null;
   return <span className="mt-1.5 flex flex-wrap gap-1">{issues.map((issue) => <span key={issue} className="rounded border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-900">{issue}</span>)}</span>;
 }
 
 export function CatalogueProductDetails({ product, categories, onClose, onEdit, canEdit = true }: {
-  product: OdooProductRecord;
+  product: RetailProductRecord;
   categories: Map<number, string>;
   onClose: () => void;
   onEdit: () => void;

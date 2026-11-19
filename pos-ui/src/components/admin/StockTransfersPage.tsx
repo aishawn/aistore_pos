@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowRightLeft, LoaderCircle, Plus } from "lucide-react";
-import { getOdooTransfers, OdooApiError, type OdooTransferListItem, type OdooTransfersBootstrap } from "@/lib/odoo-api";
+import { getRetailTransfers, RetailApiError, type RetailTransferListItem, type RetailTransfersBootstrap } from "@/lib/retail-api";
 
 function stateLabel(state: string) {
   switch (state) {
@@ -17,7 +17,7 @@ function stateLabel(state: string) {
 }
 
 export function StockTransfersPage({ embedded = false }: { embedded?: boolean }) {
-  const [data, setData] = useState<OdooTransfersBootstrap | null>(null);
+  const [data, setData] = useState<RetailTransfersBootstrap | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -25,10 +25,10 @@ export function StockTransfersPage({ embedded = false }: { embedded?: boolean })
     setLoading(true);
     setError(null);
     try {
-      setData(await getOdooTransfers());
+      setData(await getRetailTransfers());
     } catch (cause) {
       setData(null);
-      setError(cause instanceof OdooApiError ? cause.message : "Could not load transfers.");
+      setError(cause instanceof RetailApiError ? cause.message : "Could not load transfers.");
     } finally {
       setLoading(false);
     }
@@ -38,7 +38,7 @@ export function StockTransfersPage({ embedded = false }: { embedded?: boolean })
     void load();
   }, [load]);
 
-  const items: OdooTransferListItem[] = data?.items ?? [];
+  const items: RetailTransferListItem[] = data?.items ?? [];
   const canCreate = (data?.locations.length ?? 0) >= 2;
 
   const newHref = embedded ? "/purchases?tab=transfer-new" : "/stock/transfers/new";

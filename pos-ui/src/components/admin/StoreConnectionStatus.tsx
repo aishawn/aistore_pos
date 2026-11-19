@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { getOdooPosBootstrap, getOdooSessionStatus } from "@/lib/odoo-api";
+import { getRetailPosBootstrap, getRetailSessionStatus } from "@/lib/retail-api";
 import { useAuth } from "@/lib/auth";
 
 export function StoreConnectionStatus() {
@@ -12,9 +12,9 @@ export function StoreConnectionStatus() {
  const refresh = useCallback(async () => {
   setLoading(true); setError(null); setRegisters(null);
   try {
-   const session = await getOdooSessionStatus();
+   const session = await getRetailSessionStatus();
    if (!session.user) throw new Error("The store connection is unavailable. Contact your administrator to restore it.");
-   const result = await getOdooPosBootstrap();
+   const result = await getRetailPosBootstrap();
    setRegisters(result.configs.length);
   } catch { setError("Could not confirm the store connection. Retry or contact your administrator."); }
   finally { setLoading(false); }
