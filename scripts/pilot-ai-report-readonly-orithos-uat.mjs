@@ -3,6 +3,7 @@ import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
+import { safeErrorSummary } from "./lib/safe-error-summary.mjs";
 import {
   assistantReportAcceptance,
   nativeOverviewAcceptance,
@@ -130,7 +131,7 @@ try {
     && pageErrors.length === 0, { pageErrors });
   await page.close();
 } catch (error) {
-  addCheck("Orithos report UAT completed", false, error instanceof Error ? error.message : "UNEXPECTED_FAILURE");
+  addCheck("Orithos report UAT completed", false, safeErrorSummary(error));
 } finally {
   if (authenticated) await context.request.post(`${base}/api/auth/logout`, { headers: { Origin: base } }).catch(() => null);
   await context.close();
