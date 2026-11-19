@@ -517,17 +517,35 @@ const writeRequests = [];
 let loginDiagnostics = null;
 let proxyHealth = [];
 const cookieJar = new Map();
+const transientNetworkError = (error) => /ECONNRESET|ECONNREFUSED|ETIMEDOUT|TimeoutError|timeout|socket hang up|disconnected before secure TLS|fetch failed/i
+  .test(`${error instanceof Error ? error.message : error} ${error?.cause instanceof Error ? error.cause.message : ""}`);
 async function apiRequest(method, url, { data, headers = {}, timeout } = {}) {
   const requestHeaders = new Headers(headers);
   if (data !== undefined) requestHeaders.set("content-type", "application/json");
   const cookieHeader = [...cookieJar].map(([name, value]) => `${name}=${value}`).join("; ");
   if (cookieHeader && !requestHeaders.has("cookie")) requestHeaders.set("cookie", cookieHeader);
-  const response = await fetch(url, {
-    method,
-    headers: requestHeaders,
-    ...(data !== undefined ? { body: JSON.stringify(data) } : {}),
-    signal: AbortSignal.timeout(timeout ?? 30000),
-  });
+  let response;
+  for (let attempt = 0; attempt < (method === "GET" ? Math.min(maxAttempts, 3) : 1); attempt += 1) {
+    try {
+      response = await fetch(url, {
+        method,
+        headers: requestHeaders,
+        ...(data !== undefined ? { body: JSON.stringify(data) } : {}),
+        signal: AbortSignal.timeout(timeout ?? 30000),
+      });
+    } catch (error) {
+      if (method !== "GET" || attempt + 1 >= Math.min(maxAttempts, 3) || !transientNetworkError(error)) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 500 * (2 ** attempt)));
+      continue;
+    }
+    if (method !== "GET" || ![429, 502, 503, 504].includes(response.status)
+        || attempt + 1 >= Math.min(maxAttempts, 3)) break;
+    const retryAfter = Number.parseInt(response.headers.get("retry-after") ?? "", 10);
+    const delayMs = Number.isFinite(retryAfter) && retryAfter >= 0
+      ? Math.min(30000, retryAfter * 1000)
+      : 500 * (2 ** attempt);
+    await new Promise((resolve) => setTimeout(resolve, delayMs));
+  }
   for (const setCookie of response.headers.getSetCookie()) {
     const pair = setCookie.split(";", 1)[0];
     const separator = pair.indexOf("=");
@@ -562,7 +580,7 @@ const retryDelayMs = (response, body, attempt) => {
   return Math.min(8000, 500 * (2 ** attempt));
 };
 const isDataUnavailableAnswer = (answer) => /no completed sales found|could not read live stock data|source-backed rows? unavailable|(?:live )?product (?:count|total).*(?:unavailable|permission)|product catalogue is unavailable|catalogue is unavailable|商品目录(?:暂不可用|不可用|无法查询)|商品总数.*(?:暂不可用|无法获取|无权限|没有权限)/i.test(answer);
-const isTransientNetworkError = (value) => /ECONNRESET|ECONNREFUSED|ETIMEDOUT|TimeoutError|timeout|socket hang up|disconnected before secure TLS/i.test(String(value));
+const isTransientNetworkError = transientNetworkError;
 const redactError = (value) => String(value)
   .replace(/cookie:\s*[^\r\n]*/gi, "cookie: [redacted]")
   .replace(/(?:access|refresh)_token=[^;\s]+/gi, "access_token=[redacted]")
