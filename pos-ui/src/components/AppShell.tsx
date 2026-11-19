@@ -40,6 +40,10 @@ function isOverviewPath(pathname: string): boolean {
 function isAssistantPath(pathname: string): boolean {
   return pathname === "/assistant" || pathname.startsWith("/assistant/");
 }
+
+function isCustomerDisplayPath(pathname: string): boolean {
+  return pathname === "/customer-display";
+}
 const SIDEBAR_OPEN_KEY = "orithos-sidebar-open";
 const ODOO_REGISTER_PATHS = new Set(["/", "/register", "/sell"]);
 const subscribeToHost = () => () => {};
@@ -67,6 +71,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     || isPlatformPath(pathname)
     || (onControlPlaneHost && pathname === "/settings/account");
   const isSellPath = ODOO_REGISTER_PATHS.has(pathname);
+  const isHardwareSetupPath = pathname === "/settings/hardware";
+  const prefersWideContent = isSellPath || isHardwareSetupPath;
 
   useEffect(() => {
     const breakpoint = window.matchMedia("(max-width: 767px)");
@@ -77,8 +83,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         setSidebarOpen(false);
         return;
       }
-      if (isSellPath) {
-        // Keep the register wide on desktop; mobile navigation opens as an overlay.
+      if (prefersWideContent) {
         setSidebarOpen(false);
         return;
       }
@@ -87,7 +92,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     syncViewport();
     breakpoint.addEventListener("change", syncViewport);
     return () => breakpoint.removeEventListener("change", syncViewport);
-  }, [isSellPath]);
+  }, [prefersWideContent]);
+
+  useEffect(() => {
+    if (isHardwareSetupPath && !isMobileViewport) {
+      setSidebarOpen(false);
+    }
+  }, [isHardwareSetupPath, isMobileViewport]);
 
   useDialogFocus(mobileSidebarOpen && isMobileViewport, () => setMobileSidebarOpen(false), "mobile-navigation");
 
@@ -206,7 +217,7 @@ function AppShellChrome({
 }) {
   const { openCloseRegister } = useCloseRegisterUi();
   const { openSalesHistory } = useSalesHistoryUi();
-  const hideStoreChrome = isOverviewPath(pathname) || isAssistantPath(pathname);
+  const hideStoreChrome = isOverviewPath(pathname) || isAssistantPath(pathname) || isCustomerDisplayPath(pathname);
 
   const userMenu = (
     <UserMenu
@@ -238,7 +249,7 @@ function AppShellChrome({
       id="main-content"
       tabIndex={-1}
       className={`relative min-h-0 flex-1 outline-none ${
-        !isOverviewPath(pathname) && !isAssistantPath(pathname)
+        !isOverviewPath(pathname) && !isAssistantPath(pathname) && !isCustomerDisplayPath(pathname)
           ? "oh-workspace-main"
           : ""
       }`}

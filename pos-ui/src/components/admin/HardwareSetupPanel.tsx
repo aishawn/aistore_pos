@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Script from "next/script";
-import { Cable, CreditCard, ExternalLink, Printer, RefreshCw, Save, Scale, ScanBarcode, ScreenShare } from "lucide-react";
+import { ExternalLink, RefreshCw, Save } from "lucide-react";
 import {
   connectLocalHardware,
   formatCashDrawerKickCode,
@@ -20,18 +20,6 @@ import {
   markBarcodeScannerTested,
 } from "@/lib/local-hardware";
 
-function subscribeToNetworkStatus(listener: () => void) {
-  window.addEventListener("online", listener);
-  window.addEventListener("offline", listener);
-  return () => {
-    window.removeEventListener("online", listener);
-    window.removeEventListener("offline", listener);
-  };
-}
-
-const getNetworkStatus = () => navigator.onLine;
-const getServerNetworkStatus = () => false;
-
 const emptySettings: HardwareSettings = {
   printer: "",
   cashDrawer: false,
@@ -45,7 +33,6 @@ const emptySettings: HardwareSettings = {
 
 export function HardwareSetupPanel() {
   const settingsSnapshot = useSyncExternalStore(subscribeLocalHardwareSettings, getLocalHardwareSettingsSnapshot, () => "");
-  const online = useSyncExternalStore(subscribeToNetworkStatus, getNetworkStatus, getServerNetworkStatus);
   const savedSettings = settingsSnapshot ? parseLocalHardwareSettings(settingsSnapshot) : emptySettings;
   const [draft, setDraft] = useState<HardwareSettings>(savedSettings);
   const [state, setState] = useState<LocalHardwareState>({ qzAvailable: false, connected: false, printers: [], error: null });
@@ -141,24 +128,21 @@ export function HardwareSetupPanel() {
     setNotice("Scale diagnostic stopped. The serial port is being closed.");
   }
 
-  const devices = [
-    { name: "Barcode scanner", icon: ScanBarcode, status: "USB HID keyboard mode", detail: "POS receives keyboard wedge scans. RS232/COM scanner mode is not supported yet. Switch to USB HID mode if the scanner supports it.", tone: "text-emerald-800 bg-emerald-50" },
-    { name: "Receipt printer", icon: Printer, status: state.connected ? `${state.printers.length} printer(s) found` : "Connect the local bridge", detail: "Printers are discovered through QZ Tray after the local bridge connects.", tone: state.connected ? "text-emerald-800 bg-emerald-50" : "text-amber-900 bg-amber-50" },
-    { name: "Cash drawer", icon: Cable, status: draft.cashDrawer ? "Configured; sale auto-open disabled" : "Not configured", detail: "Use Test open cash drawer after selecting printer, brand, and kick settings. Sales still do not open the drawer automatically.", tone: "text-amber-900 bg-amber-50" },
-    { name: "Linkly EFTPOS", icon: CreditCard, status: "Pair below", detail: "Use EFTPOS terminal pairing for Connector health, binding, and sell-time card payments.", tone: "text-amber-900 bg-amber-50" },
-    { name: "Customer display", icon: ScreenShare, status: "Same-browser display available", detail: "Open the display from the register menu. Live cart data syncs between tabs in this browser profile.", tone: "text-emerald-800 bg-emerald-50" },
-    { name: "Barcode label printer", icon: Printer, status: "Browser label workflow available", detail: "Generate labels from Barcodes and print with the system dialog; printer-specific profiles are not configured.", tone: "text-amber-900 bg-amber-50" },
-    { name: "Electronic scales", icon: Scale, status: "Model-specific adapter required", detail: "No scale protocol is configured. Unverified scale values cannot be used for sales.", tone: "text-slate-700 bg-slate-100" },
-    { name: "Terminal network", icon: Cable, status: online ? "Browser online" : "Connection unknown", detail: "The register requires internet access to complete sales.", tone: "text-slate-700 bg-slate-100" },
-  ];
+  const bridgeStatus = state.connected
+    ? `${state.printers.length} printer(s) found`
+    : state.qzAvailable
+      ? "QZ loaded — connect the bridge"
+      : "Install QZ Tray, then connect";
 
   return (
-    <div className="mt-6 space-y-6">
-      <section className="rounded-lg border border-[var(--oh-border)] bg-white p-4 sm:p-5">
+    <div className="space-y-6">
+      <section id="hardware-printer" className="rounded-lg border border-[var(--oh-border)] bg-white p-4 sm:p-5">
         <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[var(--oh-border)] pb-4">
           <div>
-            <h2 id="hardware-connect-title" className="text-base font-semibold text-[var(--oh-text)]">Hardware connect settings</h2>
-            <p className="mt-1 text-xs text-[var(--oh-muted)]">Local bridge: QZ Tray · Settings apply to this register only</p>
+            <h2 id="hardware-connect-title" className="text-base font-semibold text-[var(--oh-text)]">
+              Step 1 · Receipt printer
+            </h2>
+            <p className="mt-1 text-xs text-[var(--oh-muted)]">QZ Tray on this PC · settings stay in this browser</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <button
@@ -182,7 +166,9 @@ export function HardwareSetupPanel() {
         </div>
 
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm text-[var(--oh-muted)]">Connect QZ Tray once per session to list Windows printers.</p>
+          <p className="text-sm text-[var(--oh-muted)]">
+            Bridge status: <span className="font-medium text-[var(--oh-text)]">{bridgeStatus}</span>
+          </p>
           <div className="flex flex-wrap gap-2">
             <a href="https://qz.io/download/" target="_blank" rel="noreferrer" className="inline-flex min-h-10 items-center gap-2 rounded-md border border-[var(--oh-border)] px-3 text-sm font-medium"><ExternalLink size={15} /> Get QZ Tray</a>
             <button type="button" onClick={() => void connect()} disabled={busy} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-[var(--oh-border)] px-3 text-sm font-semibold disabled:opacity-50"><RefreshCw size={15} className={busy ? "animate-spin" : undefined} /> {busy ? "Connecting…" : "Connect local bridge"}</button>
@@ -273,28 +259,52 @@ export function HardwareSetupPanel() {
         </div>
       </section>
 
-      <section aria-labelledby="hardware-devices-title">
-        <div className="mb-3 flex items-end justify-between gap-2"><div><h2 id="hardware-devices-title" className="text-sm font-semibold text-[var(--oh-text)]">Device readiness</h2><p className="mt-1 text-sm text-[var(--oh-muted)]">Results reflect this browser and terminal only.</p></div><span className="text-xs text-[var(--oh-muted)]">{devices.length} devices</span></div>
-        <ul className="grid gap-3 sm:grid-cols-2">{devices.map(({ name, icon: Icon, status, detail, tone }) => <li key={name} className="flex min-w-0 gap-3 rounded-lg border border-[var(--oh-border)] bg-white p-4"><Icon size={19} className="mt-0.5 shrink-0 text-[var(--oh-primary)]" aria-hidden="true" /><div className="min-w-0"><div className="flex flex-wrap items-center justify-between gap-2"><h3 className="text-sm font-semibold text-[var(--oh-text)]">{name}</h3><span className={`rounded px-2 py-1 text-xs font-medium ${tone}`}>{status}</span></div><p className="mt-1 text-sm leading-5 text-[var(--oh-muted)]">{detail}</p></div></li>)}</ul>
-      </section>
-
-      <section className="rounded-lg border border-[var(--oh-border)] bg-white p-4 sm:p-5">
-        <h2 className="text-sm font-semibold text-[var(--oh-text)]">Scanner and device checks</h2>
-        <label className="mt-3 grid max-w-lg gap-1 text-sm font-medium">Barcode input check<input value={scanTest} onChange={(event) => setScanTest(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && scanTest.trim()) { markBarcodeScannerTested(); setNotice(`Barcode input captured: ${scanTest.trim()}`); } }} placeholder="Focus here and scan a barcode" className="h-11 rounded-md border border-[var(--oh-border)] px-3 font-normal" autoComplete="off" /></label>
-        <p className="mt-2 text-xs text-[var(--oh-muted)]">This confirms input reached the field; it does not distinguish a scanner from typing. BarcodeDetector: {supportsBarcodeDetection() ? "available for camera scans" : "not available in this browser"}.</p>
-        <div className="mt-4 grid max-w-3xl gap-3 sm:grid-cols-3">
-          <label className="grid gap-1 text-sm font-medium">Linkly terminal model<input value={draft.linklyTerminal} onChange={(event) => setDraft((current) => ({ ...current, linklyTerminal: event.target.value }))} placeholder="e.g. terminal model" className="h-10 rounded-md border border-[var(--oh-border)] px-3 font-normal" /></label>
-          <label className="grid gap-1 text-sm font-medium">Acquiring bank<input value={draft.linklyAcquirer} onChange={(event) => setDraft((current) => ({ ...current, linklyAcquirer: event.target.value }))} placeholder="Bank or acquirer" className="h-10 rounded-md border border-[var(--oh-border)] px-3 font-normal" /></label>
-          <label className="grid gap-1 text-sm font-medium">Connection method<select value={draft.linklyConnection} onChange={(event) => setDraft((current) => ({ ...current, linklyConnection: event.target.value }))} className="h-10 rounded-md border border-[var(--oh-border)] bg-white px-3"><option value="">Select connection</option><option value="ethernet">Ethernet / LAN</option><option value="usb">USB</option><option value="linkly-software">Linkly software on this terminal</option><option value="unknown">Unknown</option></select></label>
+      <details id="hardware-optional-tests" className="rounded-lg border border-dashed border-[var(--oh-border)] bg-white px-4 py-3 sm:px-5">
+        <summary className="cursor-pointer text-sm font-semibold text-[var(--oh-text)]">Optional · Scanner & scale tests</summary>
+        <p className="mt-2 text-xs text-[var(--oh-muted)]">
+          USB barcode scanners work as keyboard input on Sell. EFTPOS setup is in Step 2 below.
+        </p>
+        <label className="mt-4 grid max-w-lg gap-1 text-sm font-medium">
+          Barcode input check
+          <input
+            value={scanTest}
+            onChange={(event) => setScanTest(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && scanTest.trim()) {
+                markBarcodeScannerTested();
+                setNotice(`Barcode input captured: ${scanTest.trim()}`);
+              }
+            }}
+            placeholder="Focus here and scan a barcode"
+            className="h-11 rounded-md border border-[var(--oh-border)] px-3 font-normal"
+            autoComplete="off"
+          />
+        </label>
+        <p className="mt-2 text-xs text-[var(--oh-muted)]">
+          BarcodeDetector: {supportsBarcodeDetection() ? "available" : "not available in this browser"}.
+        </p>
+        <div className="mt-5 flex flex-wrap items-start justify-between gap-3 border-t border-[var(--oh-border)] pt-4">
+          <div>
+            <h3 className="text-sm font-semibold text-[var(--oh-text)]">Electronic scale (diagnostic)</h3>
+            <p className="mt-1 text-xs text-[var(--oh-muted)]">9600 baud Web Serial · not used for pricing.</p>
+          </div>
+          <div className="flex gap-2">
+            <button type="button" onClick={() => void readScale()} disabled={scaleReading} className="min-h-10 rounded-md border border-[var(--oh-border)] px-3 text-sm font-semibold disabled:opacity-50">
+              Connect scale reader
+            </button>
+            {scaleReading && (
+              <button type="button" onClick={stopScaleRead} className="min-h-10 rounded-md border border-red-300 px-3 text-sm font-semibold text-red-800">
+                Stop reader
+              </button>
+            )}
+          </div>
         </div>
-        <p className="mt-2 text-sm text-[var(--oh-muted)]">These notes stay in this browser. Live card payments use the EFTPOS terminal pairing section on this page.</p>
-      </section>
-
-      <section className="rounded-lg border border-[var(--oh-border)] bg-white p-4 sm:p-5">
-        <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-sm font-semibold text-[var(--oh-text)]">Electronic scale connection check</h2><p className="mt-1 text-sm text-[var(--oh-muted)]">Web Serial diagnostic at fixed 9600 baud. Use only if that matches the scale manual; output is never used for sale quantity or price.</p></div><div className="flex gap-2"><button type="button" onClick={() => void readScale()} disabled={scaleReading} className="min-h-10 rounded-md border border-[var(--oh-border)] px-3 text-sm font-semibold disabled:opacity-50">Connect scale reader</button>{scaleReading && <button type="button" onClick={stopScaleRead} className="min-h-10 rounded-md border border-red-300 px-3 text-sm font-semibold text-red-800">Stop reader</button>}</div></div>
-        {scaleReader && <pre role="status" className="mt-3 max-h-32 overflow-auto rounded-md bg-[var(--oh-surface)] p-3 text-xs">{scaleReader}</pre>}
-        <p className="mt-2 text-xs text-amber-900">Scale readings are diagnostic only and never set a sale quantity or price.</p>
-      </section>
+        {scaleReader && (
+          <pre role="status" className="mt-3 max-h-32 overflow-auto rounded-md bg-[var(--oh-surface)] p-3 text-xs">
+            {scaleReader}
+          </pre>
+        )}
+      </details>
       <Script src="https://cdn.jsdelivr.net/npm/qz-tray@2.3.0/qz-tray.js" strategy="afterInteractive" onError={() => setQzScriptError(true)} />
     </div>
   );

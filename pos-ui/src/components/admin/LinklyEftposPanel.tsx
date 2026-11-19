@@ -180,10 +180,10 @@ export function LinklyEftposPanel({ canEdit }: Props) {
   const connectorLabel = connectorHealth === "reachable" ? "Running" : connectorHealth === "offline" ? "Not reachable" : connectorHealth === "error" ? "Error" : "Unknown";
 
   return (
-    <section className="mt-6 rounded-lg border border-[var(--oh-border)] bg-white p-4 sm:p-5" aria-labelledby="linkly-eftpos-title">
+    <section id="hardware-eftpos" className="rounded-lg border border-[var(--oh-border)] bg-white p-4 sm:p-5" aria-labelledby="linkly-eftpos-title">
       <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[var(--oh-border)] pb-4">
         <div>
-          <h2 id="linkly-eftpos-title" className="text-base font-semibold text-[var(--oh-text)]">EFTPOS terminal pairing</h2>
+          <h2 id="linkly-eftpos-title" className="text-base font-semibold text-[var(--oh-text)]">Step 2 · EFTPOS terminal pairing</h2>
           <p className="mt-1 text-xs text-[var(--oh-muted)]">Register binding in Orithos · local Orithos Linkly Connector on this PC</p>
         </div>
         <button

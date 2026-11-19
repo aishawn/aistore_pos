@@ -17,6 +17,7 @@ export function LocalNetworkAccessGate({ children }: { children: React.ReactNode
   const [hint, setHint] = useState<string | null>(null);
   const [portalReady, setPortalReady] = useState(false);
   const browserHint = typeof window !== "undefined" ? localNetworkAccessBrowserHint() : null;
+  const siteHost = typeof window !== "undefined" ? window.location.hostname : "this site";
 
   useEffect(() => {
     setPortalReady(true);
@@ -43,9 +44,7 @@ export function LocalNetworkAccessGate({ children }: { children: React.ReactNode
     setHint(null);
     try {
       if (accessState === "denied") {
-        setHint(
-          "Open the site controls icon → Site settings (网站设置) → Local network access (本地网络访问权限) → Allow, then reload.",
-        );
+        setHint("Open site controls → Site settings → Local network access → Allow, then reload.");
         return;
       }
       await probeLoopbackAccess();
@@ -55,7 +54,7 @@ export function LocalNetworkAccessGate({ children }: { children: React.ReactNode
         setHint("Access granted. You can configure printers and EFTPOS below.");
       } else if (next === "prompt") {
         setHint(
-          "Look for an Allow / Block bar at the top of the browser. If you only see 网站设置 in the menu, open Site settings and set Local network access (本地网络访问权限) to Allow, then reload.",
+          "Look for an Allow / Block bar at the top of the browser. If none appears, open Site settings from the address bar menu and set Local network access to Allow, then reload.",
         );
       } else if (next === "denied") {
         setHint("Access was denied. Turn on Local network access in site settings and reload.");
@@ -93,14 +92,13 @@ export function LocalNetworkAccessGate({ children }: { children: React.ReactNode
           </div>
         </div>
         <ol className="mt-5 list-decimal space-y-2 pl-5 text-sm leading-6 text-[var(--oh-text)]">
-          <li>Click the site controls icon to the left of the address bar (查看网站信息).</li>
+          <li>Click the site controls icon to the left of the address bar.</li>
           <li>
-            Open <span className="font-semibold">Site settings</span> (网站设置) — the toggle is usually{" "}
-            <em>not</em> shown in the short menu you see first.
+            Open <span className="font-semibold">Site settings</span> — the toggle is usually{" "}
+            <em>not</em> shown in the short menu.
           </li>
           <li>
-            Set <span className="font-semibold">Local network access</span> (本地网络访问权限) to{" "}
-            <span className="font-semibold">Allow</span>
+            Set <span className="font-semibold">Local network access</span> to <span className="font-semibold">Allow</span>
             {accessState === "denied" ? " (currently blocked for this site)" : ""}.
           </li>
           <li>Return here and use <span className="font-semibold">Reload page</span>.</li>
@@ -108,8 +106,8 @@ export function LocalNetworkAccessGate({ children }: { children: React.ReactNode
         <p className="mt-4 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 py-2 text-xs leading-5 text-[var(--oh-muted)]">
           Requires <span className="font-medium text-[var(--oh-text)]">Chrome 142+</span> or{" "}
           <span className="font-medium text-[var(--oh-text)]">Edge 143+</span>. You can also allow{" "}
-          <span className="font-medium text-[var(--oh-text)]">skr.orithos.com.au</span> under Chrome → Settings →
-          Privacy and security → Site settings → Local network access.
+          <span className="font-medium text-[var(--oh-text)]">{siteHost}</span> under Chrome → Settings → Privacy and
+          security → Site settings → Local network access.
         </p>
         {browserHint ? (
           <p role="alert" className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm leading-6 text-amber-950">
