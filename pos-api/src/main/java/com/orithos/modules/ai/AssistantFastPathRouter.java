@@ -538,7 +538,7 @@ public final class AssistantFastPathRouter {
         }
         var directStockQuery = STOCK_QUERY_DIRECT.matcher(question.trim());
         if (directStockQuery.matches()) {
-            String query = cleanQuery(firstNonNull(
+            String query = cleanStockQuery(firstNonNull(
                     directStockQuery.group(1), directStockQuery.group(2), directStockQuery.group(3),
                     directStockQuery.group(4), directStockQuery.group(5), directStockQuery.group(6),
                     directStockQuery.group(7), directStockQuery.group(8), directStockQuery.group(9),
@@ -658,7 +658,7 @@ public final class AssistantFastPathRouter {
         }
         var stockQuery = STOCK_QUERY.matcher(question.trim());
         if (stockQuery.matches()) {
-            String query = cleanQuery(firstNonNull(
+            String query = cleanStockQuery(firstNonNull(
                     stockQuery.group(1), stockQuery.group(2), stockQuery.group(3), stockQuery.group(4),
                     stockQuery.group(5), stockQuery.group(6), stockQuery.group(7), stockQuery.group(8),
                     stockQuery.group(9), stockQuery.group(10), stockQuery.group(11), stockQuery.group(12),
@@ -696,6 +696,15 @@ public final class AssistantFastPathRouter {
         if (value == null) return null;
         String query = value.trim().replaceAll("[?.!。！？]+$", "").trim();
         return query.isEmpty() ? null : query;
+    }
+
+    private static String cleanStockQuery(String value) {
+        String query = cleanQuery(value);
+        if (query == null) return null;
+        return switch (query.toLowerCase(Locale.ROOT)) {
+            case "西拉", "西拉子", "设拉子", "syrah" -> "Shiraz";
+            default -> query;
+        };
     }
 
     /** Normalize cashier text before deterministic matching without changing query casing. */

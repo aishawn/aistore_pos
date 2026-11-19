@@ -653,12 +653,17 @@ class AssistantFastPathRouterTest {
         assertEquals("report_stock", availability.intent());
         assertEquals("VB Cans", availability.slots().get("query"));
 
-        for (String question : new String[]{"current stock for Shiraz", "西拉现在有多少库存"}) {
+        for (String question : new String[]{
+                "current stock for Shiraz",
+                "西拉现在有多少库存",
+                "How much Syrah do we have in stock?",
+                "How much 西拉子 do we have in stock?",
+                "How much 设拉子 do we have in stock?"
+        }) {
             AssistantFastPathRouter.Match currentStock = AssistantFastPathRouter.maybeMatch(question);
             assertNotNull(currentStock, question);
             assertEquals("report_stock", currentStock.intent(), question);
-            assertEquals(question.startsWith("current") ? "Shiraz" : "西拉",
-                    currentStock.slots().get("query"), question);
+            assertEquals("Shiraz", currentStock.slots().get("query"), question);
         }
     }
 
