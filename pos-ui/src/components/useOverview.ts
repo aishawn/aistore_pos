@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { buildLaunchDestinations } from "@/lib/overview-launch";
+import { normalizeNativeOverview } from "@/lib/native-overview";
 import { getSidebarNavigation } from "@/lib/sidebar-navigation";
 import { shopfrontAlignedMarginRatio } from "@/lib/shopfront-aligned-margin";
 
@@ -42,27 +43,26 @@ export type OverviewPulse = {
   shopfrontReportsMode?: "orithos" | "source";
 };
 
-type NativeOverview = {
-  source: "orithos_ledger";
-  from: string;
-  to: string;
-  revenue: number;
-  tax: number | null;
-  grossProfit: number | null;
-  costAvailable: boolean;
-  taxAvailable: boolean;
-  transactions: number;
-  inventoryAvailable?: boolean;
-  inventoryUnits?: number | null;
-  inventoryCaseLevel?: number | null;
-  inventoryItemLevel?: number | null;
-  inventoryStatus?: string | null;
-  negativeStockProducts?: number | null;
-  dailyTrend: Array<{ date: string; revenue: number; transaction_count: number; tax: number | null; grossProfit: number | null; costAvailable: boolean; taxAvailable: boolean }>;
-};
-
 const PULSE_STORAGE_KEY = "orithos-dashboard-pulse-native-v3";
 const PULSE_FRESH_MS = 60_000;
+
+type OverviewApiEnvelope = { code?: number; message?: string; data?: Record<string, unknown> };
+
+function overviewLoadError(envelope: OverviewApiEnvelope | null, status: number): string {
+  const message = envelope?.message?.trim();
+  if (envelope?.code != null && envelope.code !== 0) {
+    return message || "Could not load the Orithos dashboard.";
+  }
+  if (status === 401) return message || "Your session has expired.";
+  if (status === 403) return message || "A store outlet is required to load dashboard data.";
+  if (status === 502 || status === 503 || status === 504) {
+    return "Store services are temporarily unavailable. Try again shortly.";
+  }
+  if (!message && status >= 400) {
+    return `Could not load the Orithos dashboard (${status}).`;
+  }
+  return message || "Could not load the Orithos dashboard.";
+}
 
 function storeDay(date = new Date()) {
   return new Intl.DateTimeFormat("en-CA", {
@@ -143,13 +143,16 @@ export function useOverview() {
       const yesterday = shiftDay(today, -1);
       const params = new URLSearchParams({ from: yesterday, to: today });
       const response = await fetch(`/api/reports/native-overview?${params}`, { credentials: "same-origin", cache: "no-store" });
-      const envelope = await response.json().catch(() => null) as { data?: NativeOverview; message?: string } | null;
+      const envelope = await response.json().catch(() => null) as OverviewApiEnvelope | null;
       if (current !== revision.current) return;
       if (response.status === 401) setAuthExpired(true);
-      if (!response.ok || !envelope?.data || envelope.data.source !== "orithos_ledger") {
-        throw new Error(envelope?.message || "Could not load the Orithos dashboard.");
+      const result = envelope?.data ? normalizeNativeOverview(envelope.data) : null;
+      if (envelope?.code != null && envelope.code !== 0) {
+        throw new Error(overviewLoadError(envelope, response.status));
       }
-      const result = envelope.data;
+      if (!result) {
+        throw new Error(overviewLoadError(envelope, response.status));
+      }
       const todayRow = result.dailyTrend.find(row => row.date === today);
       const yesterdayRow = result.dailyTrend.find(row => row.date === yesterday);
       const marginAvailable = Boolean(yesterdayRow?.costAvailable && yesterdayRow.grossProfit !== null);

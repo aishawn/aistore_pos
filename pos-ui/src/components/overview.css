@@ -313,37 +313,73 @@
   flex-shrink: 0;
   color: var(--ov-muted);
 }
-.ov-error {
+.ov-dashboard-alert {
+  order: -1;
+  flex: 1 1 18rem;
+  max-width: min(100%, 28rem);
   display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 20px;
-  padding: 20px;
-  border: 1px solid #e4bd83;
-  background: #fff9ee;
-  border-radius: 20px;
-  margin-bottom: 24px;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid #e8c58a;
+  background: #fff8ef;
+  border-radius: 14px;
+  box-shadow: 0 1px 0 rgba(17, 24, 39, 0.04);
 }
-.ov-error h2 {
-  font-size: 18px;
+.ov-dashboard-alert-icon {
+  display: inline-flex;
+  margin-top: 2px;
+  color: #b45309;
+  flex-shrink: 0;
+}
+.ov-dashboard-alert-copy {
+  min-width: 0;
+  flex: 1;
+}
+.ov-dashboard-alert-title {
+  font-size: 13px;
   font-weight: 600;
+  color: var(--ov-text);
 }
-.ov-error p {
-  font-size: 14px;
-  margin-top: 6px;
+.ov-dashboard-alert-detail {
+  font-size: 12px;
+  line-height: 1.35;
+  margin-top: 2px;
+  color: var(--ov-muted);
   overflow-wrap: anywhere;
 }
-.ov-error button,
-.ov-error > a {
+.ov-dashboard-alert-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.ov-dashboard-alert-retry,
+.ov-dashboard-alert-actions > a {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  min-height: 44px;
-  padding: 8px 16px;
+  gap: 4px;
+  min-height: 32px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
   background: white;
-  border: 1px solid #d8b477;
-  border-radius: 12px;
+  border: 1px solid #e2c288;
+  border-radius: 10px;
+  color: var(--ov-text);
+  white-space: nowrap;
+}
+.ov-dashboard-alert-retry:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+@media (max-width: 767px) {
+  .ov-dashboard-alert {
+    order: 3;
+    flex: 1 1 100%;
+    max-width: none;
+  }
 }
 .ov-skeleton {
   display: grid;
@@ -1379,7 +1415,7 @@
 .dark .ov-summary,
 .dark .ov-module,
 .dark .ov-briefing,
-.dark .ov-error,
+.dark .ov-dashboard-alert,
 .dark .ov-ring-modal,
 .dark .ov-submenu,
 .dark .ov-pulse-panel,

@@ -17,7 +17,6 @@ import {
   Settings,
   Sparkles,
   Users,
-  RefreshCw,
 } from "lucide-react";
 import { AssistantComposer } from "./AssistantComposer";
 import { fetchAiClientConfig } from "@/lib/api";
@@ -198,34 +197,22 @@ export function OverviewPageContent({
         <OverviewHeader
           active={active}
           company={data?.company || "Your store"}
+          alert={error ? {
+            title: authExpired
+              ? "Your session needs attention"
+              : connection
+              ? "Connect your store"
+              : "Dashboard could not refresh",
+            detail: error,
+            staleNote: Boolean(data),
+            loading,
+            authExpired,
+            connection,
+            integrationsHref: allowed.has("/settings/integrations") ? "/settings/integrations" : undefined,
+            returnPath: typeof window === "undefined" ? "/dashboard" : `${window.location.pathname}${window.location.search}`,
+            onRetry: () => void load(true),
+          } : null}
         />
-        {error ? (
-          <section role="alert" className="ov-error">
-            <div>
-              <h2>
-                {authExpired
-                  ? "Your session needs attention"
-                  : connection
-                  ? "Connect your store"
-                  : "Dashboard could not refresh"}
-              </h2>
-              <p>
-                {error}
-                {data ? " Showing your last loaded summary." : ""}
-              </p>
-            </div>
-            <button onClick={() => void load(true)} disabled={loading}>
-              <RefreshCw size={16} /> Retry
-            </button>
-            {authExpired ? (
-              <Link href={`/login?next=${encodeURIComponent(typeof window === "undefined" ? "/overview" : `${window.location.pathname}${window.location.search}`)}`}>
-                Sign in again
-              </Link>
-            ) : connection && allowed.has("/settings/integrations") ? (
-              <Link href="/settings/integrations">Connect Orithos</Link>
-            ) : null}
-          </section>
-        ) : null}
         {active === "workspace" ? (
           <>
             {data ? <section className="ov-summary" aria-label="Today">

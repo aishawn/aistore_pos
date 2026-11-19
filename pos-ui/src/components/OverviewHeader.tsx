@@ -4,13 +4,17 @@ import { OrithosLogo } from "@/components/OrithosLogo";
 import { OverviewAccountControl } from "@/components/OverviewAccountControl";
 import { OverviewLayoutSwitcher } from "@/components/OverviewLayoutSwitcher";
 import { LocationHeaderControl } from "@/components/LocationHeaderControl";
+import type { OverviewDashboardAlertProps } from "@/components/OverviewDashboardAlert";
+import { OverviewDashboardAlert } from "@/components/OverviewDashboardAlert";
 
 export function OverviewHeader({
   company,
   active,
+  alert,
 }: {
   company: string;
   active: "radial" | "workspace";
+  alert?: OverviewDashboardAlertProps | null;
 }) {
   return (
     <header className="ov-header">
@@ -24,6 +28,7 @@ export function OverviewHeader({
         {active === "radial" ? <p className="ov-tagline">Sell smarter. Manage better. Grow further with Orithos AI.</p> : null}
       </div>
       <div className="ov-toolbar">
+        {alert ? <OverviewDashboardAlert {...alert} /> : null}
         <LocationHeaderControl />
         <OverviewLayoutSwitcher active={active} />
         <OverviewAccountControl showLogo={false} />

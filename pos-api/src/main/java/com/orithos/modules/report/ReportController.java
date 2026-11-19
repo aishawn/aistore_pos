@@ -54,7 +54,9 @@ public class ReportController {
     @GetMapping("/native-overview")
     public ApiResult<Map<String, Object>> nativeOverview(@RequestParam LocalDate from,
                                                           @RequestParam LocalDate to) {
-        permissionAccess.requirePermission("reports.dashboard");
+        if (!permissionAccess.hasPermission("reports.dashboard")) {
+            permissionAccess.requirePermission("sell.checkout");
+        }
         Long outletId = CurrentUser.outletId();
         Long vendorId = CurrentUser.vendorId();
         if (outletId == null || vendorId == null) {
