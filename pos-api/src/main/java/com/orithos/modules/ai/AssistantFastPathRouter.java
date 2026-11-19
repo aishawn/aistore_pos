@@ -278,6 +278,9 @@ public final class AssistantFastPathRouter {
                     + "^(.+?)(?:现在|当前)(?:有多少|有几件)(?:库存|货|现货)[？?。]*$|"
                     + "^how much\\s+(.+?)\\s+do we have(?:\\s+in stock)?[?.!]*$",
             Pattern.CASE_INSENSITIVE);
+    private static final Pattern VB_CAN_STOCK_ALIAS = Pattern.compile(
+            "^vb cans?(\\b.*)$",
+            Pattern.CASE_INSENSITIVE);
     /**
      * Explicit "stock of/for <product>" wording must extract only the product.
      * Keep this ahead of the broader "do we have <thing>" fallback so "stock
@@ -701,6 +704,8 @@ public final class AssistantFastPathRouter {
     private static String cleanStockQuery(String value) {
         String query = cleanQuery(value);
         if (query == null) return null;
+        var vbCanAlias = VB_CAN_STOCK_ALIAS.matcher(query);
+        if (vbCanAlias.matches()) return "VB CAN" + vbCanAlias.group(1);
         return switch (query.toLowerCase(Locale.ROOT)) {
             case "西拉", "西拉子", "设拉子", "syrah" -> "Shiraz";
             default -> query;

@@ -68,7 +68,7 @@ public class ReportTemplateRegistry {
                         JOIN ai_rpt_product p ON p.id = i.product_id
                         WHERE i.outlet_id = ?
                           AND p.outlet_id = ?
-                          AND p.name LIKE ?
+                          AND p.name ILIKE ?
                         ORDER BY p.name
                         LIMIT 50
                         """, List.of(outletId, outletId, "%" + query + "%"));

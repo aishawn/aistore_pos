@@ -108,6 +108,7 @@ class ReportTemplateRegistryTest {
                 "report_stock", tenant, Map.of("query", "Shiraz"), window);
 
         assertNull(bound.error());
+        assertTrue(bound.sql().contains("p.name ILIKE ?"));
         assertTrue(bound.sql().contains("i.updated_at"));
         assertTrue(bound.sql().contains("COUNT(*) OVER () = COUNT(i.updated_at) OVER ()"));
         assertTrue(bound.sql().contains("MIN(i.updated_at) OVER ()"));

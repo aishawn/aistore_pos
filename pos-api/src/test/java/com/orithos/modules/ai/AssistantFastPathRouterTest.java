@@ -246,11 +246,11 @@ class AssistantFastPathRouterTest {
 
         AssistantFastPathRouter.Match chineseStock = AssistantFastPathRouter.maybeMatch("查一下 VB Cans 库存");
         assertEquals("report_stock", chineseStock.intent());
-        assertEquals("VB Cans", chineseStock.slots().get("query"));
+        assertEquals("VB CAN", chineseStock.slots().get("query"));
 
         AssistantFastPathRouter.Match stockLevel = AssistantFastPathRouter.maybeMatch("What's the stock level for VB Cans?");
         assertEquals("report_stock", stockLevel.intent());
-        assertEquals("VB Cans", stockLevel.slots().get("query"));
+        assertEquals("VB CAN", stockLevel.slots().get("query"));
 
         AssistantFastPathRouter.Match skuStock = AssistantFastPathRouter.maybeMatch("Find SKU VB-375");
         assertEquals("report_stock", skuStock.intent());
@@ -271,7 +271,7 @@ class AssistantFastPathRouterTest {
 
         AssistantFastPathRouter.Match reverseChinese = AssistantFastPathRouter.maybeMatch("VB Cans库存还有多少？");
         assertEquals("report_stock", reverseChinese.intent());
-        assertEquals("VB Cans", reverseChinese.slots().get("query"));
+        assertEquals("VB CAN", reverseChinese.slots().get("query"));
 
     }
 
@@ -478,7 +478,7 @@ class AssistantFastPathRouterTest {
             AssistantFastPathRouter.Match match = AssistantFastPathRouter.maybeMatch(question);
             assertNotNull(match, question);
             assertEquals("report_stock", match.intent(), question);
-            assertEquals("VB Cans", match.slots().get("query"), question);
+            assertEquals("VB CAN", match.slots().get("query"), question);
         }
 
         for (String question : new String[]{
@@ -488,7 +488,7 @@ class AssistantFastPathRouterTest {
             AssistantFastPathRouter.Match match = AssistantFastPathRouter.maybeMatch(question);
             assertNotNull(match, question);
             assertEquals("report_stock", match.intent(), question);
-            assertEquals("VB Cans", match.slots().get("query"), question);
+            assertEquals("VB CAN", match.slots().get("query"), question);
         }
     }
 
@@ -641,17 +641,17 @@ class AssistantFastPathRouterTest {
         AssistantFastPathRouter.Match queriedStock = AssistantFastPathRouter.maybeMatch("帮我查一下 VB Cans库存");
         assertNotNull(queriedStock);
         assertEquals("report_stock", queriedStock.intent());
-        assertEquals("VB Cans", queriedStock.slots().get("query"));
+        assertEquals("VB CAN", queriedStock.slots().get("query"));
 
         AssistantFastPathRouter.Match stock = AssistantFastPathRouter.maybeMatch("帮我看看 VB Cans 还剩多少");
         assertNotNull(stock);
         assertEquals("report_stock", stock.intent());
-        assertEquals("VB Cans", stock.slots().get("query"));
+        assertEquals("VB CAN", stock.slots().get("query"));
 
         AssistantFastPathRouter.Match availability = AssistantFastPathRouter.maybeMatch("库存里有 VB Cans 吗");
         assertNotNull(availability);
         assertEquals("report_stock", availability.intent());
-        assertEquals("VB Cans", availability.slots().get("query"));
+        assertEquals("VB CAN", availability.slots().get("query"));
 
         for (String question : new String[]{
                 "current stock for Shiraz",
@@ -664,6 +664,18 @@ class AssistantFastPathRouterTest {
             assertNotNull(currentStock, question);
             assertEquals("report_stock", currentStock.intent(), question);
             assertEquals("Shiraz", currentStock.slots().get("query"), question);
+        }
+
+        for (String question : new String[]{
+                "How much VB Cans do we have in stock?",
+                "How much vb cans 375ML do we have in stock?"
+        }) {
+            AssistantFastPathRouter.Match vbStock = AssistantFastPathRouter.maybeMatch(question);
+            assertNotNull(vbStock, question);
+            assertEquals("report_stock", vbStock.intent(), question);
+            assertEquals(question.toLowerCase(java.util.Locale.ROOT).contains("375ml")
+                            ? "VB CAN 375ML" : "VB CAN",
+                    vbStock.slots().get("query"), question);
         }
     }
 
