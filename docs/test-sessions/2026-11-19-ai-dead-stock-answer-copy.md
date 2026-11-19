@@ -61,3 +61,7 @@ The first deployment for `a33515f5` failed because a concurrent UI migration lef
 ## Current deployment identity
 
 On 2026-11-19, read-only `/api/public/version` checks on Demo and SKR confirmed both frontend and backend runtime SHA `c54a9be7b5d3641264a936fd830d3b9386517a33`, matching `origin/main`. This confirms deployment identity for the classifier routing and malformed-output fallback changes. It does not verify general classifier behavior or provider quality online; no model request was made in this check. Keep that evaluation pending a user-approved bounded model-call budget and a manual Demo sample.
+
+## Demo deterministic regression
+
+On 2026-11-20 Australia/Adelaide, one authenticated, read-only Demo request for `有哪些滞销商品？` returned HTTP 200 / API code 0, intent `report_dead_stock`, source `deterministic`, `llmFallback=false`, and `writeRequests=[]`. The Chinese answer included the Adelaide reporting interval `2026-10-22` through `2026-11-20` and retained the warning that sales freshness/completeness cannot be confirmed. `dataAsOf` was empty and `reportDataStatus` remained `incomplete`, as required. The displayed end date is the current Adelaide business date: at the check, UTC was 2026-11-19 14:08, or 2026-11-20 00:38 in Adelaide; it was not a future-date defect. This request creates the normal assistant audit/session record but no POS business write and no provider model call.
