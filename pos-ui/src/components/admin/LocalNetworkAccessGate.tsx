@@ -86,8 +86,8 @@ export function LocalNetworkAccessGate({ children }: { children: React.ReactNode
               Local network access required
             </h2>
             <p id="lna-gate-desc" className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">
-              Orithos needs permission to reach apps on this register (QZ Tray, Linkly connector, and other loopback
-              services). Without it, printing and hardware connect will not work.
+              Orithos needs permission to reach apps on this register (Orithos Hardware Connect, QZ Tray, Linkly
+              connector, and other loopback services). Without it, printing and EFTPOS setup will not work.
             </p>
           </div>
         </div>

@@ -364,6 +364,49 @@ test("prints sale receipts through QZ when a printer is configured", async () =>
   assert.equal(jobs.length, 1);
 });
 
+test("prints sale receipts through Hardware Connect when the agent is running", async () => {
+  const originalFetch = globalThis.fetch;
+  const jobs: { url: string; body?: string }[] = [];
+  globalThis.fetch = async (input, init) => {
+    const url = String(input);
+    jobs.push({ url, body: typeof init?.body === "string" ? init.body : undefined });
+    if (url.includes("/v1/health")) {
+      return new Response(JSON.stringify({ ok: true, version: "0.1.0.0" }), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
+    if (url.includes("/v1/printers")) {
+      return new Response(JSON.stringify({ printers: ["Receipt Printer"] }), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
+    if (url.includes("/v1/print/text")) {
+      return new Response(JSON.stringify({ printed: true }), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
+    return originalFetch(input, init);
+  };
+  let printed = false;
+  const values = new Map<string, string>();
+  values.set("orithos.hardware.settings.v1", JSON.stringify({
+    printer: "Receipt Printer",
+    cashDrawer: false,
+    printerBrand: "epson",
+    cashDrawerPin: "0",
+    cutDelayMs: 500,
+    linklyTerminal: "",
+    linklyAcquirer: "",
+    linklyConnection: "",
+  }));
+  setWindow({
+    isSecureContext: true,
+    localStorage: { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => values.set(key, value) },
+    print: () => { printed = true; },
+  });
+  try {
+    await printReceiptDocument({ plainText: "Receipt body" });
+    assert.equal(printed, false);
+    assert.ok(jobs.some((job) => job.url.includes("/v1/print/text")));
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("falls back to the browser print dialog when the local bridge is unavailable", async () => {
   let printed = false;
   const values = new Map<string, string>();
@@ -407,6 +450,15 @@ test("summarises printer readiness from saved preferences and bridge state", () 
   const items = getHardwareReadinessItems();
   assert.equal(items.find((item) => item.id === "printer")?.status, "Ready · Kitchen");
   assert.equal(items.find((item) => item.id === "drawer")?.status, "Attached; register auto-open disabled");
+});
+
+test("notifies readiness subscribers after a local hardware connect attempt", async () => {
+  setWindow({ isSecureContext: true });
+  let notifications = 0;
+  const unsubscribe = subscribeLocalHardwareSettings(() => { notifications += 1; });
+  await connectLocalHardware();
+  unsubscribe();
+  assert.equal(notifications, 1);
 });
 
 test("notifies same-tab settings subscribers after a local preference is saved", () => {

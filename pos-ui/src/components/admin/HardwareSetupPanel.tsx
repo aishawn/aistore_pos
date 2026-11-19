@@ -86,6 +86,16 @@ export function HardwareSetupPanel() {
     setNotice(null);
     const next = await connectLocalHardware();
     setState(next);
+    if (next.connected) {
+      setDraft((current) => {
+        if (current.printer && next.printers.includes(current.printer)) return current;
+        if (savedSettings.printer && next.printers.includes(savedSettings.printer)) {
+          return { ...current, printer: savedSettings.printer };
+        }
+        if (next.printers.length === 1) return { ...current, printer: next.printers[0] };
+        return current;
+      });
+    }
     setBusy(false);
     if (next.bridge === "orithos-hc") {
       setNotice(`Orithos Hardware Connect ${next.hardwareConnectVersion ?? ""} · ${next.printers.length} printer(s) found.`.trim());
@@ -94,8 +104,8 @@ export function HardwareSetupPanel() {
     } else if (!next.qzAvailable && !next.error) {
       setNotice(
         qzScriptError
-          ? "Install Orithos Hardware Connect (tools/orithos-hardware-connect) or QZ Tray, then connect again."
-          : "Orithos Hardware Connect and QZ Tray are not reachable on this PC.",
+          ? "Start Orithos Hardware Connect on this PC, or install QZ Tray, then connect again."
+          : "Orithos Hardware Connect (port 9170) and QZ Tray are not reachable on this register.",
       );
     }
   }
@@ -211,6 +221,22 @@ export function HardwareSetupPanel() {
               );
             })}
         </ul>
+        {!state.connected && !busy && (
+          <div
+            role="status"
+            className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-950"
+          >
+            <p className="font-semibold">Set up the local print agent</p>
+            <ol className="mt-2 list-decimal space-y-1 pl-5 text-xs sm:text-sm">
+              <li>Install .NET 8 Runtime on this register.</li>
+              <li>
+                Start <span className="font-mono">Orithos Hardware Connect</span> (dev:{" "}
+                <span className="font-mono">run-dev.ps1</span> in the repo).
+              </li>
+              <li>Click <span className="font-semibold">Connect local bridge</span> above and choose your receipt printer.</li>
+            </ol>
+          </div>
+        )}
         <div className="mt-3 flex flex-wrap justify-end gap-2">
           {state.bridge !== "orithos-hc" && (
             <a href="https://qz.io/download/" target="_blank" rel="noreferrer" className="inline-flex min-h-10 items-center gap-2 rounded-md border border-[var(--oh-border)] px-3 text-sm font-medium">
@@ -218,14 +244,25 @@ export function HardwareSetupPanel() {
               Get QZ Tray (fallback)
             </a>
           )}
-          <button type="button" onClick={() => void connect()} disabled={busy} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-[var(--oh-border)] px-3 text-sm font-semibold disabled:opacity-50">
+          <button
+            type="button"
+            onClick={() => void connect()}
+            disabled={busy}
+            className={
+              state.connected
+                ? "inline-flex min-h-10 items-center gap-2 rounded-md border border-[var(--oh-border)] px-3 text-sm font-semibold disabled:opacity-50"
+                : "inline-flex min-h-10 items-center gap-2 rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white disabled:opacity-50"
+            }
+          >
             <RefreshCw size={15} className={busy ? "animate-spin" : undefined} aria-hidden="true" />
             {busy ? "Connecting…" : state.connected ? "Refresh printers" : "Connect local bridge"}
           </button>
         </div>
         {state.bridge !== "orithos-hc" && (
           <p className="mt-2 text-xs text-[var(--oh-muted)]">
-            Preferred: run <span className="font-mono">tools/orithos-hardware-connect/run-dev.ps1</span> on this register (Shopfront-style agent).
+            Preferred: on this PC install .NET 8, then run{" "}
+            <span className="font-mono">tools\orithos-hardware-connect\run-dev.ps1</span> (listens on{" "}
+            <span className="font-mono">127.0.0.1:9170</span>).
           </p>
         )}
         {state.error && <p role="alert" className="mt-3 text-sm text-red-800">{state.error}</p>}

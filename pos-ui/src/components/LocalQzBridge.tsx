@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import Script from "next/script";
 import { connectLocalHardware } from "@/lib/local-hardware";
 
-/** Loads QZ Tray and reconnects once per sell/hardware session for receipt printing. */
+/** Probes Orithos Hardware Connect first, then loads QZ Tray for receipt printing on Sell. */
 export function LocalQzBridge() {
   const attempted = useRef(false);
 

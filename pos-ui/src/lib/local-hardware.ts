@@ -38,13 +38,24 @@ async function probeOrithosHardwareConnect(): Promise<{
   }
 }
 
+async function hardwareConnectFailureMessage(response: Response, action: string): Promise<string> {
+  try {
+    const body = (await response.clone().json()) as { error?: string; title?: string; detail?: string };
+    const detail = body.error ?? body.detail ?? body.title;
+    if (detail) return `${action}: ${detail}`;
+  } catch {
+    /* ignore */
+  }
+  return `${action} failed (${response.status})`;
+}
+
 async function printTextThroughOrithosHardwareConnect(printer: string, text: string): Promise<void> {
   const response = await loopbackHardwareConnectFetch("/v1/print/text", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ printer, text, encoding: "utf-8" }),
   });
-  if (!response.ok) throw new Error(`Hardware Connect print failed (${response.status})`);
+  if (!response.ok) throw new Error(await hardwareConnectFailureMessage(response, "Hardware Connect print"));
 }
 
 async function printRawThroughOrithosHardwareConnect(printer: string, bytes: number[]): Promise<void> {
@@ -53,7 +64,7 @@ async function printRawThroughOrithosHardwareConnect(printer: string, bytes: num
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ printer, bytes }),
   });
-  if (!response.ok) throw new Error(`Hardware Connect raw print failed (${response.status})`);
+  if (!response.ok) throw new Error(await hardwareConnectFailureMessage(response, "Hardware Connect raw print"));
 }
 
 type QzTrayApi = {
@@ -115,6 +126,11 @@ const EMPTY_SETTINGS: HardwareSettings = {
   linklyConnection: "",
 };
 const localSettingsListeners = new Set<() => void>();
+
+function notifyLocalHardwareSubscribers(): void {
+  if (typeof window === "undefined") return;
+  localSettingsListeners.forEach((listener) => listener());
+}
 
 export type DiagnosticSerialPort = {
   open: (options: { baudRate: number }) => Promise<void>;
@@ -182,68 +198,80 @@ export function supportsBarcodeDetection(): boolean {
   return typeof window !== "undefined" && "BarcodeDetector" in window;
 }
 
+function finishLocalHardwareConnect(state: LocalHardwareState): LocalHardwareState {
+  notifyLocalHardwareSubscribers();
+  return state;
+}
+
 export async function connectLocalHardware(): Promise<LocalHardwareState> {
   if (typeof window === "undefined" || !window.isSecureContext) {
     activeLocalBridge = null;
-    return {
+    return finishLocalHardwareConnect({
       bridge: null,
       qzAvailable: false,
       connected: false,
       printers: [],
       error: "Use this page on HTTPS to connect local devices.",
       hardwareConnectVersion: null,
-    };
+    });
   }
 
   const hardwareConnect = await probeOrithosHardwareConnect();
   if (hardwareConnect.reachable) {
     activeLocalBridge = "orithos-hc";
-    return {
+    return finishLocalHardwareConnect({
       bridge: "orithos-hc",
       qzAvailable: false,
       connected: true,
       printers: hardwareConnect.printers,
       error: null,
       hardwareConnectVersion: hardwareConnect.version,
-    };
+    });
   }
 
   const qz = window.qz;
   if (!qz) {
     activeLocalBridge = null;
-    return {
+    return finishLocalHardwareConnect({
       bridge: null,
       qzAvailable: false,
       connected: false,
       printers: [],
       error: null,
       hardwareConnectVersion: null,
-    };
+    });
   }
 
   try {
     if (!qz.websocket.isActive()) await qz.websocket.connect({ retries: 1, delay: 500 });
     const printers = await qz.printers.find();
     activeLocalBridge = "qz";
-    return {
+    return finishLocalHardwareConnect({
       bridge: "qz",
       qzAvailable: true,
       connected: true,
       printers,
       error: null,
       hardwareConnectVersion: null,
-    };
+    });
   } catch (cause) {
     activeLocalBridge = null;
-    return {
+    return finishLocalHardwareConnect({
       bridge: null,
       qzAvailable: true,
       connected: false,
       printers: [],
       error: cause instanceof Error ? cause.message : "Local hardware bridge connection failed.",
       hardwareConnectVersion: null,
-    };
+    });
   }
+}
+
+/** Connects to Orithos Hardware Connect or QZ when the Sell page has not opened Hardware settings yet. */
+export async function ensureLocalPrinterBridge(): Promise<boolean> {
+  if (isLocalPrinterBridgeActive()) return true;
+  await connectLocalHardware();
+  return isLocalPrinterBridgeActive();
 }
 
 export async function printThroughLocalBridge(printer: string, data: string): Promise<void> {
@@ -288,6 +316,7 @@ export async function printRawBytesThroughLocalBridge(printer: string, bytes: nu
 export async function testOpenCashDrawer(settings: HardwareSettings): Promise<void> {
   if (!settings.printer) throw new Error("Select a receipt printer first.");
   if (!settings.cashDrawer) throw new Error("Turn on cash drawer for the selected printer first.");
+  if (!(await ensureLocalPrinterBridge())) throw new Error("Connect the local hardware bridge before opening the cash drawer.");
   await printRawBytesThroughLocalBridge(settings.printer, resolveCashDrawerKickBytes(settings));
 }
 
@@ -298,6 +327,7 @@ function sleep(ms: number): Promise<void> {
 /** Test print with optional paper cut after brand-specific delay (ESC/POS GS V). */
 export async function printReceiptTestThroughLocalBridge(settings: HardwareSettings): Promise<void> {
   if (!settings.printer) throw new Error("Select a receipt printer first.");
+  if (!(await ensureLocalPrinterBridge())) throw new Error("Connect the local hardware bridge before printing.");
   const body = "Orithos POS hardware test\n\n";
   await printThroughLocalBridge(settings.printer, body);
   const delay = Number.isFinite(settings.cutDelayMs) ? Math.max(0, Math.min(settings.cutDelayMs, 10_000)) : 500;
@@ -372,8 +402,7 @@ export async function printReceiptDocument(options?: PrintReceiptDocumentOptions
   const plainText = options?.plainText?.trim();
   if (plainText) {
     const settings = getLocalHardwareSettings();
-    const bridgeReady =
-      activeLocalBridge === "orithos-hc" || Boolean(window.qz?.websocket.isActive());
+    const bridgeReady = settings.printer ? await ensureLocalPrinterBridge() : isLocalPrinterBridgeActive();
     if (settings.printer && bridgeReady) {
       try {
         await printThroughLocalBridge(settings.printer, `${plainText}\n\n`);
@@ -438,7 +467,7 @@ export function getHardwareReadinessItems(): HardwareReadinessItem[] {
     ? ({ status: "Not configured", tone: "warn" as const })
     : qzActive
       ? ({ status: `Ready · ${settings.printer}`, tone: "ok" as const })
-      : ({ status: "Configured; connect QZ on Hardware", tone: "warn" as const });
+      : ({ status: "Configured; connect local bridge on Hardware", tone: "warn" as const });
 
   const drawer = settings.cashDrawer
     ? ({ status: "Attached; register auto-open disabled", tone: "warn" as const })
