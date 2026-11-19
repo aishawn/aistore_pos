@@ -18,6 +18,9 @@ const currentWeekStartAdelaide = (() => {
   return adelaideBusinessDate(weekday === 0 ? -6 : 1 - weekday);
 })();
 const sourceCommit = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
+const expectedRuntimeCommit = process.env.PILOT_EXPECTED_RUNTIME_SHA || sourceCommit;
+if (!/^[\da-f]{40}$/i.test(expectedRuntimeCommit)) throw new Error("INVALID_PILOT_EXPECTED_RUNTIME_SHA");
+execFileSync("git", ["merge-base", "--is-ancestor", expectedRuntimeCommit, sourceCommit], { cwd: root, stdio: "ignore" });
 const worktreeStatus = execFileSync("git", ["status", "--porcelain"], { cwd: root, encoding: "utf8" });
 const evidenceOnlyPath = (statusLine) => {
   const filePath = statusLine.slice(3).replace(/^"|"$/g, "");
@@ -582,14 +585,15 @@ try {
     const backendCommit = version.backend?.commit ?? version.backend?.sourceCommit ?? null;
     const matchesSourceCommit = typeof frontendCommit === "string"
       && typeof backendCommit === "string"
-      && frontendCommit.toLowerCase() === sourceCommit.toLowerCase()
-      && backendCommit.toLowerCase() === sourceCommit.toLowerCase();
+      && frontendCommit.toLowerCase() === expectedRuntimeCommit.toLowerCase()
+      && backendCommit.toLowerCase() === expectedRuntimeCommit.toLowerCase();
     runtimeIdentity = {
       httpStatus: versionResponse.status(),
       frontendCommit,
       frontendBuiltAt: version.frontend?.builtAt ?? null,
       backendCommit,
       backendBuiltAt: version.backend?.builtAt ?? null,
+      expectedRuntimeCommit,
       matchesSourceCommit,
     };
   } catch (error) {
@@ -953,6 +957,7 @@ try {
   const output = {
     generatedAt: new Date().toISOString(),
     sourceCommit,
+    expectedRuntimeCommit,
     worktreeDirty,
     deployment: /^[\da-f]{40}$/i.test(process.env.PILOT_DEPLOYMENT_SHA ?? "")
       ? process.env.PILOT_DEPLOYMENT_SHA.toLowerCase()
@@ -987,7 +992,8 @@ try {
           && selectedCases.length === cases.length ? "PASS" : "BLOCKED",
     acceptance: {
       sourceTreeClean: !worktreeDirty,
-      runtimeMatchesSourceCommit: runtimeIdentity?.matchesSourceCommit === true,
+    runtimeMatchesSourceCommit: runtimeIdentity?.matchesSourceCommit === true,
+    runtimeMatchesExpectedCommit: runtimeIdentity?.matchesSourceCommit === true,
       fullCatalogRun: selectedCases.length === cases.length,
       candidateAccepted: !worktreeDirty
         && runtimeIdentity?.matchesSourceCommit === true
