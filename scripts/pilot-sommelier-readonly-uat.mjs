@@ -21,10 +21,11 @@ const checks = [];
 const record = (name, status, evidence) => checks.push({ name, status, evidence });
 const WINE_TERMS = /wine|shiraz|syrah|cabernet|pinot|chardonnay|merlot|sauvignon|prosecco|champagne|riesling|malbec|grenache|tempranillo|moscato|sparkling|brut|ros[eé]/i;
 const NON_WINE_TERMS = /\b(?:water|cola|chips|nuts|vodka|whisky|whiskey|gin|beer|lager|ale|cider|juice|soft drink)\b/i;
+const WEIGHT_PACKAGE = /(?:\b\d+(?:[.,]\d+)?\s*(?:mg|g|grams?|kg|kilograms?|oz|ounces?|lbs?|pounds?)\b|\d+(?:[.,]\d+)?\s*(?:毫克|克|千克|公斤))/i;
 
 function looksLikeWine(item) {
   const text = `${item.name || ""} ${item.categoryName || ""}`;
-  return WINE_TERMS.test(text) && !NON_WINE_TERMS.test(text);
+  return WINE_TERMS.test(text) && !NON_WINE_TERMS.test(text) && !WEIGHT_PACKAGE.test(text);
 }
 const { chromium } = await import("playwright");
 const browser = await chromium.launch({ headless: true });

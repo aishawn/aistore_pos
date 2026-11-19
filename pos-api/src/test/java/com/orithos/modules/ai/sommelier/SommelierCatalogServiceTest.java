@@ -6,6 +6,7 @@ import com.orithos.modules.ai.sommelier.mapper.SommelierProductMapper;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
@@ -50,5 +51,34 @@ class SommelierCatalogServiceTest {
         verify(mapper).listCatalog(1L);
         verify(mapper).searchCatalog(1L, "Shiraz");
         verify(mapper).findById(7L, 1L);
+    }
+
+    @Test
+    void listWinesExcludesWeightPackagedProductsEvenWhenTheyLookLikeWine() {
+        SommelierProductMapper mapper = mock(SommelierProductMapper.class);
+        List<String> names = List.of(
+                "Shiraz snack 100g", "Shiraz snack 100 g", "Shiraz snack 100 grams",
+                "Shiraz snack 1kg", "Shiraz snack 1 kg", "Shiraz snack 1 kilogram",
+                "Shiraz snack 100克", "Shiraz snack 1千克", "Shiraz snack 1公斤",
+                "Shiraz snack 0.5 kg", "Shiraz snack 250G", "Shiraz snack 2.5 kilograms",
+                "Shiraz Reserve 750ml"
+        );
+        List<SommelierProductMapper.CatalogRow> rows = new ArrayList<>();
+        for (int i = 0; i < names.size(); i++) {
+            SommelierProductMapper.CatalogRow row = new SommelierProductMapper.CatalogRow();
+            row.setId((long) i + 1);
+            row.setName(names.get(i));
+            row.setCategoryName("Wine");
+            row.setStoredWineType("red");
+            row.setPrice(BigDecimal.TEN);
+            rows.add(row);
+        }
+        when(mapper.listCatalog(1L)).thenReturn(rows);
+        SommelierCatalogService service = new SommelierCatalogService(mapper, new ObjectMapper());
+        TenantContext tenant = new TenantContext(42L, 7L, 1L, List.of(1L), Set.of());
+
+        List<WineCandidate> wines = service.listWines(tenant);
+
+        assertEquals(List.of("Shiraz Reserve 750ml"), wines.stream().map(WineCandidate::name).toList());
     }
 }

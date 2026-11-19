@@ -14,6 +14,9 @@ public final class WineLexicon {
     private WineLexicon() {}
 
     private static final Pattern NON_LETTER = Pattern.compile("[^a-z0-9]+");
+    private static final Pattern WEIGHT_PACKAGE = Pattern.compile(
+            "(?i)(?:\\b\\d+(?:[.,]\\d+)?\\s*(?:mg|g|grams?|kg|kilograms?|oz|ounces?|lbs?|pounds?)\\b|\\d+(?:[.,]\\d+)?\\s*(?:毫克|克|千克|公斤))"
+    );
     private static final String[] NON_WINE_TERMS = {
             "beer", "ale", "lager", "ipa", "stout", "cider", "vodka", "rum", "whisky", "whiskey", "gin",
             "tequila", "brandy", "liqueur", "limoncello", "vermouth", "schnapps", "sake", "soju", "mezcal",
@@ -165,7 +168,7 @@ public final class WineLexicon {
     }
 
     public static boolean looksLikeWine(String name, String categoryName, String familyName) {
-        if (isKnownNonWine(name, categoryName, familyName)) return false;
+        if (isKnownNonWine(name, categoryName, familyName) || isWeightPackaged(name, categoryName, familyName)) return false;
         if (matchVarietal(normalize(nullToEmpty(name))) != null) {
             return true;
         }
@@ -185,6 +188,10 @@ public final class WineLexicon {
         if (containsToken(normalizedName, NON_WINE_TERMS)) return true;
         if (matchVarietal(normalizedName) != null) return false;
         return containsToken(blob(categoryName, familyName), NON_WINE_TERMS);
+    }
+
+    public static boolean isWeightPackaged(String name, String categoryName, String familyName) {
+        return WEIGHT_PACKAGE.matcher(nullToEmpty(name) + " " + nullToEmpty(categoryName) + " " + nullToEmpty(familyName)).find();
     }
 
     private static String nullToEmpty(String s) {
