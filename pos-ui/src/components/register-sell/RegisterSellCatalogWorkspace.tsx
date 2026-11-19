@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { ArrowLeft, CircleAlert, LayoutGrid, List, LoaderCircle, Search, ShoppingCart } from "lucide-react";
 import { ProductImage } from "@/components/ProductImage";
-import type { OdooPosCategoryRecord, OdooProductRecord } from "@/lib/odoo-api";
+import type { RetailPosCategoryRecord, RetailProductRecord } from "@/lib/retail-api";
 import { friendlyProductName } from "@/lib/product-display-name";
 import { cn } from "@/lib/utils";
 import { SALE_KEY_CATEGORIES } from "@/lib/sale-key-categories";
@@ -22,7 +22,7 @@ type RegisterSellCatalogWorkspaceProps = {
   onViewCart?: () => void;
   categoriesError: string | null;
   categoriesLoading: boolean;
-  categoryTiles: OdooPosCategoryRecord[];
+  categoryTiles: RetailPosCategoryRecord[];
   onRetryCategories: () => void;
   onOpenCategory: (id: number | null) => void;
   onOpenQuickCategory: (name: string) => void;
@@ -42,12 +42,12 @@ type RegisterSellCatalogWorkspaceProps = {
   backToCatalogHome: () => void;
   categoryId: number | null;
   query: string;
-  posCategories: OdooPosCategoryRecord[];
+  posCategories: RetailPosCategoryRecord[];
   hideOutOfStock: boolean;
   onHideOutOfStockChange: (value: boolean) => void;
   catalogDensity: CatalogDensity;
   onCatalogDensityChange: (value: CatalogDensity) => void;
-  products: OdooProductRecord[];
+  products: RetailProductRecord[];
   productsLoading: boolean;
   productsError: string | null;
   productsHasNext: boolean;
@@ -56,7 +56,7 @@ type RegisterSellCatalogWorkspaceProps = {
   sessionOpen: boolean;
   onRetryProducts: () => void;
   onLoadMoreProducts: () => void;
-  onAddProduct: (product: OdooProductRecord) => void;
+  onAddProduct: (product: RetailProductRecord) => void;
 };
 
 export function RegisterSellCatalogWorkspace({

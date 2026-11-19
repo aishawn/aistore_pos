@@ -1,10 +1,10 @@
-import type { OdooProductRecord } from "@/lib/odoo-api";
+import type { RetailProductRecord } from "@/lib/retail-api";
 
 export type WorkspaceTab = "keys" | "parked" | "more";
 export type CatalogDensity = "grid" | "list";
 
 export type CartLine = {
-  product: OdooProductRecord;
+  product: RetailProductRecord;
   quantity: number;
   /** Units per pack (1 = bottle/each, 12 = case). */
   packFactor: number;
@@ -36,11 +36,11 @@ export const CATEGORY_TILE_TONES = [
   { bg: "var(--oh-tile-green-bg)", border: "var(--oh-tile-green-border)", text: "var(--oh-tile-green-text)" },
 ] as const;
 
-export function shelfUnitPrice(product: OdooProductRecord): number | null {
+export function shelfUnitPrice(product: RetailProductRecord): number | null {
   return product.price_included;
 }
 
-export function provisionalLineUnit(product: OdooProductRecord, packFactor: number): number {
+export function provisionalLineUnit(product: RetailProductRecord, packFactor: number): number {
   const unit = shelfUnitPrice(product);
   return (unit ?? product.list_price) * packFactor;
 }

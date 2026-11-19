@@ -4,16 +4,17 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { AlertCircle, Check, CircleAlert, LoaderCircle, Minus, Plus, RefreshCw, X } from "lucide-react";
 import {
-  closeOdooPosSession,
-  getOdooPosBootstrap,
-  getOdooSession,
-  type OdooPosBootstrap,
-} from "@/lib/odoo-api";
-import { formatOdooDateTime, formatStoreEpoch } from "@/lib/odoo-date";
+  closeRetailPosSession,
+  getRetailPosBootstrap,
+  getRetailSession,
+  type RetailPosBootstrap,
+} from "@/lib/retail-api";
+import { formatStoreDateTime, formatStoreEpoch } from "@/lib/retail-date";
+import { ODOO_REGISTER_CLOSED_EVENT, REGISTER_CLOSED_EVENT } from "@/lib/register-events";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
 import { cn } from "@/lib/utils";
 
-export const ODOO_REGISTER_CLOSED_EVENT = "orithos:odoo-register-closed";
+export { ODOO_REGISTER_CLOSED_EVENT, REGISTER_CLOSED_EVENT };
 
 const REGISTER_SELECTION_KEY = "orithos-odoo-register-v1";
 const LONG_OPEN_HOURS = 24;
@@ -72,7 +73,7 @@ function formatMoney(amount: number | null | undefined): string {
 
 function dispatchRegisterClosed() {
   if (typeof window === "undefined") return;
-  window.dispatchEvent(new CustomEvent(ODOO_REGISTER_CLOSED_EVENT));
+  window.dispatchEvent(new CustomEvent(REGISTER_CLOSED_EVENT));
 }
 
 export type OdooCloseRegisterFormProps = {
@@ -91,9 +92,9 @@ export function OdooCloseRegisterForm({
   onRequestClose,
 }: OdooCloseRegisterFormProps) {
   const isModal = variant === "modal";
-  const [bootstrap, setBootstrap] = useState<OdooPosBootstrap | null>(null);
+  const [bootstrap, setBootstrap] = useState<RetailPosBootstrap | null>(null);
   const [connected, setConnected] = useState<boolean | null>(null);
-  const [odooUserId, setOdooUserId] = useState<string | null>(null);
+  const [registerUserId, setRegisterUserId] = useState<string | null>(null);
   const [configId, setConfigId] = useState<number | null>(null);
   const [countedCash, setCountedCash] = useState("");
   const [cashCounts, setCashCounts] = useState<Record<string, string>>({});
@@ -124,15 +125,15 @@ export function OdooCloseRegisterForm({
     setLoading(true);
     setError(null);
     try {
-      const user = await getOdooSession();
+      const user = await getRetailSession();
       if (revision !== requestRevision.current) return;
       setConnected(Boolean(user));
-      setOdooUserId(user?.id ?? null);
+      setRegisterUserId(user?.id ?? null);
       if (!user) {
         setBootstrap(null);
         return;
       }
-      const data = await getOdooPosBootstrap();
+      const data = await getRetailPosBootstrap();
       if (revision !== requestRevision.current) return;
       setBootstrap(data);
       setLastLoadedAt(Date.now());
@@ -227,7 +228,7 @@ export function OdooCloseRegisterForm({
       if (cash != null && (!Number.isFinite(cash) || cash < 0 || cash > 1_000_000)) {
         throw new Error("Enter a valid counted cash amount, or leave it blank.");
       }
-      const closed = await closeOdooPosSession(selected.id, cash);
+      const closed = await closeRetailPosSession(selected.id, cash);
       setResult({
         sessionName: closed.sessionName,
         registerName: closed.registerName,
@@ -398,8 +399,8 @@ export function OdooCloseRegisterForm({
                 const nextId = Number(event.target.value);
                 setConfigId(nextId);
                 resetCashInputs();
-                if (odooUserId) {
-                  try { localStorage.setItem(`${REGISTER_SELECTION_KEY}:${odooUserId}`, String(nextId)); } catch { /* Keep the current selection for this session. */ }
+                if (registerUserId) {
+                  try { localStorage.setItem(`${REGISTER_SELECTION_KEY}:${registerUserId}`, String(nextId)); } catch { /* Keep the current selection for this session. */ }
                 }
               }}
               className="h-11 min-w-0 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-normal text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15 disabled:cursor-not-allowed disabled:bg-[var(--oh-surface)]"
@@ -427,7 +428,7 @@ export function OdooCloseRegisterForm({
                     <p className="mt-0.5 break-words text-sm font-semibold text-[var(--oh-text)]">{selected.session.name}</p>
                     <p className="mt-1 text-xs text-[var(--oh-text-secondary)]">
                       Started {selected.session.start_at
-                        ? formatOdooDateTime(String(selected.session.start_at), selected.timezone)
+                        ? formatStoreDateTime(String(selected.session.start_at), selected.timezone)
                         : "—"}
                       {openDuration && <> · Open {openDuration.label}</>}
                     </p>

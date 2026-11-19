@@ -6,12 +6,12 @@ import { AlertCircle, LoaderCircle, RefreshCw, Wallet } from "lucide-react";
 import {
   AdminPageLayout,
 } from "@/components/admin/AdminPageLayout";
-import { getOdooPosBootstrap, postOdooSessionCash, type OdooPosBootstrap } from "@/lib/odoo-api";
+import { getRetailPosBootstrap, postRetailSessionCash, type RetailPosBootstrap } from "@/lib/retail-api";
 
 const MAX_CASH_ADJUSTMENT = 1_000_000;
 
 export default function ManageCashPage() {
-  const [bootstrap, setBootstrap] = useState<OdooPosBootstrap | null>(null);
+  const [bootstrap, setBootstrap] = useState<RetailPosBootstrap | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [configId, setConfigId] = useState<number | null>(null);
@@ -28,7 +28,7 @@ export default function ManageCashPage() {
       setLoading(true);
       setError(null);
       try {
-        const data = await getOdooPosBootstrap();
+        const data = await getRetailPosBootstrap();
         if (cancelled) return;
         setBootstrap(data);
         const open = data.configs.find((config) => config.session);
@@ -58,7 +58,7 @@ export default function ManageCashPage() {
     setError(null);
     setSuccess(null);
     try {
-      const result = await postOdooSessionCash({
+      const result = await postRetailSessionCash({
         configId,
         direction,
         amount: value,

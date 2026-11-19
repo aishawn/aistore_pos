@@ -3,7 +3,7 @@
 import type { KeyboardEvent, RefObject } from "react";
 import { ArrowLeft, LoaderCircle, Minus, Plus, RefreshCw, Search, Trash2, X } from "lucide-react";
 import { CartIcon, PlusIcon } from "@/components/icons";
-import type { OdooCheckoutQuote, OdooCustomerRecord } from "@/lib/odoo-api";
+import type { RetailCheckoutQuote, RetailCustomerRecord } from "@/lib/retail-api";
 import { friendlyProductName } from "@/lib/product-display-name";
 import { splitMoney } from "@/lib/sell-screen";
 import { cn } from "@/lib/utils";
@@ -13,15 +13,15 @@ import { CASE_PACK_OPTIONS, money, provisionalLineUnit, type CartLine } from "./
 type RegisterSellCartAsideProps = {
   mobileOpen: boolean;
   onCloseMobile: () => void;
-  customer: OdooCustomerRecord | null;
+  customer: RetailCustomerRecord | null;
   customerQuery: string;
-  customers: OdooCustomerRecord[];
+  customers: RetailCustomerRecord[];
   customerSearchLoading: boolean;
   customerSearchError: string | null;
   customerActiveIndex: number;
   onCustomerQueryChange: (value: string) => void;
   onCustomerSearchKeyDown: (event: KeyboardEvent<HTMLInputElement>) => void;
-  onSelectCustomer: (customer: OdooCustomerRecord) => void;
+  onSelectCustomer: (customer: RetailCustomerRecord) => void;
   onRemoveCustomer: () => void;
   onRetryCustomerSearch: () => void;
   query: string;
@@ -33,7 +33,7 @@ type RegisterSellCartAsideProps = {
   onProductSearchKeyDown: (event: KeyboardEvent<HTMLInputElement>) => void;
   lines: CartLine[];
   selectedLineKey: string | null;
-  quote: OdooCheckoutQuote | null;
+  quote: RetailCheckoutQuote | null;
   quoteIsCurrent: boolean;
   onSelectLine: (key: string) => void;
   onRemoveLine: (productId: number, packFactor: number, key: string) => void;

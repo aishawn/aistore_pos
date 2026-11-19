@@ -5,11 +5,11 @@ import { ChevronDown } from "lucide-react";
 import { useSalesHistoryUiOptional } from "@/components/SalesHistoryUiProvider";
 import { StockWorkspaceDialog } from "@/components/admin/StockWorkspaceDialog";
 import { WorkspaceRecordsPanel } from "@/components/WorkspaceRecordsPanel";
-import { getOdooPosBootstrap, type OdooPosBootstrap } from "@/lib/odoo-api";
-import { formatOdooDateTime } from "@/lib/odoo-date";
+import { getRetailPosBootstrap, type RetailPosBootstrap } from "@/lib/retail-api";
+import { formatStoreDateTime } from "@/lib/retail-date";
 import { useAuth } from "@/lib/auth";
 
-type Config = OdooPosBootstrap["configs"][number];
+type Config = RetailPosBootstrap["configs"][number];
 
 export function SalesMenu({ config, onHelp }: { config?: Config | null; onHelp: () => void }) {
   const { hasPermission } = useAuth();
@@ -52,7 +52,7 @@ function CurrentSession({ config }: { config?: Config | null }) {
   const [error, setError] = useState<string | null>(null);
   async function refresh() {
     setLoading(true); setError(null);
-    try { const pos = await getOdooPosBootstrap(); setCurrent(pos.configs.find((item) => item.id === config?.id)); }
+    try { const pos = await getRetailPosBootstrap(); setCurrent(pos.configs.find((item) => item.id === config?.id)); }
     catch { setError("Could not refresh this session. Please retry."); }
     finally { setLoading(false); }
   }
@@ -63,7 +63,7 @@ function CurrentSession({ config }: { config?: Config | null }) {
     {session ? <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-6 gap-y-4">
       <dt>Register</dt><dd>{current?.name}</dd><dt>Session</dt><dd>{session.name}</dd>
       <dt>Status</dt><dd>Open</dd><dt>Opened by</dt><dd>{session.user_id ? session.user_id[1] : "—"}</dd>
-      <dt>Opened at</dt><dd>{session.start_at ? formatOdooDateTime(session.start_at, current?.timezone ?? "UTC", { dateStyle: "medium", timeStyle: "short" }) : "—"}</dd>
+      <dt>Opened at</dt><dd>{session.start_at ? formatStoreDateTime(session.start_at, current?.timezone ?? "UTC", { dateStyle: "medium", timeStyle: "short" }) : "—"}</dd>
       <dt>Payment methods</dt><dd>{current?.paymentMethods.map((method) => method.name).join(", ") || "—"}</dd>
     </dl> : <p role="status">No open session for this register.</p>}
     <button type="button" onClick={() => void refresh()} disabled={loading} className="min-h-11 rounded-lg border px-3 disabled:opacity-50">{loading ? "Refreshing…" : "Refresh session"}</button>
