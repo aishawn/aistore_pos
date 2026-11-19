@@ -239,7 +239,10 @@ export function HardwareSetupPanel() {
           >
             <p className="font-semibold">Set up the local print agent</p>
             <ol className="mt-2 list-decimal space-y-1 pl-5 text-xs sm:text-sm">
-              <li>Install .NET 8 Runtime on this register.</li>
+              <li>
+                Install .NET 8 Runtime on this register (optional script:{" "}
+                <span className="font-mono">tools\orithos-hardware-connect\install-runtime.ps1</span>).
+              </li>
               <li>
                 Start <span className="font-mono">Orithos Hardware Connect</span> (dev:{" "}
                 <span className="font-mono">run-dev.ps1</span> in the repo).
