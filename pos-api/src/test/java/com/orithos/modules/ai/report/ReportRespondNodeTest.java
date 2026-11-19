@@ -327,8 +327,9 @@ class ReportRespondNodeTest {
         OverAllState deadStock = state("", List.of());
         when(deadStock.value("intent", String.class)).thenReturn(Optional.of("report_dead_stock"));
         when(deadStock.value("question", String.class)).thenReturn(Optional.of("有哪些滞销商品？"));
+        when(deadStock.value("report_data_status", String.class)).thenReturn(Optional.of("incomplete"));
 
-        assertEquals("所选期间未发现符合条件的滞销商品。销售统计区间：2026-10-20。",
+        assertEquals("无法确认所选期间是否确实没有滞销商品。销售数据更新时间及完整性无法确认，以上结果需核实。",
                 node.apply(deadStock).get("answer"));
     }
 

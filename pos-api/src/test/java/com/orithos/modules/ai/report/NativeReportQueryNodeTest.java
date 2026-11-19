@@ -24,6 +24,36 @@ import static org.mockito.Mockito.when;
 class NativeReportQueryNodeTest {
 
     @Test
+    void emptyDeadStockResultWithoutFreshnessIsIncompleteInsteadOfNoData() {
+        NativeAiReportQueryService queryService = mock(NativeAiReportQueryService.class);
+        ReportQueryService reportQuery = mock(ReportQueryService.class);
+        NativeReportQueryNode node = new NativeReportQueryNode(queryService,
+                new ReportPeriodResolver(), reportQuery);
+        OverAllState state = mock(OverAllState.class);
+        LocalDateTime from = LocalDateTime.of(2026, 10, 20, 0, 0);
+        LocalDateTime to = LocalDateTime.of(2026, 11, 19, 0, 0);
+
+        when(state.value(anyString())).thenReturn(Optional.empty());
+        when(state.value("intent", String.class)).thenReturn(Optional.of("report_dead_stock"));
+        when(state.value("question", String.class)).thenReturn(Optional.of("Which items had no sales in 30 days?"));
+        when(state.value("report_from")).thenReturn(Optional.of(from));
+        when(state.value("report_to")).thenReturn(Optional.of(to));
+        when(state.value("vendor_id")).thenReturn(Optional.of(55L));
+        when(state.value("outlet_id")).thenReturn(Optional.of(87L));
+        when(state.value("can_report_query")).thenReturn(Optional.of(true));
+        when(state.value("slots")).thenReturn(Optional.of(Map.of(
+                "days", "30", "from", "2026-10-20", "to", "2026-11-18")));
+        when(queryService.query(any(TenantContext.class), eq("report_dead_stock"), any(), any()))
+                .thenReturn(new NativeAiReportQueryService.Result(List.of(), null, null,
+                        AiReportDataSourceRegistry.DATA_SOURCE_NAME));
+
+        Map<String, Object> result = node.apply(state);
+
+        assertEquals("incomplete", result.get("report_data_status"));
+        assertNull(result.get("report_data_as_of"));
+    }
+
+    @Test
     void salesIntentUsesTheSharedReportAggregateForTheAuthenticatedOutlet() {
         NativeAiReportQueryService queryService = mock(NativeAiReportQueryService.class);
         ReportPeriodResolver resolver = mock(ReportPeriodResolver.class);

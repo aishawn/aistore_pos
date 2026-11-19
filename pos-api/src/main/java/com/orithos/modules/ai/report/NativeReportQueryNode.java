@@ -121,8 +121,11 @@ public class NativeReportQueryNode implements NodeAction {
         String dataAsOf = result.dataAsOf() == null ? latestDataAsOf(result.rows()) : result.dataAsOf();
         String rowStatus = reportDataStatus(result.rows());
         String reportSource = dataSource(result.rows(), result.dataSource());
+        boolean deadStockFreshnessUnknown = "report_dead_stock".equals(intent)
+                && (dataAsOf == null || dataAsOf.isBlank());
         String dataStatus = result.error() != null ? "unavailable"
                 : "unavailable".equals(rowStatus) ? "unavailable"
+                : deadStockFreshnessUnknown ? "incomplete"
                 : hasConflictingDataSources(result.rows(), result.dataSource()) ? "incomplete"
                 : reportSource == null ? "incomplete"
                 : noData || "no_data".equals(rowStatus) ? "no_data"
