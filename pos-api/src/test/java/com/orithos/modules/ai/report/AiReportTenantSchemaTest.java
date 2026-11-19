@@ -34,5 +34,7 @@ class AiReportTenantSchemaTest {
         assertTrue(Arrays.asList(AiReportTenantProvisioner.VIEWS).contains("ai_rpt_product_barcode"));
         assertTrue(Arrays.asList(AiReportTenantProvisioner.VIEWS).contains("ai_rpt_product_core"));
         assertTrue(AiReportTenantProvisioner.VIEW_COLUMNS.get("ai_rpt_inventory").contains("updated_at"));
+        assertTrue(AiReportTenantProvisioner.VIEW_COLUMNS.get("ai_rpt_inventory_cost").contains("case_cost"));
+        assertTrue(AiReportTenantProvisioner.VIEW_COLUMNS.get("ai_rpt_inventory_cost").contains("case_quantity"));
     }
 }

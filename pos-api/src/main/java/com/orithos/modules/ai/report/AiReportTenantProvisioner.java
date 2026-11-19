@@ -34,7 +34,7 @@ public class AiReportTenantProvisioner {
             "ai_rpt_product_core", "id, outlet_id, name, status",
             "ai_rpt_product_barcode", "product_id, outlet_id, code",
             "ai_rpt_inventory", "product_id, outlet_id, quantity, reorder_level, on_order, updated_at",
-            "ai_rpt_inventory_cost", "product_id, outlet_id, cost",
+            "ai_rpt_inventory_cost", "product_id, outlet_id, cost, case_cost, case_quantity",
             "ai_rpt_customer_sale", "sale_id, outlet_id, sold_at, customer_id, amount, business_date"
     );
 
