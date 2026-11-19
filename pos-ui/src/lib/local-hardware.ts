@@ -344,6 +344,35 @@ export async function printRawBytesThroughLocalBridge(printer: string, bytes: nu
   }]);
 }
 
+/** ESC/POS receipt job: init + body + feed + cut in one Windows RAW spool job (avoids cut racing ahead of text). */
+export function buildEscPosReceiptJob(
+  settings: Pick<HardwareSettings, "printerBrand">,
+  text: string,
+): number[] {
+  const ESC = 0x1b;
+  const GS = 0x1d;
+  const normalized = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  const payload = normalized.endsWith("\n") ? normalized : `${normalized}\n`;
+  const body = Array.from(new TextEncoder().encode(payload));
+  const init = [ESC, 0x40];
+
+  if (settings.printerBrand === "star") {
+    return [...init, ...body, 27, 100, 3];
+  }
+
+  const feedLines = 5;
+  return [...init, ...body, ESC, 0x64, feedLines, GS, 0x56, 0];
+}
+
+export async function printFormattedReceiptThroughLocalBridge(
+  settings: Pick<HardwareSettings, "printer" | "printerBrand">,
+  text: string,
+): Promise<void> {
+  if (!settings.printer) throw new Error("Select a receipt printer first.");
+  if (!(await ensureLocalPrinterBridge())) throw new Error("Connect the local hardware bridge before printing.");
+  await printRawBytesThroughLocalBridge(settings.printer, buildEscPosReceiptJob(settings, text));
+}
+
 export async function testOpenCashDrawer(settings: HardwareSettings): Promise<void> {
   if (!settings.printer) throw new Error("Select a receipt printer first.");
   if (!settings.cashDrawer) throw new Error("Turn on cash drawer for the selected printer first.");
@@ -351,23 +380,9 @@ export async function testOpenCashDrawer(settings: HardwareSettings): Promise<vo
   await printRawBytesThroughLocalBridge(settings.printer, resolveCashDrawerKickBytes(settings));
 }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-/** Test print with optional paper cut after brand-specific delay (ESC/POS GS V). */
+/** Test print with feed + cut in the same RAW job as the text (ESC/POS). */
 export async function printReceiptTestThroughLocalBridge(settings: HardwareSettings): Promise<void> {
-  if (!settings.printer) throw new Error("Select a receipt printer first.");
-  if (!(await ensureLocalPrinterBridge())) throw new Error("Connect the local hardware bridge before printing.");
-  const body = "Orithos POS hardware test\n\n";
-  await printThroughLocalBridge(settings.printer, body);
-  const delay = Number.isFinite(settings.cutDelayMs) ? Math.max(0, Math.min(settings.cutDelayMs, 10_000)) : 500;
-  await sleep(delay);
-  if (settings.printerBrand === "star") {
-    await printRawBytesThroughLocalBridge(settings.printer, [27, 100, 3]);
-  } else {
-    await printRawBytesThroughLocalBridge(settings.printer, [29, 86, 0]);
-  }
+  await printFormattedReceiptThroughLocalBridge(settings, "Orithos POS hardware test\n\n");
 }
 
 export type SaleReceiptPlainTextInput = {
@@ -466,14 +481,7 @@ export async function printReceiptDocument(options?: PrintReceiptDocumentOptions
     const bridgeReady = settings.printer ? await ensureLocalPrinterBridge() : isLocalPrinterBridgeActive();
     if (settings.printer && bridgeReady) {
       try {
-        await printThroughLocalBridge(settings.printer, `${plainText}\n\n`);
-        const delay = Number.isFinite(settings.cutDelayMs) ? Math.max(0, Math.min(settings.cutDelayMs, 10_000)) : 500;
-        await sleep(delay);
-        if (settings.printerBrand === "star") {
-          await printRawBytesThroughLocalBridge(settings.printer, [27, 100, 3]);
-        } else {
-          await printRawBytesThroughLocalBridge(settings.printer, [29, 86, 0]);
-        }
+        await printFormattedReceiptThroughLocalBridge(settings, `${plainText}\n\n`);
         return { channel: "bridge", ok: true };
       } catch (cause) {
         const message = cause instanceof Error ? cause.message : "Receipt printer failed.";
@@ -536,7 +544,10 @@ export async function runPostSaleLocalHardwareActions(
       const docketText = formatSaleDocketPlainText(receipt);
       try {
         if (await ensureLocalPrinterBridge()) {
-          await printThroughLocalBridge(docketPrinter, `${docketText}\n\n`);
+          await printFormattedReceiptThroughLocalBridge(
+            { printer: docketPrinter, printerBrand: settings.printerBrand },
+            docketText,
+          );
           outcome.docket = { channel: "bridge", ok: true };
         } else {
           outcome.docket = { channel: "skipped", ok: false, message: "Local bridge offline for docket." };

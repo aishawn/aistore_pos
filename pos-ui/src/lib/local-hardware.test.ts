@@ -7,6 +7,7 @@ import {
   summarizePostSaleHardwareOutcome,
   getHardwareReadinessItems,
   getLocalHardwareSettings,
+  buildEscPosReceiptJob,
   formatCashDrawerKickCode,
   printReceiptDocument,
   printRawBytesThroughLocalBridge,
@@ -406,7 +407,16 @@ test("prints sale receipts through QZ when a printer is configured", async () =>
   const outcome = await printReceiptDocument({ plainText: "Receipt body" });
   assert.equal(printed, false);
   assert.equal(outcome.channel, "bridge");
-  assert.equal(jobs.length, 2);
+  assert.equal(jobs.length, 1);
+  assert.equal((jobs[0]?.[1] as { type?: string } | undefined)?.type, "raw");
+});
+
+test("bundles Epson receipt text, feed, and cut into one ESC/POS job", () => {
+  const job = buildEscPosReceiptJob({ printerBrand: "epson" }, "Orithos POS hardware test\n");
+  assert.equal(job[0], 0x1b);
+  assert.equal(job[1], 0x40);
+  assert.ok(job.includes(0x1d));
+  assert.deepEqual(job.slice(-3), [0x1d, 0x56, 0]);
 });
 
 test("prints sale receipts through Hardware Connect when the agent is running", async () => {
@@ -421,8 +431,11 @@ test("prints sale receipts through Hardware Connect when the agent is running", 
     if (url.includes("/v1/printers")) {
       return new Response(JSON.stringify({ printers: ["Receipt Printer"] }), { status: 200, headers: { "Content-Type": "application/json" } });
     }
-    if (url.includes("/v1/print/text") || url.includes("/v1/print/raw")) {
+    if (url.includes("/v1/print/raw")) {
       return new Response(JSON.stringify({ printed: true }), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
+    if (url.includes("/v1/print/text")) {
+      return new Response(JSON.stringify({ error: "unexpected text print" }), { status: 400 });
     }
     return originalFetch(input, init);
   };
@@ -444,9 +457,10 @@ test("prints sale receipts through Hardware Connect when the agent is running", 
     print: () => { printed = true; },
   });
   try {
+    await connectLocalHardware();
     await printReceiptDocument({ plainText: "Receipt body" });
     assert.equal(printed, false);
-    assert.ok(jobs.some((job) => job.url.includes("/v1/print/text")));
+    assert.ok(jobs.some((job) => job.url.includes("/v1/print/raw")));
   } finally {
     globalThis.fetch = originalFetch;
   }
