@@ -80,7 +80,7 @@ class ClassifyQueryNodeTest {
     }
 
     @Test
-    void aggregateNegativeStockQuestionPrecedesProductCountShortcut() {
+    void aggregateStockQuestionsRouteToAuthoritativeReportWithoutCallingClassifier() {
         ChatClient chatClient = mock(ChatClient.class);
         IntentConfigService config = mock(IntentConfigService.class);
         IntentSanitizeService sanitizer = mock(IntentSanitizeService.class);
@@ -92,15 +92,18 @@ class ClassifyQueryNodeTest {
                 .thenReturn(new NativeAiReportQueryService.ProductCountResult(286, null));
         ClassifyQueryNode node = new ClassifyQueryNode(chatClient, config, sanitizer, properties,
                 reports, null);
-        OverAllState state = mock(OverAllState.class);
-        when(state.value("question", String.class)).thenReturn(Optional.of("有多少商品库存是负数？"));
+        for (String question : new String[]{"有多少商品库存是负数？", "当前库存有多少件？",
+                "How many products have negative stock?", "How many units are currently in stock?"}) {
+            OverAllState state = mock(OverAllState.class);
+            when(state.value("question", String.class)).thenReturn(Optional.of(question));
 
-        Map<String, Object> result = node.apply(state);
+            Map<String, Object> result = node.apply(state);
 
-        assertEquals("qa", result.get("intent"));
-        assertEquals("/stock/list", result.get("ui_route"));
-        assertEquals("目前无法可靠提供全店库存总件数或负库存数量。已打开库存列表供逐项核查。",
-                result.get("intent_summary"));
+            assertEquals("report_stock_summary", result.get("intent"), question);
+            assertEquals("report_stock_summary", result.get("fast_path_id"), question);
+            assertEquals("", result.get("ui_route"), question);
+            assertFalse(Boolean.parseBoolean(String.valueOf(result.get("llm_fallback"))), question);
+        }
         verify(reports, never()).countSellableProducts(tenant);
         verifyNoInteractions(chatClient, config, sanitizer, properties);
     }

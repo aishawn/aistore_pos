@@ -229,9 +229,8 @@ public class ClassifyQueryNode implements NodeAction {
 
         AssistantFastPathRouter.Match fast = AssistantFastPathRouter.maybeMatch(question);
         if (fast != null && "aggregate_stock_data_quality".equals(fast.panel())) {
-            log.info("Aggregate-stock fast-path (skipped product count and classify LLM)");
-            return shortcutResult(fast.intent(), fast.summary(), fast.slots(), fast.panel(), fast.view(),
-                    fast.route(), fast.action());
+            log.info("Aggregate-stock report fast-path (skipped classify LLM)");
+            return shortcutResult("report_stock_summary", "Current inventory summary", Map.of(), "", "", "", "");
         }
 
         // Product catalogue count before other product lookup shortcuts.
