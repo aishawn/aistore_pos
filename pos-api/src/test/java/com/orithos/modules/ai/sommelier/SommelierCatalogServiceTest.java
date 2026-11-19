@@ -5,16 +5,34 @@ import com.orithos.modules.ai.report.TenantContext;
 import com.orithos.modules.ai.sommelier.mapper.SommelierProductMapper;
 import org.junit.jupiter.api.Test;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class SommelierCatalogServiceTest {
+
+    @Test
+    void excludesLimoncelloEvenWhenItHasAnIncorrectStoredWineProfile() {
+        SommelierProductMapper mapper = mock(SommelierProductMapper.class);
+        SommelierProductMapper.CatalogRow limoncello = new SommelierProductMapper.CatalogRow();
+        limoncello.setId(21826L);
+        limoncello.setName("CALABRIA RICHLAND LIMONCELLO 750ML");
+        limoncello.setStoredWineType("red");
+        limoncello.setPrice(new BigDecimal("9.99"));
+        limoncello.setStockQuantity(new BigDecimal("10"));
+        when(mapper.listCatalog(1L)).thenReturn(List.of(limoncello));
+        SommelierCatalogService service = new SommelierCatalogService(mapper, new ObjectMapper());
+        TenantContext tenant = new TenantContext(42L, 7L, 1L, List.of(1L), Set.of());
+
+        assertTrue(service.listWines(tenant).isEmpty());
+    }
 
     @Test
     void listSearchAndLookupUseCurrentOrithosOutlet() {

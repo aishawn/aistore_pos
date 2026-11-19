@@ -59,8 +59,10 @@ public class SommelierCatalogService {
         List<WineCandidate> out = new ArrayList<>(rows.size());
         for (CatalogRow row : rows) {
             if (row == null || row.getId() == null) continue;
-            boolean looksWine = WineLexicon.looksLikeWine(row.getName(), row.getCategoryName(), row.getFamilyName())
-                    || row.getStoredWineType() != null;
+            boolean knownNonWine = WineLexicon.isKnownNonWine(row.getName(), row.getCategoryName(), row.getFamilyName());
+            boolean looksWine = !knownNonWine
+                    && (WineLexicon.looksLikeWine(row.getName(), row.getCategoryName(), row.getFamilyName())
+                    || row.getStoredWineType() != null);
             if (wineOnly && !looksWine) continue;
             out.add(toCandidate(row, looksWine));
         }

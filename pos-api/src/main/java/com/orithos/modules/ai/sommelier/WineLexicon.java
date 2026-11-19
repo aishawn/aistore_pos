@@ -14,6 +14,11 @@ public final class WineLexicon {
     private WineLexicon() {}
 
     private static final Pattern NON_LETTER = Pattern.compile("[^a-z0-9]+");
+    private static final String[] NON_WINE_TERMS = {
+            "beer", "ale", "lager", "ipa", "stout", "cider", "vodka", "rum", "whisky", "whiskey", "gin",
+            "tequila", "brandy", "liqueur", "limoncello", "vermouth", "schnapps", "sake", "soju", "mezcal",
+            "bourbon", "scotch", "cognac", "armagnac"
+    };
 
     private record Varietal(
             String key,
@@ -160,6 +165,7 @@ public final class WineLexicon {
     }
 
     public static boolean looksLikeWine(String name, String categoryName, String familyName) {
+        if (isKnownNonWine(name, categoryName, familyName)) return false;
         if (matchVarietal(normalize(nullToEmpty(name))) != null) {
             return true;
         }
@@ -172,6 +178,13 @@ public final class WineLexicon {
             return false;
         }
         return containsAny(blob, "sparkling", "champagne", "prosecco", "rose", "rosé");
+    }
+
+    public static boolean isKnownNonWine(String name, String categoryName, String familyName) {
+        String normalizedName = normalize(nullToEmpty(name));
+        if (containsToken(normalizedName, NON_WINE_TERMS)) return true;
+        if (matchVarietal(normalizedName) != null) return false;
+        return containsToken(blob(categoryName, familyName), NON_WINE_TERMS);
     }
 
     private static String nullToEmpty(String s) {
@@ -307,6 +320,14 @@ public final class WineLexicon {
     private static boolean containsAny(String blob, String... keys) {
         for (String k : keys) {
             if (blob.contains(normalize(k))) return true;
+        }
+        return false;
+    }
+
+    private static boolean containsToken(String blob, String... keys) {
+        String padded = " " + blob + " ";
+        for (String key : keys) {
+            if (padded.contains(" " + normalize(key) + " ")) return true;
         }
         return false;
     }
