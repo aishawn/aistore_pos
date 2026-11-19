@@ -260,6 +260,11 @@ class AssistantFastPathRouterTest {
         assertEquals("report_stock", quantity.intent());
         assertEquals("Carlton Draught", quantity.slots().get("query"));
 
+        AssistantFastPathRouter.Match howMuch = AssistantFastPathRouter.maybeMatch(
+                "How much VB CAN 375ML do we have in stock?");
+        assertEquals("report_stock", howMuch.intent());
+        assertEquals("VB CAN 375ML", howMuch.slots().get("query"));
+
         AssistantFastPathRouter.Match invertedQuantity = AssistantFastPathRouter.maybeMatch("How many do we have of Carlton Draught?");
         assertEquals("report_stock", invertedQuantity.intent());
         assertEquals("Carlton Draught", invertedQuantity.slots().get("query"));

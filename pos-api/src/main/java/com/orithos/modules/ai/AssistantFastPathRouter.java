@@ -275,7 +275,8 @@ public final class AssistantFastPathRouter {
                     + "^(?:店里|我们店里|门店)有\\s*(.+?)吗[？?。]*$|"
                     + "^(?!(?:订单|客户|供应商|发票))(.+?)(?:还有吗|还有没有|有吗)[？?。]*$|"
                     + "^(?:帮我)?(?:查下|查一下|看看|看下)\\s*(.+?)\\s*(?:还剩几件|还剩多少|剩下多少|还有多少|库存)[？?。]*$|"
-                    + "^(.+?)(?:现在|当前)(?:有多少|有几件)(?:库存|货|现货)[？?。]*$",
+                    + "^(.+?)(?:现在|当前)(?:有多少|有几件)(?:库存|货|现货)[？?。]*$|"
+                    + "^how much\\s+(.+?)\\s+do we have(?:\\s+in stock)?[?.!]*$",
             Pattern.CASE_INSENSITIVE);
     /**
      * Explicit "stock of/for <product>" wording must extract only the product.
@@ -663,7 +664,7 @@ public final class AssistantFastPathRouter {
                     stockQuery.group(9), stockQuery.group(10), stockQuery.group(11), stockQuery.group(12),
                     stockQuery.group(13), stockQuery.group(14), stockQuery.group(15), stockQuery.group(16),
                     stockQuery.group(17), stockQuery.group(18), stockQuery.group(19), stockQuery.group(20),
-                    stockQuery.group(21), stockQuery.group(22)));
+                    stockQuery.group(21), stockQuery.group(22), stockQuery.group(23)));
             if (query != null) {
                 return new Match(
                         "report_stock",
