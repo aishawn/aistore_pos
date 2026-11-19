@@ -210,7 +210,7 @@ class ReportRespondNodeTest {
         when(state.value("question", String.class)).thenReturn(Optional.of("当前库存有多少件？"));
 
         assertEquals("当前有正库存 53409 件，涉及 3063 个商品；10859 个有效商品中有 5373 个商品库存为负。"
-                        + "负库存属于数据异常，建议核查库存记录。数据来源：Orithos POS 当前门店库存。",
+                        + "负库存属于数据异常，建议核查库存记录。数据来源：Orithos POS 当前门店库存；库存更新时间未提供，建议核实。",
                 node.apply(state).get("answer"));
     }
 

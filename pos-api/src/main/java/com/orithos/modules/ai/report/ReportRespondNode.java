@@ -106,12 +106,12 @@ public class ReportRespondNode implements NodeAction {
             return "当前有正库存 " + units + " 件，涉及 " + positiveSkus + " 个商品；"
                     + totalSkus + " 个有效商品中有 " + negativeSkus + " 个商品库存为负。"
                     + ("0".equals(negativeSkus) ? "" : "负库存属于数据异常，建议核查库存记录。")
-                    + "数据来源：Orithos POS 当前门店库存。";
+                    + "数据来源：Orithos POS 当前门店库存；库存更新时间未提供，建议核实。";
         }
         return "Current positive on-hand stock is " + units + " units across " + positiveSkus
                 + " products. " + negativeSkus + " of " + totalSkus + " active products have negative stock."
                 + ("0".equals(negativeSkus) ? "" : " Negative stock is an anomaly; review the inventory records.")
-                + " Source: Orithos POS inventory for the current store.";
+                + " Source: Orithos POS inventory for the current store. Inventory update time is unavailable; verify the snapshot.";
     }
 
     private String formatAuthoritativeSales(Map<String, Object> row, String from, String to, boolean chinese) {
