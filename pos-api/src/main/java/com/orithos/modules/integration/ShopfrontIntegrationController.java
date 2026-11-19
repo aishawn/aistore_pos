@@ -4176,14 +4176,18 @@ public class ShopfrontIntegrationController {
         }
 
         String coreSource = supplierSourceId(raw.has("coreSupplier") ? raw.get("coreSupplier") : item.get("coreSupplier"));
-        if (coreSource == null || coreSource.isBlank()) {
-            coreSource = supplierSourceId(raw.has("lastSupplier") ? raw.get("lastSupplier") : item.get("lastSupplier"));
-        }
+        String lastSource = supplierSourceId(raw.has("lastSupplier") ? raw.get("lastSupplier") : item.get("lastSupplier"));
+        if (coreSource == null || coreSource.isBlank()) coreSource = lastSource;
         Long coreSupplierId = resolveMappedSupplier(store, coreSource, outletId, batch);
         batch.coreSupplierByProduct.put(productId, coreSupplierId);
         if (coreSupplierId != null && coreSupplierId > 0) {
             batch.supplierLinks.putIfAbsent(productId + ":" + coreSupplierId,
                     new Object[]{productId, coreSupplierId, null, null, outletId});
+        }
+        Long lastSupplierId = resolveMappedSupplier(store, lastSource, outletId, batch);
+        if (lastSupplierId != null && lastSupplierId > 0) {
+            batch.supplierLinks.putIfAbsent(productId + ":" + lastSupplierId,
+                    new Object[]{productId, lastSupplierId, null, null, outletId});
         }
     }
 
