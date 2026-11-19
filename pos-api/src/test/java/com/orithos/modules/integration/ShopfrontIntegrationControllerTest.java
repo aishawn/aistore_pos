@@ -1363,7 +1363,7 @@ class ShopfrontIntegrationControllerTest {
     }
 
     @Test
-    void productTagsAreWrittenAndDeletedWithinTheirOutlet() throws Exception {
+    void productTagsRewriteLegacyAssociationsWithTheCurrentOutlet() throws Exception {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
         when(jdbc.queryForList(contains("SELECT id FROM tag"), eq(Long.class), any(Object[].class)))
                 .thenReturn(List.of(901L));
@@ -1382,7 +1382,7 @@ class ShopfrontIntegrationControllerTest {
 
         flush.invoke(controller, batch, 87L, "skr");
 
-        verify(jdbc).update(contains("DELETE FROM product_tag WHERE outlet_id=? AND product_id IN"), any(Object[].class));
+        verify(jdbc).update(contains("DELETE FROM product_tag WHERE product_id IN"), any(Object[].class));
         verify(jdbc).batchUpdate(contains("INSERT INTO product_tag (product_id,tag_id,outlet_id) VALUES (?,?,?)"), any(List.class));
     }
 

@@ -3911,7 +3911,7 @@ public class ShopfrontIntegrationController {
         }
 
         if (!batch.productsWithTags.isEmpty()) {
-            deleteProductTags(new ArrayList<>(batch.productsWithTags), outletId);
+            deleteProductTags(new ArrayList<>(batch.productsWithTags));
             List<Object[]> tags = batch.tagsByProduct.values().stream()
                     .flatMap(byTag -> byTag.values().stream()).toList();
             if (!tags.isEmpty()) {
@@ -4266,8 +4266,9 @@ public class ShopfrontIntegrationController {
         deleteByProductIds("product_price", productIds, outletId);
     }
 
-    private void deleteProductTags(List<Long> productIds, long outletId) {
-        deleteByProductIds("product_tag", productIds, outletId);
+    private void deleteProductTags(List<Long> productIds) {
+        // product_tag's primary key is product_id + tag_id; remove legacy rows even if their outlet_id is stale.
+        deleteByProductIds("product_tag", productIds, null);
     }
 
     private void deleteByProductIds(String table, List<Long> productIds, Long outletId) {
