@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
+import { safeErrorSummary } from "./lib/safe-error-summary.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const env = Object.fromEntries(
@@ -19,6 +20,14 @@ if (!password) throw new Error("MISSING_ADMIN_PASSWORD");
 
 const checks = [];
 const record = (name, status, evidence) => checks.push({ name, status, evidence });
+const allowedPitchLengths = new Set(["card", "10s", "30s"]);
+const pitchLengths = (process.env.PILOT_SOMMELIER_PITCH_LENGTHS || "card,10s,30s")
+  .split(",")
+  .map((length) => length.trim())
+  .filter(Boolean);
+if (pitchLengths.some((length) => !allowedPitchLengths.has(length))) {
+  throw new Error("PILOT_SOMMELIER_PITCH_LENGTHS contains an unsupported value");
+}
 const WINE_TERMS = /wine|shiraz|syrah|cabernet|pinot|chardonnay|merlot|sauvignon|prosecco|champagne|riesling|malbec|grenache|tempranillo|moscato|sparkling|brut|ros[eé]/i;
 const NON_WINE_TERMS = /\b(?:water|cola|chips|nuts|vodka|whisky|whiskey|gin|beer|lager|ale|cider|juice|soft drink)\b/i;
 const WEIGHT_PACKAGE = /(?:\b\d+(?:[.,]\d+)?\s*(?:mg|g|grams?|kg|kilograms?|oz|ounces?|lbs?|pounds?)\b|\d+(?:[.,]\d+)?\s*(?:毫克|克|千克|公斤))/i;
@@ -101,18 +110,26 @@ try {
     record(`${direction} alternatives filter unavailable stock`, "PASS", `Returned ${(similar.items || []).length} alternatives; every result has positive free stock.`);
   }
 
-  for (const length of ["card", "10s", "30s"]) {
-    const pitch = await request("/api/ai/sommelier/pitch", "POST", { productId: shiraz.productId, length });
-    if (!pitch.text?.trim()) throw new Error(`${length} pitch returned empty text`);
-    record(`${length} sales pitch`, "PASS", `Product ${shiraz.productId} returned non-empty pitch text.`);
+  try {
+    const answer = await request("/api/ai/sommelier/ask", "POST", {
+      productId: shiraz.productId,
+      question: "What food would pair well with this wine?",
+    });
+    if (!answer.answer?.trim()) throw new Error("Sommelier ask returned empty answer");
+    record("Sommelier product question", "PASS", `Product ${shiraz.productId} returned an answer with ${(answer.alternatives || []).length} alternatives.`);
+  } catch (error) {
+    record("Sommelier product question", "FAIL", safeErrorSummary(error));
   }
 
-  const answer = await request("/api/ai/sommelier/ask", "POST", {
-    productId: shiraz.productId,
-    question: "What food would pair well with this wine?",
-  });
-  if (!answer.answer?.trim()) throw new Error("Sommelier ask returned empty answer");
-  record("Sommelier product question", "PASS", `Product ${shiraz.productId} returned an answer with ${(answer.alternatives || []).length} alternatives.`);
+  for (const length of pitchLengths) {
+    try {
+      const pitch = await request("/api/ai/sommelier/pitch", "POST", { productId: shiraz.productId, length });
+      if (!pitch.text?.trim()) throw new Error(`${length} pitch returned empty text`);
+      record(`${length} sales pitch`, "PASS", `Product ${shiraz.productId} returned non-empty pitch text.`);
+    } catch (error) {
+      record(`${length} sales pitch`, "FAIL", safeErrorSummary(error));
+    }
+  }
 
   const anonymous = await context.request.post(`${base}/api/auth/logout`, { headers: { Origin: base } });
   if (!anonymous.ok()) throw new Error("Could not end the authenticated UAT session");
@@ -123,7 +140,7 @@ try {
   if (denied.status() !== 401) throw new Error(`Anonymous recommendation returned HTTP ${denied.status()}, expected 401`);
   record("Anonymous access guard", "PASS", "Recommendation API returns HTTP 401 after logout.");
 } catch (error) {
-  record("Sommelier read-only regression", "FAIL", error instanceof Error ? error.message : "Unexpected failure");
+  record("Sommelier read-only regression", "FAIL", safeErrorSummary(error));
 } finally {
   try { await context.request.post(`${base}/api/auth/logout`, { headers: { Origin: base } }); } catch { /* Session expires normally. */ }
   await browser.close();
@@ -135,7 +152,7 @@ const output = {
   deployment: process.env.PILOT_DEPLOYMENT_VERIFIED === "true" && /^[\da-f]{40}$/i.test(process.env.PILOT_DEPLOYMENT_SHA ?? "")
     ? process.env.PILOT_DEPLOYMENT_SHA.toLowerCase()
     : "unverified-after-deploy",
-  scope: "authenticated Orithos-backed Sommelier reads; pitch and ask may call the configured model; no image, feedback, sale, purchase, inventory, or register write",
+  scope: `authenticated Orithos-backed Sommelier reads; ask and ${pitchLengths.length} selected pitch checks may call the configured model; no image, feedback, sale, purchase, inventory, or register write`,
   checks,
 };
 const outputPath = process.env.PILOT_UAT_OUTPUT_PATH
