@@ -1754,41 +1754,50 @@ export function OdooRegisterPage() {
         </section>
       </div>}
       {registerStartupPrompt && (
-        <div className="fixed inset-0 z-[70] grid place-items-center bg-black/55 p-4">
+        <div className="fixed inset-0 z-[70] grid place-items-center bg-black/40 p-4">
           <section
             role="dialog"
             aria-modal="true"
             aria-labelledby="register-startup-title"
-            className="flex w-full max-w-[26rem] items-stretch overflow-hidden rounded-lg bg-[#31363b] text-white shadow-2xl"
+            aria-describedby="register-startup-description"
+            className="w-full max-w-md rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-6 shadow-2xl"
           >
-            <div className="flex w-20 shrink-0 items-center justify-center border-r border-white/10 bg-[#2a2e33]">
-              <Banknote size={34} strokeWidth={1.4} className="text-white/90" aria-hidden />
-            </div>
-            <div className="flex min-w-0 flex-1 flex-col gap-4 p-5 sm:p-6">
-              <div>
-                <p className="text-sm text-white/75">Outlet: {registerStartupPrompt.outletLabel}</p>
-                <h2 id="register-startup-title" className="mt-1 text-2xl font-bold leading-tight text-white">
-                  Register: {registerStartupPrompt.registerName}
+            <div className="flex items-start gap-4">
+              <div
+                className="grid size-12 shrink-0 place-items-center rounded-xl border border-[var(--oh-border)] bg-[var(--oh-orange-light)] text-[var(--oh-primary)]"
+                aria-hidden
+              >
+                <Banknote size={22} strokeWidth={1.5} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]">
+                  {registerStartupPrompt.outletLabel}
+                </p>
+                <h2 id="register-startup-title" className="mt-1 text-lg font-semibold text-[var(--oh-text)]">
+                  {registerStartupPrompt.registerName}
                 </h2>
+                <p id="register-startup-description" className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">
+                  Open this register to start selling on this terminal.
+                </p>
               </div>
-              <div className="grid gap-2">
-                <button
-                  type="button"
-                  onClick={() => void confirmOpenRegister()}
-                  disabled={refreshing}
-                  className="min-h-11 rounded-md bg-[#67c7e3] px-4 text-sm font-semibold text-[#16313b] transition hover:brightness-105 disabled:cursor-wait disabled:opacity-70"
-                >
-                  {refreshing ? "Opening…" : "Open register"}
-                </button>
-                <button
-                  type="button"
-                  onClick={requestChangeRegister}
-                  disabled={refreshing}
-                  className="min-h-11 rounded-md bg-[#ececec] px-4 text-sm font-semibold text-[#31363b] transition hover:bg-white disabled:opacity-70"
-                >
-                  Change register
-                </button>
-              </div>
+            </div>
+            <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={requestChangeRegister}
+                disabled={refreshing}
+                className="min-h-11 rounded-md border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)] disabled:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
+              >
+                Change register
+              </button>
+              <button
+                type="button"
+                onClick={() => void confirmOpenRegister()}
+                disabled={refreshing}
+                className="min-h-11 rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] disabled:cursor-wait disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
+              >
+                {refreshing ? "Opening…" : "Open register"}
+              </button>
             </div>
           </section>
         </div>
