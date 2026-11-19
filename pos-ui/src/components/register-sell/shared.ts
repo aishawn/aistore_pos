@@ -12,7 +12,7 @@ export type CartLine = {
   discountPercent?: number;
 };
 
-export type ParkedOdooSale = {
+export type ParkedSale = {
   id: string;
   ownerUserId: string;
   companyId: number;

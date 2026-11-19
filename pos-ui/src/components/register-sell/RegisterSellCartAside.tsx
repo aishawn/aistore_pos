@@ -7,10 +7,10 @@ import type { OdooCheckoutQuote, OdooCustomerRecord } from "@/lib/odoo-api";
 import { friendlyProductName } from "@/lib/product-display-name";
 import { splitMoney } from "@/lib/sell-screen";
 import { cn } from "@/lib/utils";
-import { OdooSellFinaliseButton } from "./OdooSellFinaliseButton";
+import { RegisterSellFinaliseButton } from "./RegisterSellFinaliseButton";
 import { CASE_PACK_OPTIONS, money, provisionalLineUnit, type CartLine } from "./shared";
 
-type OdooSellCartAsideProps = {
+type RegisterSellCartAsideProps = {
   mobileOpen: boolean;
   onCloseMobile: () => void;
   customer: OdooCustomerRecord | null;
@@ -58,7 +58,7 @@ type OdooSellCartAsideProps = {
   busy: boolean;
 };
 
-export function OdooSellCartAside({
+export function RegisterSellCartAside({
   mobileOpen,
   onCloseMobile,
   customer,
@@ -103,7 +103,7 @@ export function OdooSellCartAside({
   showFinaliseHint,
   totalWhole,
   totalCents,
-}: OdooSellCartAsideProps) {
+}: RegisterSellCartAsideProps) {
   return (
     <aside className={cn(
       "order-3 flex w-full shrink-0 flex-col overflow-hidden rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] shadow-[var(--oh-shadow-card)] lg:order-none lg:col-start-1 lg:row-start-2 lg:w-auto",
@@ -350,7 +350,7 @@ export function OdooSellCartAside({
           </p>
         </div>
         {lines.length > 0 && (
-          <OdooSellFinaliseButton
+          <RegisterSellFinaliseButton
             canFinalise={canFinalise}
             label={finaliseLabel}
             title={finaliseTitle}

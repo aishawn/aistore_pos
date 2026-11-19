@@ -1,6 +1,8 @@
-export { OdooSellCartAside } from "./OdooSellCartAside";
-export { OdooSellCatalogWorkspace } from "./OdooSellCatalogWorkspace";
-export { OdooSellFinaliseButton } from "./OdooSellFinaliseButton";
-export { OdooSellParkedList } from "./OdooSellParkedList";
-export { OdooSellPaymentBar } from "./OdooSellPaymentBar";
-export type { CartLine, CatalogDensity, ParkedOdooSale, WorkspaceTab } from "./shared";
+export {
+  RegisterSellCartAside as OdooSellCartAside,
+  RegisterSellCatalogWorkspace as OdooSellCatalogWorkspace,
+  RegisterSellFinaliseButton as OdooSellFinaliseButton,
+  RegisterSellParkedList as OdooSellParkedList,
+  RegisterSellPaymentBar as OdooSellPaymentBar,
+} from "@/components/register-sell";
+export type { CartLine, CatalogDensity, ParkedSale as ParkedOdooSale, WorkspaceTab } from "@/components/register-sell";

@@ -1,5 +1,6 @@
 "use client";
 
+/** Classic register shell; data path is Orithos (`@/lib/odoo-api`), not Odoo ERP. */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Banknote, Check, CircleAlert, DoorClosed, LoaderCircle, Printer, RefreshCw, X } from "lucide-react";
@@ -7,10 +8,10 @@ import { SalesMenu } from "@/components/SalesMenu";
 import { useCloseRegisterUiOptional } from "@/components/CloseRegisterUiProvider";
 import { useSalesHistoryUiOptional } from "@/components/SalesHistoryUiProvider";
 import { ODOO_REGISTER_CLOSED_EVENT } from "@/components/OdooCloseRegisterForm";
-import { OdooSellCartAside } from "@/components/odoo-sell/OdooSellCartAside";
-import { OdooSellCatalogWorkspace } from "@/components/odoo-sell/OdooSellCatalogWorkspace";
-import { OdooSellParkedList } from "@/components/odoo-sell/OdooSellParkedList";
-import { OdooSellPaymentBar } from "@/components/odoo-sell/OdooSellPaymentBar";
+import { RegisterSellCartAside } from "@/components/register-sell/RegisterSellCartAside";
+import { RegisterSellCatalogWorkspace } from "@/components/register-sell/RegisterSellCatalogWorkspace";
+import { RegisterSellParkedList } from "@/components/register-sell/RegisterSellParkedList";
+import { RegisterSellPaymentBar } from "@/components/register-sell/RegisterSellPaymentBar";
 import {
   CASE_PACK_OPTIONS,
   money,
@@ -18,9 +19,9 @@ import {
   shelfUnitPrice,
   type CartLine,
   type CatalogDensity,
-  type ParkedOdooSale,
+  type ParkedSale,
   type WorkspaceTab,
-} from "@/components/odoo-sell/shared";
+} from "@/components/register-sell/shared";
 import {
   getOdooPosBootstrap,
   openOdooPosSession,
@@ -56,7 +57,7 @@ import { sellDraftNoticePresentation, type SellDraftNoticeKind } from "@/lib/sel
 import {
   readRegisterStartupPromptAck,
   writeRegisterStartupPromptAck,
-} from "@/lib/odoo-register-startup";
+} from "@/lib/register-startup";
 import { getRegisterEftposBinding } from "@/lib/eftpos-api";
 import { ensureEftposApprovedBeforeCheckout } from "@/lib/eftpos-checkout";
 import { LocalQzBridge } from "@/components/LocalQzBridge";
@@ -116,9 +117,9 @@ function ActionLink({ label, href }: { label: string; href: string }) {
   return <Link href={href} className="flex min-h-[4.5rem] items-center justify-center rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-2 py-3 text-center text-[13px] font-semibold text-[var(--oh-text)] shadow-[var(--oh-shadow-card)] transition hover:border-[var(--oh-orange)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-orange)]">{label}</Link>;
 }
 
-function isParkedOdooSale(value: unknown): value is ParkedOdooSale {
+function isParkedSale(value: unknown): value is ParkedSale {
   if (!value || typeof value !== "object") return false;
-  const sale = value as Partial<ParkedOdooSale>;
+  const sale = value as Partial<ParkedSale>;
   return typeof sale.id === "string"
     && typeof sale.ownerUserId === "string"
     && Number.isSafeInteger(sale.companyId)
@@ -135,9 +136,9 @@ function isParkedOdooSale(value: unknown): value is ParkedOdooSale {
     && sale.lines.every((line) => line && Number.isSafeInteger(line.product?.id) && typeof line.product?.name === "string" && Number.isFinite(line.product?.list_price) && Number.isFinite(line.quantity) && line.quantity > 0 && (line.packFactor === undefined || (Number.isFinite(line.packFactor) && (line.packFactor as number) > 0)));
 }
 
-function readParkedOdooSales(): ParkedOdooSale[] {
+function readParkedSales(): ParkedSale[] {
   const parsed: unknown = JSON.parse(localStorage.getItem(PARKED_SALES_KEY) ?? "[]");
-  return Array.isArray(parsed) ? parsed.filter(isParkedOdooSale) : [];
+  return Array.isArray(parsed) ? parsed.filter(isParkedSale) : [];
 }
 
 function isActiveCartDraft(value: unknown): value is ActiveCartDraft {
@@ -204,7 +205,7 @@ export function OdooRegisterPage() {
   const [cashOutAmount, setCashOutAmount] = useState("");
   const [cashOutReason, setCashOutReason] = useState("");
   const [cashOutBusy, setCashOutBusy] = useState(false);
-  const [parkedSales, setParkedSales] = useState<ParkedOdooSale[]>([]);
+  const [parkedSales, setParkedSales] = useState<ParkedSale[]>([]);
   const [parkedLoaded, setParkedLoaded] = useState(false);
   const [workspaceTab, setWorkspaceTab] = useState<WorkspaceTab>("keys");
   const [catalogHome, setCatalogHome] = useState(true);
@@ -392,7 +393,7 @@ export function OdooRegisterPage() {
       return;
     }
     try {
-      setParkedSales(readParkedOdooSales().filter((sale) => sale.ownerUserId === odooUserId));
+      setParkedSales(readParkedSales().filter((sale) => sale.ownerUserId === odooUserId));
       setParkedLoaded(true);
     } catch {
       setParkedSales([]);
@@ -856,13 +857,13 @@ export function OdooRegisterPage() {
       .filter((line) => line.quantity > 0));
   }
 
-  function saveParkedSales(next: ParkedOdooSale[]) {
+  function saveParkedSales(next: ParkedSale[]) {
     if (!odooUserId) {
       setError("Connect an Orithos staff account before saving a parked sale.");
       return false;
     }
     try {
-      const otherUsersSales = readParkedOdooSales().filter((sale) => sale.ownerUserId !== odooUserId);
+      const otherUsersSales = readParkedSales().filter((sale) => sale.ownerUserId !== odooUserId);
       localStorage.setItem(PARKED_SALES_KEY, JSON.stringify([...otherUsersSales, ...next]));
       setParkedSales(next);
       setError(null);
@@ -879,7 +880,7 @@ export function OdooRegisterPage() {
       setError("This terminal has reached its 50 parked sale limit. Resume or discard an older sale first.");
       return false;
     }
-    const sale: ParkedOdooSale = {
+    const sale: ParkedSale = {
       id: crypto.randomUUID(),
       ownerUserId: odooUserId,
       companyId: selectedCompanyId,
@@ -905,7 +906,7 @@ export function OdooRegisterPage() {
     return true;
   }
 
-  function restoreParkedSale(sale: ParkedOdooSale) {
+  function restoreParkedSale(sale: ParkedSale) {
     if (!saveParkedSales(parkedSales.filter((item) => item.id !== sale.id))) return;
     setLines(sale.lines.map((line) => ({ ...line, packFactor: line.packFactor || 1 })));
     setCustomer(sale.customer ? {
@@ -942,7 +943,7 @@ export function OdooRegisterPage() {
     restoreParkedSale(sale);
   }
 
-  function requestResumeParkedSale(sale: ParkedOdooSale) {
+  function requestResumeParkedSale(sale: ParkedSale) {
     if (lines.length) setParkedAction({ type: "resume", saleId: sale.id });
     else restoreParkedSale(sale);
   }
@@ -1102,7 +1103,7 @@ export function OdooRegisterPage() {
 
   if (loading) return (
     <main aria-busy="true" aria-label="Loading register" className="flex h-[calc(100dvh-50px)] min-h-0 flex-col overflow-hidden bg-[var(--oh-surface)] p-4 font-sans md:p-5">
-      <header className="odoo-register-header relative z-30 mb-3 flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-between">
+      <header className="register-header relative z-30 mb-3 flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="h-7 w-14 animate-pulse rounded bg-[var(--oh-border)]" />
         <div className="h-11 w-full max-w-xs animate-pulse rounded-full border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] sm:w-56" />
       </header>
@@ -1414,11 +1415,11 @@ export function OdooRegisterPage() {
   return (
     <main className="flex h-[calc(100dvh-50px)] min-h-0 flex-col overflow-hidden bg-[var(--oh-surface)] p-4 font-sans md:p-5">
       <LocalQzBridge />
-      <div className="odoo-register-header relative z-30 mb-3 flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-between">
+      <div className="register-header relative z-30 mb-3 flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-[20px] font-semibold leading-tight text-[var(--oh-text)]">Sell</h1>
         </div>
-        <div className="odoo-register-actions flex w-full min-w-0 items-center gap-2 sm:w-auto">
+        <div className="register-actions flex w-full min-w-0 items-center gap-2 sm:w-auto">
           <div
             className="inline-flex w-full min-w-0 items-center gap-2 rounded-full border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] py-1 pl-3 pr-1 shadow-sm sm:w-auto"
             title={selectedConfig?.session ? `${selectedConfig.name} · ${selectedConfig.session.name}` : selectedConfig?.name}
@@ -1536,7 +1537,7 @@ export function OdooRegisterPage() {
 
           <div className="relative min-h-0 flex-1 overflow-y-auto p-4">
             {workspaceTab === "parked" ? (
-              <OdooSellParkedList
+              <RegisterSellParkedList
                 sales={visibleParkedSales}
                 formatDate={formatParkedDate}
                 onResume={requestResumeParkedSale}
@@ -1564,7 +1565,7 @@ export function OdooRegisterPage() {
                 </ActionGroup>
               </div>
             ) : (
-              <OdooSellCatalogWorkspace
+              <RegisterSellCatalogWorkspace
                 showCatalogHome={showCatalogHome}
                 showMobileCartButton={mobileCatalogOpen}
                 onViewCart={() => {
@@ -1615,7 +1616,7 @@ export function OdooRegisterPage() {
 
         {quoteIsCurrent && quote?.priceSource && <p role="status" className="px-3 text-xs text-[var(--oh-muted)]">Pricing: {quote.priceSource} · {quote.currency}</p>}
         {eftposPaymentNotice && <p role="status" className="px-3 text-xs font-medium text-amber-900">{eftposPaymentNotice}</p>}
-        <OdooSellPaymentBar
+        <RegisterSellPaymentBar
           linesLength={lines.length}
           eftposSelected={eftposSelected}
           cashSelected={cashSelected}
@@ -1639,7 +1640,7 @@ export function OdooRegisterPage() {
           onCashTenderedChange={(value) => { setExactCashArmed(false); setCashTendered(value); }}
         />
 
-        <OdooSellCartAside
+        <RegisterSellCartAside
           mobileOpen={mobileCartOpen}
           onCloseMobile={() => {
             setMobileCartOpen(false);

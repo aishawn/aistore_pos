@@ -4,7 +4,7 @@ import { setNativeReadIdentity, clearNativeReadCache } from "./native-read-cache
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { api, isLocalPreviewSession, refreshAccessToken, registerAuthFailureHandler } from "@/lib/api";
 import { clearRegisterContext, type WorkContextSelection } from "@/lib/work-context";
-import { clearRegisterStartupPromptAcks } from "@/lib/odoo-register-startup";
+import { clearRegisterStartupPromptAcks } from "@/lib/register-startup";
 export type StoreRoleCode = "ADMIN" | "MANAGER" | "CLERK" | "NONE" | string;
 
 export interface AuthUser {

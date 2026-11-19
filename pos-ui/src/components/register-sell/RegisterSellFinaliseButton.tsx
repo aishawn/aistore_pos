@@ -2,7 +2,7 @@
 
 import { cn } from "@/lib/utils";
 
-type OdooSellFinaliseButtonProps = {
+type RegisterSellFinaliseButtonProps = {
   canFinalise: boolean;
   label: string;
   title: string;
@@ -10,13 +10,13 @@ type OdooSellFinaliseButtonProps = {
   className?: string;
 };
 
-export function OdooSellFinaliseButton({
+export function RegisterSellFinaliseButton({
   canFinalise,
   label,
   title,
   onClick,
   className,
-}: OdooSellFinaliseButtonProps) {
+}: RegisterSellFinaliseButtonProps) {
   return (
     <button
       type="button"

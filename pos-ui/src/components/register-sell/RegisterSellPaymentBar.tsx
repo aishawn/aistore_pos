@@ -6,7 +6,7 @@ import { money } from "./shared";
 
 type PaymentMethodLike = { id: number; name: string };
 
-type OdooSellPaymentBarProps = {
+type RegisterSellPaymentBarProps = {
   linesLength: number;
   eftposSelected: boolean;
   cashSelected: boolean;
@@ -30,7 +30,7 @@ type OdooSellPaymentBarProps = {
   onCashTenderedChange: (value: string) => void;
 };
 
-export function OdooSellPaymentBar({
+export function RegisterSellPaymentBar({
   linesLength,
   eftposSelected,
   cashSelected,
@@ -52,7 +52,7 @@ export function OdooSellPaymentBar({
   onCashOut,
   onClear,
   onCashTenderedChange,
-}: OdooSellPaymentBarProps) {
+}: RegisterSellPaymentBarProps) {
   return (
     <div className="order-1 shrink-0 lg:order-none lg:col-span-2 lg:col-start-1 lg:row-start-1">
       <div className="flex flex-wrap items-center gap-2">

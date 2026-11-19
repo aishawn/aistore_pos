@@ -1,16 +1,16 @@
 "use client";
 
 import { Archive, Clock3, RotateCcw } from "lucide-react";
-import { money, provisionalLineUnit, type ParkedOdooSale } from "./shared";
+import { money, provisionalLineUnit, type ParkedSale } from "./shared";
 
-type OdooSellParkedListProps = {
-  sales: ParkedOdooSale[];
+type RegisterSellParkedListProps = {
+  sales: ParkedSale[];
   formatDate: (value: string, timezone?: string) => string;
-  onResume: (sale: ParkedOdooSale) => void;
+  onResume: (sale: ParkedSale) => void;
   onDiscard: (saleId: string) => void;
 };
 
-export function OdooSellParkedList({ sales, formatDate, onResume, onDiscard }: OdooSellParkedListProps) {
+export function RegisterSellParkedList({ sales, formatDate, onResume, onDiscard }: RegisterSellParkedListProps) {
   return (
     <div className="space-y-3">
       <p className="flex items-start gap-2 rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface)] p-3 text-xs leading-5 text-[var(--oh-text-secondary)]">

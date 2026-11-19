@@ -1,3 +1,4 @@
+/** Orithos POS client: legacy Odoo-shaped types and function names over native `api.ts` endpoints. */
 import { cachedNativeRead, clearNativeReadCache } from "./native-read-cache";
 import {
   ApiError,

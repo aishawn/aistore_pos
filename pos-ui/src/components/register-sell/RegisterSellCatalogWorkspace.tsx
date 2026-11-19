@@ -16,7 +16,7 @@ import {
   type CatalogDensity,
 } from "./shared";
 
-type OdooSellCatalogWorkspaceProps = {
+type RegisterSellCatalogWorkspaceProps = {
   showCatalogHome: boolean;
   showMobileCartButton?: boolean;
   onViewCart?: () => void;
@@ -59,7 +59,7 @@ type OdooSellCatalogWorkspaceProps = {
   onAddProduct: (product: OdooProductRecord) => void;
 };
 
-export function OdooSellCatalogWorkspace({
+export function RegisterSellCatalogWorkspace({
   showCatalogHome,
   showMobileCartButton = false,
   onViewCart,
@@ -100,7 +100,7 @@ export function OdooSellCatalogWorkspace({
   onRetryProducts,
   onLoadMoreProducts,
   onAddProduct,
-}: OdooSellCatalogWorkspaceProps) {
+}: RegisterSellCatalogWorkspaceProps) {
   const lineControls = (
     <div>
       <p className="mb-2 text-[13px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">Line controls</p>
