@@ -3998,7 +3998,7 @@ public class ShopfrontIntegrationController {
                     && barcode.sourceId().equals(claims.get(0).asText())
                     && currentSourceIds.contains(barcode.sourceId())) uniqueCurrentClaimCodes++;
             else continue;
-            if (mappedSources == null || mappedSources.size() != 1) continue;
+            if (mappedSources == null || mappedSources.isEmpty() || mappedSources.contains(barcode.sourceId())) continue;
             uniqueOwnerMappingCodes++;
             result.add(barcode.code());
         }
