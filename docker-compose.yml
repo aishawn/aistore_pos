@@ -145,7 +145,7 @@ services:
       AI_SERVICE_TOKEN: ${AI_SERVICE_TOKEN:-}
       AI_FORECAST_READ_TIMEOUT_MS: ${AI_FORECAST_READ_TIMEOUT_MS:-190000}
       ORITHOS_SHOPFRONT_SYNC_NOTIFY_SECRET: ${ORITHOS_SHOPFRONT_SYNC_NOTIFY_SECRET:-${SHOPFRONT_INTEGRATION_TOKEN:-}}
-      ORITHOS_HC_DOWNLOAD_URL: ${ORITHOS_HC_DOWNLOAD_URL:-https://github.com/aishawn/aistore_pos/releases/download/hardware-connect-latest/OrithosHardwareConnect-1.0.0-win-x64.zip}
+      ORITHOS_HC_DOWNLOAD_URL: ${ORITHOS_HC_DOWNLOAD_URL:-https://github.com/aishawn/aistore_pos/releases/download/hardware-connect-latest/OrithosHardwareConnect-1.0.0-win-x64-Setup.exe}
       ORITHOS_HC_BUNDLE_URL: ${ORITHOS_HC_BUNDLE_URL:-}
       NEXT_PUBLIC_ORITHOS_HC_DOWNLOAD_URL: ${NEXT_PUBLIC_ORITHOS_HC_DOWNLOAD_URL:-}
     volumes:

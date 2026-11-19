@@ -25,7 +25,11 @@ if (-not $SkipPublish) {
 
 $source = Join-Path $PSScriptRoot "publish"
 if (-not (Test-Path (Join-Path $source "OrithosHardwareConnect.exe"))) {
-  throw "Missing $source\OrithosHardwareConnect.exe — run publish.ps1 first."
+  if (Test-Path (Join-Path $PSScriptRoot "OrithosHardwareConnect.exe")) {
+    $source = $PSScriptRoot
+  } else {
+    throw "Missing OrithosHardwareConnect.exe — run publish.ps1 first or use the setup .exe from the store download."
+  }
 }
 
 New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null

@@ -1,13 +1,14 @@
 Orithos Hardware Connect — register install
 =========================================
 
-1. Unzip this folder on the Windows register PC.
-2. Run install.ps1 (installs to your profile, tray icon, logon startup).
-3. In Chrome, open Orithos → Setup → Hardware.
-4. Allow Local network access for the store site, then Connect local bridge.
-5. Select your receipt printer, turn on cash drawer if attached, Save.
-6. Use Print test receipt / Test open cash drawer to verify.
+Recommended (one click):
+1. Download OrithosHardwareConnect-Setup.exe from your store Settings → Hardware.
+2. Open Downloads and double-click the file.
+3. Click Yes when asked to install. Allow private firewall if Windows asks.
+4. In the browser, allow Local network access for this store, then Connect local bridge.
 
 Tray icon: double-click opens Hardware settings. Port 127.0.0.1:9170.
 
-Uninstall: run uninstall.ps1
+ZIP bundle (optional IT path): unzip, double-click Install-Orithos-Hardware-Connect.cmd.
+
+Uninstall: run OrithosHardwareConnect.exe --uninstall from the install folder, or uninstall.ps1 in the zip.
