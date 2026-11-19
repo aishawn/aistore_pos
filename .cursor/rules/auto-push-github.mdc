@@ -10,7 +10,10 @@ When a task that changes the repo is **finished** (feature, UI, fix, docs in-rep
 1. **Commit** the relevant files with a clear message (PowerShell-safe; no HEREDOC if broken on Windows).
 2. **Push** to `origin` on the current branch (`git push -u origin HEAD` when needed) so Dokploy / deploy can pick it up.
 3. Do **not** wait for the user to say「上传 github」「提交并推送」或「部署」— owner confirmed (2026-11-13, reaffirmed 2026-11-17) that finished fixes, optimizations, and implemented plans should land on `main` and deploy by default; only skip commit/push when they explicitly ask to keep changes local-only in the current chat.
-4. If the user once asks to「以后自动提交部署」for the project, treat that as standing owner direction for all subsequent tasks in this repo (same as item 3); do not ask them to repeat after each task.
+4. If the user once asks to「以后自动提交部署」for the project, treat that as standing owner direction for all subsequent tasks in this repo (same as item 3); do not ask them to repeat after each task. **Owner (2026-11-19):** never end with「要不要提交/推送？」— finish the task, commit, push `main`, confirm the SHA.
+5. Never commit secrets (`.env`, `.local/`, credentials). Never force-push `main`/`master`.
+6. Obey `pos-api` Java 21 `mvn -B clean verify` before pushing any `pos-api/` change.
+7. After push, briefly confirm the commit hash / that `origin` is updated.
 5. Never commit secrets (`.env`, `.local/`, credentials). Never force-push `main`/`master`.
 6. Obey `pos-api` Java 21 `mvn -B clean verify` before pushing any `pos-api/` change.
 7. After push, briefly confirm the commit hash / that `origin` is updated.

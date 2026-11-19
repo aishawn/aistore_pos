@@ -44,7 +44,7 @@
 
 - Owner preference is no local application builds. Use relevant type checks, focused lint, script checks, and tests. The Java 21 candidate workflow may be used for backend verification, but it is not a pre-push requirement.
 - Maintain `main` only. After required checks pass, commit and push only task-scoped files; never include unrelated dirty changes or secrets. Dokploy auto-deploys the POS Compose app from `main`.
-- **Owner default (2026-11-13):** When a fix or optimization task is finished, automatically commit and push to `origin/main` without waiting for「上传 github」, unless the owner asked to keep changes local-only in that chat. Never stage unrelated dirty files.
+- **Owner default (2026-11-13, reaffirmed 2026-11-19):** When a fix or optimization task is finished, automatically commit and push to `origin/main` without waiting for「上传 github」and **without asking** whether to push. Only skip commit/push when the owner explicitly keeps changes local-only in that chat. Never stage unrelated dirty files.
 - After deployment, confirm Dokploy status and deployed/source SHA. For sync or data changes, check crawler status and read-only source/API/UI parity on both SKR and Demo; iterate on concrete differences.
 - Keep implementation, local checks, deployment, runtime identity, and online acceptance as separate claims. Record environment, scope, sample, result, limitations, source/runtime SHA, and links to evidence.
 
