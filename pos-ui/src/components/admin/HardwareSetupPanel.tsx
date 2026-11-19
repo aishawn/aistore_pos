@@ -41,7 +41,14 @@ export function HardwareSetupPanel() {
     ? (JSON.parse(readinessSnapshot) as HardwareReadinessItem[])
     : [];
   const [draft, setDraft] = useState<HardwareSettings>(savedSettings);
-  const [state, setState] = useState<LocalHardwareState>({ qzAvailable: false, connected: false, printers: [], error: null });
+  const [state, setState] = useState<LocalHardwareState>({
+    bridge: null,
+    qzAvailable: false,
+    connected: false,
+    printers: [],
+    error: null,
+    hardwareConnectVersion: null,
+  });
   const [scanTest, setScanTest] = useState("");
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -80,8 +87,17 @@ export function HardwareSetupPanel() {
     const next = await connectLocalHardware();
     setState(next);
     setBusy(false);
-    if (next.connected) setNotice(`Local bridge connected; ${next.printers.length} printer(s) found.`);
-    else if (!next.qzAvailable && !next.error) setNotice(qzScriptError ? "QZ Tray browser library failed to load." : "QZ Tray is not installed or unavailable in this browser.");
+    if (next.bridge === "orithos-hc") {
+      setNotice(`Orithos Hardware Connect ${next.hardwareConnectVersion ?? ""} · ${next.printers.length} printer(s) found.`.trim());
+    } else if (next.connected) {
+      setNotice(`QZ Tray connected; ${next.printers.length} printer(s) found.`);
+    } else if (!next.qzAvailable && !next.error) {
+      setNotice(
+        qzScriptError
+          ? "Install Orithos Hardware Connect (tools/orithos-hardware-connect) or QZ Tray, then connect again."
+          : "Orithos Hardware Connect and QZ Tray are not reachable on this PC.",
+      );
+    }
   }
 
   async function testPrint() {
@@ -149,7 +165,13 @@ export function HardwareSetupPanel() {
               Hardware connect settings
             </h2>
             <p className="mt-1 text-xs text-[var(--oh-muted)]">
-              Local bridge: QZ Tray · {state.connected ? `${state.printers.length} Windows printer(s)` : "not connected"}
+              Local bridge:{" "}
+              {state.bridge === "orithos-hc"
+                ? `Orithos Hardware Connect ${state.hardwareConnectVersion ?? ""}`.trim()
+                : state.bridge === "qz"
+                  ? "QZ Tray"
+                  : "not connected"}
+              {state.connected ? ` · ${state.printers.length} Windows printer(s)` : ""}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -189,17 +211,22 @@ export function HardwareSetupPanel() {
               );
             })}
         </ul>
-        {!state.connected && (
-          <div className="mt-3 flex flex-wrap justify-end gap-2">
+        <div className="mt-3 flex flex-wrap justify-end gap-2">
+          {state.bridge !== "orithos-hc" && (
             <a href="https://qz.io/download/" target="_blank" rel="noreferrer" className="inline-flex min-h-10 items-center gap-2 rounded-md border border-[var(--oh-border)] px-3 text-sm font-medium">
               <ExternalLink size={15} aria-hidden="true" />
-              Get QZ Tray
+              Get QZ Tray (fallback)
             </a>
-            <button type="button" onClick={() => void connect()} disabled={busy} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-[var(--oh-border)] px-3 text-sm font-semibold disabled:opacity-50">
-              <RefreshCw size={15} className={busy ? "animate-spin" : undefined} aria-hidden="true" />
-              {busy ? "Connecting…" : "Connect local bridge"}
-            </button>
-          </div>
+          )}
+          <button type="button" onClick={() => void connect()} disabled={busy} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-[var(--oh-border)] px-3 text-sm font-semibold disabled:opacity-50">
+            <RefreshCw size={15} className={busy ? "animate-spin" : undefined} aria-hidden="true" />
+            {busy ? "Connecting…" : state.connected ? "Refresh printers" : "Connect local bridge"}
+          </button>
+        </div>
+        {state.bridge !== "orithos-hc" && (
+          <p className="mt-2 text-xs text-[var(--oh-muted)]">
+            Preferred: run <span className="font-mono">tools/orithos-hardware-connect/run-dev.ps1</span> on this register (Shopfront-style agent).
+          </p>
         )}
         {state.error && <p role="alert" className="mt-3 text-sm text-red-800">{state.error}</p>}
         {notice && <p role="status" className="mt-3 text-sm text-[var(--oh-text-secondary)]">{notice}</p>}

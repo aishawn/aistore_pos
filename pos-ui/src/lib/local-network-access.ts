@@ -95,7 +95,7 @@ export async function probeLoopbackAccess(): Promise<void> {
     cache: "no-store",
     targetAddressSpace: "loopback",
   };
-  for (const url of ["http://127.0.0.1:8181/", "http://127.0.0.1:9167/v1/health"]) {
+  for (const url of ["http://127.0.0.1:9170/v1/health", "http://127.0.0.1:8181/", "http://127.0.0.1:9167/v1/health"]) {
     try {
       await fetch(url, init);
     } catch {

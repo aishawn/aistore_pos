@@ -9,6 +9,7 @@ import {
   printReceiptDocument,
   printRawBytesThroughLocalBridge,
   printThroughLocalBridge,
+  resetLocalBridgeStateForTests,
   testOpenCashDrawer,
   readSerialDiagnostic,
   saveLocalHardwareSettings,
@@ -20,6 +21,7 @@ const originalWindow = globalThis.window;
 afterEach(() => {
   Object.defineProperty(globalThis, "window", { configurable: true, value: originalWindow });
   globalThis.localStorage?.clear();
+  resetLocalBridgeStateForTests();
 });
 
 function setWindow(value: unknown) {
@@ -29,21 +31,52 @@ function setWindow(value: unknown) {
 test("refuses a local hardware connection on an insecure origin", async () => {
   setWindow({ isSecureContext: false });
   assert.deepEqual(await connectLocalHardware(), {
+    bridge: null,
     qzAvailable: false,
     connected: false,
     printers: [],
     error: "Use this page on HTTPS to connect local devices.",
+    hardwareConnectVersion: null,
   });
 });
 
 test("reports QZ Tray as unavailable when its browser library is missing", async () => {
   setWindow({ isSecureContext: true });
   assert.deepEqual(await connectLocalHardware(), {
+    bridge: null,
     qzAvailable: false,
     connected: false,
     printers: [],
     error: null,
+    hardwareConnectVersion: null,
   });
+});
+
+test("prefers Orithos Hardware Connect when the local agent responds", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (input) => {
+    const url = String(input);
+    if (url.includes("/v1/health")) {
+      return new Response(JSON.stringify({ ok: true, version: "0.1.0.0" }), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
+    if (url.includes("/v1/printers")) {
+      return new Response(JSON.stringify({ printers: ["EPSON TM-T82II Receipt"] }), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
+    return originalFetch(input);
+  };
+  setWindow({ isSecureContext: true });
+  try {
+    assert.deepEqual(await connectLocalHardware(), {
+      bridge: "orithos-hc",
+      qzAvailable: false,
+      connected: true,
+      printers: ["EPSON TM-T82II Receipt"],
+      error: null,
+      hardwareConnectVersion: "0.1.0.0",
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
 
 test("connects to QZ Tray and returns discovered printers", async () => {
@@ -57,10 +90,12 @@ test("connects to QZ Tray and returns discovered printers", async () => {
   });
 
   assert.deepEqual(await connectLocalHardware(), {
+    bridge: "qz",
     qzAvailable: true,
     connected: true,
     printers: ["Receipt Printer"],
     error: null,
+    hardwareConnectVersion: null,
   });
 });
 
@@ -74,10 +109,12 @@ test("returns a readable error when QZ Tray cannot connect", async () => {
   });
 
   assert.deepEqual(await connectLocalHardware(), {
+    bridge: null,
     qzAvailable: true,
     connected: false,
     printers: [],
     error: "Connection refused",
+    hardwareConnectVersion: null,
   });
 });
 
@@ -97,7 +134,7 @@ test("sends a print job to the selected local printer", async () => {
 
 test("rejects print submission when the local bridge is not connected", async () => {
   setWindow({ qz: { websocket: { isActive: () => false } } });
-  await assert.rejects(printThroughLocalBridge("Receipt Printer", "test"), /Connect the QZ Tray local bridge/);
+  await assert.rejects(printThroughLocalBridge("Receipt Printer", "test"), /Connect the local hardware bridge/);
 });
 
 test("propagates local printer failures to the caller", async () => {

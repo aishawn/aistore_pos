@@ -40,7 +40,7 @@ export default function HardwareSettingsPage() {
   return (
     <AdminPageLayout
       title="Hardware"
-      subtitle="Printer and EFTPOS on this register (browser + QZ Tray, like Shopfront Hardware Connect)"
+      subtitle="Printer and EFTPOS on this register (Orithos Hardware Connect or QZ Tray)"
       toolbar={<DevicesSettingsTabs activeHref="/settings/hardware" />}
       showRelatedAside={false}
     >

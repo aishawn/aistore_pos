@@ -1,5 +1,61 @@
 "use client";
 
+const ORITHOS_HARDWARE_CONNECT_BASE = "http://127.0.0.1:9170";
+
+type LoopbackRequestInit = RequestInit & { targetAddressSpace?: "loopback" | "local" | "public" };
+
+function loopbackHardwareConnectFetch(path: string, init?: RequestInit): Promise<Response> {
+  const request: LoopbackRequestInit = {
+    cache: "no-store",
+    mode: "cors",
+    targetAddressSpace: "loopback",
+    ...init,
+  };
+  return fetch(`${ORITHOS_HARDWARE_CONNECT_BASE}${path}`, request);
+}
+
+async function probeOrithosHardwareConnect(): Promise<{
+  reachable: boolean;
+  printers: string[];
+  version: string | null;
+}> {
+  try {
+    const health = await loopbackHardwareConnectFetch("/v1/health");
+    if (!health.ok) return { reachable: false, printers: [], version: null };
+    const healthBody = (await health.json()) as { version?: string };
+    const printerRes = await loopbackHardwareConnectFetch("/v1/printers");
+    if (!printerRes.ok) {
+      return { reachable: true, printers: [], version: healthBody.version ?? null };
+    }
+    const printerBody = (await printerRes.json()) as { printers?: string[] };
+    return {
+      reachable: true,
+      printers: printerBody.printers ?? [],
+      version: healthBody.version ?? null,
+    };
+  } catch {
+    return { reachable: false, printers: [], version: null };
+  }
+}
+
+async function printTextThroughOrithosHardwareConnect(printer: string, text: string): Promise<void> {
+  const response = await loopbackHardwareConnectFetch("/v1/print/text", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ printer, text, encoding: "utf-8" }),
+  });
+  if (!response.ok) throw new Error(`Hardware Connect print failed (${response.status})`);
+}
+
+async function printRawThroughOrithosHardwareConnect(printer: string, bytes: number[]): Promise<void> {
+  const response = await loopbackHardwareConnectFetch("/v1/print/raw", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ printer, bytes }),
+  });
+  if (!response.ok) throw new Error(`Hardware Connect raw print failed (${response.status})`);
+}
+
 type QzTrayApi = {
   websocket: {
     isActive: () => boolean;
@@ -16,12 +72,22 @@ declare global {
   }
 }
 
+export type LocalBridgeKind = "orithos-hc" | "qz" | null;
+
 export type LocalHardwareState = {
+  bridge: LocalBridgeKind;
   qzAvailable: boolean;
   connected: boolean;
   printers: string[];
   error: string | null;
+  hardwareConnectVersion: string | null;
 };
+
+let activeLocalBridge: LocalBridgeKind = null;
+
+export function resetLocalBridgeStateForTests(): void {
+  activeLocalBridge = null;
+}
 
 export type ReceiptPrinterBrand = "epson" | "star" | "generic";
 
@@ -118,29 +184,75 @@ export function supportsBarcodeDetection(): boolean {
 
 export async function connectLocalHardware(): Promise<LocalHardwareState> {
   if (typeof window === "undefined" || !window.isSecureContext) {
-    return { qzAvailable: false, connected: false, printers: [], error: "Use this page on HTTPS to connect local devices." };
+    activeLocalBridge = null;
+    return {
+      bridge: null,
+      qzAvailable: false,
+      connected: false,
+      printers: [],
+      error: "Use this page on HTTPS to connect local devices.",
+      hardwareConnectVersion: null,
+    };
+  }
+
+  const hardwareConnect = await probeOrithosHardwareConnect();
+  if (hardwareConnect.reachable) {
+    activeLocalBridge = "orithos-hc";
+    return {
+      bridge: "orithos-hc",
+      qzAvailable: false,
+      connected: true,
+      printers: hardwareConnect.printers,
+      error: null,
+      hardwareConnectVersion: hardwareConnect.version,
+    };
   }
 
   const qz = window.qz;
-  if (!qz) return { qzAvailable: false, connected: false, printers: [], error: null };
+  if (!qz) {
+    activeLocalBridge = null;
+    return {
+      bridge: null,
+      qzAvailable: false,
+      connected: false,
+      printers: [],
+      error: null,
+      hardwareConnectVersion: null,
+    };
+  }
 
   try {
     if (!qz.websocket.isActive()) await qz.websocket.connect({ retries: 1, delay: 500 });
     const printers = await qz.printers.find();
-    return { qzAvailable: true, connected: true, printers, error: null };
-  } catch (cause) {
+    activeLocalBridge = "qz";
     return {
+      bridge: "qz",
+      qzAvailable: true,
+      connected: true,
+      printers,
+      error: null,
+      hardwareConnectVersion: null,
+    };
+  } catch (cause) {
+    activeLocalBridge = null;
+    return {
+      bridge: null,
       qzAvailable: true,
       connected: false,
       printers: [],
       error: cause instanceof Error ? cause.message : "Local hardware bridge connection failed.",
+      hardwareConnectVersion: null,
     };
   }
 }
 
 export async function printThroughLocalBridge(printer: string, data: string): Promise<void> {
+  if (activeLocalBridge === "orithos-hc") {
+    await printTextThroughOrithosHardwareConnect(printer, data);
+    return;
+  }
   const qz = typeof window !== "undefined" ? window.qz : undefined;
-  if (!qz?.websocket.isActive()) throw new Error("Connect the QZ Tray local bridge before printing.");
+  if (!qz?.websocket.isActive()) throw new Error("Connect the local hardware bridge before printing.");
   await qz.print(qz.configs.create(printer, { encoding: "UTF-8" }), [data]);
 }
 
@@ -159,8 +271,12 @@ function bytesToQzHex(bytes: number[]): string {
 }
 
 export async function printRawBytesThroughLocalBridge(printer: string, bytes: number[]): Promise<void> {
+  if (activeLocalBridge === "orithos-hc") {
+    await printRawThroughOrithosHardwareConnect(printer, bytes);
+    return;
+  }
   const qz = typeof window !== "undefined" ? window.qz : undefined;
-  if (!qz?.websocket.isActive()) throw new Error("Connect the QZ Tray local bridge before printing.");
+  if (!qz?.websocket.isActive()) throw new Error("Connect the local hardware bridge before printing.");
   await qz.print(qz.configs.create(printer), [{
     type: "raw",
     format: "command",
@@ -256,8 +372,9 @@ export async function printReceiptDocument(options?: PrintReceiptDocumentOptions
   const plainText = options?.plainText?.trim();
   if (plainText) {
     const settings = getLocalHardwareSettings();
-    const qz = window.qz;
-    if (settings.printer && qz?.websocket.isActive()) {
+    const bridgeReady =
+      activeLocalBridge === "orithos-hc" || Boolean(window.qz?.websocket.isActive());
+    if (settings.printer && bridgeReady) {
       try {
         await printThroughLocalBridge(settings.printer, `${plainText}\n\n`);
         return;
@@ -299,6 +416,7 @@ export function hasBarcodeScannerTested(): boolean {
 }
 
 export function isLocalPrinterBridgeActive(): boolean {
+  if (activeLocalBridge === "orithos-hc") return true;
   return typeof window !== "undefined" && Boolean(window.qz?.websocket?.isActive());
 }
 
