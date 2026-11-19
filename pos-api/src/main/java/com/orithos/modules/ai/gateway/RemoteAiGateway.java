@@ -410,9 +410,16 @@ public final class RemoteAiGateway implements AiGateway {
     }
 
     private String modelFor(AiTask task, boolean fallback) {
-        if (fallback) return properties.getFallbackModel();
+        return modelFor(task, fallback, properties, aiProperties);
+    }
+
+    static String modelFor(AiTask task, boolean fallback, AiGatewayProperties properties, AiProperties aiProperties) {
+        if (fallback) {
+            return task == AiTask.CLASSIFICATION ? properties.getPrimaryModel() : properties.getFallbackModel();
+        }
         return switch (task) {
-            case CLASSIFICATION -> properties.getFallbackModel();
+            case CLASSIFICATION -> StringUtils.hasText(aiProperties.classifyModel())
+                    ? aiProperties.classifyModel().trim() : properties.getFallbackModel();
             case TRANSCRIPTION -> properties.getTranscriptionModel();
             case VISION -> properties.getVisionModel();
             default -> properties.getPrimaryModel();

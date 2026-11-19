@@ -45,3 +45,9 @@ Read-only investigation against the current POS PostgreSQL schema prepared (but 
 The AI gateway failure logs now record the upstream HTTP status when available and the deepest exception type, without logging exception messages, prompts, response bodies, or credentials. Failure-event persistence logs now include only SQLState and JDBC vendor code in addition to exception types. Java 21 focused tests passed for both diagnostics. These fields are intended to identify the failing layer on the next naturally occurring classification error; no paid model request was made for diagnosis.
 
 This does not yet verify general classification online. Re-test a representative classified question after deployment only when needed, and use its correlation ID to inspect `providerStatus` and `causeType`. Do not infer provider health from container health alone.
+
+## Classification model routing
+
+Code-path review found that the production `AiGateway` branch bypasses `ClassifyQueryNode.classifyOptions()`, so the configured `AI_GATEWAY_CLASSIFY_MODEL` was ignored. `RemoteAiGateway` also selected `AI_GATEWAY_FALLBACK_MODEL` for both the initial classification attempt and fallback, which meant a provider failure could retry the same model without reaching a distinct fallback. Model-routing tests reproduced both gaps before the fix. Classification now uses the configured classification model (or the existing lightweight fallback when unset) and switches to the primary model after failure. Other task routing is unchanged.
+
+Java 21 focused verification passed 80/80 across model routing (3), gateway diagnostics (2), failure-event diagnostics (2), and assistant fast-path routing (73). No model request was made. The change still needs deployment identity verification; online quality for general classified questions remains pending a budget-capped manual sample.
