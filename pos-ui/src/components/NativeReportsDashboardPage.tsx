@@ -33,9 +33,9 @@ const QUICK_LINKS = [
 ] as const;
 
 export function NativeReportsDashboardPage() {
-  const defaults = useMemo(() => reportDatePreset("yesterday"), []);
-  const weekRange = useMemo(() => reportDatePreset("last_7_days"), []);
-  const [period, setPeriod] = useState<ReportDatePreset>("yesterday");
+  const defaults = useMemo(() => reportDatePreset("last_7_days"), []);
+  const weekRange = defaults;
+  const [period, setPeriod] = useState<ReportDatePreset>("last_7_days");
   const [from, setFrom] = useState(defaults.from);
   const [to, setTo] = useState(defaults.to);
   const [rangeReady, setRangeReady] = useState(false);

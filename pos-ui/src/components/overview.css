@@ -1048,6 +1048,32 @@
 .ov-pulse-stats .ov-stat-note { margin: 0; text-align: left; font-weight: 400; letter-spacing: normal; white-space: normal; color: var(--ov-muted); font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
 .ov-pulse-report { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 48px; border-top: 1px solid var(--ov-line); color: var(--ov-muted); font-size: 13px; font-weight: 500; text-decoration: none; }
 .ov-pulse-report:hover { color: var(--brand-link); }
+.ov-trend-panel { display: grid; gap: 12px; margin-top: 12px; }
+.ov-trend-card {
+  padding: 16px;
+  border: 1px solid var(--ov-line);
+  border-radius: 20px;
+  background: #ffffffd9;
+  backdrop-filter: blur(10px);
+  box-shadow: var(--ov-shadow);
+}
+.ov-trend-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+.ov-trend-card-head h3 { margin: 0; font-size: 14px; font-weight: 650; letter-spacing: -0.02em; }
+.ov-trend-card-head p { margin: 3px 0 0; font-size: 11px; line-height: 1.45; color: var(--ov-muted); }
+.ov-trend-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--brand-link);
+  text-decoration: none;
+}
+.ov-trend-link:hover { text-decoration: underline; }
+.ov-trend-avg { margin: 0; font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -0.03em; }
+.ov-trend-avg span { font-size: 11px; font-weight: 500; color: var(--ov-muted); }
+.ov-trend-skeleton { height: 120px; border-radius: 16px; border: 1px solid var(--ov-line); background: #f6f7f9; }
 .ov-stat-note svg { color: #1aa873; }
 .ov-panel-action { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; color: #315fbb; font-size: 13px; font-weight: 600; }
 .ov-insights-panel ul { list-style: none; margin-top: 16px; }

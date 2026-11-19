@@ -72,7 +72,7 @@ export function OverviewRadialMenu({
           centerCaption={caption}
           centerHref={
             destinations.some((item) => item.id === "reports")
-              ? "/reports/dashboard"
+              ? "/reports/dashboard?period=last_7_days"
               : undefined
           }
           onNavigate={onClose}

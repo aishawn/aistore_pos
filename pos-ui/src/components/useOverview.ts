@@ -7,6 +7,12 @@ import { normalizeNativeOverview } from "@/lib/native-overview";
 import { getSidebarNavigation } from "@/lib/sidebar-navigation";
 import { shopfrontAlignedMarginRatio } from "@/lib/shopfront-aligned-margin";
 
+export type OverviewPulseWeekPoint = {
+  date: string;
+  revenue: number;
+  profitMargin: number | null;
+};
+
 export type OverviewPulse = {
   generatedAt?: string;
   queryThrough?: string;
@@ -41,6 +47,7 @@ export type OverviewPulse = {
   sourceSalesAvailable?: boolean;
   sourceInventoryAvailable?: boolean;
   shopfrontReportsMode?: "orithos" | "source";
+  weeklyTrend?: OverviewPulseWeekPoint[];
 };
 
 const PULSE_STORAGE_KEY = "orithos-dashboard-pulse-native-v3";
@@ -141,7 +148,8 @@ export function useOverview() {
     try {
       const today = storeDay();
       const yesterday = shiftDay(today, -1);
-      const params = new URLSearchParams({ from: yesterday, to: today });
+      const weekFrom = shiftDay(today, -6);
+      const params = new URLSearchParams({ from: weekFrom, to: today });
       const response = await fetch(`/api/reports/native-overview?${params}`, { credentials: "same-origin", cache: "no-store" });
       const envelope = await response.json().catch(() => null) as OverviewApiEnvelope | null;
       if (current !== revision.current) return;
@@ -193,6 +201,14 @@ export function useOverview() {
         sourceSalesAvailable: true,
         sourceInventoryAvailable: result.inventoryAvailable === true,
         shopfrontReportsMode: "orithos",
+        weeklyTrend: result.dailyTrend.map((row) => ({
+          date: row.date,
+          revenue: Number(row.revenue ?? 0),
+          profitMargin:
+            row.costAvailable && row.grossProfit !== null && Number(row.revenue) > 0
+              ? shopfrontAlignedMarginRatio(Number(row.grossProfit), Number(row.revenue))
+              : null,
+        })),
       };
       setData(next);
       writePulse(scope, next);

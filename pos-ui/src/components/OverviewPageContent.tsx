@@ -23,6 +23,7 @@ import { fetchAiClientConfig } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { OverviewHeader } from "./OverviewHeader";
 import { OverviewStorePulse } from "./OverviewStorePulse";
+import { OverviewWeeklyTrend } from "./OverviewWeeklyTrend";
 import { RadialPie } from "./RadialPie";
 import { money, useOverview } from "./useOverview";
 import { useAiAssistant } from "@/lib/ai-assistant";
@@ -63,7 +64,7 @@ const modules = [
   },
   {
     label: "Reports",
-    href: "/reports/dashboard",
+    href: "/reports/dashboard?period=last_7_days",
     icon: BarChart3,
     description: "A clearer view of your business.",
     color: "blue",
@@ -177,7 +178,7 @@ export function OverviewPageContent({
       ? [{
           title: "Sales trend",
           description: data?.revenue === 0 ? "No sales today." : "Review your latest store activity.",
-          href: "/reports/dashboard",
+          href: "/reports/dashboard?period=last_7_days",
           tone: "blue",
         }]
       : []),
@@ -242,7 +243,7 @@ export function OverviewPageContent({
               </dl>
               <p role="status" className="mt-2 text-xs text-[var(--oh-muted)]">Sales and transactions from the Orithos ledger</p>
               {canReport ? (
-                <Link className="ov-report-link" href="/reports/dashboard">
+                <Link className="ov-report-link" href="/reports/dashboard?period=last_7_days">
                   View reports <ArrowRight size={16} aria-hidden="true" />
                 </Link>
               ) : null}
@@ -338,6 +339,13 @@ export function OverviewPageContent({
                     </div>
                   </section>
                 ) : <section className="ov-pulse-panel" aria-label="Store pulse unavailable"><div className="ov-pulse-title"><BarChart3 size={18} aria-hidden="true" /><h2>Store pulse</h2></div><p className="ov-pulse-pending" role="status">Store numbers are unavailable. Retry loading the dashboard.</p></section>}
+                {canReport ? (
+                  <OverviewWeeklyTrend
+                    sales={data?.weeklyTrend ?? []}
+                    margin={data?.weeklyTrend ?? []}
+                    loading={loading && !data}
+                  />
+                ) : null}
                 <section className="ov-insights-panel">
                   <div className="ov-panel-heading">
                     <span className="ov-panel-icon ov-panel-icon-green"><Lightbulb size={18} /></span>

@@ -120,7 +120,7 @@ export function OverviewStorePulse({ data, loading, canReport, onRefresh, sandbo
           noteHref={data.inventoryStatus === "negative_stock" || (orithosMode && !stockAvailable) ? negativeStockHref : undefined}
         />
       </dl>
-      {canReport && <Link className="ov-pulse-report" href="/reports/dashboard">View reports<ArrowUpRight size={16} aria-hidden="true" /></Link>}
+      {canReport && <Link className="ov-pulse-report" href="/reports/dashboard?period=last_7_days">View reports<ArrowUpRight size={16} aria-hidden="true" /></Link>}
     </section>
   );
 }

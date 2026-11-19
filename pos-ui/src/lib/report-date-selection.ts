@@ -77,7 +77,7 @@ export type ReportRangeSelection = {
   to: string;
 };
 
-/** Read period/from/to from a query string. Defaults to yesterday when empty. */
+/** Read period/from/to from a query string. Defaults to last 7 days when empty. */
 export function readReportRangeFromSearch(
   search: string,
   now = new Date(),
@@ -106,8 +106,8 @@ export function readReportRangeFromSearch(
     return { period: mapped, ...range };
   }
 
-  const fallback = reportDatePreset("yesterday", now, timezone);
-  return { period: "yesterday", ...fallback };
+  const fallback = reportDatePreset("last_7_days", now, timezone);
+  return { period: "last_7_days", ...fallback };
 }
 
 export function syncReportRangeToUrl(period: ReportDatePreset, from: string, to: string) {

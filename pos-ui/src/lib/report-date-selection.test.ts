@@ -11,6 +11,12 @@ test("Today preset uses the store business date across the UTC date boundary", (
   assert.deepEqual(reportDatePreset("today", new Date("2026-11-05T13:45:00Z")), { from: "2026-11-06", to: "2026-11-06" });
 });
 
+test("Today preset follows Melbourne instead of Adelaide around its midnight boundary", () => {
+  const now = new Date("2026-11-05T13:15:00Z");
+  assert.deepEqual(reportDatePreset("today", now, "Australia/Melbourne"), { from: "2026-11-06", to: "2026-11-06" });
+  assert.deepEqual(reportDatePreset("today", now, "Australia/Adelaide"), { from: "2026-11-05", to: "2026-11-05" });
+});
+
 test("Yesterday preset is the previous Adelaide business day", () => {
   assert.deepEqual(reportDatePreset("yesterday", new Date("2026-11-05T13:45:00Z")), { from: "2026-11-05", to: "2026-11-05" });
 });
@@ -47,9 +53,9 @@ test("readReportRangeFromSearch maps legacy period names and custom from/to", ()
     to: "2026-10-03",
   });
   assert.deepEqual(readReportRangeFromSearch("", now), {
-    period: "yesterday",
-    from: "2026-11-04",
-    to: "2026-11-04",
+    period: "last_7_days",
+    from: "2026-10-30",
+    to: "2026-11-05",
   });
 });
 
