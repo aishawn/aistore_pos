@@ -27,3 +27,13 @@ Java 21 focused verification after the correction: `NativeReportQueryNodeTest` 1
 ## Deployment identity
 
 Fix commit `66de47da8054443981f65854810ead97d3929410` is on `main`. Public `/api/public/version` checks confirmed both Demo and SKR frontend and backend report this exact SHA. Authenticated post-deploy assistant acceptance was NOT RUN: no assistant login credential was available in the current process, and browser automation could not verify the existing browser URL as allowed. Runtime identity is verified; online behavior for this specific empty-result correction remains pending.
+
+## Natural-language route gap and live follow-up
+
+After loading the store credentials from the local ignored environment file without printing them, the natural prompt `有哪些滞销商品？` returned API code `50210` in both stores at runtime `cbd05e60`. Safe backend logs showed that this phrase fell through to remote `CLASSIFICATION`, which failed with `IllegalStateException`; the user-visible controller message was generic. The failure-event persistence path also logged a secondary `BadSqlGrammarException`. The AI gateway container reported healthy. This was a routing gap for this phrase; it does not establish that all provider calls fail.
+
+Added deterministic coverage for default Chinese wording `有哪些滞销商品？` and explicit-range wording `最近30天有哪些滞销商品？`. Java 21 `AssistantFastPathRouterTest` passed 73/73; the missing phrase first failed before the route was added. Commit `3b9a57ba50c1e5e4b88cffdabe4bab2997c78014` is deployed.
+
+Authenticated post-deploy checks on Demo and SKR passed 6/6: Chinese default, Chinese explicit 30-day, and English 30-day questions in each store. Every response was HTTP 200 / API code 0, deterministic `report_dead_stock`, `llmFallback=false`, `reportDataStatus=incomplete`, freshness warning present, and `writeRequests=[]`. The requests create normal assistant audit/session records but no POS business writes. No provider generation call was used by this selected route set.
+
+Remaining limitation: broader LLM-classified questions were not re-tested, and the secondary failure-event SQL error is not fixed by this route change. The combined dead-stock data source still has no trusted sales freshness watermark.

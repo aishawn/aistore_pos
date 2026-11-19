@@ -8,6 +8,8 @@
 
 后续审计发现，空滞销列表会被通用逻辑误标为 `no_data`，即使缺少可信新鲜度信息。现已修正为无 `dataAsOf` 时 `report_dead_stock` 一律 `incomplete`，空结果回答明确表示无法确认是否确实没有滞销商品。Java 21 定向回归 46/46 PASS。Demo/SKR 公开版本接口均确认前后端运行 `66de47da`；本轮缺少已登录助手凭据且浏览器 URL 校验不可用，修复后的认证问答尚未在线复测。组合数据源仍无权威 `dataAsOf`，完整性保持 BLOCKED。
 
+随后线上发现“有哪些滞销商品？”未命中中文快路径，因远程 `CLASSIFICATION` 失败而返回 `50210`。新增默认问法及显式 30 天问法路由，`AssistantFastPathRouterTest` 73/73 PASS；Demo/SKR 各验证中文默认、中文 30 天、英文 30 天共 6/6 PASS。均为 deterministic、无模型回退、状态 `incomplete`、保留新鲜度警告、POS 业务写入 0。当前两店运行 `3b9a57ba`。更广泛分类失败与失败事件落库的 `BadSqlGrammarException` 尚未解决；滞销数据新鲜度仍 BLOCKED。
+
 ## 2026-11-18 Demo 毛利口径回归
 
 Demo 只读复现源码/运行版本 `228166e8ba44ddde32ab21cec1547bbf94fa42bc` 的错误：Adelaide 2026-11-17 含 GST 销售额 AUD 4,241.48、GST AUD 364.92、成本 AUD 2,974.97；线上助手返回毛利 AUD 1,266.51，正确的税前毛利应为 AUD 901.59。中英文单日问法均把毛利描述为含 GST；请求没有 POS 业务写入。原始检查由本轮 Demo API 核查记录，助手查询会生成审计/会话记录。
