@@ -70,8 +70,9 @@ RUN if [ -n "$ORITHOS_HC_BUNDLE_URL" ]; then \
   apt-get update \
   && apt-get install -y --no-install-recommends curl ca-certificates \
   && mkdir -p public/downloads \
-  && (curl -fsSL "$ORITHOS_HC_BUNDLE_URL" -o public/downloads/orithos-hardware-connect-latest.zip || echo "HC bundle fetch skipped") \
-  && printf '%s\n' "{\"product\":\"Orithos Hardware Connect\",\"version\":\"1.0.0.0\",\"downloadPath\":\"/downloads/orithos-hardware-connect-latest\",\"stagedAt\":\"$(date -Iseconds)\"}" > public/downloads/orithos-hardware-connect.version.json \
+  && curl -fsSL "$ORITHOS_HC_BUNDLE_URL" -o public/downloads/orithos-hardware-connect-latest.zip \
+  && test -s public/downloads/orithos-hardware-connect-latest.zip \
+  && printf '%s\n' "{\"product\":\"Orithos Hardware Connect\",\"version\":\"1.0.0.0\",\"downloadPath\":\"/downloads/orithos-hardware-connect-latest.zip\",\"stagedAt\":\"$(date -Iseconds)\"}" > public/downloads/orithos-hardware-connect.version.json \
   && apt-get purge -y curl \
   && apt-get autoremove -y \
   && rm -rf /var/lib/apt/lists/*; \

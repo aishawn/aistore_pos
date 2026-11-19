@@ -19,7 +19,6 @@ export function LocalNetworkAccessGate({ children }: { children: React.ReactNode
   const [hint, setHint] = useState<string | null>(null);
   const [portalReady, setPortalReady] = useState(false);
   const browserHint = typeof window !== "undefined" ? localNetworkAccessBrowserHint() : null;
-  const siteHost = typeof window !== "undefined" ? window.location.hostname : "this site";
 
   useEffect(() => {
     setPortalReady(true);
@@ -46,20 +45,18 @@ export function LocalNetworkAccessGate({ children }: { children: React.ReactNode
     setHint(null);
     try {
       if (accessState === "denied") {
-        setHint("Open site controls → Site settings → Local network access → Allow, then reload.");
+        setHint("Site settings → Local network access → Allow, then reload.");
         return;
       }
       await probeLoopbackAccess();
       const next = await resolveHardwareNetworkAccessState();
       setAccessState(next);
       if (next === "granted") {
-        setHint("Access granted. You can configure printers and EFTPOS below.");
+        setHint("Access granted. Configure hardware below.");
       } else if (next === "prompt") {
-        setHint(
-          "Look for an Allow / Block bar at the top of the browser. If none appears, open Site settings from the address bar menu and set Local network access to Allow, then reload.",
-        );
+        setHint("Use the browser prompt, or set Local network access to Allow in site settings.");
       } else if (next === "denied") {
-        setHint("Access was denied. Turn on Local network access in site settings and reload.");
+        setHint("Turn on Local network access in site settings, then reload.");
       }
     } finally {
       setBusy(false);
@@ -71,77 +68,91 @@ export function LocalNetworkAccessGate({ children }: { children: React.ReactNode
   }
 
   const dialog = blocked ? (
-    <div className="fixed inset-0 z-[9998] grid place-items-center bg-slate-950/55 p-4" role="presentation">
+    <div className="fixed inset-0 z-[9998] grid place-items-center bg-slate-950/55 p-4 sm:p-6" role="presentation">
       <section
         role="dialog"
         aria-modal="true"
         aria-labelledby="lna-gate-title"
         aria-describedby="lna-gate-desc"
-        className="max-h-[min(90dvh,720px)] w-full max-w-lg overflow-y-auto rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-6 shadow-2xl"
+        className="flex max-h-[min(90dvh,560px)] w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] shadow-2xl"
       >
-        <div className="flex items-start gap-3">
-          <span className="grid size-10 shrink-0 place-items-center rounded-full bg-sky-100 text-sky-800" aria-hidden="true">
-            <Info size={20} />
-          </span>
-          <div>
-            <h2 id="lna-gate-title" className="text-lg font-semibold text-[var(--oh-text)]">
-              Local network access required
-            </h2>
-            <p id="lna-gate-desc" className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">
-              Orithos needs permission to reach apps on this register (Orithos Hardware Connect, QZ Tray, Linkly
-              connector, and other loopback services). Without it, printing and EFTPOS setup will not work.
-            </p>
+        <header className="shrink-0 border-b border-[var(--oh-border)] px-5 py-4 sm:px-6">
+          <div className="flex items-start gap-3">
+            <span
+              className="grid size-9 shrink-0 place-items-center rounded-full bg-sky-100 text-sky-800"
+              aria-hidden="true"
+            >
+              <Info size={18} />
+            </span>
+            <div className="min-w-0">
+              <h2 id="lna-gate-title" className="text-base font-semibold text-[var(--oh-text)] sm:text-lg">
+                Local network access required
+              </h2>
+              <p id="lna-gate-desc" className="mt-1 text-sm text-[var(--oh-muted)]">
+                Allow this site to reach local printer and EFTPOS apps on this register.
+                {accessState === "denied" ? " Access is currently blocked." : null}
+              </p>
+            </div>
           </div>
+        </header>
+
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 sm:px-6">
+          <div className="grid gap-3 sm:grid-cols-2 sm:gap-4">
+            <div className="rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] p-4">
+              <p className="text-sm font-semibold text-[var(--oh-text)]">Browser</p>
+              <ul className="mt-2 space-y-1.5 text-sm leading-snug text-[var(--oh-text)]">
+                <li>
+                  <span className="text-[var(--oh-muted)]">1.</span> Address bar →{" "}
+                  <span className="font-medium">Site settings</span>
+                </li>
+                <li>
+                  <span className="text-[var(--oh-muted)]">2.</span>{" "}
+                  <span className="font-medium">Local network access</span> → Allow
+                </li>
+                <li>
+                  <span className="text-[var(--oh-muted)]">3.</span> Reload this page
+                </li>
+              </ul>
+              <p className="mt-3 text-xs leading-5 text-[var(--oh-muted)]">Chrome 142+ or Edge 143+.</p>
+            </div>
+            <div className="rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] p-4">
+              <HardwareConnectInstallCard compact />
+            </div>
+          </div>
+
+          {browserHint ? (
+            <p
+              role="alert"
+              className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950"
+            >
+              {browserHint}
+            </p>
+          ) : null}
+          {hint ? (
+            <p role="status" className="mt-3 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-950">
+              {hint}
+            </p>
+          ) : null}
         </div>
-        <ol className="mt-5 list-decimal space-y-2 pl-5 text-sm leading-6 text-[var(--oh-text)]">
-          <li>Click the site controls icon to the left of the address bar.</li>
-          <li>
-            Open <span className="font-semibold">Site settings</span> — the toggle is usually{" "}
-            <em>not</em> shown in the short menu.
-          </li>
-          <li>
-            Set <span className="font-semibold">Local network access</span> to <span className="font-semibold">Allow</span>
-            {accessState === "denied" ? " (currently blocked for this site)" : ""}.
-          </li>
-          <li>Return here and use <span className="font-semibold">Reload page</span>.</li>
-        </ol>
-        <p className="mt-4 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 py-2 text-xs leading-5 text-[var(--oh-muted)]">
-          Requires <span className="font-medium text-[var(--oh-text)]">Chrome 142+</span> or{" "}
-          <span className="font-medium text-[var(--oh-text)]">Edge 143+</span>. You can also allow{" "}
-          <span className="font-medium text-[var(--oh-text)]">{siteHost}</span> under Chrome → Settings → Privacy and
-          security → Site settings → Local network access.
-        </p>
-        {browserHint ? (
-          <p role="alert" className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm leading-6 text-amber-950">
-            {browserHint}
-          </p>
-        ) : null}
-        {hint ? (
-          <p role="status" className="mt-4 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm leading-6 text-sky-950">
-            {hint}
-          </p>
-        ) : null}
-        <div className="mt-5 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] px-4 py-3">
-          <HardwareConnectInstallCard compact />
-        </div>
-        <div className="mt-6 flex flex-wrap gap-2">
+
+        <footer className="flex shrink-0 flex-wrap gap-2 border-t border-[var(--oh-border)] px-5 py-4 sm:px-6">
           <button
             type="button"
             onClick={() => void requestAccess()}
             disabled={busy}
-            className="inline-flex min-h-10 items-center justify-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white disabled:opacity-50"
+            className="inline-flex min-h-10 flex-1 items-center justify-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white disabled:opacity-50 sm:flex-none"
           >
             {busy ? "Checking…" : "Request access"}
           </button>
           <button
             type="button"
             onClick={() => window.location.reload()}
-            className="inline-flex min-h-10 items-center gap-2 rounded-md border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-text)]"
+            className="inline-flex min-h-10 flex-1 items-center justify-center gap-2 rounded-md border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-text)] sm:flex-none"
           >
             <RefreshCw size={15} aria-hidden="true" />
             Reload page
           </button>
-        </div>
+        </footer>
       </section>
     </div>
   ) : null;
