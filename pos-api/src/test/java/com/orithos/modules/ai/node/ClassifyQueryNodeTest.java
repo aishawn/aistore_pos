@@ -1016,6 +1016,7 @@ class ClassifyQueryNodeTest {
         assertDeterministicResult(node, "昨天价格历史", "report_adhoc", "");
         assertDeterministicResult(node, "发票还有吗？", "qa", "/purchases?tab=invoices");
         assertDeterministicResult(node, "收到发票了吗？", "qa", "/purchases?tab=invoices");
+        assertDeterministicResult(node, "有没有收到发票？", "qa", "/purchases?tab=invoices");
         assertDeterministicResult(node, "Did the supplier invoice arrive?", "qa", "/purchases?tab=invoices");
         assertDeterministicResult(node, "How many supplier bills did we receive?", "qa", "/purchases?tab=invoices");
         assertDeterministicResult(node, "查看批量改价", "navigate", "/stock/bulk-price-edit");

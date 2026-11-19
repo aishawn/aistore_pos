@@ -571,7 +571,7 @@ public class ClassifyQueryNode implements NodeAction {
                 + "(?=.*\\b(?:arriv\\w*|receiv\\w*|any|exist\\w*|there|have|get)\\b)"
                 + ".*\\b(?:invoice|invoices|bill|bills)\\b.*");
         boolean chineseQuestion = question.matches("(?is).*(?:发票|账单).*(?:收到|有没有|还有吗|到没|到了吗|吗|是否存在).*"
-                + "|.*(?:有收到|收到).*(?:发票|账单).*(?:吗|没有|没).*"
+                + "|.*(?:有收到|收到).*(?:发票|账单).*(?:吗|没有|没|[?？]).*"
                 + "|.*(?:发票|账单).*(?:收到|有没有|还有吗|到没|到了吗|是否存在).*");
         return englishQuestion || chineseQuestion;
     }
