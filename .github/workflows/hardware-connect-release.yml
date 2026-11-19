@@ -31,7 +31,7 @@ jobs:
         shell: pwsh
         run: |
           Set-Location tools/orithos-hardware-connect
-          $version = (Select-Xml -Path ./OrithosHardwareConnect.csproj -XPath "//Version").Node.InnerText.Trim()
+          $version = (Select-Xml -Path ./OrithosHardwareConnect.csproj -XPath "/Project/PropertyGroup/Version").Node.InnerText.Trim()
           $releaseDir = Join-Path (Get-Location) "dist/release"
           New-Item -ItemType Directory -Force -Path $releaseDir | Out-Null
           $setup = Join-Path (Get-Location) "dist/OrithosHardwareConnect-$version-win-x64-Setup.exe"
