@@ -65,6 +65,30 @@ async function assistant(question) {
   }), "ASSISTANT");
 }
 
+async function evaluateStockQuestion(label, sample, question) {
+  const name = `single-product stock answer (${label}) matches the current catalogue`;
+  if (!sample?.name || !Number.isFinite(Number(sample.stockQuantity))) {
+    checks.push({ name, status: "BLOCKED", evidence: { sampleAvailable: false } });
+    return;
+  }
+  try {
+    const answer = await assistant(question);
+    const result = singleProductStockAcceptance(answer, {
+      name: sample.name,
+      quantity: sample.stockQuantity,
+    });
+    addCheck(name, result.passed, {
+      sampleNameOmitted: true,
+      expectedQuantity: result.expectedQuantity,
+      answerQuantity: result.answerQuantity,
+      dataAsOfPresent: result.dataAsOfPresent,
+      checks: result.checks,
+    });
+  } catch (error) {
+    addCheck(name, false, safeErrorSummary(error));
+  }
+}
+
 let authenticated = false;
 try {
   const login = await context.request.post(`${base}/api/auth/login`, {
@@ -91,12 +115,15 @@ try {
   yesterday.setUTCDate(yesterday.getUTCDate() - 1);
   const previousDay = yesterday.toISOString().slice(0, 10);
   const period = { from: previousDay, to: today };
-  const [overview, catalogue, activeCatalogue, inventorySummary, stockSamples, sales, salesChinese, aov, stockValue, productCount] = await Promise.all([
+  const [overview, catalogue, activeCatalogue, inventorySummary, stockSamples, zeroStockSamples,
+    nonzeroStockSamples, sales, salesChinese, aov, stockValue, productCount] = await Promise.all([
     getJson(await context.request.get(`${base}/api/reports/native-overview?from=${period.from}&to=${period.to}`), "NATIVE_OVERVIEW"),
     getJson(await context.request.get(`${base}/api/products?page=1&size=20`), "PRODUCTS"),
     getJson(await context.request.get(`${base}/api/products?status=ACTIVE&page=1&size=1`), "ACTIVE_PRODUCTS"),
     getJson(await context.request.get(`${base}/api/products/on-hand-summary?status=ACTIVE&inventoryLevel=on-hand`), "ON_HAND_SUMMARY"),
     getJson(await context.request.get(`${base}/api/products?status=ACTIVE&inventoryLevel=on-hand&page=1&size=1`), "ON_HAND_SAMPLE"),
+    getJson(await context.request.get(`${base}/api/products?status=ACTIVE&inventoryLevel=only-zero&page=1&size=1`), "ZERO_STOCK_SAMPLE"),
+    getJson(await context.request.get(`${base}/api/products?status=ACTIVE&inventoryLevel=not-zero&page=1&size=100`), "NONZERO_STOCK_SAMPLE"),
     assistant("How much did we sell yesterday?"),
     assistant("昨天营业额是多少？"),
     assistant("What was our average sale yesterday?"),
@@ -118,32 +145,16 @@ try {
     checks: inventoryCheck.checks,
   });
   const stockSample = stockSamples.items?.[0];
-  if (stockSample?.name && Number.isFinite(Number(stockSample.stockQuantity))) {
-    for (const [language, question] of [
-      ["English", `How much ${stockSample.name} is in stock?`],
-      ["Chinese", `${stockSample.name}现在有多少库存？`],
-    ]) {
-      const stockAnswer = await assistant(question);
-      const stockCheck = singleProductStockAcceptance(stockAnswer, {
-        name: stockSample.name,
-        quantity: stockSample.stockQuantity,
-      });
-      addCheck(`single-product stock answer (${language}) matches the current catalogue`, stockCheck.passed, {
-        sampleNameOmitted: true,
-        expectedQuantity: stockCheck.expectedQuantity,
-        answerQuantity: stockCheck.answerQuantity,
-        dataAsOfPresent: stockCheck.dataAsOfPresent,
-        checks: stockCheck.checks,
-      });
-    }
-  } else {
-    addCheck("single-product stock answer (English) matches the current catalogue", false, {
-      sampleAvailable: false,
-    });
-    addCheck("single-product stock answer (Chinese) matches the current catalogue", false, {
-      sampleAvailable: false,
-    });
-  }
+  await evaluateStockQuestion("English", stockSample,
+    stockSample?.name ? `How much ${stockSample.name} is in stock?` : "");
+  await evaluateStockQuestion("Chinese", stockSample,
+    stockSample?.name ? `${stockSample.name}现在有多少库存？` : "");
+  const zeroStockSample = zeroStockSamples.items?.[0];
+  await evaluateStockQuestion("zero stock", zeroStockSample,
+    zeroStockSample?.name ? `How much ${zeroStockSample.name} is in stock?` : "");
+  const negativeStockSample = nonzeroStockSamples.items?.find((item) => Number(item.stockQuantity) < 0);
+  await evaluateStockQuestion("negative stock", negativeStockSample,
+    negativeStockSample?.name ? `How much ${negativeStockSample.name} is in stock?` : "");
   const dailyOverview = await getJson(await context.request.get(
     `${base}/api/reports/native-overview?from=${previousDay}&to=${previousDay}`,
   ), "DAILY_NATIVE_OVERVIEW");
@@ -196,7 +207,9 @@ const output = {
   checks,
   passed: checks.filter((check) => check.status === "PASS").length,
   failed: checks.filter((check) => check.status === "FAIL").length,
-  status: checks.every((check) => check.status === "PASS") && runtimeCommit === sourceCommit ? "PASS" : "BLOCKED",
+  blocked: checks.filter((check) => check.status === "BLOCKED").length,
+  status: runtimeCommit !== sourceCommit || checks.some((check) => check.status === "BLOCKED") ? "BLOCKED"
+    : checks.some((check) => check.status === "FAIL") ? "FAIL" : "PASS",
 };
 const outputPath = process.env.PILOT_UAT_OUTPUT_PATH
   ? path.resolve(root, process.env.PILOT_UAT_OUTPUT_PATH)
@@ -211,7 +224,8 @@ console.log(JSON.stringify({
   status: output.status,
   passed: output.passed,
   failed: output.failed,
+  blocked: output.blocked,
   writes: output.writes.length,
 }));
-if (output.failed > 0) process.exitCode = 1;
-else if (output.status !== "PASS") process.exitCode = 2;
+if (output.status === "FAIL") process.exitCode = 1;
+else if (output.status === "BLOCKED") process.exitCode = 2;

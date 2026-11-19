@@ -15,6 +15,8 @@ test("report readonly UAT entry delegates to the Orithos-native suite", () => {
 test("report readonly UAT evaluates dynamic stock questions in English and Chinese", () => {
   assert.match(suiteSource, /How much \$\{stockSample\.name\} is in stock/);
   assert.match(suiteSource, /\$\{stockSample\.name\}现在有多少库存/);
+  assert.ok(suiteSource.includes("inventoryLevel=only-zero"));
+  assert.ok(suiteSource.includes("inventoryLevel=not-zero"));
 });
 
 test("report readonly UAT reconciles Chinese sales answers with the native report", () => {
