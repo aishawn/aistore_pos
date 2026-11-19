@@ -89,8 +89,9 @@ export function LocalNetworkAccessGate({ children }: { children: React.ReactNode
                 Local network access required
               </h2>
               <p id="lna-gate-desc" className="mt-1 text-sm text-[var(--oh-muted)]">
-                Allow this site to reach local printer and EFTPOS apps on this register.
-                {accessState === "denied" ? " Access is currently blocked." : null}
+                Complete both steps on this PC: install the register agent, then allow the browser to reach local
+                hardware.
+                {accessState === "denied" ? " Browser access is currently blocked." : null}
               </p>
             </div>
           </div>
@@ -99,7 +100,9 @@ export function LocalNetworkAccessGate({ children }: { children: React.ReactNode
         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 sm:px-6">
           <div className="grid gap-3 sm:grid-cols-2 sm:gap-4">
             <div className="rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] p-4">
-              <p className="text-sm font-semibold text-[var(--oh-text)]">Browser</p>
+              <p className="text-sm font-semibold text-[var(--oh-text)]">
+                <span className="text-[var(--oh-muted)]">Step 2 ·</span> Browser
+              </p>
               <ul className="mt-2 space-y-1.5 text-sm leading-snug text-[var(--oh-text)]">
                 <li>
                   <span className="text-[var(--oh-muted)]">1.</span> Address bar →{" "}
@@ -116,7 +119,12 @@ export function LocalNetworkAccessGate({ children }: { children: React.ReactNode
               <p className="mt-3 text-xs leading-5 text-[var(--oh-muted)]">Chrome 142+ or Edge 143+.</p>
             </div>
             <div className="rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] p-4">
-              <HardwareConnectInstallCard compact />
+              <p className="text-sm font-semibold text-[var(--oh-text)]">
+                <span className="text-[var(--oh-muted)]">Step 1 ·</span> Register agent
+              </p>
+              <div className="mt-2">
+                <HardwareConnectInstallCard compact />
+              </div>
             </div>
           </div>
 
