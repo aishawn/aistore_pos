@@ -61,7 +61,7 @@ export function ReportExecutiveSummary({
 
   if (loading) {
     return (
-      <section className="mx-4 mt-4 rounded-xl border border-[var(--oh-border)] bg-white p-5 shadow-[var(--oh-shadow-card)] md:mx-6">
+      <section className="mx-4 mt-4 rounded-lg border border-[var(--oh-border)] bg-white p-4 md:mx-6">
         <div className="h-4 w-32 animate-pulse rounded bg-[var(--oh-border)]" />
         <div className="mt-4 h-10 w-48 animate-pulse rounded bg-[var(--oh-border)]" />
         <div className="mt-3 h-3 w-full max-w-md animate-pulse rounded bg-[var(--oh-border)]" />
@@ -70,14 +70,14 @@ export function ReportExecutiveSummary({
   }
 
   return (
-    <section className="mx-4 mt-4 overflow-hidden rounded-xl border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)] md:mx-6">
-      <div className="border-l-4 border-[var(--oh-primary)] p-5">
+    <section className="mx-4 mt-4 overflow-hidden rounded-lg border border-[var(--oh-border)] bg-white md:mx-6">
+      <div className="border-l-[3px] border-[var(--oh-primary)] p-4 md:p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]">{periodLabel}</p>
+            <p className="text-xs font-medium text-[var(--oh-muted)]">{periodLabel}</p>
             <div className="mt-2 flex flex-wrap items-baseline gap-3">
               <p className="text-sm font-medium text-[var(--oh-muted)]">{primaryLabel}</p>
-              <p className="text-4xl font-semibold tracking-tight tabular-nums text-[var(--oh-text)]">{primaryValue}</p>
+              <p className="text-4xl font-semibold tabular-nums text-[var(--oh-text)]">{primaryValue}</p>
               <DeltaBadge value={primaryDelta} />
             </div>
             {!primaryIsProfit && data && !data.costAvailable ? (
@@ -89,8 +89,8 @@ export function ReportExecutiveSummary({
             {dataAsOf ? <span className="text-xs text-[var(--oh-muted)]">Updated {dataAsOf}</span> : null}
           </div>
         </div>
-        <p className="mt-3 text-sm leading-relaxed text-[var(--oh-text-secondary)]">{headline}</p>
-        <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2 border-t border-[var(--oh-border)] pt-4 sm:grid-cols-4">
+        <p className="mt-2 text-sm leading-relaxed text-[var(--oh-text-secondary)]">{headline}</p>
+        <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 border-t border-[var(--oh-border)] pt-3 sm:grid-cols-4 xl:grid-cols-5">
           <div>
             <dt className="text-xs font-medium text-[var(--oh-muted)]">Sales</dt>
             <dd className="text-base font-semibold tabular-nums">{data ? reportMoney(data.revenue) : "—"}</dd>
@@ -115,7 +115,7 @@ export function ReportExecutiveSummary({
             </dd>
           </div>
           {data?.costAvailable && data.profitMargin != null ? (
-            <div className="col-span-2 sm:col-span-4">
+            <div>
               <dt className="text-xs font-medium text-[var(--oh-muted)]">Gross margin</dt>
               <dd className="text-base font-semibold tabular-nums">{Number(data.profitMargin).toFixed(2)}%</dd>
             </div>

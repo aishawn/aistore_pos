@@ -34,14 +34,12 @@ const QUICK_LINKS = [
 
 export function NativeReportsDashboardPage() {
   const defaults = useMemo(() => reportDatePreset("last_7_days"), []);
-  const weekRange = defaults;
   const [period, setPeriod] = useState<ReportDatePreset>("last_7_days");
   const [from, setFrom] = useState(defaults.from);
   const [to, setTo] = useState(defaults.to);
   const [rangeReady, setRangeReady] = useState(false);
   const [data, setData] = useState<NativeOverview | null>(null);
   const [comparison, setComparison] = useState<NativeOverview | null>(null);
-  const [weekData, setWeekData] = useState<NativeOverview | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -65,7 +63,6 @@ export function NativeReportsDashboardPage() {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to) || from > to || !compareRange) {
       setData(null);
       setComparison(null);
-      setWeekData(null);
       setError("Choose a valid date range.");
       setLoading(false);
       return;
@@ -73,27 +70,24 @@ export function NativeReportsDashboardPage() {
     setLoading(true);
     setError(null);
     try {
-      const [current, previous, week] = await Promise.all([
+      const [current, previous] = await Promise.all([
         fetchNativeOverview(from, to, signal),
         fetchNativeOverview(compareRange.from, compareRange.to, signal),
-        fetchNativeOverview(weekRange.from, weekRange.to, signal),
       ]);
       if (!signal.aborted) {
         setData(current);
         setComparison(previous);
-        setWeekData(week);
       }
     } catch (cause) {
       if (!signal.aborted) {
         setData(null);
         setComparison(null);
-        setWeekData(null);
         setError(cause instanceof Error ? cause.message : "Orithos report is unavailable.");
       }
     } finally {
       if (!signal.aborted) setLoading(false);
     }
-  }, [compareRange, from, rangeReady, to, weekRange.from, weekRange.to]);
+  }, [compareRange, from, rangeReady, to]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -172,15 +166,20 @@ export function NativeReportsDashboardPage() {
 
   const inventoryCaseLevel = data?.inventoryAvailable && data.inventoryCaseLevel != null ? Number(data.inventoryCaseLevel) : null;
   const inventoryItemLevel = data?.inventoryAvailable && data.inventoryItemLevel != null ? Number(data.inventoryItemLevel) : null;
+  const salesReportParams = new URLSearchParams({ period });
+  if (period === "custom") {
+    salesReportParams.set("from", from);
+    salesReportParams.set("to", to);
+  }
+  const salesReportHref = `/reports/sales?${salesReportParams.toString()}`;
 
   return (
     <main className="flex h-full min-h-0 flex-col overflow-hidden bg-[var(--oh-surface)]">
-      <header className="shrink-0 border-b border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-4 py-4 md:px-6">
-        <div className="flex flex-wrap items-start justify-between gap-4">
+      <header className="shrink-0 border-b border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-4 py-3 md:px-6 md:py-3.5">
+        <div className="mx-auto flex w-full max-w-[1680px] flex-wrap items-end justify-between gap-3">
           <div>
-            <p className="text-xs font-medium text-[var(--oh-muted)]">Orithos ledger · Australia/Adelaide</p>
-            <h1 className="text-2xl font-semibold tracking-tight text-[var(--oh-text)]">Business control</h1>
-            <p className="mt-1 text-xs text-[var(--oh-muted)]">Sales pulse, risks, and where to drill down</p>
+            <h1 className="text-xl font-semibold text-[var(--oh-text)]">Business overview</h1>
+            <p className="mt-1 text-sm text-[var(--oh-muted)]">Sales and inventory for the selected period</p>
             {inventoryCaseLevel != null && inventoryItemLevel != null ? (
               <p className="mt-1 text-xs">
                 <Link href="/reports/inventory" className="font-medium text-[var(--oh-primary)] hover:underline">
@@ -205,6 +204,7 @@ export function NativeReportsDashboardPage() {
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto pb-4">
+        <div className="mx-auto w-full max-w-[1680px]">
         {error ? (
           <div
             role="alert"
@@ -225,7 +225,13 @@ export function NativeReportsDashboardPage() {
 
         <ReportActionQueue items={actionItems} />
 
-        <ReportMiniTrend points={weekData?.dailyTrend ?? []} loading={loading} />
+        <ReportMiniTrend
+          points={data?.dailyTrend ?? []}
+          comparisonPoints={comparison?.dailyTrend ?? []}
+          periodLabel={periodLabel.replace(/^Period · /u, "")}
+          salesHref={salesReportHref}
+          loading={loading}
+        />
 
         <section className="mx-4 mt-4 md:mx-6">
           <ReportProductLeaderboard products={topProducts} loading={loading} limit={5} title="Top sellers" />
@@ -237,7 +243,7 @@ export function NativeReportsDashboardPage() {
             return (
               <Link
                 key={link.href}
-                href={link.href}
+                href={link.href.startsWith("/reports/sales") ? salesReportHref : link.href}
                 className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3 text-sm font-semibold text-[var(--oh-text)] hover:border-[var(--oh-primary)] hover:text-[var(--oh-primary)]"
               >
                 <Icon size={16} aria-hidden="true" />
@@ -249,6 +255,7 @@ export function NativeReportsDashboardPage() {
 
         <div className="mx-4 mt-6 border-t border-[var(--oh-border)] pt-3 md:mx-6">
           <ReportParityNote />
+        </div>
         </div>
       </div>
     </main>

@@ -17,8 +17,8 @@ const iconFor: Record<ReportActionItem["tone"], typeof CircleAlert> = {
 };
 
 const toneClass: Record<ReportActionItem["tone"], string> = {
-  danger: "border-red-200 bg-red-50/80",
-  warning: "border-amber-200 bg-amber-50/80",
+  danger: "border-red-200 border-l-red-600 bg-white",
+  warning: "border-amber-200 border-l-amber-500 bg-white",
   info: "border-[var(--oh-border)] bg-[var(--oh-surface-elevated)]",
 };
 
@@ -27,7 +27,7 @@ export function ReportActionQueue({ items }: { items: ReportActionItem[] }) {
 
   return (
     <section aria-label="Action queue" className="mx-4 mt-4 space-y-2 md:mx-6">
-      <h2 className="text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]">Needs attention</h2>
+      <h2 className="text-sm font-semibold text-[var(--oh-text-secondary)]">Needs attention</h2>
       <ul className="space-y-2">
         {items.map((item) => {
           const Icon = iconFor[item.tone];
@@ -44,7 +44,7 @@ export function ReportActionQueue({ items }: { items: ReportActionItem[] }) {
             </>
           );
           const classes = cn(
-            "flex items-center gap-2 rounded-lg border px-3 py-2.5",
+            "flex items-center gap-2 rounded-md border border-l-2 px-3 py-2.5",
             toneClass[item.tone],
             item.href && "transition-colors hover:border-[var(--oh-primary)]",
           );

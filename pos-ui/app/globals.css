@@ -853,19 +853,16 @@ html.dark {
 
 .report-mini-trend {
   border: 1px solid var(--oh-border);
-  border-radius: 12px;
-  background: var(--oh-surface-elevated);
-  padding: 16px 18px 14px;
-  box-shadow: var(--oh-shadow-card, 0 1px 2px rgb(15 23 42 / 0.04));
+  border-radius: 8px;
+  background: #fff;
+  padding: 14px 16px 12px;
 }
 .report-mini-trend-chart {
-  border-radius: 10px;
-  background: linear-gradient(180deg, rgb(248 250 252 / 0.9) 0%, rgb(255 255 255 / 0.4) 100%);
-  padding: 8px 6px 4px;
+  padding: 2px 0 0;
 }
 .report-mini-trend-skeleton {
-  height: 148px;
-  border-radius: 10px;
+  height: 156px;
+  border-radius: 6px;
   background: var(--oh-surface-muted, #f1f5f9);
   animation: pulse 1.4s ease-in-out infinite;
 }
@@ -873,7 +870,6 @@ html.dark {
 .report-line-chart-svg {
   display: block;
   width: 100%;
-  height: auto;
   overflow: visible;
 }
 .report-line-chart-svg path[stroke] {

@@ -31,7 +31,7 @@ test("reports dashboard renders ledger totals and cost coverage state", async ({
 
   await page.goto("/reports/dashboard");
 
-  await expect(page.getByRole("heading", { name: "Business control" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Business overview" })).toBeVisible();
   await expect(page.getByText("Data complete")).toBeVisible();
   await expect(page.getByText("$1,842.50").first()).toBeVisible();
   await expect(page.getByText("Profit unverified — cost coverage incomplete")).toBeVisible();

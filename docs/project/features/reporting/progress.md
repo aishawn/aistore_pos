@@ -1,6 +1,13 @@
 # Reporting Progress
 
-Updated: 2026-11-11. Owner: TBD.
+Updated: 2026-11-19. Owner: TBD.
+
+## Dashboard overview hierarchy (2026-11-19)
+
+- Tightened the dashboard heading and summary spacing, aligned gross margin with the supporting measures, and softened exception row fills while retaining severity cues.
+- The sales trend now follows the selected period, overlays the previous period when both daily series align, and keeps a fixed chart height as viewport width changes. Removed the redundant third overview request that fetched a separate fixed seven-day trend.
+- Node 24 TypeScript check passed. Targeted ESLint completed with no errors and two warnings on existing date-initialization/load effects in `NativeReportsDashboardPage`.
+- Browser review, deployment, and online acceptance are pending; no business data was written.
 
 ## AI report query retirement (2026-11-11)
 

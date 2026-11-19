@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { shortDayLabel } from "@/components/reports/report-format";
 
 export type LineChartPoint = { date: string; value: number };
@@ -31,6 +31,8 @@ export function ReportLineChart({
   formatValue,
   formatAxisValue,
   stroke = "#3b82f6",
+  comparisonPoints,
+  comparisonStroke = "#98A2B3",
   ariaLabel,
   height = 132,
   onActiveChange,
@@ -39,12 +41,27 @@ export function ReportLineChart({
   formatValue: (value: number) => string;
   formatAxisValue?: (value: number) => string;
   stroke?: string;
+  comparisonPoints?: LineChartPoint[];
+  comparisonStroke?: string;
   ariaLabel: string;
   height?: number;
   onActiveChange?: (point: LineChartPoint | null) => void;
 }) {
   const gradientId = useId().replace(/:/g, "");
   const [hover, setHover] = useState<number | null>(null);
+  const chartRef = useRef<HTMLDivElement>(null);
+  const [chartWidth, setChartWidth] = useState(800);
+
+  useEffect(() => {
+    const node = chartRef.current;
+    if (!node) return;
+    const resizeObserver = new ResizeObserver(() => {
+      const nextWidth = Math.round(node.getBoundingClientRect().width);
+      if (nextWidth > 0) setChartWidth((current) => current === nextWidth ? current : nextWidth);
+    });
+    resizeObserver.observe(node);
+    return () => resizeObserver.disconnect();
+  }, [points.length]);
 
   const defaultIndex = useMemo(() => {
     if (!points.length) return 0;
@@ -57,15 +74,22 @@ export function ReportLineChart({
 
   if (points.length < 2) return null;
 
-  const activeIndex = hover ?? defaultIndex;
+  const activeIndex = hover !== null && hover < points.length ? hover : defaultIndex;
   const active = points[activeIndex];
   const values = points.map((row) => Number(row.value) || 0);
-  const max = paddedMax(values);
+  const comparisonValues = comparisonPoints?.length === points.length
+    ? comparisonPoints.map((row) => Number(row.value) || 0)
+    : [];
+  const max = paddedMax([...values, ...comparisonValues]);
   const axisFormat = formatAxisValue ?? formatValue;
-  const width = 400;
+  const width = Math.max(320, chartWidth);
   const pad = { left: 44, right: 12, top: 10, bottom: 22 };
   const { coords, line, area } = chartGeometry(values, width, height, pad.left, pad.right, pad.top, pad.bottom, max);
+  const comparisonGeometry = comparisonValues.length
+    ? chartGeometry(comparisonValues, width, height, pad.left, pad.right, pad.top, pad.bottom, max)
+    : null;
   const yTicks = [0, max * 0.5, max];
+  const labelInterval = Math.max(1, Math.ceil(points.length / 7));
 
   const setActive = (index: number | null) => {
     setHover(index);
@@ -75,12 +99,13 @@ export function ReportLineChart({
   };
 
   return (
-    <div className="report-line-chart">
+    <div className="report-line-chart" ref={chartRef}>
       <svg
         viewBox={`0 0 ${width} ${height}`}
         className="report-line-chart-svg"
         role="img"
         aria-label={ariaLabel}
+        style={{ height: `${height}px` }}
         onMouseLeave={() => setActive(null)}
       >
         <defs>
@@ -107,6 +132,18 @@ export function ReportLineChart({
           );
         })}
         <path d={area} fill={`url(#${gradientId})`} />
+        {comparisonGeometry ? (
+          <path
+            d={comparisonGeometry.line}
+            fill="none"
+            stroke={comparisonStroke}
+            strokeWidth={1.5}
+            strokeDasharray="4 4"
+            strokeLinejoin="round"
+            strokeLinecap="round"
+            vectorEffect="non-scaling-stroke"
+          />
+        ) : null}
         <path
           d={line}
           fill="none"
@@ -147,7 +184,7 @@ export function ReportLineChart({
                 : "report-line-chart-x"
             }
           >
-            {shortDayLabel(points[index].date)}
+            {index === 0 || index === points.length - 1 || index % labelInterval === 0 ? shortDayLabel(points[index].date) : ""}
           </text>
         ))}
       </svg>

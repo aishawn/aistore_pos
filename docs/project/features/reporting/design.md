@@ -1,6 +1,6 @@
 # Reporting Design
 
-Updated: 2026-11-11. Owner: TBD.
+Updated: 2026-11-19. Owner: TBD.
 
 ## Odoo retirement status (2026-11-11)
 
@@ -17,6 +17,8 @@ Adelaide `2026-11-09` evidence: Shopfront/crawler **sale headers** COMPLETED = `
 The Products cost reconciliation audit captures Odoo POS orders/lines, received Shopfront purchase mirrors, and Shopfront sales evidence using read-only RPCs. Its capture runs as an in-process background job: `POST /api/odoo/cost-reconciliation` returns a job ID immediately, and an authorized same-store `GET ?job=` returns running/completed/failed status. Completed audit and source snapshot remain under the existing ignored `.local/cost-reconciliation/` directory. Job status is process-local and is lost on service restart; clients must handle an unavailable job by starting a new audit. An active-job guard keyed by company and store scope reuses only requests with the same dates and product limit; a different range receives HTTP 409 while the current capture runs. This avoids holding the browser-to-proxy request open while the full evidence set is read.
 
 The reporting UI lives in `pos-ui`; dashboard and sales report pages call same-origin Orithos APIs. Native APIs derive outlet scope from the authenticated tenant and query the Orithos ledger. Fixed AI report templates use a separate read-only per-outlet PostgreSQL schema, including a cost view checked against `ai.report.cost`. The legacy cost-reconciliation audit and some non-report AI data lookups still query Odoo and remain retirement blockers.
+
+The Reports dashboard is an at-a-glance store operating view. Its order is selected reporting period, the primary profit or sales result with a direct prior-period comparison, compact supporting measures, actionable exceptions, the selected-period sales trend with a prior-period reference, and the top-selling products. Keep the trend height fixed across viewport widths, use the same date range for the summary and trend, and make exceptions clear without filling the whole row with alert color. Date controls and report links remain URL-addressable and retain their existing report scopes.
 
 Report detail views expose store/company, period, source, timezone, generation time, and source coverage where it helps validate the result. Inventory includes the Shopfront Active catalog count, the complete source snapshot's positive quantity, negative-row count, and snapshot time next to Odoo's saleable-variant count. Shopfront and Odoo use different scopes; the source snapshot is read-only and older than 24 hours is explicitly marked stale. Overview keeps source coverage internal so an unconfirmed crawler event does not add noise to the dashboard. A null Shopfront sync record means coverage is unknown, not that synchronization failed or completed. The sync ledger records only days for which a sync event was recorded. It does not independently prove the Odoo mirror contains every source row.
 
