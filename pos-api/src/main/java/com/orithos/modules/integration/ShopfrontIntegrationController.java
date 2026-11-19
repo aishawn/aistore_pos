@@ -4103,7 +4103,7 @@ public class ShopfrontIntegrationController {
                 if (priceEx == null) priceEx = decimal(price, "priceEx");
                 if (quantity.compareTo(BigDecimal.ONE) > 0
                         && barcodeQuantities.contains(quantity.stripTrailingZeros())) {
-                    value = value.divide(quantity, 4, RoundingMode.HALF_UP);
+                    value = value.divide(quantity, 6, RoundingMode.HALF_UP);
                     if (priceEx != null) priceEx = priceEx.divide(quantity, 6, RoundingMode.HALF_UP);
                 }
                 prices.add(new Object[]{productId, quantity, value, priceEx, outletId});

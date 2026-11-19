@@ -1107,7 +1107,7 @@ class ShopfrontIntegrationControllerTest {
         field.setAccessible(true);
         @SuppressWarnings("unchecked")
         Map<Long, List<Object[]>> prices = (Map<Long, List<Object[]>>) field.get(batch);
-        assertEquals(new BigDecimal("1.9975"), prices.get(17L).get(0)[2]);
+        assertEquals(new BigDecimal("1.997500"), prices.get(17L).get(0)[2]);
         assertEquals(new BigDecimal("1.815909"), prices.get(17L).get(0)[3]);
         assertEquals(new BigDecimal("64.99"), prices.get(18L).get(0)[2]);
     }

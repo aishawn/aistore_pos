@@ -30,14 +30,14 @@ class ProductPriceExPrecisionSchemaMigratorTest {
         when(metadata.getColumns(nullable(String.class), isNull(), eq("PRODUCT_PRICE"), isNull())).thenReturn(columns);
         when(metadata.getDatabaseProductName()).thenReturn("PostgreSQL");
         when(connection.createStatement()).thenReturn(statement);
-        when(columns.next()).thenReturn(true);
         when(columns.getString("TABLE_NAME")).thenReturn("product_price");
-        when(columns.getString("COLUMN_NAME")).thenReturn("price_ex");
+        when(columns.getString("COLUMN_NAME")).thenReturn("price", "price_ex");
         when(columns.getInt("DECIMAL_DIGITS")).thenReturn(4);
+        when(columns.next()).thenReturn(true, false, true, false);
 
         new ProductPriceExPrecisionSchemaMigrator(dataSource).run();
 
-        verify(statement).execute("ALTER TABLE product_price ALTER COLUMN price_ex TYPE DECIMAL(14,6)");
+        verify(statement).execute("ALTER TABLE product_price ALTER COLUMN price TYPE DECIMAL(14,6), ALTER COLUMN price_ex TYPE DECIMAL(14,6)");
     }
 
     @Test
@@ -49,10 +49,11 @@ class ProductPriceExPrecisionSchemaMigratorTest {
         when(dataSource.getConnection()).thenReturn(connection);
         when(connection.getMetaData()).thenReturn(metadata);
         when(metadata.getColumns(nullable(String.class), isNull(), eq("product_price"), isNull())).thenReturn(columns);
-        when(columns.next()).thenReturn(true);
+        when(metadata.getColumns(nullable(String.class), isNull(), eq("PRODUCT_PRICE"), isNull())).thenReturn(columns);
         when(columns.getString("TABLE_NAME")).thenReturn("product_price");
-        when(columns.getString("COLUMN_NAME")).thenReturn("price_ex");
+        when(columns.getString("COLUMN_NAME")).thenReturn("price", "price_ex");
         when(columns.getInt("DECIMAL_DIGITS")).thenReturn(6);
+        when(columns.next()).thenReturn(true, false, true, false);
 
         new ProductPriceExPrecisionSchemaMigrator(dataSource).run();
 

@@ -347,7 +347,7 @@ CREATE TABLE product_price (
   product_id BIGINT NOT NULL,
   price_set_id BIGINT NULL,
   quantity    DECIMAL(14,4) NOT NULL DEFAULT 1,
-  price       DECIMAL(14,4) NOT NULL,
+  price       DECIMAL(14,6) NOT NULL,
   price_ex    DECIMAL(14,6) NULL,
   outlet_id BIGINT NOT NULL DEFAULT 1,
 
