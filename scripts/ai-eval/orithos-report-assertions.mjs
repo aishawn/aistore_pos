@@ -34,6 +34,19 @@ export function nativeOverviewAcceptance(report, { from, to }) {
   return { checks, passed: Object.values(checks).every(Boolean) };
 }
 
+export function inventorySummaryAcceptance(summary, overview) {
+  const equal = (left, right) => left != null && left !== ""
+    && right != null && right !== ""
+    && Number.isFinite(Number(left))
+    && Number.isFinite(Number(right)) && Number(left) === Number(right);
+  const checks = {
+    positiveSkuCount: equal(summary?.productCount, overview?.inventoryPositiveSkuCount),
+    caseLevel: equal(summary?.caseLevelTotal, overview?.inventoryCaseLevel),
+    itemLevel: equal(summary?.itemLevelTotal, overview?.inventoryItemLevel),
+  };
+  return { checks, passed: Object.values(checks).every(Boolean) };
+}
+
 export function assistantReportAcceptance(assistant, expected, report) {
   const amounts = answerAmounts(assistant);
   const reportAmounts = numericValues(report);

@@ -6,6 +6,7 @@ import { chromium } from "playwright";
 import { safeErrorSummary } from "./lib/safe-error-summary.mjs";
 import {
   assistantReportAcceptance,
+  inventorySummaryAcceptance,
   nativeOverviewAcceptance,
   productCountAcceptance,
   stockValueHonestyAcceptance,
@@ -89,10 +90,11 @@ try {
   yesterday.setUTCDate(yesterday.getUTCDate() - 1);
   const previousDay = yesterday.toISOString().slice(0, 10);
   const period = { from: previousDay, to: today };
-  const [overview, catalogue, activeCatalogue, sales, aov, stockValue, productCount] = await Promise.all([
+  const [overview, catalogue, activeCatalogue, inventorySummary, sales, aov, stockValue, productCount] = await Promise.all([
     getJson(await context.request.get(`${base}/api/reports/native-overview?from=${period.from}&to=${period.to}`), "NATIVE_OVERVIEW"),
     getJson(await context.request.get(`${base}/api/products?page=1&size=20`), "PRODUCTS"),
     getJson(await context.request.get(`${base}/api/products?status=ACTIVE&page=1&size=1`), "ACTIVE_PRODUCTS"),
+    getJson(await context.request.get(`${base}/api/products/on-hand-summary?status=ACTIVE&inventoryLevel=on-hand`), "ON_HAND_SUMMARY"),
     assistant("How much did we sell yesterday?"),
     assistant("What was our average sale yesterday?"),
     assistant("Which inventory items tie up the most cash?"),
@@ -101,6 +103,17 @@ try {
 
   const overviewCheck = nativeOverviewAcceptance(overview, period);
   addCheck("native overview provenance, period, timezone and revenue", overviewCheck.passed, overviewCheck.checks);
+  const inventoryCheck = inventorySummaryAcceptance(inventorySummary, overview);
+  addCheck("positive on-hand summary reconciles with native overview", inventoryCheck.passed, {
+    filter: { status: "ACTIVE", inventoryLevel: "on-hand" },
+    summary: inventorySummary,
+    overview: {
+      inventoryPositiveSkuCount: overview.inventoryPositiveSkuCount,
+      inventoryCaseLevel: overview.inventoryCaseLevel,
+      inventoryItemLevel: overview.inventoryItemLevel,
+    },
+    checks: inventoryCheck.checks,
+  });
   const dailyOverview = await getJson(await context.request.get(
     `${base}/api/reports/native-overview?from=${previousDay}&to=${previousDay}`,
   ), "DAILY_NATIVE_OVERVIEW");
