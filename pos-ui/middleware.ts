@@ -78,7 +78,10 @@ function withSecurityHeaders(response: NextResponse, tenantSlug: string | null):
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
   // Voice input uses getUserMedia on the current store origin. Keep unrelated
   // device capabilities disabled while allowing the assistant microphone.
-  response.headers.set("Permissions-Policy", "camera=(), microphone=(self), geolocation=()");
+  response.headers.set(
+    "Permissions-Policy",
+    "camera=(), microphone=(self), geolocation=(), loopback-network=(self), local-network=(self)",
+  );
   if (tenantSlug) {
     response.headers.set("x-orithos-tenant-slug", tenantSlug);
   }

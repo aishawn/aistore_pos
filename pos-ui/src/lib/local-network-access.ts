@@ -56,20 +56,53 @@ export async function resolveHardwareNetworkAccessState(): Promise<LocalNetworkA
   return "granted";
 }
 
+function probeLoopbackWebSocket(port = 8181): Promise<void> {
+  if (typeof window === "undefined") return Promise.resolve();
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      resolve();
+    };
+    let socket: WebSocket;
+    try {
+      socket = new WebSocket(`ws://127.0.0.1:${port}/`);
+    } catch {
+      finish();
+      return;
+    }
+    socket.addEventListener("open", finish);
+    socket.addEventListener("error", finish);
+    window.setTimeout(() => {
+      try {
+        socket.close();
+      } catch {
+        /* ignore */
+      }
+      finish();
+    }, 2000);
+  });
+}
+
 /** User-gesture probe for QZ / localhost; triggers the browser prompt when required. */
 export async function probeLoopbackAccess(): Promise<void> {
   if (typeof window === "undefined") return;
+  await probeLoopbackWebSocket(8181);
   const init: AddressSpaceRequestInit = {
-    method: "HEAD",
-    mode: "no-cors",
+    method: "GET",
+    mode: "cors",
     cache: "no-store",
     targetAddressSpace: "loopback",
   };
-  try {
-    await fetch("http://127.0.0.1:8181/", init);
-  } catch {
-    /* QZ may be offline; the permission prompt is the goal */
+  for (const url of ["http://127.0.0.1:8181/", "http://127.0.0.1:9167/v1/health"]) {
+    try {
+      await fetch(url, init);
+    } catch {
+      /* QZ / connector may be offline; the permission prompt is the goal */
+    }
   }
+  await new Promise((resolve) => window.setTimeout(resolve, 250));
 }
 
 export async function watchLocalNetworkAccess(onChange: (state: LocalNetworkAccessState) => void): Promise<() => void> {

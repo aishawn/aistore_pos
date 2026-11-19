@@ -51,7 +51,7 @@ export function LocalNetworkAccessGate({ children }: { children: React.ReactNode
         setHint("Access granted. You can configure printers and EFTPOS below.");
       } else if (next === "prompt") {
         setHint(
-          "If the browser did not show a permission prompt, allow access from the address-bar site controls, then reload.",
+          "Check the top of the browser window for an Allow / Block prompt. If none appears, open the site controls beside the address bar, turn on Local network access, then reload.",
         );
       } else if (next === "denied") {
         setHint("Access was denied. Turn on Local network access in site settings and reload.");
@@ -126,12 +126,12 @@ export function LocalNetworkAccessGate({ children }: { children: React.ReactNode
     </div>
   ) : null;
 
+  const readyForHardware = accessState === "granted" || accessState === "unsupported";
+
   return (
     <>
       {portalReady && dialog ? createPortal(dialog, document.body) : dialog}
-      <div className={blocked ? "pointer-events-none select-none opacity-40" : undefined} aria-hidden={blocked || undefined}>
-        {children}
-      </div>
+      {readyForHardware ? <div>{children}</div> : null}
     </>
   );
 }
