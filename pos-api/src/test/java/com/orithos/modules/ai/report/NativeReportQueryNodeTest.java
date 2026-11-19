@@ -248,13 +248,14 @@ class NativeReportQueryNodeTest {
         LocalDateTime to = LocalDateTime.of(2026, 10, 17, 0, 0);
 
         when(state.value(anyString())).thenReturn(Optional.empty());
-        when(state.value("intent", String.class)).thenReturn(Optional.of("report_qty"));
+        when(state.value("intent", String.class)).thenReturn(Optional.of("report_stock"));
         when(state.value("report_from")).thenReturn(Optional.of(from));
         when(state.value("report_to")).thenReturn(Optional.of(to));
         when(state.value("slots")).thenReturn(Optional.of(Map.of("from", "2026-10-16", "to", "2026-10-16")));
         when(queryService.query(any(TenantContext.class), anyString(), any(), any()))
                 .thenReturn(new NativeAiReportQueryService.Result(
-                        List.of(Map.of("date", "2026-10-16", "sales", 7738.14,
+                        List.of(Map.of("name", "Wine", "quantity", 3,
+                                "dataAsOf", "2026-11-19T06:15:00Z",
                                 "dataSource", "authoritative_api_source")), null));
 
         Map<String, Object> result = node.apply(state);
@@ -262,10 +263,10 @@ class NativeReportQueryNodeTest {
         assertEquals("authoritative_api_source", result.get("report_data_source"));
         assertEquals("orithos_template", result.get("sql_path"));
         assertEquals("current_authenticated_store", result.get("report_store_scope"));
-        assertNull(result.get("report_data_as_of"));
+        assertEquals("2026-11-19T06:15:00Z", result.get("report_data_as_of"));
         assertEquals("2026-10-16", result.get("report_period_from"));
         assertEquals("Australia/Adelaide", result.get("report_time_zone"));
-        assertEquals("incomplete", result.get("report_data_status"));
+        assertEquals("available", result.get("report_data_status"));
     }
 
     @Test

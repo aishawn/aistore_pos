@@ -68,7 +68,8 @@ SELECT
   pi.outlet_id,
   pi.quantity,
   pi.reorder_level,
-  pi.on_order
+  pi.on_order,
+  pi.updated_at
 FROM product_inventory pi;
 
 -- Cost is exposed through a separately guarded view. Application report and

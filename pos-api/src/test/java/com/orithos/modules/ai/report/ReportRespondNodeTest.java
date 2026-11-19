@@ -211,7 +211,32 @@ class ReportRespondNodeTest {
         when(stock.value("slots")).thenReturn(Optional.of(Map.of(
                 "query", "Shiraz", "from", "2026-11-13", "to", "2026-11-14")));
 
-        assertEquals("Shiraz库存：Blickinstal Black on Black Shiraz 750ML 3",
+        assertEquals("Shiraz库存：Blickinstal Black on Black Shiraz 750ML 3（库存更新时间未知，请核实）",
+                node.apply(stock).get("answer"));
+    }
+
+    @Test
+    void stockAnswerShowsTheTrustedInventoryAsOfTime() {
+        String product = "-196 LEMON P/F 6% 330ML";
+        OverAllState stock = state("", List.of(Map.of(
+                "name", product, "quantity", 100, "dataAsOf", "2026-11-19T06:15:00Z")));
+        when(stock.value("intent", String.class)).thenReturn(Optional.of("report_stock"));
+        when(stock.value("question", String.class)).thenReturn(Optional.of("How much stock is left?"));
+        when(stock.value("slots")).thenReturn(Optional.of(Map.of("query", product)));
+
+        assertEquals(product + ": 100 (inventory updated: 2026-11-19T06:15:00Z)",
+                node.apply(stock).get("answer"));
+    }
+
+    @Test
+    void stockAnswerLabelsMissingInventoryAsOfAsUnknown() {
+        String product = "-196 LEMON P/F 6% 330ML";
+        OverAllState stock = state("", List.of(Map.of("name", product, "quantity", 100)));
+        when(stock.value("intent", String.class)).thenReturn(Optional.of("report_stock"));
+        when(stock.value("question", String.class)).thenReturn(Optional.of("还剩多少库存？"));
+        when(stock.value("slots")).thenReturn(Optional.of(Map.of("query", product)));
+
+        assertEquals(product + "库存：100（库存更新时间未知，请核实）",
                 node.apply(stock).get("answer"));
     }
 
@@ -223,7 +248,8 @@ class ReportRespondNodeTest {
         when(stock.value("question", String.class)).thenReturn(Optional.of("How many are in stock?"));
         when(stock.value("slots")).thenReturn(Optional.of(Map.of("query", product)));
 
-        assertEquals(product + ": 100", node.apply(stock).get("answer"));
+        assertEquals(product + ": 100 (inventory update time unknown; verify before relying on it)",
+                node.apply(stock).get("answer"));
     }
 
     @Test
@@ -234,7 +260,7 @@ class ReportRespondNodeTest {
         when(stock.value("question", String.class)).thenReturn(Optional.of("该商品还剩多少库存？"));
         when(stock.value("slots")).thenReturn(Optional.of(Map.of("query", product)));
 
-        assertEquals(product + "库存：100", node.apply(stock).get("answer"));
+        assertEquals(product + "库存：100（库存更新时间未知，请核实）", node.apply(stock).get("answer"));
     }
 
     @Test

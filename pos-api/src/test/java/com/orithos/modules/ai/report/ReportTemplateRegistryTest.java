@@ -95,4 +95,24 @@ class ReportTemplateRegistryTest {
         assertFalse(bound.sql().contains("OVER ()"));
         assertEquals(List.of(87L, 87L), bound.params());
     }
+
+    @Test
+    void stockLookupReportsAnAsOfOnlyWhenEveryMatchingInventoryRowHasOne() {
+        TenantContext tenant = new TenantContext(
+                55L, 12L, 87L, List.of(87L), Set.of(TenantContext.PERM_QUERY));
+        LocalDate day = LocalDate.of(2026, 11, 19);
+        ReportPeriodResolver.Window window = new ReportPeriodResolver.Window(
+                day.atStartOfDay(), day.plusDays(1).atStartOfDay(), 1);
+
+        ReportTemplateRegistry.BoundSql bound = registry.bind(
+                "report_stock", tenant, Map.of("query", "Shiraz"), window);
+
+        assertNull(bound.error());
+        assertTrue(bound.sql().contains("i.updated_at"));
+        assertTrue(bound.sql().contains("COUNT(*) OVER () = COUNT(i.updated_at) OVER ()"));
+        assertTrue(bound.sql().contains("MIN(i.updated_at) OVER ()"));
+        assertTrue(bound.sql().contains("current_setting('TimeZone')"));
+        assertTrue(bound.sql().contains("AS \"dataAsOf\""));
+        assertEquals(List.of(87L, 87L, "%Shiraz%"), bound.params());
+    }
 }

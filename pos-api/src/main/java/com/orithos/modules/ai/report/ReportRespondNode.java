@@ -36,7 +36,12 @@ public class ReportRespondNode implements NodeAction {
         Map<String, String> slots = ReportGraphState.slots(state);
         String from = slots.getOrDefault("from", "");
         String to = slots.getOrDefault("to", "");
-        Map<String, Object> result = Map.of("answer", format(intent, rows, from, to, slots, chinese));
+        Map<String, Object> result = new java.util.HashMap<>();
+        result.put("answer", format(intent, rows, from, to, slots, chinese));
+        if ("report_stock".equals(intent) && rows != null && !rows.isEmpty()) {
+            String dataAsOf = trustedStockDataAsOf(rows);
+            if (dataAsOf != null) result.put("report_data_as_of", dataAsOf);
+        }
         auditService.record(state);
         return result;
     }
@@ -219,7 +224,28 @@ public class ReportRespondNode implements NodeAction {
             sb.append(chinese ? "……另有 " : " …and ").append(rows.size() - n)
                     .append(chinese ? " 个商品" : " more");
         }
+        String dataAsOf = trustedStockDataAsOf(rows);
+        if (dataAsOf == null) {
+            sb.append(chinese ? "（库存更新时间未知，请核实）"
+                    : " (inventory update time unknown; verify before relying on it)");
+        } else {
+            sb.append(chinese ? "（库存更新于 " : " (inventory updated: ")
+                    .append(dataAsOf).append(chinese ? "）" : ")");
+        }
         return sb.toString();
+    }
+
+    private static String trustedStockDataAsOf(List<Map<String, Object>> rows) {
+        if (rows == null || rows.isEmpty()) return null;
+        List<String> timestamps = rows.stream()
+                .map(row -> row.get("dataAsOf"))
+                .filter(String.class::isInstance)
+                .map(String.class::cast)
+                .filter(value -> !value.isBlank())
+                .toList();
+        return timestamps.size() == rows.size()
+                ? timestamps.stream().min(String::compareTo).orElse(null)
+                : null;
     }
 
     private String formatDead(List<Map<String, Object>> rows, String days, String from, String to, boolean chinese) {

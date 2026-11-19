@@ -1,6 +1,7 @@
 package com.orithos.config;
 
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.datasource.init.DatabasePopulatorUtils;
@@ -11,7 +12,7 @@ import org.springframework.stereotype.Component;
 import javax.sql.DataSource;
 
 @Component
-@Order(36)
+@Order(Ordered.HIGHEST_PRECEDENCE + 19)
 public class ProductInventoryFreshnessSchemaMigrator implements CommandLineRunner {
     private final DataSource dataSource;
 

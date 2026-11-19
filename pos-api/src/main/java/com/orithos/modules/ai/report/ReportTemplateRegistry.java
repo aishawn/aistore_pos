@@ -55,7 +55,14 @@ public class ReportTemplateRegistry {
                     yield BoundSql.fail("NEED_PRODUCT");
                 }
                 yield BoundSql.ok("""
-                        SELECT p.id, p.name, i.quantity
+                        SELECT p.id, p.name, i.quantity,
+                               CASE
+                                 WHEN COUNT(*) OVER () = COUNT(i.updated_at) OVER ()
+                                 THEN to_char(
+                                   MIN(i.updated_at) OVER () AT TIME ZONE current_setting('TimeZone') AT TIME ZONE 'UTC',
+                                   'YYYY-MM-DD"T"HH24:MI:SS"Z"'
+                                 )
+                               END AS "dataAsOf"
                         FROM ai_rpt_inventory i
                         JOIN ai_rpt_product p ON p.id = i.product_id
                         WHERE i.outlet_id = ?
