@@ -118,20 +118,28 @@ try {
   });
   const stockSample = stockSamples.items?.[0];
   if (stockSample?.name && Number.isFinite(Number(stockSample.stockQuantity))) {
-    const stockAnswer = await assistant(`How much ${stockSample.name} is in stock?`);
-    const stockCheck = singleProductStockAcceptance(stockAnswer, {
-      name: stockSample.name,
-      quantity: stockSample.stockQuantity,
-    });
-    addCheck("single-product stock answer matches the current catalogue", stockCheck.passed, {
-      sampleNameOmitted: true,
-      expectedQuantity: stockCheck.expectedQuantity,
-      answerQuantity: stockCheck.answerQuantity,
-      dataAsOfPresent: stockCheck.dataAsOfPresent,
-      checks: stockCheck.checks,
-    });
+    for (const [language, question] of [
+      ["English", `How much ${stockSample.name} is in stock?`],
+      ["Chinese", `${stockSample.name}现在有多少库存？`],
+    ]) {
+      const stockAnswer = await assistant(question);
+      const stockCheck = singleProductStockAcceptance(stockAnswer, {
+        name: stockSample.name,
+        quantity: stockSample.stockQuantity,
+      });
+      addCheck(`single-product stock answer (${language}) matches the current catalogue`, stockCheck.passed, {
+        sampleNameOmitted: true,
+        expectedQuantity: stockCheck.expectedQuantity,
+        answerQuantity: stockCheck.answerQuantity,
+        dataAsOfPresent: stockCheck.dataAsOfPresent,
+        checks: stockCheck.checks,
+      });
+    }
   } else {
-    addCheck("single-product stock answer matches the current catalogue", false, {
+    addCheck("single-product stock answer (English) matches the current catalogue", false, {
+      sampleAvailable: false,
+    });
+    addCheck("single-product stock answer (Chinese) matches the current catalogue", false, {
       sampleAvailable: false,
     });
   }

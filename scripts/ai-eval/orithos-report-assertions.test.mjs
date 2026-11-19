@@ -152,3 +152,17 @@ test("single-product stock answer rejects quantity, scope, and write mismatches"
   assert.equal(result.checks.noWrites, false);
   assert.equal(result.passed, false);
 });
+
+test("single-product stock answer accepts Chinese quantity and unknown-freshness disclosure", () => {
+  const result = singleProductStockAcceptance({
+    intent: "report_stock",
+    answer: "样品西拉库存：0（库存更新时间未知，请核实）",
+    dataSource: "orithos_ledger",
+    storeScope: "current_authenticated_store",
+    writeRequests: [],
+  }, { name: "样品西拉", quantity: 0 });
+
+  assert.equal(result.passed, true);
+  assert.equal(result.answerQuantity, 0);
+  assert.equal(result.dataAsOfPresent, false);
+});

@@ -5,10 +5,16 @@ import { inventorySummaryAcceptance } from "./ai-eval/orithos-report-assertions.
 
 const entryPath = new URL("./pilot-ai-report-readonly-uat.mjs", import.meta.url);
 const entrySource = fs.readFileSync(entryPath, "utf8");
+const suiteSource = fs.readFileSync(new URL("./pilot-ai-report-readonly-orithos-uat.mjs", import.meta.url), "utf8");
 
 test("report readonly UAT entry delegates to the Orithos-native suite", () => {
   assert.match(entrySource, /import\s+["']\.\/pilot-ai-report-readonly-orithos-uat\.mjs["']/);
   assert.doesNotMatch(entrySource, /\/api\/(?:odoo|shopfront)/i);
+});
+
+test("report readonly UAT evaluates dynamic stock questions in English and Chinese", () => {
+  assert.match(suiteSource, /How much \$\{stockSample\.name\} is in stock/);
+  assert.match(suiteSource, /\$\{stockSample\.name\}现在有多少库存/);
 });
 
 test("on-hand summary reconciles positive SKU, case and item totals with native overview", () => {
