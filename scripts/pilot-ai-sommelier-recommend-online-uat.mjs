@@ -2,7 +2,6 @@ import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { request as playwrightRequest } from "playwright";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const sourceCommit = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
@@ -41,7 +40,38 @@ const reportPath = process.env.PILOT_UAT_OUTPUT_PATH
 const nonWineTerms = /\b(?:beer|ale|lager|ipa|stout|cider|vodka|rum|whisky|whiskey|gin|tequila|brandy|liqueur|limoncello|vermouth|schnapps|sake|soju|mezcal|bourbon|scotch|cognac|armagnac)\b/i;
 const checks = [];
 const record = (id, status, evidence = {}) => checks.push({ id, status, evidence });
-const context = await playwrightRequest.newContext();
+const cookieJar = new Map();
+async function apiRequest(method, url, { data, headers = {} } = {}) {
+  const requestHeaders = new Headers(headers);
+  if (data !== undefined) requestHeaders.set("content-type", "application/json");
+  const cookieHeader = [...cookieJar].map(([name, value]) => `${name}=${value}`).join("; ");
+  if (cookieHeader && !requestHeaders.has("cookie")) requestHeaders.set("cookie", cookieHeader);
+  const response = await fetch(url, {
+    method,
+    headers: requestHeaders,
+    ...(data !== undefined ? { body: JSON.stringify(data) } : {}),
+    signal: AbortSignal.timeout(30000),
+  });
+  for (const setCookie of response.headers.getSetCookie()) {
+    const pair = setCookie.split(";", 1)[0];
+    const separator = pair.indexOf("=");
+    if (separator < 1) continue;
+    const name = pair.slice(0, separator).trim();
+    const value = pair.slice(separator + 1).trim();
+    if (value) cookieJar.set(name, value);
+    else cookieJar.delete(name);
+  }
+  const responseBody = await response.text();
+  return {
+    status: () => response.status,
+    ok: () => response.ok,
+    json: async () => JSON.parse(responseBody),
+  };
+}
+const context = {
+  get: (url) => apiRequest("GET", url),
+  post: (url, options) => apiRequest("POST", url, options),
+};
 
 try {
   const versionResponse = await context.get(`${base}/api/public/version`);
@@ -131,7 +161,7 @@ try {
   }
 } finally {
   try { await context.post(`${base}/api/auth/logout`, { headers: { Origin: base } }); } catch { /* Session expires normally. */ }
-  await context.dispose();
+  cookieJar.clear();
 }
 
 const passed = checks.filter((check) => check.status === "PASS").length;
