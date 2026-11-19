@@ -209,36 +209,54 @@ export function LinklyEftposPanel({ canEdit }: Props) {
         ? "Connector not detected on this PC"
         : "Connector status unknown";
 
+  const statusLine = paymentsReady
+    ? "Enabled on Sell"
+    : draft.enabled
+      ? "Enabled, card payments off"
+      : connectorSummary;
+
   return (
-    <section id="hardware-eftpos" className="rounded-lg border border-[var(--oh-border)] bg-white p-4 sm:p-5" aria-labelledby="linkly-eftpos-title">
-      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[var(--oh-border)] pb-4">
-        <div>
-          <h2 id="linkly-eftpos-title" className="text-base font-semibold text-[var(--oh-text)]">Card payments (EFTPOS)</h2>
-          <p className="mt-1 text-xs text-[var(--oh-muted)]">
-            {paymentsReady ? (
-              <span className="font-medium text-emerald-800">Card payments on Sell are enabled</span>
-            ) : (
-              connectorSummary
-            )}
-          </p>
+    <details
+      id="hardware-eftpos"
+      className="rounded-lg border border-[var(--oh-border)] bg-white px-4 py-3 sm:px-5 sm:py-4"
+    >
+      <summary className="cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <span id="linkly-eftpos-title" className="text-base font-semibold text-[var(--oh-text)]">
+              Card payments (EFTPOS)
+            </span>
+            <p className="mt-1 text-xs text-[var(--oh-muted)]">
+              {paymentsReady ? (
+                <span className="font-medium text-emerald-800">{statusLine}</span>
+              ) : (
+                statusLine
+              )}
+            </p>
+          </div>
+          <span className="shrink-0 text-xs font-medium text-[var(--oh-muted)]">Expand</span>
         </div>
-        {canEdit && (
-          <button type="button" onClick={() => void saveBinding()} disabled={loadBusy || actionBusy} className="inline-flex min-h-10 items-center gap-2 rounded-md bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white disabled:opacity-50">
-            <Save size={15} aria-hidden="true" />
-            Save
-          </button>
+      </summary>
+
+      <div className="mt-4 space-y-4 border-t border-[var(--oh-border)] pt-4">
+        <div className="flex flex-wrap justify-end gap-2">
+          {canEdit && (
+            <button type="button" onClick={() => void saveBinding()} disabled={loadBusy || actionBusy} className="inline-flex min-h-10 items-center gap-2 rounded-md bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white disabled:opacity-50">
+              <Save size={15} aria-hidden="true" />
+              Save
+            </button>
+          )}
+        </div>
+
+        {connectorHealth === "offline" && !draft.paymentsEnabled && (
+          <p className="text-xs text-[var(--oh-muted)]">
+            Run Orithos Linkly Connector on the EFTPOS register PC. Receipt printer setup above is independent.
+          </p>
         )}
-      </div>
+        {error && <p role="alert" className="text-sm text-red-800">{error}</p>}
+        {notice && <p role="status" className="text-sm text-emerald-800">{notice}</p>}
 
-      {connectorHealth === "offline" && !draft.paymentsEnabled && (
-        <p className="mt-3 text-xs text-[var(--oh-muted)]">
-          Run Orithos Linkly Connector on the EFTPOS register PC. Receipt printer setup above is independent.
-        </p>
-      )}
-      {error && <p role="alert" className="mt-3 text-sm text-red-800">{error}</p>}
-      {notice && <p role="status" className="mt-3 text-sm text-emerald-800">{notice}</p>}
-
-      <div className="mt-4 space-y-4">
+        <div className="space-y-4">
         <label className="grid max-w-md gap-1 text-sm font-medium">
           Cash register
           <select
@@ -335,7 +353,8 @@ export function LinklyEftposPanel({ canEdit }: Props) {
             )}
           </div>
         </details>
+        </div>
       </div>
-    </section>
+    </details>
   );
 }
