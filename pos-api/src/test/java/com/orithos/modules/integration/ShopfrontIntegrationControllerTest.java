@@ -1370,6 +1370,52 @@ class ShopfrontIntegrationControllerTest {
     }
 
     @Test
+    void duplicateShopfrontBarcodeIsNotAssignedWhenPosHasNoCurrentOwner() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        when(jdbc.queryForList(contains("SELECT code, product_id FROM product_barcode"), any(Object[].class)))
+                .thenReturn(List.of());
+        when(jdbc.queryForList(contains("FROM shopfront_product_barcode_snapshot"), any(Object[].class)))
+                .thenReturn(List.of(Map.of("source_ids", "[\"duplicate-a\",\"duplicate-b\"]",
+                        "barcode_sources", "{\"9300001\":[\"duplicate-a\",\"duplicate-b\"]}")));
+        var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true, true);
+        Class<?> batchType = Class.forName(ShopfrontIntegrationController.class.getName() + "$ProductImportBatch");
+        Constructor<?> constructor = batchType.getDeclaredConstructor();
+        constructor.setAccessible(true);
+        Object batch = constructor.newInstance();
+        Method collect = ShopfrontIntegrationController.class.getDeclaredMethod(
+                "collectProductBarcodes", long.class, JsonNode.class, batchType);
+        collect.setAccessible(true);
+        ObjectMapper mapper = new ObjectMapper();
+        collect.invoke(controller, 102L, mapper.readTree("""
+                {"source_id":"duplicate-a","catalog_confirmed":true,"source_status":"ACTIVE",
+                 "catalog_snapshot_complete":true,"catalog_snapshot_fingerprint":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                 "barcodes":[{"code":"9300001","quantity":1}]}
+                """), batch);
+        collect.invoke(controller, 103L, mapper.readTree("""
+                {"source_id":"duplicate-b","catalog_confirmed":true,"source_status":"ACTIVE",
+                 "catalog_snapshot_complete":true,"catalog_snapshot_fingerprint":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                 "barcodes":[{"code":"9300001","quantity":1}]}
+                """), batch);
+        Method flush = ShopfrontIntegrationController.class.getDeclaredMethod(
+                "flushBusinessProductBatch", batchType, long.class, String.class);
+        flush.setAccessible(true);
+
+        flush.invoke(controller, batch, 87L, "skr");
+
+        var conflictCount = batchType.getDeclaredField("barcodeConflictCount");
+        conflictCount.setAccessible(true);
+        assertEquals(2, conflictCount.getInt(batch));
+        List<String> errors = new ArrayList<>();
+        Method appendErrors = ShopfrontIntegrationController.class.getDeclaredMethod(
+                "appendBarcodeConflictErrors", batchType, List.class);
+        appendErrors.setAccessible(true);
+        appendErrors.invoke(controller, batch, errors);
+        assertEquals(2, errors.size());
+        assertTrue(errors.getFirst().contains("declared by multiple current Shopfront products"));
+        verify(jdbc, never()).batchUpdate(contains("INSERT INTO product_barcode"), any(List.class));
+    }
+
+    @Test
     void confirmedCatalogMovesBarcodeFromRetiredProductWithoutInventory() throws Exception {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
         when(jdbc.queryForList(contains("SELECT code, product_id FROM product_barcode"), any(Object[].class)))

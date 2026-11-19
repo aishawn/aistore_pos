@@ -62,7 +62,7 @@ public class ShopfrontIntegrationController {
     private record BarcodeWrite(long productId, String sourceId, String code, BigDecimal quantity,
                                 boolean catalogConfirmed, boolean snapshotComplete,
                                 String snapshotFingerprint, boolean activeSource) {}
-    private record BarcodeConflict(String sourceId, String code, long existingProductId, long requestedProductId) {}
+    private record BarcodeConflict(String sourceId, String code, Long existingProductId, long requestedProductId) {}
 
     private static final class ProductImportBatch {
         private final Map<String, Long> lookupIds = new HashMap<>();
@@ -3805,6 +3805,8 @@ public class ShopfrontIntegrationController {
             }
             Set<String> migratableBarcodeCodes = verifiedUnclaimedBarcodeCodes(
                     batch.barcodes, owners, outletId, store);
+            Set<String> ambiguousShopfrontBarcodeCodes = verifiedAmbiguousShopfrontBarcodeCodes(
+                    batch.barcodes, owners, outletId, store);
             Map<String, BarcodeWrite> inserts = new LinkedHashMap<>();
             Map<String, BarcodeWrite> updates = new LinkedHashMap<>();
             int migratedBarcodes = 0;
@@ -3835,6 +3837,14 @@ public class ShopfrontIntegrationController {
                     continue;
                 }
                 if (owner == null) {
+                    if (ambiguousShopfrontBarcodeCodes.contains(barcode.code())) {
+                        batch.barcodeConflictCount++;
+                        if (batch.barcodeConflicts.size() < 25) {
+                            batch.barcodeConflicts.add(new BarcodeConflict(
+                                    barcode.sourceId(), barcode.code(), null, barcode.productId()));
+                        }
+                        continue;
+                    }
                     owners.put(barcode.code(), barcode.productId());
                     inserts.put(barcode.code(), barcode);
                 } else if (inserts.containsKey(barcode.code())) {
@@ -3853,9 +3863,9 @@ public class ShopfrontIntegrationController {
             }
             if (batch.barcodeConflictCount > 0 || migratedBarcodes > 0) {
                 long catalogConfirmedBarcodes = batch.barcodes.stream().filter(BarcodeWrite::catalogConfirmed).count();
-                log.info("Shopfront barcode reconciliation outletId={} catalogConfirmed={} migratableBarcodeCodes={} migrated={} conflicts={}",
-                        outletId, catalogConfirmedBarcodes, migratableBarcodeCodes.size(), migratedBarcodes,
-                        batch.barcodeConflictCount);
+                log.info("Shopfront barcode reconciliation outletId={} catalogConfirmed={} migratableBarcodeCodes={} ambiguousShopfrontClaims={} migrated={} conflicts={}",
+                        outletId, catalogConfirmedBarcodes, migratableBarcodeCodes.size(),
+                        ambiguousShopfrontBarcodeCodes.size(), migratedBarcodes, batch.barcodeConflictCount);
             }
         }
 
@@ -4008,12 +4018,57 @@ public class ShopfrontIntegrationController {
         return result;
     }
 
+    private Set<String> verifiedAmbiguousShopfrontBarcodeCodes(
+            List<BarcodeWrite> barcodes, Map<String, Long> owners, long outletId, String store) {
+        BarcodeWrite snapshot = barcodes.stream().filter(barcode -> barcode.catalogConfirmed()
+                && barcode.snapshotComplete() && barcode.activeSource()
+                && barcode.snapshotFingerprint() != null && barcode.snapshotFingerprint().matches("[a-f0-9]{64}"))
+                .findFirst().orElse(null);
+        if (snapshot == null) return Set.of();
+        List<Map<String, Object>> registered = jdbc.queryForList("""
+                SELECT source_ids::text AS source_ids,barcode_sources::text AS barcode_sources
+                FROM shopfront_product_barcode_snapshot
+                WHERE store_key=? AND outlet_id=? AND fingerprint=?
+                """, store, outletId, snapshot.snapshotFingerprint());
+        if (registered.isEmpty()) return Set.of();
+        try {
+            JsonNode sourceIds = objectMapper.readTree(String.valueOf(registered.getFirst().get("source_ids")));
+            JsonNode barcodeSources = objectMapper.readTree(String.valueOf(registered.getFirst().get("barcode_sources")));
+            if (!sourceIds.isArray() || !barcodeSources.isObject()) return Set.of();
+            Set<String> currentSourceIds = new HashSet<>();
+            sourceIds.forEach(node -> currentSourceIds.add(node.asText()));
+            Set<String> ambiguous = new HashSet<>();
+            for (BarcodeWrite barcode : barcodes) {
+                if (owners.get(barcode.code()) != null || !barcode.catalogConfirmed()
+                        || !barcode.snapshotComplete() || !barcode.activeSource()
+                        || !snapshot.snapshotFingerprint().equals(barcode.snapshotFingerprint())) continue;
+                JsonNode claims = barcodeSources.path(barcode.code());
+                if (!claims.isArray()) continue;
+                Set<String> claimants = new HashSet<>();
+                claims.forEach(node -> claimants.add(node.asText()));
+                if (claimants.size() > 1 && claimants.contains(barcode.sourceId())
+                        && currentSourceIds.containsAll(claimants)) {
+                    ambiguous.add(barcode.code());
+                }
+            }
+            return ambiguous;
+        } catch (Exception e) {
+            log.warn("Shopfront barcode ambiguity snapshot could not be parsed for store={}", store);
+            return Set.of();
+        }
+    }
+
     private void appendBarcodeConflictErrors(ProductImportBatch batch, List<String> errors) {
         for (BarcodeConflict conflict : batch.barcodeConflicts) {
             if (errors.size() >= 25) break;
-            errors.add("Barcode " + conflict.code() + " for Shopfront product " + conflict.sourceId()
-                    + " is already assigned to POS product " + conflict.existingProductId()
-                    + "; association to POS product " + conflict.requestedProductId() + " was skipped");
+            if (conflict.existingProductId() == null) {
+                errors.add("Barcode " + conflict.code() + " is declared by multiple current Shopfront products; association to POS product "
+                        + conflict.requestedProductId() + " was skipped");
+            } else {
+                errors.add("Barcode " + conflict.code() + " for Shopfront product " + conflict.sourceId()
+                        + " is already assigned to POS product " + conflict.existingProductId()
+                        + "; association to POS product " + conflict.requestedProductId() + " was skipped");
+            }
         }
         if (batch.barcodeConflictCount > batch.barcodeConflicts.size() && errors.size() < 25) {
             errors.add("Additional Shopfront barcode conflicts omitted: "
