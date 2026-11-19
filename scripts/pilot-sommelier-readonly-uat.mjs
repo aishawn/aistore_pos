@@ -48,18 +48,18 @@ try {
     headers: { Origin: base },
   });
   const loginBody = await login.json().catch(() => ({}));
-  if (!login.ok() || loginBody.code !== 0) throw new Error("Production Sommelier UAT login failed");
+  if (!login.ok() || loginBody.code !== 0) throw new Error("Demo Sommelier UAT login failed");
 
-  // Use a catalogue term present in the current Odoo-backed demo fixture.
+  // Use a catalogue term present in the current Orithos demo fixture.
   // Generic DEMO labels are not guaranteed to be wine records.
   const identify = await request("/api/ai/sommelier/identify?q=Shiraz");
   const catalogItems = (identify.items || []).filter((item) => Number(item.stockQuantity) > 0);
-  if (!catalogItems.length) throw new Error("Odoo Shiraz catalog did not return an in-stock wine");
+  if (!catalogItems.length) throw new Error("Orithos Shiraz catalog did not return an in-stock wine");
   const nonWineItems = (identify.items || []).filter((item) => !looksLikeWine(item));
   if (nonWineItems.length) {
     throw new Error(`Sommelier catalog included non-wine products: ${nonWineItems.map((item) => item.name).join(", ")}`);
   }
-  record("Odoo catalog identify", "PASS", `Search=Shiraz; found ${identify.items.length} wine products; ${catalogItems.length} have free stock and all pass the wine filter.`);
+  record("Orithos catalog identify", "PASS", `Search=Shiraz; found ${identify.items.length} wine products; ${catalogItems.length} have free stock and all pass the wine filter.`);
 
   const recommendation = await request("/api/ai/sommelier/recommend", "POST", {
     wineType: "red",
@@ -76,18 +76,22 @@ try {
   const cards = recommendation.recommendations || [];
   if (!cards.length) throw new Error(`Recommendation returned no wines: ${recommendation.emptyReason || "no reason"}`);
   if (cards.some((item) => Number(item.stockQuantity) <= 0)) throw new Error("Recommendation included a wine with no free stock");
-  const shiraz = catalogItems.find((item) => cards.some((card) => card.productId === item.productId));
-  const recommendedShiraz = shiraz && cards.find((item) => item.productId === shiraz.productId);
-  if (!shiraz || !recommendedShiraz) throw new Error("Red wine recommendation did not overlap the in-stock Shiraz catalog");
-  if (Number(recommendedShiraz.sellPrice) !== Number(shiraz.sellPrice)) throw new Error("Recommendation price differs from Odoo catalog sell price");
-  if (Number(recommendedShiraz.stockQuantity) !== Number(shiraz.stockQuantity)) throw new Error("Recommendation stock differs from Odoo catalog free stock");
-  record("Recommendation price and free-stock parity", "PASS", `Product ${shiraz.productId}: AUD ${recommendedShiraz.sellPrice}; free stock ${recommendedShiraz.stockQuantity}; recommendation agrees with Odoo identify data.`);
+  if (cards.some((item) => item.wineType !== "red")) throw new Error("Red wine request returned a non-red wine");
+  const recommended = cards[0];
+  const recommendedDetail = await request(`/api/ai/sommelier/wines/${recommended.productId}`);
+  if (Number(recommendedDetail.sellPrice) !== Number(recommended.sellPrice)
+      || Number(recommendedDetail.stockQuantity) !== Number(recommended.stockQuantity)) {
+    throw new Error("Recommendation price or stock differs from its wine detail");
+  }
+  record("Recommendation type, price and stock", "PASS", `Returned ${cards.length} red wines with free stock; product ${recommended.productId} matches detail price and stock.`);
+
+  const shiraz = catalogItems[0];
 
   const detail = await request(`/api/ai/sommelier/wines/${shiraz.productId}`);
   if (Number(detail.sellPrice) !== Number(shiraz.sellPrice) || Number(detail.stockQuantity) !== Number(shiraz.stockQuantity)) {
-    throw new Error("Wine detail price or stock differs from Odoo identify data");
+    throw new Error("Wine detail price or stock differs from Orithos identify data");
   }
-  record("Wine detail parity", "PASS", `Product ${shiraz.productId} detail matches the Odoo catalog price and free stock.`);
+  record("Wine detail parity", "PASS", `Product ${shiraz.productId} detail matches the Orithos catalog price and free stock.`);
 
   for (const direction of ["cheaper", "upgrade"]) {
     const similar = await request("/api/ai/sommelier/similar", "POST", { productId: shiraz.productId, direction });
@@ -131,7 +135,7 @@ const output = {
   deployment: process.env.PILOT_DEPLOYMENT_VERIFIED === "true" && /^[\da-f]{40}$/i.test(process.env.PILOT_DEPLOYMENT_SHA ?? "")
     ? process.env.PILOT_DEPLOYMENT_SHA.toLowerCase()
     : "unverified-after-deploy",
-  scope: "authenticated Odoo-backed Sommelier reads only; no model, image, feedback, sale, purchase, inventory, or register write",
+  scope: "authenticated Orithos-backed Sommelier reads; pitch and ask may call the configured model; no image, feedback, sale, purchase, inventory, or register write",
   checks,
 };
 const outputPath = process.env.PILOT_UAT_OUTPUT_PATH

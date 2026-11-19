@@ -36,6 +36,21 @@ class SommelierCatalogServiceTest {
     }
 
     @Test
+    void explicitRoseStyleOverridesStaleStoredRedType() {
+        SommelierProductMapper mapper = mock(SommelierProductMapper.class);
+        SommelierProductMapper.CatalogRow wine = new SommelierProductMapper.CatalogRow();
+        wine.setId(14347L);
+        wine.setName("Babich Marlborough Pinot Noir Rose 750ml");
+        wine.setCategoryName("Wine");
+        wine.setStoredWineType("red");
+        when(mapper.listCatalog(1L)).thenReturn(List.of(wine));
+        SommelierCatalogService service = new SommelierCatalogService(mapper, new ObjectMapper());
+        TenantContext tenant = new TenantContext(42L, 7L, 1L, List.of(1L), Set.of());
+
+        assertEquals("rose", service.listWines(tenant).get(0).profile().wineType());
+    }
+
+    @Test
     void listSearchAndLookupUseCurrentOrithosOutlet() {
         SommelierProductMapper mapper = mock(SommelierProductMapper.class);
         when(mapper.listCatalog(1L)).thenReturn(List.of());

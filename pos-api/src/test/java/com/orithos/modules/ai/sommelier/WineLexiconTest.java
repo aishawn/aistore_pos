@@ -30,6 +30,14 @@ class WineLexiconTest {
     }
 
     @Test
+    void explicitRoseStyleWinsOverPinotNoirVarietal() {
+        WineProfile p = WineLexicon.infer("Babich Marlborough Pinot Noir Rose 750ml", "Wine", "Wine", null);
+        assertEquals("rose", p.wineType());
+        assertEquals("rose", WineLexicon.infer("Pinot Noir Rosé 750ml", "Wine", "Wine", null).wineType());
+        assertEquals("red", WineLexicon.infer("Rosemount Shiraz 750ml", "Wine", "Wine", null).wineType());
+    }
+
+    @Test
     void beerNameIsNotWine() {
         assertFalse(WineLexicon.looksLikeWine("Carlton Draught Btl 375ml", "Beer Local", "Beer"));
         assertTrue(WineLexicon.looksLikeWine("155 PINOT NOIR 750ML", "Beer Local", null));

@@ -105,7 +105,9 @@ public class SommelierCatalogService {
     private WineProfile storedProfile(CatalogRow row) {
         if (row.getStoredWineType() == null || row.getStoredWineType().isBlank()) return null;
         return new WineProfile(
-                row.getStoredWineType().toLowerCase(),
+                WineLexicon.hasExplicitRoseStyle(row.getName(), row.getCategoryName(), row.getFamilyName())
+                        ? "rose"
+                        : row.getStoredWineType().toLowerCase(),
                 row.getStoredVarietal(),
                 row.getStoredRegion(),
                 row.getStoredVintage(),

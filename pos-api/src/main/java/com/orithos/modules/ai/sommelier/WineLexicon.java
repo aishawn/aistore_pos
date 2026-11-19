@@ -194,6 +194,10 @@ public final class WineLexicon {
         return WEIGHT_PACKAGE.matcher(nullToEmpty(name) + " " + nullToEmpty(categoryName) + " " + nullToEmpty(familyName)).find();
     }
 
+    public static boolean hasExplicitRoseStyle(String... parts) {
+        return containsToken(blob(parts), "rose", "rosado");
+    }
+
     private static String nullToEmpty(String s) {
         return s == null ? "" : s;
     }
@@ -201,7 +205,9 @@ public final class WineLexicon {
     public static WineProfile infer(String name, String categoryName, String familyName, String description) {
         String blob = blob(name, categoryName, familyName, description);
         Varietal hit = matchVarietal(blob);
-        String type = hit != null ? hit.wineType : inferType(blob);
+        String type = hasExplicitRoseStyle(name, categoryName, familyName)
+                ? "rose"
+                : (hit != null ? hit.wineType : inferType(blob));
         if (hit != null) {
             return new WineProfile(
                     type,
