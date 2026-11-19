@@ -621,6 +621,26 @@ class AssistantFastPathRouterTest {
     }
 
     @Test
+    void stripsChineseRemainingQuantityPhraseFromStockProductName() {
+        AssistantFastPathRouter.Match match = AssistantFastPathRouter.maybeMatch(
+                "查询 -196 LEMON P/F 6% 330ML 还剩多少库存？");
+
+        assertNotNull(match);
+        assertEquals("report_stock", match.intent());
+        assertEquals("-196 LEMON P/F 6% 330ML", match.slots().get("query"));
+    }
+
+    @Test
+    void routesHowManyProductAreInStockToDeterministicStockReport() {
+        AssistantFastPathRouter.Match match = AssistantFastPathRouter.maybeMatch(
+                "How many -196 LEMON P/F 6% 330ML are in stock?");
+
+        assertNotNull(match);
+        assertEquals("report_stock", match.intent());
+        assertEquals("-196 LEMON P/F 6% 330ML", match.slots().get("query"));
+    }
+
+    @Test
     void matchesNavigationShortcuts() {
         assertEquals("navigate", AssistantFastPathRouter.maybeMatch("Open sell").intent());
         assertEquals("/", AssistantFastPathRouter.maybeMatch("Open sell").route());
