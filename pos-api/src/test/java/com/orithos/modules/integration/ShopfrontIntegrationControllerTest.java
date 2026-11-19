@@ -44,6 +44,27 @@ import static org.mockito.Mockito.when;
 class ShopfrontIntegrationControllerTest {
 
     @Test
+    void classificationLookupNeverReusesAnotherOutletsLinkedRow() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        when(jdbc.queryForList(contains("SELECT id FROM category"), eq(Long.class), any(Object[].class)))
+                .thenReturn(List.of());
+        when(jdbc.queryForObject(contains("INSERT INTO category"), eq(Long.class), any(Object[].class)))
+                .thenReturn(901L);
+        var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true, true);
+        Method lookup = ShopfrontIntegrationController.class.getDeclaredMethod(
+                "ensureLookup", String.class, String.class, long.class);
+        lookup.setAccessible(true);
+
+        assertEquals(901L, lookup.invoke(controller, "category", "EPAY", 87L));
+
+        ArgumentCaptor<String> query = ArgumentCaptor.forClass(String.class);
+        verify(jdbc).queryForList(query.capture(), eq(Long.class), any(Object[].class));
+        assertTrue(query.getValue().contains("outlet_id = ?"));
+        assertFalse(query.getValue().contains("OR EXISTS"));
+        verify(jdbc).queryForObject(contains("INSERT INTO category"), eq(Long.class), any(Object[].class));
+    }
+
+    @Test
     void registersOnlyCompleteUniqueIdBarcodeSnapshotAndReturnsStableFingerprint() throws Exception {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
         when(jdbc.queryForList(contains("SELECT company_id, outlet_id, enabled FROM shopfront_store_mapping"), any(Object[].class)))

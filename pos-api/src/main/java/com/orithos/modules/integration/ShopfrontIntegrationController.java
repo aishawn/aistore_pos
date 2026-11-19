@@ -4300,23 +4300,10 @@ public class ShopfrontIntegrationController {
         if (!Set.of("brand", "category", "family", "tag").contains(table)) {
             throw new IllegalArgumentException("Unsupported classification table: " + table);
         }
-        try {
-            // Prefer the caller's outlet row; fall back to a same-named active row
-            // already linked into this outlet via products (legacy shared lookups).
-            String linkedExists = "tag".equals(table)
-                    ? """
-                      EXISTS (
-                        SELECT 1 FROM product_tag pt
-                        INNER JOIN product p ON p.id = pt.product_id AND p.outlet_id = ? AND p.deleted_at IS NULL
-                        WHERE pt.tag_id = c.id)
-                      """
-                    : ("EXISTS (SELECT 1 FROM product p WHERE p." + table + "_id = c.id AND p.outlet_id = ? AND p.deleted_at IS NULL)");
-            List<Long> matches = jdbc.queryForList(
-                    "SELECT id FROM " + table + " c WHERE lower(trim(name))=lower(trim(?)) AND deleted_at IS NULL AND (outlet_id = ? OR "
-                            + linkedExists + ") ORDER BY CASE WHEN outlet_id = ? THEN 0 ELSE 1 END, id LIMIT 1",
-                    Long.class, name, outletId, outletId, outletId);
-            if (!matches.isEmpty()) return matches.get(0);
-        } catch (Exception ignored) { }
+        List<Long> matches = jdbc.queryForList(
+                "SELECT id FROM " + table + " c WHERE lower(trim(name))=lower(trim(?)) AND deleted_at IS NULL AND outlet_id = ? ORDER BY id LIMIT 1",
+                Long.class, name, outletId);
+        if (!matches.isEmpty()) return matches.get(0);
         return jdbc.queryForObject(
                 "INSERT INTO " + table + " (name, outlet_id) VALUES (?,?) RETURNING id",
                 Long.class, name, outletId);
