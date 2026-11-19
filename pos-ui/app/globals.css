@@ -851,6 +851,60 @@ html.dark {
 .oh-brand-mark-inverse .oh-brand-symbol > span { background: #fff; }
 .oh-brand-mark-compact .oh-brand-symbol { width: 28px; height: 28px; border-width: 2.5px; }
 
+.report-mini-trend {
+  border: 1px solid var(--oh-border);
+  border-radius: 12px;
+  background: var(--oh-surface-elevated);
+  padding: 16px 18px 14px;
+  box-shadow: var(--oh-shadow-card, 0 1px 2px rgb(15 23 42 / 0.04));
+}
+.report-mini-trend-chart {
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgb(248 250 252 / 0.9) 0%, rgb(255 255 255 / 0.4) 100%);
+  padding: 8px 6px 4px;
+}
+.report-mini-trend-skeleton {
+  height: 148px;
+  border-radius: 10px;
+  background: var(--oh-surface-muted, #f1f5f9);
+  animation: pulse 1.4s ease-in-out infinite;
+}
+.report-line-chart { width: 100%; }
+.report-line-chart-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+.report-line-chart-svg path[stroke] {
+  vector-effect: non-scaling-stroke;
+}
+.report-line-chart-grid {
+  stroke: var(--oh-border);
+  stroke-width: 1;
+  stroke-dasharray: 3 6;
+  opacity: 0.85;
+}
+.report-line-chart-axis {
+  fill: var(--oh-muted);
+  font-size: 9px;
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
+}
+.report-line-chart-x {
+  fill: var(--oh-muted);
+  font-size: 9px;
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
+}
+.report-line-chart-x-active {
+  fill: var(--oh-text);
+  font-weight: 600;
+}
+.report-line-chart-hit {
+  cursor: pointer;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -877,6 +931,11 @@ html.dark {
 @media print {
   @page {
     margin: 16mm;
+  }
+
+  @page barcode-label {
+    size: 50mm 30mm;
+    margin: 0;
   }
 
   body * {
@@ -913,5 +972,49 @@ html.dark {
 
   body {
     background: #fff !important;
+  }
+
+  body:has(.barcode-label) * {
+    visibility: hidden !important;
+  }
+
+  body:has(.barcode-label) .barcode-label,
+  body:has(.barcode-label) .barcode-label * {
+    visibility: visible !important;
+  }
+
+  body:has(.barcode-label) .barcode-label {
+    page: barcode-label;
+    display: grid !important;
+    width: 50mm !important;
+    height: 30mm !important;
+    align-content: center !important;
+    justify-items: center !important;
+    gap: 1mm !important;
+    padding: 2mm !important;
+    overflow: hidden !important;
+    color: #000 !important;
+    background: #fff !important;
+    font: 8pt Arial, sans-serif !important;
+    text-align: center !important;
+  }
+
+  body:has(.barcode-label) .barcode-label:not(:last-child) {
+    break-after: page;
+    page-break-after: always;
+  }
+
+  body:has(.barcode-label) .barcode-label h2,
+  body:has(.barcode-label) .barcode-label p {
+    max-width: 46mm !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+  }
+
+  body:has(.barcode-label) .barcode-label img {
+    display: block !important;
+    max-width: 46mm !important;
+    max-height: 17mm !important;
+    object-fit: contain !important;
   }
 }

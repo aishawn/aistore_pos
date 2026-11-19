@@ -1,10 +1,26 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
-import { ReportLineChart } from "@/components/reports/ReportLineChart";
+import { useMemo, useState } from "react";
+import { ReportLineChart, type LineChartPoint } from "@/components/reports/ReportLineChart";
 import { reportMoney } from "@/components/reports/report-format";
 import type { NativeOverviewDaily } from "@/lib/native-overview";
+
+function compactMoney(value: number) {
+  if (value >= 10_000) return `$${Math.round(value / 1000)}k`;
+  if (value >= 1000) return `$${(value / 1000).toFixed(1)}k`;
+  return `$${Math.round(value)}`;
+}
+
+function formatDayCaption(date: string) {
+  const d = new Date(`${date}T12:00:00Z`);
+  return new Intl.DateTimeFormat("en-AU", {
+    timeZone: "Australia/Adelaide",
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  }).format(d);
+}
 
 export function ReportMiniTrend({
   points,
@@ -19,28 +35,31 @@ export function ReportMiniTrend({
     () => points.map((row) => ({ date: row.date, value: Number(row.revenue) || 0 })),
     [points],
   );
-  const latest = linePoints.length ? linePoints[linePoints.length - 1] : null;
+  const [active, setActive] = useState<LineChartPoint | null>(null);
+  const focus = active ?? (linePoints.length ? linePoints[linePoints.length - 1] : null);
 
   if (loading) {
     return (
-      <section className="mx-4 mt-4 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-4 md:mx-6">
+      <section className="report-mini-trend mx-4 mt-4 md:mx-6" aria-busy="true">
         <div className="h-4 w-40 animate-pulse rounded bg-[var(--oh-border)]" />
-        <div className="mt-3 h-20 animate-pulse rounded bg-[var(--oh-border)]" />
+        <div className="report-mini-trend-chart report-mini-trend-skeleton mt-3" />
       </section>
     );
   }
 
   return (
-    <section className="mx-4 mt-4 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-4 md:mx-6">
-      <div className="flex flex-wrap items-center justify-between gap-2">
+    <section className="report-mini-trend mx-4 mt-4 md:mx-6">
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 className="text-sm font-semibold text-[var(--oh-text)]">Last 7 days</h2>
-          {latest ? (
-            <p className="text-xs tabular-nums text-[var(--oh-muted)]">
-              {latest.date}: {reportMoney(latest.value)}
+          <h2 className="text-sm font-semibold tracking-tight text-[var(--oh-text)]">Last 7 days</h2>
+          {focus ? (
+            <p className="mt-0.5 text-xs text-[var(--oh-muted)]">
+              <span className="font-medium text-[var(--oh-text)]">{formatDayCaption(focus.date)}</span>
+              <span className="mx-1.5 text-[var(--oh-border)]">·</span>
+              <span className="tabular-nums">{reportMoney(focus.value)}</span>
             </p>
           ) : (
-            <p className="text-xs text-[var(--oh-muted)]">No sales in the last 7 days</p>
+            <p className="mt-0.5 text-xs text-[var(--oh-muted)]">No sales in the last 7 days</p>
           )}
         </div>
         <Link href={salesHref} className="text-xs font-semibold text-[var(--oh-primary)] hover:underline">
@@ -48,11 +67,17 @@ export function ReportMiniTrend({
         </Link>
       </div>
       {linePoints.length >= 2 ? (
-        <ReportLineChart
-          points={linePoints}
-          formatValue={(value) => reportMoney(value)}
-          ariaLabel="Last 7 days sales trend line chart"
-        />
+        <div className="report-mini-trend-chart mt-3">
+          <ReportLineChart
+            points={linePoints}
+            formatValue={(value) => reportMoney(value)}
+            formatAxisValue={compactMoney}
+            stroke="#4d7cfe"
+            ariaLabel="Last 7 days sales trend"
+            height={148}
+            onActiveChange={setActive}
+          />
+        </div>
       ) : (
         <p className="mt-3 text-sm text-[var(--oh-muted)]">No Orithos sales in the last 7 days.</p>
       )}

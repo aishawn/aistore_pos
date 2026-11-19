@@ -1074,6 +1074,13 @@
 .ov-trend-avg { margin: 0; font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -0.03em; }
 .ov-trend-avg span { font-size: 11px; font-weight: 500; color: var(--ov-muted); }
 .ov-trend-skeleton { height: 120px; border-radius: 16px; border: 1px solid var(--ov-line); background: #f6f7f9; }
+.ov-trend-chart {
+  margin-top: 8px;
+  padding: 6px 4px 2px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #f8fafcd9 0%, #ffffff66 100%);
+}
+.ov-trend-caption { color: var(--ov-ink); font-weight: 600; font-variant-numeric: tabular-nums; }
 .ov-stat-note svg { color: #1aa873; }
 .ov-panel-action { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; color: #315fbb; font-size: 13px; font-weight: 600; }
 .ov-insights-panel ul { list-style: none; margin-top: 16px; }

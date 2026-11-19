@@ -1,10 +1,17 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { ArrowUpRight } from "lucide-react";
 import { ReportLineChart, type LineChartPoint } from "@/components/reports/ReportLineChart";
 import { reportMoney } from "@/components/reports/report-format";
 import type { OverviewPulseWeekPoint } from "./useOverview";
+
+function compactMoney(value: number) {
+  if (value >= 10_000) return `$${Math.round(value / 1000)}k`;
+  if (value >= 1000) return `$${(value / 1000).toFixed(1)}k`;
+  return `$${Math.round(value)}`;
+}
 
 export function OverviewWeeklyTrend({
   sales,
@@ -24,6 +31,9 @@ export function OverviewWeeklyTrend({
     ? marginPoints.reduce((sum, row) => sum + row.value, 0) / marginPoints.length
     : null;
 
+  const [salesFocus, setSalesFocus] = useState<LineChartPoint | null>(null);
+  const salesCaption = salesFocus ?? (salesPoints.length ? salesPoints[salesPoints.length - 1] : null);
+
   if (loading && !sales.length) {
     return (
       <section className="ov-trend-panel" aria-busy="true" aria-label="Loading weekly trends">
@@ -39,12 +49,22 @@ export function OverviewWeeklyTrend({
     <section className="ov-trend-panel" aria-label="Last 7 days trends">
       {salesPoints.length >= 2 ? (
         <article className="ov-trend-card">
-          <TrendCardHead title="Sales trend" href="/reports/dashboard?period=last_7_days" />
-          <ReportLineChart
-            points={salesPoints}
-            formatValue={(value) => reportMoney(value)}
-            ariaLabel="Last 7 days sales line chart"
+          <TrendCardHead
+            title="Sales trend"
+            href="/reports/dashboard?period=last_7_days"
+            caption={salesCaption ? reportMoney(salesCaption.value) : undefined}
           />
+          <div className="ov-trend-chart">
+            <ReportLineChart
+              points={salesPoints}
+              formatValue={(value) => reportMoney(value)}
+              formatAxisValue={compactMoney}
+              stroke="#4d7cfe"
+              ariaLabel="Last 7 days sales line chart"
+              height={124}
+              onActiveChange={setSalesFocus}
+            />
+          </div>
         </article>
       ) : null}
       {marginPoints.length >= 2 ? (
@@ -58,25 +78,39 @@ export function OverviewWeeklyTrend({
               <p className="ov-trend-avg">{marginAvg.toFixed(1)}% <span>avg</span></p>
             ) : null}
           </div>
-          <ReportLineChart
-            points={marginPoints}
-            formatValue={(value) => `${value.toFixed(1)}%`}
-            stroke="var(--brand-module-teal)"
-            ariaLabel="Last 7 days gross margin line chart"
-            height={72}
-          />
+          <div className="ov-trend-chart">
+            <ReportLineChart
+              points={marginPoints}
+              formatValue={(value) => `${value.toFixed(1)}%`}
+              formatAxisValue={(value) => `${Math.round(value)}%`}
+              stroke="#0d9488"
+              ariaLabel="Last 7 days gross margin line chart"
+              height={112}
+            />
+          </div>
         </article>
       ) : null}
     </section>
   );
 }
 
-function TrendCardHead({ title, href }: { title: string; href: string }) {
+function TrendCardHead({
+  title,
+  href,
+  caption,
+}: {
+  title: string;
+  href: string;
+  caption?: string;
+}) {
   return (
     <div className="ov-trend-card-head">
       <div>
         <h3>{title}</h3>
-        <p>Orithos ledger · last 7 days</p>
+        <p>
+          Orithos ledger · last 7 days
+          {caption ? <span className="ov-trend-caption"> · {caption}</span> : null}
+        </p>
       </div>
       <Link href={href} className="ov-trend-link">
         Reports <ArrowUpRight size={14} aria-hidden="true" />
