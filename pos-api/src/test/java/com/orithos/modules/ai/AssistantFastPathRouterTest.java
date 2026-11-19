@@ -611,6 +611,7 @@ class AssistantFastPathRouterTest {
                 "Are there any invoices?",
                 "Have we received any invoices?",
                 "Did our invoice arrive?",
+                "Did the supplier invoice arrive?",
                 "Did the invoices arrive?",
                 "Did you get our invoice?",
                 "Have the supplier invoices arrived?",

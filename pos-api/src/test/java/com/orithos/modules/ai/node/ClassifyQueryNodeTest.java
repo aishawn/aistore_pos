@@ -1016,6 +1016,7 @@ class ClassifyQueryNodeTest {
         assertDeterministicResult(node, "昨天价格历史", "report_adhoc", "");
         assertDeterministicResult(node, "发票还有吗？", "report_adhoc", "");
         assertDeterministicResult(node, "收到发票了吗？", "report_adhoc", "");
+        assertDeterministicResult(node, "Did the supplier invoice arrive?", "report_adhoc", "");
         assertDeterministicResult(node, "How many supplier bills did we receive?", "report_adhoc", "");
         assertDeterministicResult(node, "查看批量改价", "navigate", "/stock/bulk-price-edit");
         assertDeterministicResult(node, "Can you review prices for Shiraz?", "navigate", "/stock/capped-pricing");

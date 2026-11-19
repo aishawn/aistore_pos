@@ -251,7 +251,7 @@ public final class AssistantFastPathRouter {
             Pattern.CASE_INSENSITIVE);
     private static final Pattern INVOICE_REPORT = Pattern.compile(
             "^(?:do we have (?:any )?invoices?|any invoices?|are there (?:any )?invoices?|"
-                    + "(?:have we receiv(?:e|ed)|did we receive|did (?:we|you) get) (?:any )?(?:our |the |(?:the )?supplier )?invoices?|did (?:our|the) invoices? arrive|have (?:our |the )?(?:supplier )?invoices? arrived|was the invoice received|how many invoices?(?: did we receive)?|"
+                    + "(?:have we receiv(?:e|ed)|did we receive|did (?:we|you) get) (?:any )?(?:our |the |(?:the )?supplier )?invoices?|did (?:(?:our|the)(?: supplier)?|supplier) invoices? arrive|have (?:our |the )?(?:supplier )?invoices? arrived|was the invoice received|how many invoices?(?: did we receive)?|"
                     + "(?:how many (?:supplier )?bills?(?: did we receive)?|(?:have we|did we) receiv(?:e|ed) (?:any )?bills?)|"
                     + "发票(?:还有吗|还有没有|有没有|有吗|多少|数量|收到多少|收到了吗|到(?:了)?吗|有没有到)|收到发票了吗|(?:有没有|有)收到(?:供应商)?发票(?:吗|[?？])|(?:供应商)?发票(?:到|送到)(?:了)?吗|"
                     + "账单(?:还有吗|还有没有|有没有|有吗|多少|数量|收到多少)|收到(?:了)?账单了吗)[?.!。！？]*$",

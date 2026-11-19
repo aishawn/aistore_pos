@@ -195,6 +195,7 @@ const cases = [
   { id: "report-negative-invoice-existence-zh", question: "发票还有吗？", intent: "report_adhoc", noRoute: true },
   { id: "report-negative-invoice-received-zh", question: "收到发票了吗？", intent: "report_adhoc", noRoute: true },
   { id: "report-invoice-arrival-en", question: "Did our invoice arrive?", intent: "report_adhoc", noRoute: true },
+  { id: "report-invoice-arrival-en-supplier-singular", question: "Did the supplier invoice arrive?", intent: "report_adhoc", noRoute: true },
   { id: "report-invoice-arrival-zh", question: "有收到供应商发票吗？", intent: "report_adhoc", noRoute: true },
   { id: "report-invoice-arrival-zh-colloquial", question: "有没有收到发票？", intent: "report_adhoc", noRoute: true },
   { id: "report-invoice-get-en", question: "Did you get our invoice?", intent: "report_adhoc", noRoute: true },
