@@ -193,10 +193,16 @@ export function HardwareSetupPanel() {
   }
 
   const activePrinter = dirty ? draft.printer : savedSettings.printer;
-  const printerReady = Boolean(state.connected && activePrinter && state.printers.includes(activePrinter));
   const printerNames = [...new Set([...state.printers, ...(activePrinter ? [activePrinter] : [])])];
   const readinessToneClass = (tone: HardwareReadinessItem["tone"]) =>
     tone === "ok" ? "bg-emerald-50 text-emerald-900" : tone === "warn" ? "bg-amber-50 text-amber-950" : "bg-slate-100 text-slate-700";
+
+  const bridgeLabel =
+    state.bridge === "orithos-hc"
+      ? `Hardware Connect ${state.hardwareConnectVersion ?? ""}`.trim()
+      : state.bridge === "qz"
+        ? "QZ Tray"
+        : null;
 
   return (
     <div className="space-y-6">
@@ -204,60 +210,41 @@ export function HardwareSetupPanel() {
         <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[var(--oh-border)] pb-4">
           <div>
             <h2 id="hardware-connect-title" className="text-base font-semibold text-[var(--oh-text)]">
-              Hardware connect settings
+              Receipt printer
             </h2>
             <p className="mt-1 text-xs text-[var(--oh-muted)]">
-              Local bridge:{" "}
-              {state.bridge === "orithos-hc"
-                ? `Orithos Hardware Connect ${state.hardwareConnectVersion ?? ""}`.trim()
-                : state.bridge === "qz"
-                  ? "QZ Tray"
-                  : "not connected"}
-              {state.connected ? ` · ${state.printers.length} Windows printer(s)` : ""}
+              {state.connected && bridgeLabel ? (
+                <>
+                  <span className="font-medium text-emerald-800">{bridgeLabel}</span>
+                  <span className="text-[var(--oh-muted)]"> · {state.printers.length} printer(s) on this PC</span>
+                </>
+              ) : (
+                "Connect the local bridge on this register, then choose your receipt printer."
+              )}
             </p>
-            {state.bridge === "orithos-hc" && state.connected ? (
-              <p className="mt-2 inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-900">
-                Agent running on this register
-              </p>
-            ) : null}
           </div>
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => void testDrawer()}
-              disabled={busy || !draft.cashDrawer || !draft.printer}
-              className="inline-flex min-h-10 items-center rounded-md border border-[var(--oh-border)] px-3 text-sm font-semibold disabled:opacity-50"
-            >
-              Test open cash drawer
-            </button>
-            <button
-              type="button"
-              onClick={saveDraft}
-              disabled={!dirty}
-              className="inline-flex min-h-10 items-center gap-2 rounded-md bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white disabled:opacity-50"
-            >
-              <Save size={15} aria-hidden="true" />
-              Save
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={saveDraft}
+            disabled={!dirty}
+            className="inline-flex min-h-10 items-center gap-2 rounded-md bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white disabled:opacity-50"
+          >
+            <Save size={15} aria-hidden="true" />
+            Save
+          </button>
         </div>
 
-        <ul className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-          {readiness
-            .filter((item) => item.id !== "eftpos")
-            .map((item) => {
-              const live =
-                item.id === "printer" && printerReady
-                  ? { status: `Ready · ${activePrinter}`, tone: "ok" as const }
-                  : item;
-              return (
-                <li key={item.id} className={`rounded-md px-3 py-2 text-sm ${readinessToneClass(live.tone)}`}>
-                  <span className="block text-xs font-medium opacity-80">{item.label}</span>
-                  <span className="font-semibold">{live.status}</span>
+        {!state.connected && readiness.length > 0 ? (
+          <ul className="mt-4 flex flex-wrap gap-2">
+            {readiness
+              .filter((item) => item.id !== "eftpos")
+              .map((item) => (
+                <li key={item.id} className={`rounded-full px-3 py-1 text-xs font-medium ${readinessToneClass(item.tone)}`}>
+                  {item.label}: {item.status}
                 </li>
-              );
-            })}
-        </ul>
+              ))}
+          </ul>
+        ) : null}
         {state.bridge !== "orithos-hc" && (
           <div
             role="status"
@@ -276,165 +263,190 @@ export function HardwareSetupPanel() {
             </details>
           </div>
         )}
-        <div className="mt-3 flex flex-wrap justify-end gap-2">
-          {loadQzFallback && state.bridge !== "orithos-hc" && (
-            <a href="https://qz.io/download/" target="_blank" rel="noreferrer" className="inline-flex min-h-10 items-center gap-2 rounded-md border border-[var(--oh-border)] px-3 text-sm font-medium">
-              <ExternalLink size={15} aria-hidden="true" />
-              Get QZ Tray (fallback)
-            </a>
-          )}
-          <button
-            type="button"
-            onClick={() => void connect()}
-            disabled={connectBusy}
-            className={
-              state.connected
-                ? "inline-flex min-h-10 items-center gap-2 rounded-md border border-[var(--oh-border)] px-3 text-sm font-semibold disabled:opacity-50"
-                : "inline-flex min-h-10 items-center gap-2 rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white disabled:opacity-50"
-            }
-          >
-            <RefreshCw size={15} className={connectBusy ? "animate-spin" : undefined} aria-hidden="true" />
-            {connectBusy ? "Connecting…" : state.connected ? "Refresh printers" : "Connect local bridge"}
-          </button>
-        </div>
-        {state.bridge !== "orithos-hc" && state.connected ? (
-          <p className="mt-2 text-xs text-[var(--oh-muted)]">Connected via QZ Tray. Orithos Hardware Connect is preferred when installed.</p>
+        {!state.connected ? (
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            {loadQzFallback && state.bridge !== "orithos-hc" && (
+              <a href="https://qz.io/download/" target="_blank" rel="noreferrer" className="inline-flex min-h-10 items-center gap-2 rounded-md border border-[var(--oh-border)] px-3 text-sm font-medium">
+                <ExternalLink size={15} aria-hidden="true" />
+                QZ Tray (fallback)
+              </a>
+            )}
+            <button
+              type="button"
+              onClick={() => void connect()}
+              disabled={connectBusy}
+              className="inline-flex min-h-10 items-center gap-2 rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white disabled:opacity-50"
+            >
+              <RefreshCw size={15} className={connectBusy ? "animate-spin" : undefined} aria-hidden="true" />
+              {connectBusy ? "Connecting…" : "Connect local bridge"}
+            </button>
+          </div>
         ) : null}
         {state.error && <p role="alert" className="mt-3 text-sm text-red-800">{state.error}</p>}
         {notice && <p role="status" className="mt-3 text-sm text-[var(--oh-text-secondary)]">{notice}</p>}
 
-        <div className="mt-6 grid gap-3 sm:grid-cols-2">
-          <label className="grid gap-1 text-sm font-medium">
-            Printer
-            <select
-              value={draft.printer}
-              onChange={(event) => setDraft((current) => ({ ...current, printer: event.target.value }))}
-              disabled={!state.connected}
-              className="h-10 rounded-md border border-[var(--oh-border)] bg-white px-3 disabled:opacity-50"
-            >
-              <option value="">{state.connected ? "Select local printer" : "Connect bridge to list printers"}</option>
-              {printerNames.map((printer) => (
-                <option key={printer} value={printer}>
-                  {printer}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="grid gap-1 text-sm font-medium">
-            Cash drawer trigger
-            <select
-              value={draft.cashDrawerPin}
-              onChange={(event) => setDraft((current) => ({ ...current, cashDrawerPin: event.target.value === "1" ? "1" : "0", cashDrawer: true }))}
-              className="h-10 rounded-md border border-[var(--oh-border)] bg-white px-3"
-            >
-              <option value="0">Pin 2 (default)</option>
-              <option value="1">Pin 5</option>
-            </select>
-          </label>
-          <label className="grid gap-1 text-sm font-medium">
-            Receipt printer brand
-            <select
-              value={draft.printerBrand}
-              onChange={(event) => {
-                const printerBrand = event.target.value === "star" || event.target.value === "generic" ? event.target.value : "epson";
-                setDraft((current) => ({ ...current, printerBrand }));
-              }}
-              className="h-10 rounded-md border border-[var(--oh-border)] bg-white px-3"
-            >
-              <option value="epson">Epson</option>
-              <option value="star">Star</option>
-              <option value="generic">Generic ESC/POS</option>
-            </select>
-          </label>
-          <label className="grid gap-1 text-sm font-medium">
-            Cut delay (ms)
-            <input
-              type="number"
-              min={0}
-              max={10000}
-              step={50}
-              value={draft.cutDelayMs}
-              onChange={(event) => setDraft((current) => ({ ...current, cutDelayMs: Number(event.target.value) || 0 }))}
-              className="h-10 rounded-md border border-[var(--oh-border)] px-3 tabular-nums"
-            />
-          </label>
-          <label className="grid gap-1 text-sm font-medium sm:col-span-2">
-            Cash drawer kick code
-            <input
-              aria-label="Cash drawer kick code"
-              readOnly
-              value={formatCashDrawerKickCode(draft)}
-              className="h-10 rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 font-mono text-xs"
-              aria-describedby="kick-code-help"
-            />
-            <span id="kick-code-help" className="text-xs font-normal text-[var(--oh-muted)]">Derived from brand and drawer trigger. Adjust brand or pin if the drawer does not open.</span>
-          </label>
-          <label className="flex min-h-10 items-center gap-2 text-sm sm:col-span-2">
-            <input
-              type="checkbox"
-              checked={draft.cashDrawer}
-              onChange={(event) => setDraft((current) => ({ ...current, cashDrawer: event.target.checked }))}
-            />
-            Cash drawer attached to selected printer
-          </label>
-          <label className="flex min-h-10 items-center gap-2 text-sm sm:col-span-2">
-            <input
-              type="checkbox"
-              checked={draft.autoPrintReceiptOnSale}
-              onChange={(event) => setDraft((current) => ({ ...current, autoPrintReceiptOnSale: event.target.checked }))}
-            />
-            Auto-print receipt on Sell checkout
-          </label>
-          <label className="flex min-h-10 items-center gap-2 text-sm sm:col-span-2">
-            <input
-              type="checkbox"
-              checked={draft.autoOpenDrawerOnCashSale}
-              onChange={(event) => setDraft((current) => ({ ...current, autoOpenDrawerOnCashSale: event.target.checked }))}
-            />
-            Auto-open cash drawer on cash sales
-          </label>
-          <label className="flex min-h-10 items-center gap-2 text-sm sm:col-span-2">
-            <input
-              type="checkbox"
-              checked={draft.printDocketOnSale}
-              onChange={(event) => setDraft((current) => ({ ...current, printDocketOnSale: event.target.checked }))}
-            />
-            Also print docket (items only) on checkout
-          </label>
-          {draft.printDocketOnSale ? (
-            <label className="grid gap-1 text-sm font-medium sm:col-span-2">
-              Docket printer (optional)
+        <div className="mt-5 space-y-4">
+          <div className="flex flex-wrap items-end gap-2">
+            <label className="grid min-w-[min(100%,20rem)] flex-1 gap-1 text-sm font-medium">
+              Receipt printer
               <select
-                value={draft.docketPrinter}
-                onChange={(event) => setDraft((current) => ({ ...current, docketPrinter: event.target.value }))}
+                value={draft.printer}
+                onChange={(event) => setDraft((current) => ({ ...current, printer: event.target.value }))}
                 disabled={!state.connected}
                 className="h-10 rounded-md border border-[var(--oh-border)] bg-white px-3 disabled:opacity-50"
               >
-                <option value="">Same as receipt printer</option>
+                <option value="">{state.connected ? "Select printer" : "Connect bridge first"}</option>
                 {printerNames.map((printer) => (
-                  <option key={`docket-${printer}`} value={printer}>
+                  <option key={printer} value={printer}>
                     {printer}
                   </option>
                 ))}
               </select>
             </label>
-          ) : null}
-          <button
-            type="button"
-            onClick={() => void testPrint()}
-            disabled={busy || !draft.printer}
-            className="min-h-10 rounded-md border border-[var(--oh-border)] px-3 text-sm font-semibold disabled:opacity-50 sm:col-span-2 sm:max-w-xs"
-          >
-            Print test receipt
-          </button>
+            {state.connected ? (
+              <button
+                type="button"
+                onClick={() => void connect()}
+                disabled={connectBusy}
+                className="inline-flex h-10 items-center gap-1.5 rounded-md border border-[var(--oh-border)] px-3 text-sm font-medium text-[var(--oh-muted)] disabled:opacity-50"
+              >
+                <RefreshCw size={14} className={connectBusy ? "animate-spin" : undefined} aria-hidden="true" />
+                Refresh list
+              </button>
+            ) : null}
+          </div>
+
+          <div className="flex flex-col gap-2 text-sm">
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={draft.autoPrintReceiptOnSale}
+                onChange={(event) => setDraft((current) => ({ ...current, autoPrintReceiptOnSale: event.target.checked }))}
+              />
+              Auto-print receipt at checkout
+            </label>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={draft.autoOpenDrawerOnCashSale}
+                onChange={(event) => setDraft((current) => ({ ...current, autoOpenDrawerOnCashSale: event.target.checked }))}
+              />
+              Open cash drawer on cash sales
+            </label>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={draft.cashDrawer}
+                onChange={(event) => setDraft((current) => ({ ...current, cashDrawer: event.target.checked }))}
+              />
+              Cash drawer on this printer
+            </label>
+          </div>
+
+          <div className="flex flex-wrap gap-2 border-t border-[var(--oh-border)] pt-4">
+            <button
+              type="button"
+              onClick={() => void testPrint()}
+              disabled={busy || !draft.printer}
+              className="min-h-10 rounded-md border border-[var(--oh-border)] px-3 text-sm font-semibold disabled:opacity-50"
+            >
+              Test receipt
+            </button>
+            <button
+              type="button"
+              onClick={() => void testDrawer()}
+              disabled={busy || !draft.cashDrawer || !draft.printer}
+              className="min-h-10 rounded-md border border-[var(--oh-border)] px-3 text-sm font-semibold disabled:opacity-50"
+            >
+              Test drawer
+            </button>
+          </div>
+
+          <details className="rounded-md border border-[var(--oh-border)] px-3 py-2">
+            <summary className="cursor-pointer text-sm font-medium text-[var(--oh-text)]">More · brand, drawer pin, docket</summary>
+            <div className="mt-3 grid gap-3 pb-1 sm:grid-cols-2">
+              <label className="grid gap-1 text-sm font-medium">
+                Printer brand
+                <select
+                  value={draft.printerBrand}
+                  onChange={(event) => {
+                    const printerBrand = event.target.value === "star" || event.target.value === "generic" ? event.target.value : "epson";
+                    setDraft((current) => ({ ...current, printerBrand }));
+                  }}
+                  className="h-10 rounded-md border border-[var(--oh-border)] bg-white px-3"
+                >
+                  <option value="epson">Epson</option>
+                  <option value="star">Star</option>
+                  <option value="generic">Generic ESC/POS</option>
+                </select>
+              </label>
+              <label className="grid gap-1 text-sm font-medium">
+                Cash drawer pin
+                <select
+                  value={draft.cashDrawerPin}
+                  onChange={(event) => setDraft((current) => ({ ...current, cashDrawerPin: event.target.value === "1" ? "1" : "0", cashDrawer: true }))}
+                  className="h-10 rounded-md border border-[var(--oh-border)] bg-white px-3"
+                >
+                  <option value="0">Pin 2 (default)</option>
+                  <option value="1">Pin 5</option>
+                </select>
+              </label>
+              <label className="grid gap-1 text-sm font-medium">
+                Cut delay (ms)
+                <input
+                  type="number"
+                  min={0}
+                  max={10000}
+                  step={50}
+                  value={draft.cutDelayMs}
+                  onChange={(event) => setDraft((current) => ({ ...current, cutDelayMs: Number(event.target.value) || 0 }))}
+                  className="h-10 rounded-md border border-[var(--oh-border)] px-3 tabular-nums"
+                />
+              </label>
+              <label className="grid gap-1 text-sm font-medium sm:col-span-2">
+                Drawer kick code
+                <input
+                  aria-label="Cash drawer kick code"
+                  readOnly
+                  value={formatCashDrawerKickCode(draft)}
+                  className="h-10 rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 font-mono text-xs"
+                />
+                <span className="text-xs font-normal text-[var(--oh-muted)]">Change brand or pin if the drawer does not open.</span>
+              </label>
+              <label className="flex items-center gap-2 text-sm sm:col-span-2">
+                <input
+                  type="checkbox"
+                  checked={draft.printDocketOnSale}
+                  onChange={(event) => setDraft((current) => ({ ...current, printDocketOnSale: event.target.checked }))}
+                />
+                Also print kitchen docket at checkout
+              </label>
+              {draft.printDocketOnSale ? (
+                <label className="grid gap-1 text-sm font-medium sm:col-span-2">
+                  Docket printer
+                  <select
+                    value={draft.docketPrinter}
+                    onChange={(event) => setDraft((current) => ({ ...current, docketPrinter: event.target.value }))}
+                    disabled={!state.connected}
+                    className="h-10 rounded-md border border-[var(--oh-border)] bg-white px-3 disabled:opacity-50"
+                  >
+                    <option value="">Same as receipt</option>
+                    {printerNames.map((printer) => (
+                      <option key={`docket-${printer}`} value={printer}>
+                        {printer}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : null}
+            </div>
+          </details>
         </div>
       </section>
 
       <details id="hardware-optional-tests" className="rounded-lg border border-dashed border-[var(--oh-border)] bg-white px-4 py-3 sm:px-5">
-        <summary className="cursor-pointer text-sm font-semibold text-[var(--oh-text)]">Optional · Scanner & scale tests</summary>
-        <p className="mt-2 text-xs text-[var(--oh-muted)]">
-          USB barcode scanners work as keyboard input on Sell. EFTPOS setup is in Step 2 below.
-        </p>
+        <summary className="cursor-pointer text-sm font-medium text-[var(--oh-muted)]">Scanner & scale tests</summary>
+        <p className="mt-2 text-xs text-[var(--oh-muted)]">USB scanners type into Sell like a keyboard — no setup needed here.</p>
         <label className="mt-4 grid max-w-lg gap-1 text-sm font-medium">
           Barcode input check
           <input

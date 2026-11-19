@@ -202,35 +202,44 @@ export function LinklyEftposPanel({ canEdit }: Props) {
   const lnaLabel = lna === "granted" ? "Granted" : lna === "denied" ? "Denied" : lna === "prompt" ? "Needs prompt" : "Check browser";
   const connectorLabel = connectorHealth === "reachable" ? "Running" : connectorHealth === "offline" ? "Not reachable" : connectorHealth === "error" ? "Error" : "Unknown";
 
+  const connectorSummary =
+    connectorHealth === "reachable"
+      ? "Connector running on this PC"
+      : connectorHealth === "offline"
+        ? "Connector not detected on this PC"
+        : "Connector status unknown";
+
   return (
     <section id="hardware-eftpos" className="rounded-lg border border-[var(--oh-border)] bg-white p-4 sm:p-5" aria-labelledby="linkly-eftpos-title">
       <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[var(--oh-border)] pb-4">
         <div>
-          <h2 id="linkly-eftpos-title" className="text-base font-semibold text-[var(--oh-text)]">EFTPOS terminal pairing</h2>
-          <p className="mt-1 text-xs text-[var(--oh-muted)]">Register binding in Orithos · local Orithos Linkly Connector on this PC</p>
+          <h2 id="linkly-eftpos-title" className="text-base font-semibold text-[var(--oh-text)]">Card payments (EFTPOS)</h2>
+          <p className="mt-1 text-xs text-[var(--oh-muted)]">
+            {paymentsReady ? (
+              <span className="font-medium text-emerald-800">Card payments on Sell are enabled</span>
+            ) : (
+              connectorSummary
+            )}
+          </p>
         </div>
-        <button
-          type="button"
-          disabled={busy || !registerId}
-          onClick={() => void refreshDiagnosticsClick()}
-          className="inline-flex min-h-10 items-center gap-2 rounded-md border border-[var(--oh-border)] px-3 text-sm font-semibold disabled:opacity-50"
-        >
-          <RefreshCw size={15} className={diagBusy ? "animate-spin" : undefined} aria-hidden="true" />
-          Refresh diagnostics
-        </button>
+        {canEdit && (
+          <button type="button" onClick={() => void saveBinding()} disabled={loadBusy || actionBusy} className="inline-flex min-h-10 items-center gap-2 rounded-md bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white disabled:opacity-50">
+            <Save size={15} aria-hidden="true" />
+            Save
+          </button>
+        )}
       </div>
 
-      {connectorHealth === "offline" && (
-        <p className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800">
-          No Linkly connector on this PC — expected on the EFTPOS register. Printer and scanner setup above still works; card tests need{" "}
-          <span className="font-mono">tools/orithos-linkly-connector</span> tonight on the other machine.
+      {connectorHealth === "offline" && !draft.paymentsEnabled && (
+        <p className="mt-3 text-xs text-[var(--oh-muted)]">
+          Run Orithos Linkly Connector on the EFTPOS register PC. Receipt printer setup above is independent.
         </p>
       )}
       {error && <p role="alert" className="mt-3 text-sm text-red-800">{error}</p>}
       {notice && <p role="status" className="mt-3 text-sm text-emerald-800">{notice}</p>}
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        <label className="grid gap-1 text-sm font-medium">
+      <div className="mt-4 space-y-4">
+        <label className="grid max-w-md gap-1 text-sm font-medium">
           Cash register
           <select
             value={registerId ?? ""}
@@ -242,85 +251,91 @@ export function LinklyEftposPanel({ canEdit }: Props) {
             ))}
           </select>
         </label>
-        <label className="grid gap-1 text-sm font-medium">
-          Connector base URL
-          <input
-            value={draft.connectorBaseUrl}
-            onChange={(event) => setDraft((current) => ({ ...current, connectorBaseUrl: event.target.value }))}
-            readOnly={!canEdit}
-            className="h-10 rounded-md border border-[var(--oh-border)] px-3 font-mono text-xs"
-          />
-        </label>
-      </div>
 
-      <ul className="mt-4 grid gap-2 sm:grid-cols-2">
-        {[
-          { label: "Local network access", value: lnaLabel, ok: lna === "granted" },
-          { label: "Orithos Connector", value: connectorLabel, ok: connectorHealth === "reachable" },
-          { label: "Linkly Client", value: connectorStatus ?? "Not checked", ok: Boolean(connectorStatus && /ready|simulated/i.test(connectorStatus)) },
-          { label: "Card payments", value: paymentsReady ? "Enabled for sell" : "Disabled", ok: paymentsReady },
-        ].map((row) => (
-          <li key={row.label} className="flex items-center justify-between gap-2 rounded-md border border-[var(--oh-border)] px-3 py-2 text-sm">
-            <span className="text-[var(--oh-muted)]">{row.label}</span>
-            <span className={`font-medium ${row.ok ? "text-emerald-800" : "text-amber-900"}`}>{row.value}</span>
-          </li>
-        ))}
-      </ul>
-
-      <div className="mt-4 grid gap-3 sm:grid-cols-3">
-        <label className="grid gap-1 text-sm font-medium">
-          Terminal label
-          <input value={draft.terminalLabel} onChange={(e) => setDraft((c) => ({ ...c, terminalLabel: e.target.value }))} readOnly={!canEdit} className="h-10 rounded-md border border-[var(--oh-border)] px-3" />
-        </label>
-        <label className="grid gap-1 text-sm font-medium">
-          Terminal model
-          <input value={draft.terminalModel} onChange={(e) => setDraft((c) => ({ ...c, terminalModel: e.target.value }))} readOnly={!canEdit} className="h-10 rounded-md border border-[var(--oh-border)] px-3" />
-        </label>
-        <label className="grid gap-1 text-sm font-medium">
-          Acquirer
-          <input value={draft.acquirer} onChange={(e) => setDraft((c) => ({ ...c, acquirer: e.target.value }))} readOnly={!canEdit} className="h-10 rounded-md border border-[var(--oh-border)] px-3" />
-        </label>
-      </div>
-
-      <div className="mt-3 flex flex-wrap gap-4 text-sm">
-        <label className="flex items-center gap-2">
-          <input type="checkbox" checked={draft.enabled} disabled={!canEdit} onChange={(e) => setDraft((c) => ({ ...c, enabled: e.target.checked }))} />
-          EFTPOS integration enabled
-        </label>
-        <label className="flex items-center gap-2">
-          <input type="checkbox" checked={draft.paymentsEnabled} disabled={!canEdit} onChange={(e) => setDraft((c) => ({ ...c, paymentsEnabled: e.target.checked }))} />
-          Allow card payments on sell
-        </label>
-        {canEdit && (
+        <div className="flex flex-col gap-2 text-sm">
           <label className="flex items-center gap-2">
-            <input type="checkbox" checked={draft.rotateConnectorToken} onChange={(e) => setDraft((c) => ({ ...c, rotateConnectorToken: e.target.checked }))} />
-            Rotate connector token on save
+            <input type="checkbox" checked={draft.enabled} disabled={!canEdit} onChange={(e) => setDraft((c) => ({ ...c, enabled: e.target.checked }))} />
+            Enable EFTPOS for this register
           </label>
-        )}
-      </div>
+          <label className="flex items-center gap-2">
+            <input type="checkbox" checked={draft.paymentsEnabled} disabled={!canEdit} onChange={(e) => setDraft((c) => ({ ...c, paymentsEnabled: e.target.checked }))} />
+            Allow card payments on Sell
+          </label>
+        </div>
 
-      {revealedToken && (
-        <label className="mt-3 grid gap-1 text-sm font-medium">
-          Connector token (set ORITHOS_CONNECTOR_TOKEN on this PC)
-          <input readOnly value={revealedToken} className="h-10 rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 font-mono text-xs" />
-        </label>
-      )}
-
-      <div className="mt-4 flex flex-wrap gap-2">
-        {canEdit && (
-          <button type="button" onClick={() => void saveBinding()} disabled={loadBusy || actionBusy} className="inline-flex min-h-10 items-center gap-2 rounded-md bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white disabled:opacity-50">
-            <Save size={15} aria-hidden="true" />
-            Save EFTPOS binding
+        <div className="flex flex-wrap gap-2 border-t border-[var(--oh-border)] pt-4">
+          <button type="button" onClick={() => void runTestPayment()} disabled={loadBusy || actionBusy || !paymentsReady} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-[var(--oh-border)] px-3 text-sm font-semibold disabled:opacity-50">
+            <CreditCard size={15} aria-hidden="true" />
+            Test $1.00
           </button>
-        )}
-        <button type="button" onClick={() => void runTestPayment()} disabled={loadBusy || actionBusy || !paymentsReady} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-[var(--oh-border)] px-3 text-sm font-semibold disabled:opacity-50">
-          <CreditCard size={15} aria-hidden="true" />
-          Test $1.00 (lab)
-        </button>
+        </div>
+
+        <details className="rounded-md border border-[var(--oh-border)] px-3 py-2">
+          <summary className="cursor-pointer text-sm font-medium text-[var(--oh-text)]">More · connector, terminal, diagnostics</summary>
+          <div className="mt-3 space-y-3 pb-1">
+            <div className="flex flex-wrap justify-end">
+              <button
+                type="button"
+                disabled={busy || !registerId}
+                onClick={() => void refreshDiagnosticsClick()}
+                className="inline-flex min-h-9 items-center gap-2 rounded-md border border-[var(--oh-border)] px-3 text-xs font-semibold disabled:opacity-50"
+              >
+                <RefreshCw size={14} className={diagBusy ? "animate-spin" : undefined} aria-hidden="true" />
+                Refresh diagnostics
+              </button>
+            </div>
+            <ul className="grid gap-2 sm:grid-cols-2">
+              {[
+                { label: "Local network access", value: lnaLabel, ok: lna === "granted" },
+                { label: "Orithos Connector", value: connectorLabel, ok: connectorHealth === "reachable" },
+                { label: "Linkly Client", value: connectorStatus ?? "Not checked", ok: Boolean(connectorStatus && /ready|simulated/i.test(connectorStatus)) },
+                { label: "Card payments", value: paymentsReady ? "Enabled" : "Disabled", ok: paymentsReady },
+              ].map((row) => (
+                <li key={row.label} className="flex items-center justify-between gap-2 rounded-md border border-[var(--oh-border)] px-3 py-2 text-xs">
+                  <span className="text-[var(--oh-muted)]">{row.label}</span>
+                  <span className={`font-medium ${row.ok ? "text-emerald-800" : "text-amber-900"}`}>{row.value}</span>
+                </li>
+              ))}
+            </ul>
+            <label className="grid gap-1 text-sm font-medium">
+              Connector URL
+              <input
+                value={draft.connectorBaseUrl}
+                onChange={(event) => setDraft((current) => ({ ...current, connectorBaseUrl: event.target.value }))}
+                readOnly={!canEdit}
+                className="h-10 rounded-md border border-[var(--oh-border)] px-3 font-mono text-xs"
+              />
+            </label>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <label className="grid gap-1 text-sm font-medium">
+                Terminal label
+                <input value={draft.terminalLabel} onChange={(e) => setDraft((c) => ({ ...c, terminalLabel: e.target.value }))} readOnly={!canEdit} className="h-10 rounded-md border border-[var(--oh-border)] px-3" />
+              </label>
+              <label className="grid gap-1 text-sm font-medium">
+                Terminal model
+                <input value={draft.terminalModel} onChange={(e) => setDraft((c) => ({ ...c, terminalModel: e.target.value }))} readOnly={!canEdit} className="h-10 rounded-md border border-[var(--oh-border)] px-3" />
+              </label>
+              <label className="grid gap-1 text-sm font-medium">
+                Acquirer
+                <input value={draft.acquirer} onChange={(e) => setDraft((c) => ({ ...c, acquirer: e.target.value }))} readOnly={!canEdit} className="h-10 rounded-md border border-[var(--oh-border)] px-3" />
+              </label>
+            </div>
+            {canEdit && (
+              <label className="flex items-center gap-2 text-sm">
+                <input type="checkbox" checked={draft.rotateConnectorToken} onChange={(e) => setDraft((c) => ({ ...c, rotateConnectorToken: e.target.checked }))} />
+                Rotate connector token on save
+              </label>
+            )}
+            {revealedToken && (
+              <label className="grid gap-1 text-sm font-medium">
+                Connector token
+                <input readOnly value={revealedToken} className="h-10 rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 font-mono text-xs" />
+                <span className="text-xs font-normal text-[var(--oh-muted)]">Set ORITHOS_CONNECTOR_TOKEN on the EFTPOS PC.</span>
+              </label>
+            )}
+          </div>
+        </details>
       </div>
-      <p className="mt-2 text-xs text-[var(--oh-muted)]">
-        Run the Orithos Linkly Connector on this machine, enable API test mode, and turn on enforce-card-capture only when you are ready to block checkout without terminal approval.
-      </p>
     </section>
   );
 }
