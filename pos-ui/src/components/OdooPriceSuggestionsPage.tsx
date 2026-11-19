@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { AlertCircle, Download, LoaderCircle, RefreshCw, Search, X } from "lucide-react";
-import { formatStoreEpoch } from "@/lib/odoo-date";
+import { formatStoreEpoch } from "@/lib/retail-date";
 import { friendlyProductName } from "@/lib/product-display-name";
 import {
   fetchPriceSuggestions,

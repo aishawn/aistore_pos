@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { useDebouncedValue } from "@/hooks/useApi";
-import { formatOdooDateTime } from "@/lib/odoo-date";
+import { formatStoreDateTime } from "@/lib/retail-date";
 import type { WorkspaceRecords, WorkspaceRecordType } from "@/lib/workspace-records";
 import { fetchWorkspaceRecords } from "@/lib/workspace-records-native";
 
@@ -34,7 +34,7 @@ export function WorkspaceRecordsPanel({ type, toolbarStart, embedded = false, fi
   function display(value: unknown, format?: string) {
     if (value === null || value === undefined || value === false) return "—";
     if (Array.isArray(value)) return String(value[1] ?? "—");
-    if (format === "date") return formatOdooDateTime(String(value), data?.timezone ?? "UTC", { dateStyle: "medium", timeStyle: "short" });
+    if (format === "date") return formatStoreDateTime(String(value), data?.timezone ?? "UTC", { dateStyle: "medium", timeStyle: "short" });
     if (format === "money") return new Intl.NumberFormat("en-AU", { style: "currency", currency: data?.currency ?? "AUD" }).format(Number(value));
     return typeof value === "number" ? new Intl.NumberFormat("en-AU", { maximumFractionDigits: 3 }).format(value) : String(value);
   }

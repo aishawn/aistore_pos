@@ -1,0 +1,1 @@
+export { getOdooCompanyTimezone as getStoreCompanyTimezone } from "./odoo-store-timezone";

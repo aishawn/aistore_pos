@@ -1,3 +1,4 @@
+/** @deprecated Prefer `@/lib/retail-date` in UI code. */
 const DEFAULT_STORE_TIMEZONE = "Australia/Adelaide";
 
 function normalizeOdooDate(value: string | null | undefined): string | null {

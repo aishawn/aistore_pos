@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { ArrowUpRight, Clock3, CreditCard, Edit3, History, Home, LoaderCircle, X } from "lucide-react";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
 import { api, type Page } from "@/lib/api";
-import { formatStoreEpoch } from "@/lib/odoo-date";
+import { formatStoreEpoch } from "@/lib/retail-date";
 import { naturalSortRows } from "@/lib/natural-sort";
 
 type CustomerDetail = {

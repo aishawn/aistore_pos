@@ -1,5 +1,5 @@
 import { amount, auditTime, object, relationId, type AuditRecord, type AuditRpc, type AuditSnapshot } from "./cost-reconciliation.ts";
-import { getOdooCompanyTimezone } from "./odoo-store-timezone.ts";
+import { getStoreCompanyTimezone } from "./retail-store-timezone";
 import { localMidnightUtc, salesDate, shiftDay } from "./replenishment-safety.ts";
 import { createHash } from "node:crypto";
 
@@ -52,7 +52,7 @@ async function auditPeriod(rpc: AuditRpc, options: AuditOptions) {
   if (!/^[a-z0-9-]+$/.test(sourceStore)) throw new Error("Invalid source scope");
   const companies = await rpc<AuditRecord[]>("res.company", "read", [[companyId]], { fields: ["country_id", "state_id"] });
   const company = companies[0]; if (!company || company.id !== companyId) throw new Error("Company unavailable");
-  const timezone = options.timezone || getOdooCompanyTimezone(company.country_id as [number, string], company.state_id as [number, string]);
+  const timezone = options.timezone || getStoreCompanyTimezone(company.country_id as [number, string], company.state_id as [number, string]);
   const now = options.now ?? new Date(), today = salesDate(now.toISOString(), timezone);
   // Last 30 completed business days. The upper business date is exclusive.
   const fromDay = options.fromDay ?? shiftDay(today, -30), toDay = options.toDay ?? today;

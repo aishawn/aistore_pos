@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, LoaderCircle, RefreshCw } from "lucide-react";
 import { api, type Page } from "@/lib/api";
-import { formatStoreEpoch } from "@/lib/odoo-date";
+import { formatStoreEpoch } from "@/lib/retail-date";
 import { naturalSortRows } from "@/lib/natural-sort";
 
 type CustomerDetail = {

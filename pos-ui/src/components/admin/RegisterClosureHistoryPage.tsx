@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AlertTriangle, Download, LoaderCircle, Printer, RefreshCw } from "lucide-react";
 import { api, listRetailRegisters, type Page, type RetailRegister } from "@/lib/api";
-import { formatOdooDateTime, formatStoreEpoch } from "@/lib/odoo-date";
+import { formatStoreDateTime, formatStoreEpoch } from "@/lib/retail-date";
 import { salesDate, shiftDay } from "@/lib/replenishment-safety";
 import { FilterDateRangePicker } from "@/components/admin/FilterDateRangePicker";
 import { ReportColumnChooser } from "@/components/admin/ReportColumnChooser";
@@ -373,8 +373,8 @@ export function RegisterClosureHistoryPage() {
               {visible.map((row) => (
                 <tr key={row.id}>
                   {selectedColumns.includes("register") && <th scope="row" className="px-4 py-3 font-medium">{row.register}<span className="ml-2 text-xs font-normal text-[var(--oh-muted)]">{row.name}</span></th>}
-                  {selectedColumns.includes("opened") && <td className="px-4 py-3 tabular-nums">{row.openedAt ? formatOdooDateTime(String(row.openedAt), timezone) : "—"}</td>}
-                  {selectedColumns.includes("closed") && <td className="px-4 py-3 tabular-nums">{row.closedAt ? formatOdooDateTime(String(row.closedAt), timezone) : "—"}</td>}
+                  {selectedColumns.includes("opened") && <td className="px-4 py-3 tabular-nums">{row.openedAt ? formatStoreDateTime(String(row.openedAt), timezone) : "—"}</td>}
+                  {selectedColumns.includes("closed") && <td className="px-4 py-3 tabular-nums">{row.closedAt ? formatStoreDateTime(String(row.closedAt), timezone) : "—"}</td>}
                   {selectedColumns.includes("expected") && <td className="px-4 py-3 text-right tabular-nums">{row.expected === null ? "—" : money.format(row.expected)}</td>}
                   {selectedColumns.includes("received") && <td className="px-4 py-3 text-right tabular-nums">{row.received === null ? "—" : money.format(row.received)}</td>}
                   {selectedColumns.includes("difference") && <td className={`px-4 py-3 text-right tabular-nums ${row.difference !== null && Math.abs(row.difference) >= 0.005 ? "font-semibold text-amber-800" : ""}`}>{row.difference === null ? "—" : money.format(row.difference)}</td>}
