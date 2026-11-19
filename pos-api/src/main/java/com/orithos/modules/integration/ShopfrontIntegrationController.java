@@ -4104,7 +4104,7 @@ public class ShopfrontIntegrationController {
                 if (quantity.compareTo(BigDecimal.ONE) > 0
                         && barcodeQuantities.contains(quantity.stripTrailingZeros())) {
                     value = value.divide(quantity, 4, RoundingMode.HALF_UP);
-                    if (priceEx != null) priceEx = priceEx.divide(quantity, 4, RoundingMode.HALF_UP);
+                    if (priceEx != null) priceEx = priceEx.divide(quantity, 6, RoundingMode.HALF_UP);
                 }
                 prices.add(new Object[]{productId, quantity, value, priceEx, outletId});
                 if (quantity.compareTo(BigDecimal.ONE) == 0) hasUnitPrice = true;
