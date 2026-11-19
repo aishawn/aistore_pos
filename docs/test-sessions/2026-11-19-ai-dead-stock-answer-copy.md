@@ -36,4 +36,12 @@ Added deterministic coverage for default Chinese wording `有哪些滞销商品�
 
 Authenticated post-deploy checks on Demo and SKR passed 6/6: Chinese default, Chinese explicit 30-day, and English 30-day questions in each store. Every response was HTTP 200 / API code 0, deterministic `report_dead_stock`, `llmFallback=false`, `reportDataStatus=incomplete`, freshness warning present, and `writeRequests=[]`. The requests create normal assistant audit/session records but no POS business writes. No provider generation call was used by this selected route set.
 
-Remaining limitation: broader LLM-classified questions were not re-tested, and the secondary failure-event SQL error is not fixed by this route change. The combined dead-stock data source still has no trusted sales freshness watermark.
+Remaining limitation: broader LLM-classified questions were not re-tested. The combined dead-stock data source still has no trusted sales freshness watermark.
+
+## Follow-up diagnostics
+
+Read-only investigation against the current POS PostgreSQL schema prepared (but did not execute) the `platform_alert` upsert/search/status-update and `platform_failure_event` insert statements successfully. The old `BadSqlGrammarException` is therefore not reproducible against the current schema and SQL; no SQL change was made. Existing server logs no longer retain the original event, so its SQLState and exact failing statement remain unknown.
+
+The AI gateway failure logs now record the upstream HTTP status when available and the deepest exception type, without logging exception messages, prompts, response bodies, or credentials. Failure-event persistence logs now include only SQLState and JDBC vendor code in addition to exception types. Java 21 focused tests passed for both diagnostics. These fields are intended to identify the failing layer on the next naturally occurring classification error; no paid model request was made for diagnosis.
+
+This does not yet verify general classification online. Re-test a representative classified question after deployment only when needed, and use its correlation ID to inspect `providerStatus` and `causeType`. Do not infer provider health from container health alone.

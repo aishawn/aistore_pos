@@ -90,9 +90,9 @@ public class PlatformFailureEventService {
                         record.correlationId(), record.runtimeCommit(), record.occurredAt());
             }
         } catch (RuntimeException persistenceError) {
-            log.error("Platform failure event could not be persisted correlationId={} failureType={} captureErrorType={}",
+            log.error("Platform failure event could not be persisted correlationId={} failureType={} captureErrorType={} sqlState={} sqlVendorCode={}",
                     CorrelationIdContext.current(), error == null ? "unknown" : error.getClass().getSimpleName(),
-                    persistenceError.getClass().getSimpleName());
+                    persistenceError.getClass().getSimpleName(), sqlState(persistenceError), sqlVendorCode(persistenceError));
         }
     }
 
@@ -151,4 +151,34 @@ public class PlatformFailureEventService {
     }
 
     private static String nullToEmpty(String value) { return value == null ? "" : value; }
+
+    static String sqlState(Throwable failure) {
+        Throwable current = failure;
+        for (int depth = 0; current != null && depth < 32; depth++) {
+            if (current instanceof org.springframework.dao.DataAccessException dataAccess) {
+                Throwable cause = dataAccess.getCause();
+                if (cause instanceof java.sql.SQLException sql) return sql.getSQLState();
+            }
+            if (current instanceof java.sql.SQLException sql) return sql.getSQLState();
+            Throwable next = current.getCause();
+            if (next == current) break;
+            current = next;
+        }
+        return null;
+    }
+
+    static Integer sqlVendorCode(Throwable failure) {
+        Throwable current = failure;
+        for (int depth = 0; current != null && depth < 32; depth++) {
+            if (current instanceof org.springframework.dao.DataAccessException dataAccess) {
+                Throwable cause = dataAccess.getCause();
+                if (cause instanceof java.sql.SQLException sql) return sql.getErrorCode();
+            }
+            if (current instanceof java.sql.SQLException sql) return sql.getErrorCode();
+            Throwable next = current.getCause();
+            if (next == current) break;
+            current = next;
+        }
+        return null;
+    }
 }

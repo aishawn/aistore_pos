@@ -16,6 +16,7 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientResponseException;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -121,8 +122,8 @@ public final class RemoteAiGateway implements AiGateway {
                 }
             }
         }
-        log.warn("AI media request failed task={} correlationId={} type={}", task, tenant.correlationId(),
-                last == null ? "unknown" : last.getClass().getSimpleName());
+        log.warn("AI media request failed task={} correlationId={} providerStatus={} causeType={}", task,
+                tenant.correlationId(), providerStatus(last), rootCauseType(last));
         throw last == null ? new IllegalStateException("AI provider request failed") : last;
     }
 
@@ -225,8 +226,8 @@ public final class RemoteAiGateway implements AiGateway {
                 last = failure;
             }
         }
-        log.warn("AI provider request failed task={} correlationId={} type={}",
-                task, tenant.correlationId(), last == null ? "unknown" : last.getClass().getSimpleName());
+        log.warn("AI provider request failed task={} correlationId={} providerStatus={} causeType={}",
+                task, tenant.correlationId(), providerStatus(last), rootCauseType(last));
         throw last == null ? new IllegalStateException("AI provider request failed") : last;
     }
 
@@ -280,8 +281,8 @@ public final class RemoteAiGateway implements AiGateway {
                 throw rejected;
             } catch (RuntimeException failure) { last = failure; }
         }
-        log.warn("AI tool request failed task={} correlationId={} type={}", task, tenant.correlationId(),
-                last == null ? "unknown" : last.getClass().getSimpleName());
+        log.warn("AI tool request failed task={} correlationId={} providerStatus={} causeType={}",
+                task, tenant.correlationId(), providerStatus(last), rootCauseType(last));
         throw last == null ? new IllegalStateException("AI provider request failed") : last;
     }
 
@@ -380,6 +381,26 @@ public final class RemoteAiGateway implements AiGateway {
 
     private static int nonNegative(Integer value) { return value == null ? 0 : Math.max(0, value); }
     private static int nonNegative(int value) { return Math.max(0, value); }
+
+    static Integer providerStatus(Throwable failure) {
+        Throwable current = failure;
+        for (int depth = 0; current != null && depth < 32; depth++) {
+            if (current instanceof RestClientResponseException response) return response.getStatusCode().value();
+            Throwable next = current.getCause();
+            if (next == current) break;
+            current = next;
+        }
+        return null;
+    }
+
+    static String rootCauseType(Throwable failure) {
+        if (failure == null) return "unknown";
+        Throwable root = failure;
+        for (int depth = 0; depth < 32 && root.getCause() != null && root.getCause() != root; depth++) {
+            root = root.getCause();
+        }
+        return root.getClass().getSimpleName();
+    }
 
     private record CallOutcome<T>(T value, Integer inputTokens, Integer outputTokens) { }
 

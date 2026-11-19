@@ -6,6 +6,9 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.jdbc.BadSqlGrammarException;
+
+import java.sql.SQLException;
 
 import java.util.Map;
 
@@ -47,5 +50,13 @@ class PlatformFailureEventServiceTest {
         assertFalse(event.getValue().errorSummary().contains("top.secret"));
         assertFalse(event.getValue().errorSummary().contains("customer@example.com"));
         assertFalse(event.getValue().errorSummary().contains("0412345678"));
+    }
+
+    @Test
+    void extractsSqlStateAndVendorCodeWithoutLoggingDatabaseMessage() {
+        var failure = new BadSqlGrammarException("record", "insert ... private-value", new SQLException("private-value", "42601", 7));
+
+        assertEquals("42601", PlatformFailureEventService.sqlState(failure));
+        assertEquals(7, PlatformFailureEventService.sqlVendorCode(failure));
     }
 }
