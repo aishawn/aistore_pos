@@ -2010,6 +2010,9 @@ public class ShopfrontIntegrationController {
         }
         ensureMappingTable();
         ensureShadowTables();
+        if ("products".equals(type)) {
+            ensureNativeProductReadIndexes();
+        }
         List<Map<String, Object>> mappings = jdbc.queryForList(
                 "SELECT outlet_id, shopfront_outlet, enabled FROM shopfront_store_mapping WHERE store_key = ?",
                 storeKey);
@@ -2573,6 +2576,14 @@ public class ShopfrontIntegrationController {
         jdbc.update("CREATE TABLE IF NOT EXISTS shopfront_supplier_business_mapping (store_key VARCHAR(64) NOT NULL, source_id " + key + " NOT NULL, outlet_id BIGINT NOT NULL, supplier_id BIGINT NOT NULL, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (store_key, source_id, outlet_id))");
         jdbc.update("CREATE TABLE IF NOT EXISTS shopfront_product_mapping (store_key VARCHAR(64) NOT NULL, source_product_id " + key + " NOT NULL, pos_product_id BIGINT NOT NULL, match_type VARCHAR(32) NOT NULL, status VARCHAR(32) NOT NULL, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (store_key, source_product_id))");
         jdbc.update("CREATE TABLE IF NOT EXISTS shopfront_product_barcode_audit (id BIGSERIAL PRIMARY KEY, outlet_id BIGINT NOT NULL, source_product_id VARCHAR(160) NOT NULL, barcode VARCHAR(128) NOT NULL, previous_pos_product_id BIGINT NOT NULL, new_pos_product_id BIGINT NOT NULL, reason VARCHAR(96) NOT NULL, catalog_fingerprint VARCHAR(64), recorded_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP)");
+    }
+
+    private void ensureNativeProductReadIndexes() {
+        if (!isPostgres()) return;
+        jdbc.update("CREATE INDEX IF NOT EXISTS idx_shopfront_native_product_price "
+                + "ON product_price (product_id,outlet_id,quantity,price) INCLUDE (price_ex)");
+        jdbc.update("CREATE INDEX IF NOT EXISTS idx_shopfront_native_product_supplier "
+                + "ON product_supplier (product_id,outlet_id,supplier_id) INCLUDE (code,minimum_order_quantity)");
     }
 
     /**

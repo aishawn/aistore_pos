@@ -416,6 +416,17 @@ class ShopfrontIntegrationControllerTest {
     @Test
     void nativeProductDataUsesExistingMdbIdColumnForSkuField() {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        DataSource dataSource = mock(DataSource.class);
+        Connection connection = mock(Connection.class);
+        DatabaseMetaData metadata = mock(DatabaseMetaData.class);
+        when(jdbc.getDataSource()).thenReturn(dataSource);
+        try {
+            when(dataSource.getConnection()).thenReturn(connection);
+            when(connection.getMetaData()).thenReturn(metadata);
+            when(metadata.getDatabaseProductName()).thenReturn("PostgreSQL");
+        } catch (Exception e) {
+            throw new AssertionError(e);
+        }
         when(jdbc.queryForList(contains("shopfront_store_mapping"), eq("skr")))
                 .thenReturn(List.of(Map.of("outlet_id", 48L, "shopfront_outlet", "skr", "enabled", true)));
         when(jdbc.queryForObject(contains("COUNT(*)"), eq(Integer.class), any(Object[].class))).thenReturn(0);
@@ -441,6 +452,8 @@ class ShopfrontIntegrationControllerTest {
         verify(jdbc).queryForList(contains("AS suppliers"), any(Object[].class));
         verify(jdbc).queryForList(contains("track_inventory"), any(Object[].class));
         verify(jdbc, never()).queryForList(contains("p.sku"), any(Object[].class));
+        verify(jdbc).update(contains("idx_shopfront_native_product_price"));
+        verify(jdbc).update(contains("idx_shopfront_native_product_supplier"));
         ArgumentCaptor<Object[]> productQueryArgs = ArgumentCaptor.forClass(Object[].class);
         verify(jdbc).queryForList(contains("category_name"), productQueryArgs.capture());
         assertEquals("skr", productQueryArgs.getValue()[0]);
