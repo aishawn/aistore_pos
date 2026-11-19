@@ -59,16 +59,17 @@ export function stockValueHonestyAcceptance(assistant) {
   const cardText = JSON.stringify(assistant?.cards ?? []);
   const incomplete = String(assistant?.reportDataStatus).toLowerCase() === "incomplete";
   const unavailableCopy = /inventory value is unavailable|库存价值暂不可用/i.test(answer);
-  const costGapVisible = /no on-hand products have verifiable positive costs|没有[^。；;]*可验证[^。；;]*正成本/i.test(answer);
-  const noInventedAmount = !/(?:AUD\s*)\$?\s*[\d,]+\.\d{2}/i.test(answer);
+  const costGapVisible = /no on-hand products have verifiable positive costs|products? were not valued|complete inventory value is unavailable|没有[^。；;]*可验证[^。；;]*正成本|商品[^。；;]*(?:未计价|未估值)|完整库存金额暂不可用/i.test(answer);
+  const amountsAreLabelled = !/(?:complete|full|total) inventory value\s*(?:is|:)?\s*(?:AUD\s*)\$?[\d,]+\.\d{2}/i.test(answer)
+    && !/(?:完整库存金额|全店库存总值|库存总金额)\s*(?:为|是|:|：)?\s*(?:AUD\s*)\$?[\d,]+(?:\.\d{2})?/i.test(answer);
   const unvaluedCountVisible = /\b\d[\d,]*\s+products?\s+(?:were\s+)?not\s+valued|\d[\d,]*\s*(?:个)?商品[^。；;]*(?:未计价|未估值)/i.test(answer);
   const provenance = assistant?.dataSource === AUTHORITATIVE_SOURCE
     && assistant?.storeScope === "current_authenticated_store";
   const noWrites = Array.isArray(assistant?.writeRequests) && assistant.writeRequests.length === 0;
   return {
-    checks: { incomplete, unavailableCopy, costGapVisible, noInventedAmount, unvaluedCountVisible, provenance, noWrites },
+    checks: { incomplete, unavailableCopy, costGapVisible, amountsAreLabelled, unvaluedCountVisible, provenance, noWrites },
     evidence: { answer, cardText },
-    passed: incomplete && unavailableCopy && costGapVisible && noInventedAmount
+    passed: incomplete && unavailableCopy && costGapVisible && amountsAreLabelled
       && unvaluedCountVisible && provenance && noWrites,
   };
 }

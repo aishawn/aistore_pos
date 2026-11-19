@@ -91,6 +91,25 @@ test("stock value gaps pass only when the incomplete status and reason stay expl
   assert.equal(stockValueHonestyAcceptance({ ...response, reportDataStatus: "available" }).passed, false);
 });
 
+test("partial stock value accepts a labelled known-cost subtotal without implying a full total", () => {
+  const response = {
+    answer: "Known-cost on-hand inventory subtotal: AUD 402501.73 across 3080 products; 4 products were not valued, so the complete inventory value is unavailable. Top 8 items subtotal AUD 23379.99.",
+    reportDataStatus: "incomplete",
+    dataSource: "orithos_ledger",
+    storeScope: "current_authenticated_store",
+    writeRequests: [],
+  };
+  assert.equal(stockValueHonestyAcceptance(response).passed, true);
+  assert.equal(stockValueHonestyAcceptance({
+    ...response,
+    answer: "Complete inventory value is AUD 402501.73.",
+  }).passed, false);
+  assert.equal(stockValueHonestyAcceptance({
+    ...response,
+    answer: "Known-cost on-hand inventory subtotal: AUD 402501.73 across 3080 products.",
+  }).passed, false);
+});
+
 test("product count matches the authenticated active catalogue without requiring report metadata", () => {
   const response = {
     intent: "product_count",
