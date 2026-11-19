@@ -95,10 +95,10 @@ export function RadialPie({
     : Math.max(
         0,
         Math.min(
-          size.width / 2 - 106,
-          size.height / 2 - 86,
-          (size.width / 2 - 168) / 0.866,
-          218,
+          size.width / 2 - 96,
+          size.height / 2 - 68,
+          (size.width / 2 - 152) / 0.866,
+          variant === "page" ? 252 : 218,
         ),
       );
   const close = (restore = false) => {
