@@ -97,6 +97,14 @@ class AssistantFastPathRouterTest {
         assertEquals("report_dead_stock", defaultRange.intent());
         assertEquals("30", defaultRange.slots().get("days"));
 
+        AssistantFastPathRouter.Match chineseDefault = AssistantFastPathRouter.maybeMatch("有哪些滞销商品？");
+        assertEquals("report_dead_stock", chineseDefault.intent());
+        assertEquals("30", chineseDefault.slots().get("days"));
+
+        AssistantFastPathRouter.Match chineseExplicit = AssistantFastPathRouter.maybeMatch("最近30天有哪些滞销商品？");
+        assertEquals("report_dead_stock", chineseExplicit.intent());
+        assertEquals("30", chineseExplicit.slots().get("days"));
+
         for (String question : new String[]{
                 "Show dead stock for the last 30 days",
                 "What products have had no sales in the last 30 days?"

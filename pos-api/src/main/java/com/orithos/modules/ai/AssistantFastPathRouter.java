@@ -93,12 +93,13 @@ public final class AssistantFastPathRouter {
                     + "(?:(?:which|what)\\s+)?products?\\s+(?:have\\s+had\\s+|had\\s+)?no\\s+sales\\s+in\\s+the\\s+last\\s+(\\d+)\\s+days?|"
                     + "(?:连续|近|最近|过去)\\s*(\\d+)\\s*天(?:没有销售|无销售|没销售|未销售)的?(?:商品|产品)?(?:有哪些|有哪一些|列表)?|"
                     + "(?:哪些|什么)(?:商品|产品)(?:连续|近|最近|过去)\\s*(\\d+)\\s*天(?:没有销售|无销售|没销售|未销售)(?:的)?(?:有哪些|有哪一些|列表)?|"
-                    + "(?:连续|近|最近|过去)\\s*(\\d+)\\s*天(?:没有销售|无销售|没销售|未销售)(?:的)?(?:商品|产品)(?:有哪些|有哪一些|列表)?)[?.!。！？]*$",
+                    + "(?:连续|近|最近|过去)\\s*(\\d+)\\s*天(?:没有销售|无销售|没销售|未销售)(?:的)?(?:商品|产品)(?:有哪些|有哪一些|列表)?|"
+                    + "(?:近|最近|过去)\\s*(\\d+)\\s*天(?:内)?(?:有哪些|什么)(?:滞销商品|滞销品))?[?.!。！？]*$",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern DEAD_STOCK_DEFAULT = Pattern.compile(
             "^(?:dead\\s+stock|dead\\s+inventory|slow\\s+moving\\s+stock|"
                     + "which\\s+products?\\s+have\\s+had\\s+no\\s+sales|"
-                    + "哪些商品连续没有销售|哪些商品没有销售|滞销商品|死库存|哪些是滞销品)[?.!。！？]*$",
+                    + "哪些商品连续没有销售|哪些商品没有销售|有哪些(?:滞销商品|滞销品)|滞销商品|死库存|哪些是滞销品)[?.!。！？]*$",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern STOCK_VALUE = Pattern.compile(
             "^(?:(?:which\\s+)?(?:inventory|stock)(?:\\s+items?)?\\s+(?:tie|ties)\\s+up\\s+(?:the\\s+)?most\\s+(?:cash|money|capital)|"
@@ -413,7 +414,8 @@ public final class AssistantFastPathRouter {
             String days = firstNonNull(
                     deadStockRange.group(1), deadStockRange.group(2),
                     deadStockRange.group(3), deadStockRange.group(4),
-                deadStockRange.group(5), deadStockRange.group(6));
+                    deadStockRange.group(5), deadStockRange.group(6), deadStockRange.group(7),
+                    deadStockRange.group(8));
             return new Match(
                     "report_dead_stock",
                     "Dead stock report",
