@@ -431,6 +431,8 @@ class ShopfrontIntegrationControllerTest {
         verify(jdbc).queryForList(contains("p.updated_at AS pos_updated_at"), any(Object[].class));
         verify(jdbc).queryForList(contains("p.cost_percentage"), any(Object[].class));
         verify(jdbc).queryForList(contains("p.shopfront_source_updated_at AS source_updated_at"), any(Object[].class));
+        verify(jdbc).queryForList(contains("product_barcode"), any(Object[].class));
+        verify(jdbc).queryForList(contains("AS barcodes"), any(Object[].class));
         verify(jdbc, never()).queryForList(contains("p.sku"), any(Object[].class));
     }
 
