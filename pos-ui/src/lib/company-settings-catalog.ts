@@ -1,6 +1,6 @@
 /** Shopfront-aligned company KV field definitions for Orithos Settings UI. */
 
-export type CompanyFieldType = "text" | "number" | "boolean" | "select" | "json";
+export type CompanyFieldType = "text" | "number" | "boolean" | "select" | "json" | "string-list";
 
 export type CompanyField = {
   key: string;
@@ -104,6 +104,8 @@ export const COMPANY_SECTIONS: CompanySection[] = [
       { key: "company.sell.allow_cash_out_without_sale", label: "Allow cash out without sale", type: "boolean" },
       { key: "company.sell.require_note_on_parked_sale", label: "Require Note on Parked Sale", type: "boolean" },
       { key: "company.sell.invoice_number_length", label: "Invoice number length", type: "number" },
+      { key: "company.sell.cash_in_reasons", label: "Cash In Reasons", description: "One reason per line when editing; stored as JSON.", type: "string-list" },
+      { key: "company.sell.cash_out_reasons", label: "Cash Out Reasons", description: "One reason per line when editing; stored as JSON.", type: "string-list" },
     ],
   },
   {
@@ -121,8 +123,17 @@ export const COMPANY_SECTIONS: CompanySection[] = [
     href: "/settings/company/date-time",
     fields: [
       { key: "company.timezone", label: "Timezone", type: "text" },
-      { key: "company.date_format", label: "Date Format", type: "text" },
-      { key: "company.time_format", label: "Time Format", type: "text" },
+      { key: "company.date_format", label: "Date Format", type: "select", options: [
+        { value: "DD/MM/YYYY", label: "DD/MM/YYYY" },
+        { value: "MM/DD/YYYY", label: "MM/DD/YYYY" },
+        { value: "YYYY-MM-DD", label: "YYYY-MM-DD" },
+      ]},
+      { key: "company.time_format", label: "Time Format", type: "select", options: [
+        { value: "HH:mm", label: "HH:mm" },
+        { value: "HH:mm:ss", label: "HH:mm:ss" },
+        { value: "hh:mm a", label: "hh:mm a" },
+        { value: "hh:mm:ss a", label: "hh:mm:ss a" },
+      ]},
       { key: "company.start_of_week", label: "Start of the Week", type: "select", options: [
         { value: "MONDAY", label: "Monday" },
         { value: "SUNDAY", label: "Sunday" },

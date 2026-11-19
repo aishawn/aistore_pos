@@ -6,6 +6,7 @@ import { CompanySettingsScaffold } from "@/components/admin/CompanySettingsScaff
 import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { type CompanyField, type CompanySection } from "@/lib/company-settings-catalog";
+import { formatCompanySetting, serializeCompanySetting, validateCompanySetting } from "@/lib/company-settings-form";
 
 type SettingView = { name: string; value: string; datatype?: string; orithosOwned?: boolean; persisted?: boolean };
 
@@ -31,7 +32,8 @@ export function CompanyKvEditor({ section }: { section: CompanySection }) {
       const bundle = await api.get<Record<string, SettingView>>("/api/settings/company");
       const next: Record<string, string> = {};
       for (const field of section.fields) {
-        next[field.key] = bundle[field.key]?.value ?? "";
+        const raw = bundle[field.key]?.value ?? "";
+        next[field.key] = field.type === "string-list" ? formatCompanySetting(field, raw) : raw;
       }
       setValues(next);
       setSaved(next);
@@ -53,10 +55,19 @@ export function CompanyKvEditor({ section }: { section: CompanySection }) {
     setError(null);
     setNotice(null);
     try {
+      for (const field of section.fields) {
+        const message = validateCompanySetting(field, values[field.key] ?? "");
+        if (message) {
+          setError(message);
+          setBusy(false);
+          return;
+        }
+      }
       const payload: Record<string, string> = {};
       for (const field of section.fields) {
         if (values[field.key] !== saved[field.key]) {
-          payload[field.key] = values[field.key] ?? "";
+          const draft = values[field.key] ?? "";
+          payload[field.key] = field.type === "string-list" ? serializeCompanySetting(field, draft) : draft;
         }
       }
       await api.put("/api/settings/company", payload);
@@ -133,6 +144,14 @@ export function CompanyKvEditor({ section }: { section: CompanySection }) {
                         <option key={option.value} value={option.value}>{option.label}</option>
                       ))}
                     </select>
+                  ) : field.type === "string-list" ? (
+                    <textarea
+                      className={`${inputClass} min-h-[7rem] max-w-lg resize-y py-2`}
+                      disabled={!canEdit || busy}
+                      value={values[field.key] ?? ""}
+                      onChange={(e) => update(field, e.target.value)}
+                      placeholder="One reason per line"
+                    />
                   ) : (
                     <input
                       className={inputClass}
