@@ -87,10 +87,10 @@ public final class AssistantFastPathRouter {
             "^(?:(?:units|quantity)\\s+sold\\s+(?:(?:last|past|previous)\\s+\\d+\\s+days?|this\\s+week)|(?:近|最近|过去)\\s*\\d+\\s*天\\s*(?:销量|销售数量)|这周(?:卖了多少件?|销量(?:是多少)?)|本周(?:卖了多少件?|销量(?:是多少)?))$",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern DEAD_STOCK_RANGE = Pattern.compile(
-            "^(?:(?:dead\\s+stock|dead\\s+inventory|slow\\s+moving\\s+stock)\\s+(?:for\\s+)?(?:last|past|previous)\\s+(\\d+)\\s+days?|"
-                    + "(?:which\\s+)?products?\\s+(?:have\\s+had\\s+)?no\\s+sales\\s+(?:for\\s+)?(?:last\\s+)?(\\d+)\\s+days?|"
-                    + "(?:which\\s+)?products?\\s+(?:have\\s+had\\s+)?no\\s+sales\\s+(?:for\\s+)?(\\d+)\\s+days?|"
-                    + "(?:which\\s+)?products?\\s+(?:have\\s+had\\s+|had\\s+)?no\\s+sales\\s+in\\s+the\\s+last\\s+(\\d+)\\s+days?|"
+            "^(?:(?:show(?:\\s+me)?\\s+)?(?:the\\s+)?(?:dead\\s+stock|dead\\s+inventory|slow\\s+moving\\s+stock)\\s+(?:for\\s+)?(?:the\\s+)?(?:last|past|previous)\\s+(\\d+)\\s+days?|"
+                    + "(?:(?:which|what)\\s+)?products?\\s+(?:have\\s+had\\s+)?no\\s+sales\\s+(?:for\\s+)?(?:last\\s+)?(\\d+)\\s+days?|"
+                    + "(?:(?:which|what)\\s+)?products?\\s+(?:have\\s+had\\s+)?no\\s+sales\\s+(?:for\\s+)?(\\d+)\\s+days?|"
+                    + "(?:(?:which|what)\\s+)?products?\\s+(?:have\\s+had\\s+|had\\s+)?no\\s+sales\\s+in\\s+the\\s+last\\s+(\\d+)\\s+days?|"
                     + "(?:连续|近|最近|过去)\\s*(\\d+)\\s*天(?:没有销售|无销售|没销售|未销售)的?(?:商品|产品)?(?:有哪些|有哪一些|列表)?|"
                     + "(?:哪些|什么)(?:商品|产品)(?:连续|近|最近|过去)\\s*(\\d+)\\s*天(?:没有销售|无销售|没销售|未销售)(?:的)?(?:有哪些|有哪一些|列表)?|"
                     + "(?:连续|近|最近|过去)\\s*(\\d+)\\s*天(?:没有销售|无销售|没销售|未销售)(?:的)?(?:商品|产品)(?:有哪些|有哪一些|列表)?)[?.!。！？]*$",

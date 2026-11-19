@@ -96,6 +96,16 @@ class AssistantFastPathRouterTest {
         AssistantFastPathRouter.Match defaultRange = AssistantFastPathRouter.maybeMatch("slow moving stock");
         assertEquals("report_dead_stock", defaultRange.intent());
         assertEquals("30", defaultRange.slots().get("days"));
+
+        for (String question : new String[]{
+                "Show dead stock for the last 30 days",
+                "What products have had no sales in the last 30 days?"
+        }) {
+            AssistantFastPathRouter.Match natural = AssistantFastPathRouter.maybeMatch(question);
+            assertNotNull(natural, question);
+            assertEquals("report_dead_stock", natural.intent(), question);
+            assertEquals("30", natural.slots().get("days"), question);
+        }
     }
 
     @Test
