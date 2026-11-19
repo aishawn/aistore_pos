@@ -790,45 +790,48 @@ try {
     let stockOracleEvidence = null;
     if (item.stockOracle) {
       try {
-        const stockResponse = await context.request.get(
-          `${base}/api/products?name=${encodeURIComponent(query ?? "")}&page=1&size=50`);
-        const stockBody = await stockResponse.json().catch(() => ({}));
-        const products = Array.isArray(stockBody.data?.items) ? stockBody.data.items : [];
-        const answerQuantity = (name) => {
-          const escapedName = name.trim().split(/\s+/)
-            .map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
-            .join("\\s+");
-          const match = answer.match(new RegExp(`(?:^|[:：;；]\\s*)${escapedName}\\s+(-?\\d+(?:\\.\\d+)?)(?=$|\\s*[;；…])`));
-          return match ? Number(match[1]) : null;
-        };
-        const expectedProducts = products;
-        const productComparisons = expectedProducts.map((product) => {
-          const actual = answerQuantity(String(product.name ?? ""));
-          const expected = Number(product.stockQuantity);
-          return {
-            name: String(product.name ?? ""),
+        const answerList = answer.split(/[:：]/).slice(1).join(":").split(/另有|and \d+ more/i)[0];
+        const answerItems = answerList.split(/[;；]/).map((entry) => {
+          const match = entry.trim().match(/^(.*?)\s+(-?\d+(?:\.\d+)?)(?:\s*……)?$/);
+          return match ? {
+            name: match[1].trim().replace(/\s+/g, " "),
+            searchName: match[1].trim(),
+            actual: Number(match[2]),
+          } : null;
+        }).filter(Boolean).slice(0, 8);
+        const normalizeProductName = (name) => String(name ?? "").trim().replace(/\s+/g, " ").toLocaleLowerCase();
+        const productComparisons = [];
+        let oracleRequestsOk = true;
+        for (const itemAnswer of answerItems) {
+          const stockResponse = await context.request.get(
+            `${base}/api/products?name=${encodeURIComponent(itemAnswer.searchName)}&page=1&size=50`);
+          const stockBody = await stockResponse.json().catch(() => ({}));
+          const products = Array.isArray(stockBody.data?.items) ? stockBody.data.items : [];
+          oracleRequestsOk &&= stockResponse.ok() && stockBody.code === 0;
+          const product = products.find((candidate) => normalizeProductName(candidate.name) === normalizeProductName(itemAnswer.name));
+          const expected = product ? Number(product.stockQuantity) : null;
+          productComparisons.push({
+            name: itemAnswer.name,
             expected,
-            actual,
-            matches: Number.isFinite(expected) && actual !== null && Math.abs(actual - expected) < 0.000001,
-          };
-        });
-        const matchedProducts = productComparisons.filter((comparison) => comparison.actual !== null);
-        const requiredComparisons = Math.min(8, products.length);
-        const quantitiesMatch = matchedProducts.length >= requiredComparisons
-          && matchedProducts.every((comparison) => comparison.matches);
-        const noMatchAnswerCheck = products.length > 0
-          || /no matching stock found|没有找到匹配库存/i.test(answer);
-        stockOracleCheck = stockResponse.ok() && stockBody.code === 0
-          && (products.length === 0 ? noMatchAnswerCheck : expectedProducts.length > 0 && quantitiesMatch);
+            actual: itemAnswer.actual,
+            found: Boolean(product),
+            matches: Number.isFinite(expected) && Math.abs(itemAnswer.actual - expected) < 0.000001,
+          });
+        }
+        const quantitiesMatch = answerItems.length > 0
+          && productComparisons.length === answerItems.length
+          && productComparisons.every((comparison) => comparison.matches);
+        const noMatchAnswerCheck = /no matching stock found|没有找到匹配库存/i.test(answer);
+        stockOracleCheck = oracleRequestsOk && (answerItems.length === 0
+          ? noMatchAnswerCheck
+          : quantitiesMatch);
         stockOracleEvidence = {
-          httpStatus: stockResponse.status(),
-          productCount: Number(stockBody.data?.total ?? products.length),
-          comparedCount: matchedProducts.length,
-          requiredComparisons,
+          oracleRequestsOk,
+          answerProductCount: answerItems.length,
+          comparedCount: productComparisons.filter((comparison) => comparison.found).length,
           quantitiesMatch,
           ...(quantitiesMatch ? {} : {
-            mismatches: matchedProducts.filter((comparison) => !comparison.matches),
-            unmatchedCatalogProducts: Math.max(0, requiredComparisons - matchedProducts.length),
+            mismatches: productComparisons.filter((comparison) => !comparison.matches),
           }),
           noMatchAnswerCheck,
         };
