@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { afterEach, test } from "node:test";
-import { resolveLocalNetworkAccessState } from "./local-network-access.ts";
+import { resolveHardwareNetworkAccessState, resolveLocalNetworkAccessState } from "./local-network-access.ts";
 
 const originalWindow = globalThis.window;
 
@@ -30,6 +30,22 @@ test("returns granted when loopback and local permissions are granted", async ()
     },
   });
   assert.equal(await resolveLocalNetworkAccessState(), "granted");
+});
+
+test("hardware gate grants when loopback is granted even if local is still prompt", async () => {
+  setWindow({
+    isSecureContext: true,
+    navigator: {
+      permissions: {
+        query: async ({ name }: { name: string }) => ({
+          state: name === "loopback-network" ? "granted" : "prompt",
+          addEventListener: () => undefined,
+        }),
+      },
+    },
+  });
+  assert.equal(await resolveLocalNetworkAccessState(), "prompt");
+  assert.equal(await resolveHardwareNetworkAccessState(), "granted");
 });
 
 test("returns denied when either granular permission is denied", async () => {
