@@ -23,7 +23,6 @@ import { fetchAiClientConfig } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { OverviewHeader } from "./OverviewHeader";
 import { OverviewStorePulse } from "./OverviewStorePulse";
-import { OverviewWeeklyTrend } from "./OverviewWeeklyTrend";
 import { RadialPie } from "./RadialPie";
 import { money, useOverview } from "./useOverview";
 import { useAiAssistant } from "@/lib/ai-assistant";
@@ -339,12 +338,6 @@ export function OverviewPageContent({
                     </div>
                   </section>
                 ) : <section className="ov-pulse-panel" aria-label="Store pulse unavailable"><div className="ov-pulse-title"><BarChart3 size={18} aria-hidden="true" /><h2>Store pulse</h2></div><p className="ov-pulse-pending" role="status">Store numbers are unavailable. Retry loading the dashboard.</p></section>}
-                {canReport ? (
-                  <OverviewWeeklyTrend
-                    sales={data?.weeklyTrend ?? []}
-                    loading={loading && !data}
-                  />
-                ) : null}
                 <section className="ov-insights-panel">
                   <div className="ov-panel-heading">
                     <span className="ov-panel-icon ov-panel-icon-green"><Lightbulb size={18} /></span>

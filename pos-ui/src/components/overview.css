@@ -880,10 +880,10 @@
 .ov-radial-dashboard {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(320px, 460px);
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 440px);
   gap: 28px;
   align-items: start;
-  min-height: 520px;
+  min-height: 460px;
 }
 .ov-radial-main {
   position: relative;
@@ -975,7 +975,8 @@
   backdrop-filter: none;
 }
 .ov-insights-panel {
-  padding: 18px 12px 10px;
+  flex: 1 1 auto;
+  padding: 20px 16px 14px;
 }
 .ov-panel-heading {
   display: flex;
