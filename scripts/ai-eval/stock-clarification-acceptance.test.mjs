@@ -82,3 +82,12 @@ test("workflow UAT checks deployment SHA before login and AI endpoint probes", (
   assert.ok(guard < source.indexOf("let login;"));
   assert.ok(guard < source.indexOf('"/api/ai/assistant"'));
 });
+
+test("last-week report UAT stops before login when runtime SHA is wrong", () => {
+  const source = fs.readFileSync(path.join(repoRoot, "scripts", "pilot-ai-last-week-readonly-uat.mjs"), "utf8");
+  const guard = source.indexOf("if (!runtimePreflight.allowed)");
+
+  assert.notEqual(guard, -1);
+  assert.ok(guard < source.indexOf("/api/auth/login"));
+  assert.ok(guard < source.indexOf("/api/ai/assistant"));
+});

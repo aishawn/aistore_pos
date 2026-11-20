@@ -8,6 +8,7 @@ import {
   assistantReportAcceptance,
   previousCompleteBusinessWeek,
 } from "./ai-eval/orithos-report-assertions.mjs";
+import { assistantRuntimePreflight } from "./ai-eval/stock-clarification-acceptance.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const envFile = process.env.PILOT_ENV_FILE || path.join(root, ".env");
@@ -35,6 +36,7 @@ const version = await fetch(`${base}/api/public/version`, { signal: AbortSignal.
 const frontendCommit = version.body.frontend?.commit ?? null;
 const backendCommit = version.body.backend?.commit ?? null;
 const runtimeCommit = frontendCommit && frontendCommit === backendCommit ? backendCommit : null;
+const runtimePreflight = assistantRuntimePreflight(version.body, sourceCommit);
 const checks = [];
 const add = (name, passed, evidence) => checks.push({ name, status: passed ? "PASS" : "FAIL", evidence });
 const browser = await chromium.launch({ headless: true });
@@ -42,6 +44,7 @@ const context = await browser.newContext();
 let authenticated = false;
 let period = null;
 try {
+  if (!runtimePreflight.allowed) throw new Error("RUNTIME_SHA_MISMATCH; assistant questions were not sent");
   const login = await context.request.post(`${base}/api/auth/login`, {
     data: { username, password }, headers: { Origin: base }, timeout: 60000,
   });
@@ -114,7 +117,11 @@ try {
     });
   }
 } catch (error) {
-  add("last-week read-only UAT completed", false, safeErrorSummary(error));
+  if (/RUNTIME_SHA_MISMATCH/.test(error instanceof Error ? error.message : "")) {
+    checks.push({ name: "runtime identity", status: "BLOCKED", evidence: runtimePreflight });
+  } else {
+    add("last-week read-only UAT completed", false, safeErrorSummary(error));
+  }
 } finally {
   if (authenticated) await context.request.post(`${base}/api/auth/logout`, { headers: { Origin: base } }).catch(() => null);
   await context.close();
@@ -133,7 +140,9 @@ const output = {
   checks,
   passed: checks.filter((check) => check.status === "PASS").length,
   failed: checks.filter((check) => check.status === "FAIL").length,
-  status: runtimeCommit !== sourceCommit ? "BLOCKED" : checks.some((check) => check.status === "FAIL") ? "FAIL" : "PASS",
+  blocked: checks.filter((check) => check.status === "BLOCKED").length,
+  status: runtimeCommit !== sourceCommit || checks.some((check) => check.status === "BLOCKED") ? "BLOCKED"
+    : checks.some((check) => check.status === "FAIL") ? "FAIL" : "PASS",
 };
 const outputPath = process.env.PILOT_UAT_OUTPUT_PATH
   ? path.resolve(root, process.env.PILOT_UAT_OUTPUT_PATH)
@@ -141,6 +150,6 @@ const outputPath = process.env.PILOT_UAT_OUTPUT_PATH
 fs.mkdirSync(path.dirname(outputPath), { recursive: true });
 fs.writeFileSync(outputPath, `${JSON.stringify(output, null, 2)}\n`);
 console.log(JSON.stringify({ outputPath, target: base, period, sourceCommit, runtimeCommit,
-  status: output.status, passed: output.passed, failed: output.failed, writes: output.writes.length }));
+  status: output.status, passed: output.passed, blocked: output.blocked, failed: output.failed, writes: output.writes.length }));
 if (output.status === "FAIL") process.exitCode = 1;
 else if (output.status === "BLOCKED") process.exitCode = 2;
