@@ -6,6 +6,7 @@ import {
   assistantReportFreshnessAcceptance,
   REPORT_FRESHNESS_MAX_AGE_MS,
 } from "./ai-eval/assistant-assertions.mjs";
+import { compareStockAnswer, parseStockAnswer } from "./ai-eval/stock-answer-assertions.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const STORE_TIME_ZONE = "Australia/Melbourne";
@@ -274,6 +275,7 @@ const cases = [
   { id: "bulk-price-page-lookup-zh", question: "打开批量改价页面", intent: "navigate", route: "/stock/bulk-price-edit" },
   { id: "stock-lookup-en", question: "How much Carlton Draught is in stock?", intent: "report_stock", query: "Carlton Draught" },
   { id: "stock-lookup-natural-en", question: "What's the stock level for VB Cans?", intent: "report_stock", query: "VB CAN" },
+  { id: "stock-lookup-exact-vb-can-en", question: "How many VB CAN 10PK 375ML are in stock?", intent: "report_stock", query: "VB CAN 10PK 375ML", stockOracle: true },
   { id: "stock-lookup-inventory-en", question: "What is the inventory level for VB Cans?", intent: "report_stock", query: "VB CAN" },
   { id: "stock-lookup-is-in-stock-en", question: "Is VB Cans in stock?", intent: "report_stock", query: "VB CAN" },
   { id: "stock-lookup-left-en", question: "How many VB Cans are left?", intent: "report_stock", query: "VB CAN" },
@@ -840,49 +842,34 @@ try {
     let stockOracleEvidence = null;
     if (item.stockOracle) {
       try {
-        const answerList = answer.split(/[:：]/).slice(1).join(":").split(/另有|and \d+ more/i)[0];
-        const answerItems = answerList.split(/[;；]/).map((entry) => {
-          const match = entry.trim().match(/^(.*?)\s+(-?\d+(?:\.\d+)?)(?:\s*……)?$/);
-          return match ? {
-            name: match[1].trim().replace(/\s+/g, " "),
-            searchName: match[1].trim(),
-            actual: Number(match[2]),
-          } : null;
-        }).filter(Boolean).slice(0, 8);
-        const normalizeProductName = (name) => String(name ?? "").trim().replace(/\s+/g, " ").toLocaleLowerCase();
-        const productComparisons = [];
+        const parsedAnswer = parseStockAnswer(answer);
         let oracleRequestsOk = true;
-        for (const itemAnswer of answerItems) {
+        let product = null;
+        if (parsedAnswer) {
           const stockResponse = await context.request.get(
-            `${base}/api/products?name=${encodeURIComponent(itemAnswer.searchName)}&page=1&size=50`);
+            `${base}/api/products?name=${encodeURIComponent(item.query)}&page=1&size=50`);
           const stockBody = await stockResponse.json().catch(() => ({}));
           const products = Array.isArray(stockBody.data?.items) ? stockBody.data.items : [];
-          oracleRequestsOk &&= stockResponse.ok() && stockBody.code === 0;
-          const product = products.find((candidate) => normalizeProductName(candidate.name) === normalizeProductName(itemAnswer.name));
-          const expected = product ? Number(product.stockQuantity) : null;
-          productComparisons.push({
-            name: itemAnswer.name,
-            expected,
-            actual: itemAnswer.actual,
-            found: Boolean(product),
-            matches: Number.isFinite(expected) && Math.abs(itemAnswer.actual - expected) < 0.000001,
-          });
+          oracleRequestsOk = stockResponse.ok() && stockBody.code === 0;
+          product = products.find((candidate) => String(candidate.name ?? "").trim().replace(/\s+/g, " ").toLocaleLowerCase()
+            === item.query.trim().replace(/\s+/g, " ").toLocaleLowerCase()) ?? null;
         }
-        const quantitiesMatch = answerItems.length > 0
-          && productComparisons.length === answerItems.length
-          && productComparisons.every((comparison) => comparison.matches);
+        const comparison = compareStockAnswer(answer, product);
         const noMatchAnswerCheck = /no matching stock found|没有找到匹配库存/i.test(answer);
-        stockOracleCheck = oracleRequestsOk && (answerItems.length === 0
+        stockOracleCheck = oracleRequestsOk && (parsedAnswer === null
           ? noMatchAnswerCheck
-          : quantitiesMatch);
+          : comparison.matches);
         stockOracleEvidence = {
           oracleRequestsOk,
-          answerProductCount: answerItems.length,
-          comparedCount: productComparisons.filter((comparison) => comparison.found).length,
-          quantitiesMatch,
-          ...(quantitiesMatch ? {} : {
-            mismatches: productComparisons.filter((comparison) => !comparison.matches),
-          }),
+          answerProductCount: parsedAnswer ? 1 : 0,
+          comparedCount: product ? 1 : 0,
+          expected: product ? Number(product.stockQuantity) : null,
+          actual: parsedAnswer?.quantity ?? null,
+          productNameMatches: parsedAnswer && product
+            ? parsedAnswer.name.trim().replace(/\s+/g, " ").toLocaleLowerCase()
+              === String(product.name ?? "").trim().replace(/\s+/g, " ").toLocaleLowerCase()
+            : false,
+          quantitiesMatch: comparison.matches,
           noMatchAnswerCheck,
         };
       } catch (error) {
