@@ -58,6 +58,10 @@ test("refund reporting reconciles gross sales, refunds and net revenue", () => {
   };
   const answer = "Sales for 2026-11-14 were AUD 5284.66 after AUD 9.48 in refunds across 2 refund transactions (gross sales AUD 5294.14); gross profit is unavailable.";
   assert.equal(refundBreakdownAcceptance(answer, report).passed, true);
+  assert.equal(refundBreakdownAcceptance(
+    "2026-11-14营业额 AUD 5284.66（退款 AUD 9.48，共 2 笔，退款前销售额 AUD 5294.14）；毛利暂不可用。",
+    report,
+  ).passed, true);
   assert.equal(refundBreakdownAcceptance(answer.replace("2 refund transactions", "1 refund transaction"), report).passed, false);
   assert.equal(refundBreakdownAcceptance(answer, { ...report, revenue: 5284.65 }).passed, false);
   assert.equal(refundBreakdownAcceptance("营业额 AUD 5284.66", report).passed, false);
