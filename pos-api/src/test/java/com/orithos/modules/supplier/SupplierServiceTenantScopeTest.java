@@ -2,6 +2,7 @@ package com.orithos.modules.supplier;
 
 import com.orithos.common.BusinessException;
 import com.orithos.modules.customer.mapper.ContactMapper;
+import com.orithos.common.BusinessTimezoneService;
 import com.orithos.modules.register.Outlet;
 import com.orithos.modules.register.OutletMapper;
 import com.orithos.modules.supplier.mapper.SupplierAdditionalContactMapper;
@@ -100,7 +101,7 @@ class SupplierServiceTenantScopeTest {
     private static SupplierService service(SupplierMapper suppliers, OutletMapper outlets) {
         return new SupplierService(suppliers, mock(ContactMapper.class),
                 mock(SupplierAuthenticationMapper.class), mock(SupplierAdditionalContactMapper.class),
-                mock(PasswordEncoder.class), outlets);
+                mock(PasswordEncoder.class), outlets, mock(BusinessTimezoneService.class));
     }
 
     private static void setUser(Long id, Long vendorId, Long outletId) {

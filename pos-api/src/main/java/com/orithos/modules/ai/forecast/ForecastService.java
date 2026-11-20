@@ -3,6 +3,7 @@ package com.orithos.modules.ai.forecast;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.orithos.common.BusinessException;
+import com.orithos.common.BusinessTimezoneService;
 import com.orithos.modules.ai.report.TenantContext;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -38,14 +39,17 @@ public class ForecastService {
     private final boolean enabled;
     private final int maxHistoryDays;
     private final int maxProducts;
+    private final BusinessTimezoneService businessTimezone;
 
     public ForecastService(JdbcTemplate jdbc, ForecastClient client, ObjectMapper mapper,
                            @Value("${app.ai.forecast.enabled:false}") boolean enabled,
                            @Value("${app.ai.forecast.max-history-days:365}") int maxHistoryDays,
-                           @Value("${app.ai.forecast.max-products:500}") int maxProducts) {
+                           @Value("${app.ai.forecast.max-products:500}") int maxProducts,
+                           BusinessTimezoneService businessTimezone) {
         this.jdbc = jdbc; this.client = client; this.mapper = mapper; this.enabled = enabled;
         this.maxHistoryDays = Math.max(14, Math.min(maxHistoryDays, 730));
         this.maxProducts = Math.max(1, Math.min(maxProducts, 2000));
+        this.businessTimezone = businessTimezone;
     }
 
     public ForecastDtos.Response forecast(TenantContext tenant, int horizonDays) {
@@ -64,12 +68,13 @@ public class ForecastService {
                 JOIN product p ON p.id = si.product_id AND p.outlet_id = s.outlet_id AND p.deleted_at IS NULL
                 WHERE s.outlet_id = ? AND s.status = 'COMPLETED' AND s.refund_reason IS NULL
                   AND COALESCE(s.business_date, s.local_sold_at::date)
-                      >= (CURRENT_TIMESTAMP AT TIME ZONE 'Australia/Melbourne')::date - ?
+                      >= (CURRENT_TIMESTAMP AT TIME ZONE ?)::date - ?
                 GROUP BY si.product_id, COALESCE(s.business_date, s.local_sold_at::date)
                 ORDER BY si.product_id, business_date
                 """, (org.springframework.jdbc.core.RowCallbackHandler) rs -> grouped.computeIfAbsent(rs.getLong("product_id"), ignored -> new ArrayList<>())
                 .add(new Daily(rs.getDate("business_date").toLocalDate(), rs.getDouble("units_sold"), false)),
-                tenant.vendorId(), tenant.requireOutletId(), maxHistoryDays);
+                tenant.vendorId(), tenant.requireOutletId(), businessTimezone.zoneForVendor(tenant.vendorId()).getId(),
+                maxHistoryDays);
         log.info("AI forecast history loaded vendorId={} outletId={} products={} elapsedMs={}",
                 tenant.vendorId(), tenant.requireOutletId(), grouped.size(), elapsedMs(startedAt));
         for (Map.Entry<Long, List<Daily>> entry : grouped.entrySet()) {
@@ -105,7 +110,7 @@ public class ForecastService {
         series.forEach(item -> expectedProducts.add(item.productId()));
         List<ForecastDtos.Item> items = new ArrayList<>();
         ForecastDtos.Response firstBatch = null;
-        LocalDate forecastStartDate = LocalDate.now();
+        LocalDate forecastStartDate = businessTimezone.today(tenant.vendorId());
         List<List<ForecastDtos.Series>> requestBatches = requestBatches(
                 series, tenant, horizon, sourceVersion, forecastStartDate);
         ExecutorService executor = Executors.newFixedThreadPool(Math.min(4, requestBatches.size()));

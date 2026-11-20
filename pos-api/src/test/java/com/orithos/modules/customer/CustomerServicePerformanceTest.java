@@ -1,6 +1,7 @@
 package com.orithos.modules.customer;
 
 import com.orithos.modules.customer.mapper.ContactMapper;
+import com.orithos.common.BusinessTimezoneService;
 import com.orithos.modules.customer.mapper.CustomerEmailMapper;
 import com.orithos.modules.customer.mapper.CustomerMapper;
 import com.orithos.modules.customer.mapper.CustomerMapper.CustomerDailyQuantity;
@@ -33,7 +34,8 @@ class CustomerServicePerformanceTest {
 
         CustomerService service = new CustomerService(
                 customers, mock(ContactMapper.class), mock(CustomerEmailMapper.class),
-                mock(CustomerRevisionService.class), mock(SaleMapper.class), mock(CustomerGroupService.class));
+                mock(CustomerRevisionService.class), mock(SaleMapper.class), mock(CustomerGroupService.class),
+                mock(BusinessTimezoneService.class));
         service.attachPerformance(List.of(customer), 12L, today);
 
         assertEquals(30, customer.getPerformance30d().size());

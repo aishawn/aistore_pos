@@ -32,7 +32,7 @@ public class Nl2SqlGenerateNode implements NodeAction {
             - Output SQL only (optional ```sql fence). No explanation.
             - Never mention or filter outlet_id / vendor_id / store id; the server injects them on every table scan.
             - Never select or guess cost, last_cost, average_cost, profit, or purchase price.
-            - sold_at and business_date are Australia/Sydney civil time (AEST/AEDT), not UTC.
+            - sold_at and business_date use the tenant's configured business timezone, not UTC.
               Prefer business_date (DATE, yyyy-MM-dd) for a whole day so daylight saving does not drop sales.
               Use ISO datetime literals for sold_at. Do not use JDBC '?' placeholders.
             - Single statement. UNION / WITH / subqueries are allowed; no comments, INTO OUTFILE, or writes.

@@ -30,7 +30,7 @@ class ReportQueryServiceSalesHistoryTaxTest {
                 "date", Date.valueOf(DAY), "sales_transactions", 1, "refund_transactions", 0,
                 "sales_amount", new BigDecimal("11.00"), "refund_amount", BigDecimal.ZERO,
                 "net_sales", new BigDecimal("11.00"), "tax", new BigDecimal("1.00"), "tax_missing_count", 0
-        ))).when(jdbc).queryForList(anyString(), any(Object.class), any(Object.class), any(Object.class));
+        ))).when(jdbc).queryForList(anyString(), any(Object[].class));
 
         Map<String, Object> report = new ReportQueryService(jdbc).nativeSalesHistory(
                 55L, 87L, DAY, DAY);
@@ -41,7 +41,7 @@ class ReportQueryServiceSalesHistoryTaxTest {
         assertEquals(new BigDecimal("1.00"), row.get("tax"));
         verify(jdbc).queryForList(org.mockito.ArgumentMatchers.contains(
                         "line.item_count > 0 AND line.tax_missing_count = 0"),
-                any(Object.class), any(Object.class), any(Object.class));
+                any(Object[].class));
     }
 
     @Test
@@ -52,7 +52,7 @@ class ReportQueryServiceSalesHistoryTaxTest {
                 "date", Date.valueOf(DAY), "sales_transactions", 1, "refund_transactions", 0,
                 "sales_amount", new BigDecimal("11.00"), "refund_amount", BigDecimal.ZERO,
                 "net_sales", new BigDecimal("11.00"), "tax", BigDecimal.ZERO, "tax_missing_count", 1
-        ))).when(jdbc).queryForList(anyString(), any(Object.class), any(Object.class), any(Object.class));
+        ))).when(jdbc).queryForList(anyString(), any(Object[].class));
 
         Map<String, Object> report = new ReportQueryService(jdbc).nativeSalesHistory(
                 55L, 87L, DAY, DAY);
@@ -71,7 +71,7 @@ class ReportQueryServiceSalesHistoryTaxTest {
                 "date", Date.valueOf(DAY), "sales_transactions", 1, "refund_transactions", 0,
                 "sales_amount", new BigDecimal("11.00"), "refund_amount", BigDecimal.ZERO,
                 "net_sales", new BigDecimal("11.00"), "tax", BigDecimal.ZERO, "tax_missing_count", 1
-        ))).when(jdbc).queryForList(anyString(), any(Object.class), any(Object.class), any(Object.class));
+        ))).when(jdbc).queryForList(anyString(), any(Object[].class));
 
         Map<String, Object> report = new ReportQueryService(jdbc).nativeSalesHistory(
                 55L, 87L, DAY, DAY);

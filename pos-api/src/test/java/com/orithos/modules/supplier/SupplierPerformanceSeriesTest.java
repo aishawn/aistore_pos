@@ -1,6 +1,7 @@
 package com.orithos.modules.supplier;
 
 import com.orithos.modules.customer.mapper.ContactMapper;
+import com.orithos.common.BusinessTimezoneService;
 import com.orithos.modules.register.OutletMapper;
 import com.orithos.modules.supplier.mapper.SupplierAdditionalContactMapper;
 import com.orithos.modules.supplier.mapper.SupplierAuthenticationMapper;
@@ -29,7 +30,8 @@ class SupplierPerformanceSeriesTest {
                 mock(SupplierAuthenticationMapper.class),
                 mock(SupplierAdditionalContactMapper.class),
                 mock(PasswordEncoder.class),
-                mock(OutletMapper.class));
+                mock(OutletMapper.class),
+                mock(BusinessTimezoneService.class));
     }
 
     @Test

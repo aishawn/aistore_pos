@@ -1,6 +1,7 @@
 package com.orithos.modules.customer;
 
 import com.orithos.common.BusinessException;
+import com.orithos.common.BusinessTimezoneService;
 import com.orithos.common.CustomerValidationUtils;
 import com.orithos.common.PageResult;
 import com.orithos.common.SqlConstraintUtils;
@@ -15,7 +16,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -28,7 +28,6 @@ public class CustomerService {
 
     public static final int DUPLICATE_CODE = 40904;
     public static final int DUPLICATE_EMAIL = 40905;
-    static final ZoneId STORE_ZONE = ZoneId.of("Australia/Melbourne");
     static final int PERFORMANCE_DAYS = 30;
 
     private final CustomerMapper customerMapper;
@@ -37,19 +36,22 @@ public class CustomerService {
     private final CustomerRevisionService revisionService;
     private final SaleMapper saleMapper;
     private final CustomerGroupService customerGroupService;
+    private final BusinessTimezoneService businessTimezone;
 
     public CustomerService(CustomerMapper customerMapper,
                            ContactMapper contactMapper,
                            CustomerEmailMapper customerEmailMapper,
                            CustomerRevisionService revisionService,
                            SaleMapper saleMapper,
-                           CustomerGroupService customerGroupService) {
+                           CustomerGroupService customerGroupService,
+                           BusinessTimezoneService businessTimezone) {
         this.customerMapper = customerMapper;
         this.contactMapper = contactMapper;
         this.customerEmailMapper = customerEmailMapper;
         this.revisionService = revisionService;
         this.saleMapper = saleMapper;
         this.customerGroupService = customerGroupService;
+        this.businessTimezone = businessTimezone;
     }
 
     public PageResult<Customer> list(String name,
@@ -68,7 +70,7 @@ public class CustomerService {
         int offset = Math.max(0, (page - 1) * size);
         List<Customer> items = customerMapper.page(name, groupIds, includeNoGroup, filterGroups,
                 priceListId, noPriceList, filterPriceList, minOwing, maxOwing, asOfEnd, outletId, size, offset);
-        attachPerformance(items, outletId, LocalDate.now(STORE_ZONE));
+        attachPerformance(items, outletId, businessTimezone.today(CurrentUser.vendorId()));
         return PageResult.of(items,
                 customerMapper.count(name, groupIds, includeNoGroup, filterGroups,
                         priceListId, noPriceList, filterPriceList, minOwing, maxOwing, asOfEnd, outletId),

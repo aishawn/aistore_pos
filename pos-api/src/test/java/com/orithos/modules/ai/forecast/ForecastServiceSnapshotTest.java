@@ -2,6 +2,7 @@ package com.orithos.modules.ai.forecast;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.orithos.common.BusinessException;
+import com.orithos.common.BusinessTimezoneService;
 import com.orithos.modules.ai.report.TenantContext;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -25,7 +26,8 @@ class ForecastServiceSnapshotTest {
     @Test
     void persistsTenantScopedCompletedSnapshot() {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
-        ForecastService service = new ForecastService(jdbc, mock(ForecastClient.class), new ObjectMapper(), true, 56, 2000);
+        ForecastService service = new ForecastService(jdbc, mock(ForecastClient.class), new ObjectMapper(), true, 56, 2000,
+                mock(BusinessTimezoneService.class));
 
         service.persistSnapshot(TENANT, RESPONSE);
 
@@ -41,7 +43,8 @@ class ForecastServiceSnapshotTest {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
         doThrow(new RuntimeException("database unavailable")).when(jdbc)
                 .update(any(String.class), any(), any(), any(), any(), any(), any(), any(), any(), any());
-        ForecastService service = new ForecastService(jdbc, mock(ForecastClient.class), new ObjectMapper(), true, 56, 2000);
+        ForecastService service = new ForecastService(jdbc, mock(ForecastClient.class), new ObjectMapper(), true, 56, 2000,
+                mock(BusinessTimezoneService.class));
 
         assertDoesNotThrow(() -> service.persistSnapshot(TENANT, RESPONSE));
     }
@@ -49,7 +52,8 @@ class ForecastServiceSnapshotTest {
     @Test
     void disabledForecastFailsBeforeReadingTenantData() {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
-        ForecastService service = new ForecastService(jdbc, mock(ForecastClient.class), new ObjectMapper(), false, 56, 2000);
+        ForecastService service = new ForecastService(jdbc, mock(ForecastClient.class), new ObjectMapper(), false, 56, 2000,
+                mock(BusinessTimezoneService.class));
 
         BusinessException error = assertThrows(BusinessException.class, () -> service.forecast(TENANT, 7));
 

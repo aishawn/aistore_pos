@@ -5,6 +5,7 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import com.orithos.config.CorrelationIdContext;
+import com.orithos.common.BusinessTimezoneService;
 import com.orithos.modules.ai.report.TenantContext;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -20,6 +21,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
@@ -43,6 +45,7 @@ class NativeReplenishmentServiceTest {
     void springUsesJdbcConstructorWhenTestClockConstructorAlsoExists() {
         try (AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext()) {
             context.registerBean(JdbcTemplate.class, () -> mock(JdbcTemplate.class));
+            context.registerBean(BusinessTimezoneService.class, () -> mock(BusinessTimezoneService.class));
             context.register(NativeReplenishmentService.class);
 
             context.refresh();
@@ -87,9 +90,12 @@ class NativeReplenishmentServiceTest {
         new NativeReplenishmentService(jdbc).plan(tenant(55L, 87L));
 
         verify(statement).setQueryTimeout(5);
-        verify(statement).setLong(1, 87L);
-        verify(statement).setLong(2, 87L);
+        verify(statement).setString(1, "Australia/Melbourne");
+        verify(statement).setString(2, "Australia/Melbourne");
         verify(statement).setLong(3, 87L);
+        verify(statement).setLong(4, 87L);
+        verify(statement).setString(5, "Australia/Melbourne");
+        verify(statement).setLong(6, 87L);
     }
 
     @Test
@@ -104,7 +110,9 @@ class NativeReplenishmentServiceTest {
             return List.of();
         }).when(jdbc).query(any(PreparedStatementCreator.class), any(RowMapper.class));
 
-        new NativeReplenishmentService(jdbc).plan(tenant(55L, 87L));
+        BusinessTimezoneService timezones = mock(BusinessTimezoneService.class);
+        when(timezones.zoneForVendor(55L)).thenReturn(ZoneId.of("Australia/Adelaide"));
+        new NativeReplenishmentService(jdbc, timezones).plan(tenant(55L, 87L));
 
         ArgumentCaptor<String> sql = ArgumentCaptor.forClass(String.class);
         verify(connection).prepareStatement(sql.capture());
@@ -118,9 +126,12 @@ class NativeReplenishmentServiceTest {
         assertTrue(sql.getValue().contains("LEFT JOIN supplier"));
         assertFalse(sql.getValue().contains("EXISTS (SELECT 1 FROM product_supplier"));
         assertFalse(sql.getValue().contains("(SELECT MAX(ps.minimum_order_quantity)"));
-        verify(statement).setLong(1, 87L);
-        verify(statement).setLong(2, 87L);
+        verify(statement).setString(1, "Australia/Adelaide");
+        verify(statement).setString(2, "Australia/Adelaide");
         verify(statement).setLong(3, 87L);
+        verify(statement).setLong(4, 87L);
+        verify(statement).setString(5, "Australia/Adelaide");
+        verify(statement).setLong(6, 87L);
     }
 
     @Test

@@ -38,13 +38,13 @@ class ReportQueryServiceReportableSaleTest {
                 "total_sales", 5038.48,
                 "transaction_count", 162,
                 "cost", 3620.12
-        ))).when(jdbc).queryForList(anyString(), any(Object.class), any(Object.class));
+        ))).when(jdbc).queryForList(anyString(), any(Object[].class));
         ReportQueryService service = new ReportQueryService(jdbc);
 
         service.dailySales(87L, LocalDate.of(2026, 11, 9));
 
         ArgumentCaptor<String> sql = ArgumentCaptor.forClass(String.class);
-        verify(jdbc).queryForList(sql.capture(), any(Object.class), any(Object.class));
+        verify(jdbc).queryForList(sql.capture(), any(Object[].class));
         String query = sql.getValue();
         assertTrue(query.contains(ReportQueryService.REPORTABLE_SALE_STATUS_SQL));
         assertTrue(query.contains("s.status = 'INCOMPLETE'"));

@@ -1,5 +1,6 @@
 package com.orithos.modules.ai.replenishment;
 
+import com.orithos.common.BusinessTimezoneService;
 import com.orithos.modules.ai.report.TenantContext;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -23,17 +24,19 @@ public class ReplenishmentWorkspaceService {
     private static final int RECENT_PERIOD_DAYS = 28;
     private static final int QUERY_TIMEOUT_SECONDS = 30;
     private static final long INVENTORY_FRESH_MILLIS = Duration.ofHours(26).toMillis();
-    private static final String STORE_ZONE = "Australia/Melbourne";
     private static final String RULES_METHOD = "rules_v1_weighted_velocity";
 
     private final JdbcTemplate jdbc;
     private final boolean forecastEnabled;
+    private final BusinessTimezoneService businessTimezone;
 
     public ReplenishmentWorkspaceService(
             JdbcTemplate jdbc,
-            @Value("${AI_FORECAST_ENABLED:false}") String forecastFlag) {
+            @Value("${AI_FORECAST_ENABLED:false}") String forecastFlag,
+            BusinessTimezoneService businessTimezone) {
         this.jdbc = jdbc;
         this.forecastEnabled = "true".equalsIgnoreCase(forecastFlag == null ? "" : forecastFlag.trim());
+        this.businessTimezone = businessTimezone;
     }
 
     public ReplenishmentWorkspaceView plan(TenantContext tenant, int coverageDays, boolean exceptionOnly, boolean draftEnabled) {
@@ -48,18 +51,18 @@ public class ReplenishmentWorkspaceService {
                 WITH sales AS (
                     SELECT si.product_id,
                            SUM(si.quantity) FILTER (WHERE COALESCE(s.business_date, s.local_sold_at::date)
-                               >= (CURRENT_TIMESTAMP AT TIME ZONE 'Australia/Melbourne')::date - 7) AS sold_7d,
+                           >= (CURRENT_TIMESTAMP AT TIME ZONE ?)::date - 7) AS sold_7d,
                            SUM(si.quantity) FILTER (WHERE COALESCE(s.business_date, s.local_sold_at::date)
-                               >= (CURRENT_TIMESTAMP AT TIME ZONE 'Australia/Melbourne')::date - 28) AS recent_units,
+                           >= (CURRENT_TIMESTAMP AT TIME ZONE ?)::date - 28) AS recent_units,
                            SUM(si.quantity) FILTER (WHERE COALESCE(s.business_date, s.local_sold_at::date)
-                               < (CURRENT_TIMESTAMP AT TIME ZONE 'Australia/Melbourne')::date - 28
+                               < (CURRENT_TIMESTAMP AT TIME ZONE ?)::date - 28
                                AND COALESCE(s.business_date, s.local_sold_at::date)
-                                   >= (CURRENT_TIMESTAMP AT TIME ZONE 'Australia/Melbourne')::date - 56) AS previous_units
+                                   >= (CURRENT_TIMESTAMP AT TIME ZONE ?)::date - 56) AS previous_units
                     FROM sale s
                     JOIN sale_item si ON si.sale_id = s.id AND si.outlet_id = s.outlet_id
                     WHERE s.outlet_id = ? AND s.status = 'COMPLETED' AND s.refund_reason IS NULL
                       AND COALESCE(s.business_date, s.local_sold_at::date)
-                          >= (CURRENT_TIMESTAMP AT TIME ZONE 'Australia/Melbourne')::date - 56
+                          >= (CURRENT_TIMESTAMP AT TIME ZONE ?)::date - 56
                     GROUP BY si.product_id
                 ),
                 barcode AS (
@@ -95,13 +98,20 @@ public class ReplenishmentWorkspaceService {
                 ORDER BY p.name, p.id
                 """);
             statement.setQueryTimeout(QUERY_TIMEOUT_SECONDS);
-            statement.setLong(1, outletId);
-            statement.setLong(2, outletId);
-            statement.setLong(3, outletId);
+            String zone = businessTimezone.zoneForVendor(tenant.vendorId()).getId();
+            statement.setString(1, zone);
+            statement.setString(2, zone);
+            statement.setString(3, zone);
+            statement.setString(4, zone);
+            statement.setString(5, zone);
+            statement.setLong(6, outletId);
+            statement.setLong(7, outletId);
+            statement.setLong(8, outletId);
             return statement;
         }, (rs, rowNum) -> mapRow(rs));
 
-        InventoryMeta inventoryMeta = inventoryMeta(outletId, rows);
+        InventoryMeta inventoryMeta = inventoryMeta(outletId, rows,
+                businessTimezone.zoneForVendor(tenant.vendorId()).getId());
         List<ReplenishmentWorkspaceView.ReplenishmentWorkspaceProduct> products = new ArrayList<>();
         Map<String, Integer> reviewIssueCounts = new HashMap<>();
         int reviewRequired = 0;
@@ -136,7 +146,8 @@ public class ReplenishmentWorkspaceService {
                 exceptionOnly,
                 exceptionOnly ? products.size() : 0,
                 false,
-                new ReplenishmentWorkspaceView.SalesHistory(STORE_ZONE, true, "SIGNED_NET_UNITS"),
+                new ReplenishmentWorkspaceView.SalesHistory(
+                        businessTimezone.zoneForVendor(tenant.vendorId()).getId(), true, "SIGNED_NET_UNITS"),
                 reviewRequired,
                 reviewIssueCounts,
                 Instant.now().toString(),
@@ -277,7 +288,7 @@ public class ReplenishmentWorkspaceService {
         return "LOW";
     }
 
-    private InventoryMeta inventoryMeta(long outletId, List<Row> rows) {
+    private InventoryMeta inventoryMeta(long outletId, List<Row> rows, String timezone) {
         int expected = rows.size();
         int captured = (int) rows.stream().filter(r -> r.onHand() != null).count();
         int negative = (int) rows.stream().filter(r -> r.onHand() != null && r.onHand() < 0).count();
@@ -302,7 +313,7 @@ public class ReplenishmentWorkspaceService {
         ReplenishmentWorkspaceView.InventoryHistory history = new ReplenishmentWorkspaceView.InventoryHistory(
                 status,
                 latest == null ? null : latest.toString(),
-                STORE_ZONE,
+                timezone,
                 expected,
                 captured,
                 expected == 0 ? 0d : captured / (double) expected,

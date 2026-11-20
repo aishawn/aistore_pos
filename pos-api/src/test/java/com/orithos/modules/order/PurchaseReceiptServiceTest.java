@@ -1,6 +1,7 @@
 package com.orithos.modules.order;
 
 import com.orithos.common.BusinessException;
+import com.orithos.common.BusinessTimezoneService;
 import com.orithos.modules.product.Product;
 import com.orithos.modules.product.mapper.ProductMapper;
 import com.orithos.modules.register.OutletMapper;
@@ -24,7 +25,8 @@ import static org.mockito.Mockito.*;
 class PurchaseReceiptServiceTest {
     private final OrderMapper orders = mock(OrderMapper.class);
     private final ProductMapper products = mock(ProductMapper.class);
-    private final OrderService service = new OrderService(orders, mock(OutletMapper.class), mock(SupplierMapper.class), products);
+    private final OrderService service = new OrderService(orders, mock(OutletMapper.class), mock(SupplierMapper.class),
+            products, mock(BusinessTimezoneService.class));
     private final PurchaseReceiptRequest request = new PurchaseReceiptRequest(List.of(
             new PurchaseReceiptRequest.Line(71L, new BigDecimal("4"))));
 

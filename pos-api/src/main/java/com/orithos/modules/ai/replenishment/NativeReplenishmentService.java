@@ -1,6 +1,7 @@
 package com.orithos.modules.ai.replenishment;
 
 import com.orithos.config.CorrelationIdContext;
+import com.orithos.common.BusinessTimezoneService;
 import com.orithos.modules.ai.report.TenantContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,16 +32,27 @@ public class NativeReplenishmentService {
 
     private final JdbcTemplate jdbc;
     private final LongSupplier currentTimeMillis;
+    private final BusinessTimezoneService businessTimezone;
     private final ConcurrentHashMap<CacheKey, CachedPlan> cache = new ConcurrentHashMap<>();
 
-    @Autowired
     public NativeReplenishmentService(JdbcTemplate jdbc) {
-        this(jdbc, System::currentTimeMillis);
+        this(jdbc, System::currentTimeMillis, null);
+    }
+
+    @Autowired
+    public NativeReplenishmentService(JdbcTemplate jdbc, BusinessTimezoneService businessTimezone) {
+        this(jdbc, System::currentTimeMillis, businessTimezone);
     }
 
     NativeReplenishmentService(JdbcTemplate jdbc, LongSupplier currentTimeMillis) {
+        this(jdbc, currentTimeMillis, null);
+    }
+
+    NativeReplenishmentService(JdbcTemplate jdbc, LongSupplier currentTimeMillis,
+                              BusinessTimezoneService businessTimezone) {
         this.jdbc = jdbc;
         this.currentTimeMillis = currentTimeMillis;
+        this.businessTimezone = businessTimezone;
     }
 
     public ReplenishmentPlan plan(TenantContext tenant) {
@@ -112,11 +124,11 @@ public class NativeReplenishmentService {
         List<Row> rows = jdbc.query(connection -> {
             var statement = connection.prepareStatement("""
                 WITH period AS (
-                    SELECT (CURRENT_TIMESTAMP AT TIME ZONE 'Australia/Melbourne')::date AS today
+                    SELECT (CURRENT_TIMESTAMP AT TIME ZONE ?)::date AS today
                 ), sales_rows AS (
                     SELECT si.product_id, si.quantity,
                            COALESCE(s.business_date, s.local_sold_at::date,
-                               (s.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Australia/Melbourne')::date) AS sale_day,
+                               (s.created_at AT TIME ZONE 'UTC' AT TIME ZONE ?)::date) AS sale_day,
                            s.updated_at
                     FROM sale s
                     JOIN sale_item si ON si.sale_id = s.id AND si.outlet_id = s.outlet_id
@@ -127,7 +139,7 @@ public class NativeReplenishmentService {
                           OR (s.business_date IS NULL AND s.local_sold_at::date
                               BETWEEN period.today - 55 AND period.today)
                           OR (s.business_date IS NULL AND s.local_sold_at IS NULL
-                              AND (s.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Australia/Melbourne')::date
+                              AND (s.created_at AT TIME ZONE 'UTC' AT TIME ZONE ?)::date
                                   BETWEEN period.today - 55 AND period.today)
                       )
                 ), sales AS (
@@ -162,9 +174,14 @@ public class NativeReplenishmentService {
                 ORDER BY p.name, p.id
                 """);
             statement.setQueryTimeout(QUERY_TIMEOUT_SECONDS);
-            statement.setLong(1, tenant.requireOutletId());
-            statement.setLong(2, tenant.requireOutletId());
+            String zone = businessTimezone == null ? "Australia/Melbourne"
+                    : businessTimezone.zoneForVendor(tenant.vendorId()).getId();
+            statement.setString(1, zone);
+            statement.setString(2, zone);
             statement.setLong(3, tenant.requireOutletId());
+            statement.setLong(4, tenant.requireOutletId());
+            statement.setString(5, zone);
+            statement.setLong(6, tenant.requireOutletId());
             return statement;
         }, (rs, rowNum) -> new Row(rs.getLong("id"), rs.getString("name"),
                 rs.getDouble("case_quantity"), asDouble(rs.getObject("on_hand")), rs.getDouble("on_order"),

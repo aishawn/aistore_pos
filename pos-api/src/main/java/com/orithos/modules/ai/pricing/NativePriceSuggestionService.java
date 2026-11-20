@@ -1,5 +1,6 @@
 package com.orithos.modules.ai.pricing;
 
+import com.orithos.common.BusinessTimezoneService;
 import com.orithos.modules.ai.report.TenantContext;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -14,8 +15,12 @@ public class NativePriceSuggestionService {
     private static final double DEFAULT_MARGIN = 0.30;
 
     private final JdbcTemplate jdbc;
+    private final BusinessTimezoneService businessTimezone;
 
-    public NativePriceSuggestionService(JdbcTemplate jdbc) { this.jdbc = jdbc; }
+    public NativePriceSuggestionService(JdbcTemplate jdbc, BusinessTimezoneService businessTimezone) {
+        this.jdbc = jdbc;
+        this.businessTimezone = businessTimezone;
+    }
 
     public PriceReviewBrief review(TenantContext tenant) { return review(tenant, DEFAULT_MARGIN); }
 
@@ -28,7 +33,7 @@ public class NativePriceSuggestionService {
                     FROM sale s JOIN sale_item si ON si.sale_id = s.id AND si.outlet_id = s.outlet_id
                     WHERE s.outlet_id = ? AND s.status = 'COMPLETED' AND s.refund_reason IS NULL
                       AND COALESCE(s.business_date, s.local_sold_at::date)
-                          >= (CURRENT_TIMESTAMP AT TIME ZONE 'Australia/Melbourne')::date - 28
+                          >= (CURRENT_TIMESTAMP AT TIME ZONE ?)::date - 28
                     GROUP BY si.product_id
                 )
                 SELECT p.id, p.name,
@@ -52,6 +57,7 @@ public class NativePriceSuggestionService {
                 """, (rs, rowNum) -> new Row(rs.getLong("id"), rs.getString("name"),
                 number(rs.getObject("current_price")), number(rs.getObject("unit_cost")),
                 number(rs.getObject("tax_percent")), number(rs.getObject("sold_units"))),
+                businessTimezone.zoneForVendor(tenant.vendorId()).getId(),
                 tenant.requireOutletId(), tenant.requireOutletId());
 
         List<PriceReviewItem> reviews = new ArrayList<>();

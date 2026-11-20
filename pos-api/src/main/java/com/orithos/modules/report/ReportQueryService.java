@@ -1,6 +1,10 @@
 package com.orithos.modules.report;
 
 import com.orithos.common.AustraliaTime;
+import com.orithos.common.BusinessTimezoneService;
+import com.orithos.modules.config.CompanySettingsKeys;
+import com.orithos.modules.config.CompanySettingsService;
+import com.orithos.security.CurrentUser;
 import com.orithos.modules.ai.report.TenantContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -16,6 +20,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.WeekFields;
 import java.util.ArrayList;
@@ -49,22 +54,41 @@ public class ReportQueryService {
     private final JdbcTemplate jdbc;
     private final Clock clock;
     private final Duration nativeOverviewTtl;
+    private final BusinessTimezoneService businessTimezone;
+    private final CompanySettingsService companySettings;
     private final ConcurrentHashMap<OverviewCacheKey, CachedOverview> nativeOverviewCache = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<OverviewCacheKey, CachedOverview> nativeSalesOverviewCache = new ConcurrentHashMap<>();
 
     @Autowired
+    public ReportQueryService(JdbcTemplate jdbc, BusinessTimezoneService businessTimezone,
+                              CompanySettingsService companySettings) {
+        this(jdbc, Clock.systemUTC(), NATIVE_OVERVIEW_TTL, businessTimezone, companySettings);
+    }
+
     public ReportQueryService(JdbcTemplate jdbc) {
-        this(jdbc, Clock.systemUTC(), NATIVE_OVERVIEW_TTL);
+        this(jdbc, Clock.systemUTC(), NATIVE_OVERVIEW_TTL, null, null);
     }
 
     ReportQueryService(JdbcTemplate jdbc, Clock clock) {
-        this(jdbc, clock, NATIVE_OVERVIEW_TTL);
+        this(jdbc, clock, NATIVE_OVERVIEW_TTL, null, null);
     }
 
     ReportQueryService(JdbcTemplate jdbc, Clock clock, Duration nativeOverviewTtl) {
+        this(jdbc, clock, nativeOverviewTtl, null, null);
+    }
+
+    ReportQueryService(JdbcTemplate jdbc, Clock clock, Duration nativeOverviewTtl,
+                       BusinessTimezoneService businessTimezone) {
+        this(jdbc, clock, nativeOverviewTtl, businessTimezone, null);
+    }
+
+    ReportQueryService(JdbcTemplate jdbc, Clock clock, Duration nativeOverviewTtl,
+                       BusinessTimezoneService businessTimezone, CompanySettingsService companySettings) {
         this.jdbc = jdbc;
         this.clock = clock;
         this.nativeOverviewTtl = nativeOverviewTtl;
+        this.businessTimezone = businessTimezone;
+        this.companySettings = companySettings;
     }
 
     private record OverviewCacheKey(long vendorId, long outletId, LocalDate from, LocalDate to) {}
@@ -80,17 +104,20 @@ public class ReportQueryService {
     }
 
     public Period defaultPeriod(Grain grain) {
-        LocalDate today = AustraliaTime.today();
+        LocalDate today = today(CurrentUser.vendorId());
         return switch (grain) {
             case DAY -> new Period(today.minusDays(13).atStartOfDay(), today.plusDays(1).atStartOfDay());
-            case WEEK -> new Period(today.minusWeeks(5).atStartOfDay(), today.plusDays(1).atStartOfDay());
+            case WEEK -> new Period(weekStart(today, CurrentUser.vendorId()).minusWeeks(5).atStartOfDay(),
+                    today.plusDays(1).atStartOfDay());
             case MONTH -> new Period(today.minusMonths(5).withDayOfMonth(1).atStartOfDay(),
                     today.plusDays(1).atStartOfDay());
         };
     }
 
     public DailySalesReport dailySales(long outletId, LocalDate date) {
-        LocalDate day = date == null ? AustraliaTime.today() : date;
+        Long vendorId = CurrentUser.vendorId();
+        LocalDate day = date == null ? today(vendorId) : date;
+        String timezone = vendorId == null ? AustraliaTime.ZONE.getId() : timezoneFor(vendorId);
         List<Map<String, Object>> rows = jdbc.queryForList("""
                 SELECT COALESCE(SUM(s.total_price), 0) AS total_sales,
                        COUNT(s.id) AS transaction_count,
@@ -115,8 +142,9 @@ public class ReportQueryService {
                 ) line ON line.sale_id = s.id
                 WHERE """ + REPORTABLE_SALE_STATUS_SQL + """
                   AND s.outlet_id = ?
-                  AND COALESCE(s.business_date, DATE(s.local_sold_at), DATE(s.created_at)) = ?
-                """, outletId, sqlDate(day));
+                  AND COALESCE(s.business_date, DATE(s.local_sold_at),
+                               DATE(s.created_at AT TIME ZONE 'UTC' AT TIME ZONE ?)) = ?
+                """, outletId, timezone, sqlDate(day));
         Map<String, Object> row = rows.isEmpty() ? Map.of() : rows.get(0);
         return DailySalesReport.of(
                 day,
@@ -131,11 +159,12 @@ public class ReportQueryService {
      */
     public Map<String, Object> nativeSalesHistory(long vendorId, long outletId, LocalDate from, LocalDate to) {
         requireReportOutlet(vendorId, outletId);
-        // Keep the Adelaide business-day expression aligned with nativeOverview so
+        String timezone = timezoneFor(vendorId);
+        // Keep the configured business-day expression aligned with nativeOverview so
         // Shopfront imports and register sales land on the same civil day.
         List<Map<String, Object>> rows = jdbc.queryForList("""
                 SELECT COALESCE(s.business_date, DATE(s.local_sold_at),
-                                DATE(s.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Australia/Melbourne')) AS date,
+                                DATE(s.created_at AT TIME ZONE 'UTC' AT TIME ZONE ?)) AS date,
                        COUNT(*) FILTER (WHERE COALESCE(s.total_price, 0) >= 0 AND s.refund_reason IS NULL) AS sales_transactions,
                        COUNT(*) FILTER (WHERE COALESCE(s.total_price, 0) < 0 OR s.refund_reason IS NOT NULL) AS refund_transactions,
                        COALESCE(SUM(CASE WHEN COALESCE(s.total_price, 0) >= 0 AND s.refund_reason IS NULL THEN s.total_price ELSE 0 END), 0) AS sales_amount,
@@ -158,12 +187,12 @@ public class ReportQueryService {
                 WHERE s.outlet_id = ?
                   AND """ + REPORTABLE_SALE_STATUS_SQL + """
                   AND COALESCE(s.business_date, DATE(s.local_sold_at),
-                               DATE(s.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Australia/Melbourne')) >= CAST(? AS DATE)
+                               DATE(s.created_at AT TIME ZONE 'UTC' AT TIME ZONE ?)) >= CAST(? AS DATE)
                   AND COALESCE(s.business_date, DATE(s.local_sold_at),
-                               DATE(s.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Australia/Melbourne')) <= CAST(? AS DATE)
+                               DATE(s.created_at AT TIME ZONE 'UTC' AT TIME ZONE ?)) <= CAST(? AS DATE)
                 GROUP BY 1
                 ORDER BY date DESC
-                """, outletId, sqlDate(from), sqlDate(to));
+                """, timezone, outletId, timezone, sqlDate(from), timezone, sqlDate(to));
         List<Map<String, Object>> days = new ArrayList<>();
         for (Map<String, Object> row : rows) {
             LocalDate dayDate = toLocalDate(row.get("date"));
@@ -188,6 +217,7 @@ public class ReportQueryService {
         result.put("source", "orithos_ledger");
         result.put("from", from.toString());
         result.put("to", to.toString());
+        result.put("timezone", timezone);
         result.put("days", days);
         return result;
     }
@@ -304,7 +334,7 @@ public class ReportQueryService {
         result.put("from", from.toString());
         result.put("to", to.toString());
         result.put("groupBy", normalizedGroup);
-        result.put("timezone", "Australia/Melbourne");
+        result.put("timezone", timezoneFor(vendorId));
         result.put("inclusion", "ORDER status RECEIVED or PARTIALLY_RECEIVED by order_date");
         result.put("rows", rows);
         result.put("totals", totals);
@@ -358,12 +388,13 @@ public class ReportQueryService {
     /** Native ledger only, including source sales imported into that ledger. No external fallback. */
     public Map<String, Object> nativeOverview(long vendorId, long outletId, LocalDate from, LocalDate to) {
         requireReportOutlet(vendorId, outletId);
+        String timezone = timezoneFor(vendorId);
         OverviewCacheKey cacheKey = new OverviewCacheKey(vendorId, outletId, from, to);
         Instant now = clock.instant();
         CachedOverview cached = nativeOverviewCache.get(cacheKey);
         if (cached != null && now.isBefore(cached.expiresAt())) return copyOverviewPayload(cached.payload());
         if (cached != null) nativeOverviewCache.remove(cacheKey, cached);
-        List<Map<String, Object>> daily = nativeSalesByDay(outletId, from, to);
+        List<Map<String, Object>> daily = nativeSalesByDay(vendorId, outletId, from, to);
         List<Map<String, Object>> products = jdbc.queryForList("""
                 SELECT COALESCE(p.id, 0) AS id,
                        COALESCE(p.name, si.note, 'Unknown product') AS name,
@@ -373,12 +404,12 @@ public class ReportQueryService {
                 LEFT JOIN product p ON p.id = si.product_id AND p.outlet_id = s.outlet_id
                 WHERE s.outlet_id = ? AND """ + REPORTABLE_SALE_STATUS_SQL + """
                   AND COALESCE(s.business_date, DATE(s.local_sold_at),
-                               DATE(s.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Australia/Melbourne')) >= CAST(? AS DATE)
+                               DATE(s.created_at AT TIME ZONE 'UTC' AT TIME ZONE ?)) >= CAST(? AS DATE)
                   AND COALESCE(s.business_date, DATE(s.local_sold_at),
-                               DATE(s.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Australia/Melbourne')) <= CAST(? AS DATE)
+                               DATE(s.created_at AT TIME ZONE 'UTC' AT TIME ZONE ?)) <= CAST(? AS DATE)
                 GROUP BY COALESCE(p.id, 0), COALESCE(p.name, si.note, 'Unknown product')
                 ORDER BY revenue DESC LIMIT 10
-                """, outletId, sqlDate(from), sqlDate(to));
+                """, outletId, timezone, sqlDate(from), timezone, sqlDate(to));
         // Same ACTIVE / qty>0 / case·item split as Inventory On Hand (/api/products/on-hand-summary).
         Map<String, Object> inventory = jdbc.queryForMap("""
                 SELECT COUNT(*) AS sku_count,
@@ -416,6 +447,7 @@ public class ReportQueryService {
                   AND p.status = 'ACTIVE'
                 """, outletId, outletId);
         Map<String, Object> payload = nativeOverviewPayload(from, to, daily, products, inventory);
+        payload.put("timezone", timezone);
         payload.put("dataAsOf", nativeOverviewDataAsOf(daily));
         cache(nativeOverviewCache, cacheKey, now, payload);
         return copyOverviewPayload(payload);
@@ -424,6 +456,7 @@ public class ReportQueryService {
     /** Sales-only projection of the native overview, without product-ranking or inventory scans. */
     public Map<String, Object> nativeSalesOverview(long vendorId, long outletId, LocalDate from, LocalDate to) {
         requireReportOutlet(vendorId, outletId);
+        String timezone = timezoneFor(vendorId);
         OverviewCacheKey cacheKey = new OverviewCacheKey(vendorId, outletId, from, to);
         Instant now = clock.instant();
         CachedOverview overview = nativeOverviewCache.get(cacheKey);
@@ -432,17 +465,19 @@ public class ReportQueryService {
         if (cached != null && now.isBefore(cached.expiresAt())) return copyOverviewPayload(cached.payload());
         if (cached != null) nativeSalesOverviewCache.remove(cacheKey, cached);
 
-        List<Map<String, Object>> daily = nativeSalesByDay(outletId, from, to);
+        List<Map<String, Object>> daily = nativeSalesByDay(vendorId, outletId, from, to);
         Map<String, Object> payload = nativeOverviewPayload(from, to, daily, List.of());
+        payload.put("timezone", timezone);
         payload.put("dataAsOf", nativeOverviewDataAsOf(daily));
         cache(nativeSalesOverviewCache, cacheKey, now, payload);
         return copyOverviewPayload(payload);
     }
 
-    private List<Map<String, Object>> nativeSalesByDay(long outletId, LocalDate from, LocalDate to) {
+    private List<Map<String, Object>> nativeSalesByDay(long vendorId, long outletId, LocalDate from, LocalDate to) {
+        String timezone = timezoneFor(vendorId);
         return jdbc.queryForList("""
                 SELECT COALESCE(s.business_date, DATE(s.local_sold_at),
-                                DATE(s.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Australia/Melbourne')) AS date,
+                                DATE(s.created_at AT TIME ZONE 'UTC' AT TIME ZONE ?)) AS date,
                        COALESCE(SUM(s.total_price), 0) AS revenue,
                        COALESCE(SUM(CASE WHEN COALESCE(s.total_price, 0) >= 0 AND s.refund_reason IS NULL
                                          THEN s.total_price ELSE 0 END), 0) AS sales_amount,
@@ -478,12 +513,23 @@ public class ReportQueryService {
                 ) line ON TRUE
                 WHERE s.outlet_id = ? AND """ + REPORTABLE_SALE_STATUS_SQL + """
                   AND COALESCE(s.business_date, DATE(s.local_sold_at),
-                               DATE(s.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Australia/Melbourne')) >= CAST(? AS DATE)
+                               DATE(s.created_at AT TIME ZONE 'UTC' AT TIME ZONE ?)) >= CAST(? AS DATE)
                   AND COALESCE(s.business_date, DATE(s.local_sold_at),
-                               DATE(s.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Australia/Melbourne')) <= CAST(? AS DATE)
+                               DATE(s.created_at AT TIME ZONE 'UTC' AT TIME ZONE ?)) <= CAST(? AS DATE)
                 GROUP BY 1
                 ORDER BY date
-                """, outletId, sqlDate(from), sqlDate(to));
+                """, timezone, outletId, timezone, sqlDate(from), timezone, sqlDate(to));
+    }
+
+    private String timezoneFor(long vendorId) {
+        return businessTimezone == null ? AustraliaTime.ZONE.getId()
+                : businessTimezone.zoneForVendor(vendorId).getId();
+    }
+
+    public ZoneId zoneForVendor(Long vendorId) {
+        if (vendorId == null || businessTimezone == null) return AustraliaTime.ZONE;
+        ZoneId timezone = businessTimezone.zoneForVendor(vendorId);
+        return timezone == null ? AustraliaTime.ZONE : timezone;
     }
 
     private void cache(ConcurrentHashMap<OverviewCacheKey, CachedOverview> target,
@@ -644,32 +690,33 @@ public class ReportQueryService {
     }
 
     public List<DailySalesReport> weeklySales(long outletId, LocalDate date) {
-        LocalDate today = date == null ? AustraliaTime.today() : date;
-        LocalDate weekStart = today.with(DayOfWeek.MONDAY);
-        return salesByDayRange(outletId, weekStart, today);
+        LocalDate today = date == null ? today(CurrentUser.vendorId()) : date;
+        LocalDate weekStart = weekStart(today, CurrentUser.vendorId());
+        return salesByDayRange(outletId, weekStart, today, currentTimezone());
     }
 
     /** Previous ISO week (Mon–Sun) as one aggregated row; no per-day breakdown. */
     public DailySalesReport lastWeekSales(long outletId, LocalDate date) {
-        LocalDate today = date == null ? AustraliaTime.today() : date;
-        LocalDate weekStart = today.minusWeeks(1).with(DayOfWeek.MONDAY);
-        return salesAggregate(outletId, weekStart, weekStart.plusDays(6));
+        LocalDate today = date == null ? today(CurrentUser.vendorId()) : date;
+        LocalDate weekStart = weekStart(today.minusDays(7), CurrentUser.vendorId());
+        return salesAggregate(outletId, weekStart, weekStart.plusDays(6), currentTimezone());
     }
 
     /** Previous calendar month (1st through last day) as one aggregated row. */
     public DailySalesReport lastMonthSales(long outletId, LocalDate date) {
-        LocalDate today = date == null ? AustraliaTime.today() : date;
+        LocalDate today = date == null ? today(CurrentUser.vendorId()) : date;
         YearMonth lastMonth = YearMonth.from(today).minusMonths(1);
-        return salesAggregate(outletId, lastMonth.atDay(1), lastMonth.atEndOfMonth());
+        return salesAggregate(outletId, lastMonth.atDay(1), lastMonth.atEndOfMonth(), currentTimezone());
     }
 
     /** Current calendar month: the 1st through today. */
     public List<DailySalesReport> thisMonthSales(long outletId, LocalDate date) {
-        LocalDate today = date == null ? AustraliaTime.today() : date;
-        return salesByDayRange(outletId, today.withDayOfMonth(1), today);
+        LocalDate today = date == null ? today(CurrentUser.vendorId()) : date;
+        return salesByDayRange(outletId, today.withDayOfMonth(1), today, currentTimezone());
     }
 
-    private DailySalesReport salesAggregate(long outletId, LocalDate fromInclusive, LocalDate toInclusive) {
+    private DailySalesReport salesAggregate(long outletId, LocalDate fromInclusive, LocalDate toInclusive,
+                                            String timezone) {
         List<Map<String, Object>> rows = jdbc.queryForList("""
                 SELECT COALESCE(SUM(s.total_price), 0) AS total_sales,
                        COUNT(s.id) AS transaction_count,
@@ -694,9 +741,11 @@ public class ReportQueryService {
                 ) line ON line.sale_id = s.id
                 WHERE """ + REPORTABLE_SALE_STATUS_SQL + """
                   AND s.outlet_id = ?
-                  AND COALESCE(s.business_date, DATE(s.local_sold_at), DATE(s.created_at)) >= ?
-                  AND COALESCE(s.business_date, DATE(s.local_sold_at), DATE(s.created_at)) <= ?
-                """, outletId, sqlDate(fromInclusive), sqlDate(toInclusive));
+                  AND COALESCE(s.business_date, DATE(s.local_sold_at),
+                               DATE(s.created_at AT TIME ZONE 'UTC' AT TIME ZONE ?)) >= ?
+                  AND COALESCE(s.business_date, DATE(s.local_sold_at),
+                               DATE(s.created_at AT TIME ZONE 'UTC' AT TIME ZONE ?)) <= ?
+                """, outletId, timezone, sqlDate(fromInclusive), timezone, sqlDate(toInclusive));
         Map<String, Object> row = rows.isEmpty() ? Map.of() : rows.get(0);
         return DailySalesReport.of(
                 null,
@@ -705,9 +754,11 @@ public class ReportQueryService {
                 toDecimal(row.get("transaction_count")).longValue());
     }
 
-    private List<DailySalesReport> salesByDayRange(long outletId, LocalDate fromInclusive, LocalDate toInclusive) {
+    private List<DailySalesReport> salesByDayRange(long outletId, LocalDate fromInclusive, LocalDate toInclusive,
+                                                   String timezone) {
         List<Map<String, Object>> rows = jdbc.queryForList("""
-                SELECT COALESCE(s.business_date, DATE(s.local_sold_at), DATE(s.created_at)) AS d,
+                SELECT COALESCE(s.business_date, DATE(s.local_sold_at),
+                                DATE(s.created_at AT TIME ZONE 'UTC' AT TIME ZONE ?)) AS d,
                        COALESCE(SUM(s.total_price), 0) AS total_sales,
                        COUNT(s.id) AS transaction_count,
                        COALESCE(SUM(CASE WHEN s.source_system = 'shopfront' THEN
@@ -731,10 +782,14 @@ public class ReportQueryService {
                 ) line ON line.sale_id = s.id
                 WHERE """ + REPORTABLE_SALE_STATUS_SQL + """
                   AND s.outlet_id = ?
-                  AND COALESCE(s.business_date, DATE(s.local_sold_at), DATE(s.created_at)) >= ?
-                  AND COALESCE(s.business_date, DATE(s.local_sold_at), DATE(s.created_at)) <= ?
-                GROUP BY COALESCE(s.business_date, DATE(s.local_sold_at), DATE(s.created_at))
-                """, outletId, sqlDate(fromInclusive), sqlDate(toInclusive));
+                  AND COALESCE(s.business_date, DATE(s.local_sold_at),
+                               DATE(s.created_at AT TIME ZONE 'UTC' AT TIME ZONE ?)) >= ?
+                  AND COALESCE(s.business_date, DATE(s.local_sold_at),
+                               DATE(s.created_at AT TIME ZONE 'UTC' AT TIME ZONE ?)) <= ?
+                GROUP BY COALESCE(s.business_date, DATE(s.local_sold_at),
+                                  DATE(s.created_at AT TIME ZONE 'UTC' AT TIME ZONE ?))
+                """, timezone, outletId, timezone, sqlDate(fromInclusive), timezone,
+                sqlDate(toInclusive), timezone);
         Map<LocalDate, Map<String, Object>> byDate = new LinkedHashMap<>();
         for (Map<String, Object> row : rows) {
             LocalDate d = toLocalDate(row.get("d"));
@@ -747,6 +802,10 @@ public class ReportQueryService {
 
     static List<DailySalesReport> weekThroughToday(LocalDate today) {
         LocalDate weekStart = today.with(DayOfWeek.MONDAY);
+        return weekThrough(today, weekStart);
+    }
+
+    static List<DailySalesReport> weekThrough(LocalDate today, LocalDate weekStart) {
         return fillDays(weekStart, today, Map.of());
     }
 
@@ -835,7 +894,7 @@ public class ReportQueryService {
 
     public List<Map<String, Object>> deadStock(long outletId, int days) {
         int window = days <= 0 ? 30 : days;
-        LocalDate today = AustraliaTime.today();
+        LocalDate today = today(CurrentUser.vendorId());
         return jdbc.queryForList("""
                 SELECT p.id, p.name, i.quantity AS on_hand, COALESCE(s.qty, 0) AS sold_qty
                 FROM ai_rpt_inventory i
@@ -859,8 +918,10 @@ public class ReportQueryService {
      */
     public Map<String, Object> runDsl(String query, TenantContext tenant) {
         Long outletId = tenant == null ? null : tenant.requireOutletId();
+        Long vendorId = tenant == null ? null : tenant.vendorId();
         if (outletId == null) {
-            return emptyPayload(AustraliaTime.today().minusMonths(6), AustraliaTime.today());
+            LocalDate today = today(vendorId);
+            return emptyPayload(today.minusMonths(6), today);
         }
         String q = query == null ? "" : query.toLowerCase(Locale.ROOT);
         Grain grain = Grain.WEEK;
@@ -869,7 +930,7 @@ public class ReportQueryService {
         } else if (q.contains("range month")) {
             grain = Grain.MONTH;
         }
-        Period period = parseStart(q, grain);
+        Period period = parseStart(q, grain, vendorId);
         if (q.contains("inventory") || q.contains("stock") || q.contains("from inventory")) {
             return stockPayload(outletId, period);
         }
@@ -880,8 +941,8 @@ public class ReportQueryService {
         return salesPayload(outletId, period, grain, qty);
     }
 
-    private Period parseStart(String q, Grain grain) {
-        LocalDate today = AustraliaTime.today();
+    private Period parseStart(String q, Grain grain, Long vendorId) {
+        LocalDate today = today(vendorId);
         LocalDateTime to = today.plusDays(1).atStartOfDay();
         LocalDateTime from;
         if (q.contains("6 months ago") || q.contains("6 month")) {
@@ -891,11 +952,39 @@ public class ReportQueryService {
         } else if (q.contains("1 month ago") || q.contains("last month")) {
             from = today.minusMonths(1).withDayOfMonth(1).atStartOfDay();
         } else if (q.contains("7 days") || q.contains("last week")) {
-            from = today.minusDays(7).atStartOfDay();
+            from = weekStart(today.minusDays(7), vendorId).atStartOfDay();
         } else {
-            from = defaultPeriod(grain).from();
+            from = defaultPeriod(grain, vendorId).from();
         }
         return new Period(from, to);
+    }
+
+    private Period defaultPeriod(Grain grain, Long vendorId) {
+        LocalDate today = today(vendorId);
+        return switch (grain) {
+            case DAY -> new Period(today.minusDays(13).atStartOfDay(), today.plusDays(1).atStartOfDay());
+            case WEEK -> new Period(weekStart(today, vendorId).minusWeeks(5).atStartOfDay(),
+                    today.plusDays(1).atStartOfDay());
+            case MONTH -> new Period(today.minusMonths(5).withDayOfMonth(1).atStartOfDay(),
+                    today.plusDays(1).atStartOfDay());
+        };
+    }
+
+    public LocalDate today(Long vendorId) {
+        return businessTimezone == null ? AustraliaTime.today() : businessTimezone.today(vendorId);
+    }
+
+    public LocalDate weekStart(LocalDate date, Long vendorId) {
+        String configured = companySettings == null ? "MONDAY"
+                : companySettings.getString(CompanySettingsKeys.START_OF_WEEK, vendorId, "MONDAY");
+        DayOfWeek firstDay = "SUNDAY".equalsIgnoreCase(configured) ? DayOfWeek.SUNDAY : DayOfWeek.MONDAY;
+        int daysSinceStart = Math.floorMod(date.getDayOfWeek().getValue() - firstDay.getValue(), 7);
+        return date.minusDays(daysSinceStart);
+    }
+
+    private String currentTimezone() {
+        Long vendorId = CurrentUser.vendorId();
+        return vendorId == null ? AustraliaTime.ZONE.getId() : timezoneFor(vendorId);
     }
 
     private Map<String, Object> salesPayload(long outletId, Period period, Grain grain, boolean qtyMetric) {

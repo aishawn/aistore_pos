@@ -267,7 +267,7 @@ public class NativeAiReportQueryService {
     }
 
     public ZoneId businessTimezone(TenantContext tenant) {
-        return com.orithos.common.AustraliaTime.ZONE;
+        return reportQueryService.zoneForVendor(tenant == null ? null : tenant.vendorId());
     }
 
     private static String validateCatalogTenant(TenantContext tenant) {

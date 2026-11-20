@@ -1,6 +1,7 @@
 package com.orithos.modules.order;
 
 import com.orithos.common.BusinessException;
+import com.orithos.common.BusinessTimezoneService;
 import com.orithos.modules.product.mapper.ProductMapper;
 import com.orithos.modules.register.OutletMapper;
 import com.orithos.modules.supplier.SupplierMapper;
@@ -24,7 +25,8 @@ class OrderServiceTenantScopeTest {
     void searchFailsClosedWithoutTenantContextBeforeQueryingMapper() {
         OrderMapper orders = mock(OrderMapper.class);
         OrderService service = new OrderService(
-                orders, mock(OutletMapper.class), mock(SupplierMapper.class), mock(ProductMapper.class));
+                orders, mock(OutletMapper.class), mock(SupplierMapper.class), mock(ProductMapper.class),
+                mock(BusinessTimezoneService.class));
 
         BusinessException error = assertThrows(
                 BusinessException.class, () -> service.search(new OrderListQuery()));

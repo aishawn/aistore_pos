@@ -1,6 +1,7 @@
 package com.orithos.modules.order;
 
 import com.orithos.common.BusinessException;
+import com.orithos.common.BusinessTimezoneService;
 import com.orithos.common.PageResult;
 import com.orithos.modules.product.mapper.ProductMapper;
 import com.orithos.modules.register.OutletMapper;
@@ -29,15 +30,18 @@ public class OrderService {
     private final OutletMapper outletMapper;
     private final SupplierMapper supplierMapper;
     private final ProductMapper productMapper;
+    private final BusinessTimezoneService businessTimezone;
 
     public OrderService(OrderMapper orderMapper,
                         OutletMapper outletMapper,
                         SupplierMapper supplierMapper,
-                        ProductMapper productMapper) {
+                        ProductMapper productMapper,
+                        BusinessTimezoneService businessTimezone) {
         this.orderMapper = orderMapper;
         this.outletMapper = outletMapper;
         this.supplierMapper = supplierMapper;
         this.productMapper = productMapper;
+        this.businessTimezone = businessTimezone;
     }
 
     /** Paginated order search for the Orders page Filter action. */
@@ -207,7 +211,7 @@ public class OrderService {
         order.setFromId(request.getFromId());
         order.setToId(request.getToId());
         order.setOutletId(request.getToId());
-        order.setOrderDate(request.getOrderDate() != null ? request.getOrderDate() : LocalDate.now());
+        order.setOrderDate(request.getOrderDate() != null ? request.getOrderDate() : businessTimezone.today(requireVendorId()));
         order.setDueDate(request.getDueDate());
         order.setInvoiceNumber(request.getInvoiceNumber().trim());
         order.setReference(trimToNull(request.getReference()));
@@ -237,7 +241,7 @@ public class OrderService {
         order.setFromId(request.getFromId());
         order.setToId(request.getToId());
         order.setOutletId(request.getFromId());
-        order.setOrderDate(request.getTransferDate() != null ? request.getTransferDate() : LocalDate.now());
+        order.setOrderDate(request.getTransferDate() != null ? request.getTransferDate() : businessTimezone.today(requireVendorId()));
         order.setDueDate(request.getDueDate());
         order.setInvoiceNumber(request.getTransferNumber().trim());
         order.setReference(trimToNull(request.getReference()));
@@ -289,7 +293,7 @@ public class OrderService {
         order.setFromId(request.getFromId());
         order.setToId(request.getToId());
         order.setOutletId(request.getToId());
-        order.setOrderDate(request.getInvoiceDate() != null ? request.getInvoiceDate() : LocalDate.now());
+        order.setOrderDate(request.getInvoiceDate() != null ? request.getInvoiceDate() : businessTimezone.today(requireVendorId()));
         order.setDueDate(request.getDueDate());
         order.setInvoiceNumber(trimToNull(request.getInvoiceNumber()));
         order.setReference(trimToNull(request.getReference()));
@@ -337,7 +341,7 @@ public class OrderService {
         order.setFromId(request.getFromId());
         order.setToId(request.getToId());
         order.setOutletId(request.getFromId());
-        order.setOrderDate(request.getOrderDate() != null ? request.getOrderDate() : LocalDate.now());
+        order.setOrderDate(request.getOrderDate() != null ? request.getOrderDate() : businessTimezone.today(requireVendorId()));
         order.setDueDate(request.getDueDate());
         order.setInvoiceNumber(trimToNull(request.getOrderNumber()));
         order.setReference(trimToNull(request.getReference()));
@@ -362,7 +366,7 @@ public class OrderService {
         order.setFromId(request.getFromId());
         order.setToId(request.getToId());
         order.setOutletId(request.getToId());
-        order.setOrderDate(request.getCreditNoteDate() != null ? request.getCreditNoteDate() : LocalDate.now());
+        order.setOrderDate(request.getCreditNoteDate() != null ? request.getCreditNoteDate() : businessTimezone.today(requireVendorId()));
         order.setDueDate(request.getDueDate());
         order.setInvoiceNumber(request.getCreditNoteNumber().trim());
         order.setReference(trimToNull(request.getReference()));
@@ -400,7 +404,7 @@ public class OrderService {
         if (orderMapper.countByInvoiceNumber(creditNoteNumber, requireVendorId()) > 0) {
             throw new BusinessException("Credit note number already exists.");
         }
-        LocalDate creditNoteDate = request.getCreditNoteDate() != null ? request.getCreditNoteDate() : LocalDate.now();
+        LocalDate creditNoteDate = request.getCreditNoteDate() != null ? request.getCreditNoteDate() : businessTimezone.today(requireVendorId());
         if (request.getDueDate() != null && request.getDueDate().isBefore(creditNoteDate)) {
             throw new BusinessException("Due date cannot be before credit note date.");
         }
@@ -426,7 +430,7 @@ public class OrderService {
         if (orderNumber != null && orderMapper.countByInvoiceNumber(orderNumber, requireVendorId()) > 0) {
             throw new BusinessException("Order number already exists.");
         }
-        LocalDate orderDate = request.getOrderDate() != null ? request.getOrderDate() : LocalDate.now();
+        LocalDate orderDate = request.getOrderDate() != null ? request.getOrderDate() : businessTimezone.today(requireVendorId());
         if (request.getDueDate() != null && request.getDueDate().isBefore(orderDate)) {
             throw new BusinessException("Due date cannot be before order date.");
         }
@@ -452,7 +456,7 @@ public class OrderService {
         if (invoiceNumber != null && orderMapper.countByInvoiceNumber(invoiceNumber, requireVendorId()) > 0) {
             throw new BusinessException("Invoice number already exists.");
         }
-        LocalDate invoiceDate = request.getInvoiceDate() != null ? request.getInvoiceDate() : LocalDate.now();
+        LocalDate invoiceDate = request.getInvoiceDate() != null ? request.getInvoiceDate() : businessTimezone.today(requireVendorId());
         if (request.getDueDate() != null && request.getDueDate().isBefore(invoiceDate)) {
             throw new BusinessException("Due date cannot be before invoice date.");
         }
@@ -495,7 +499,7 @@ public class OrderService {
         if (orderMapper.countByInvoiceNumber(transferNumber, requireVendorId()) > 0) {
             throw new BusinessException("Transfer number already exists.");
         }
-        LocalDate transferDate = request.getTransferDate() != null ? request.getTransferDate() : LocalDate.now();
+        LocalDate transferDate = request.getTransferDate() != null ? request.getTransferDate() : businessTimezone.today(requireVendorId());
         if (request.getDueDate() != null && request.getDueDate().isBefore(transferDate)) {
             throw new BusinessException("Due date cannot be before transfer date.");
         }

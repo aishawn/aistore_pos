@@ -39,7 +39,10 @@ public class NativeReportQueryNode implements NodeAction {
     public Map<String, Object> apply(OverAllState state) {
         String intent = ReportGraphState.string(state, "intent");
         String question = ReportGraphState.string(state, "question");
-        var comparisonDates = ExplicitReportDates.parsePair(question);
+        TenantContext tenant = ReportGraphState.tenant(state);
+        ZoneId timezone = reportQueryService.zoneForVendor(tenant == null ? null : tenant.vendorId());
+        if (timezone == null) timezone = com.orithos.common.AustraliaTime.ZONE;
+        var comparisonDates = ExplicitReportDates.parsePair(question, timezone);
         ReportPeriodResolver.Window window = comparisonDates.map(dates -> {
             var first = dates.get(0).isBefore(dates.get(1)) ? dates.get(0) : dates.get(1);
             var last = dates.get(0).isAfter(dates.get(1)) ? dates.get(0) : dates.get(1);
@@ -55,10 +58,9 @@ public class NativeReportQueryNode implements NodeAction {
             refused.put("sql_error", "NATIVE_REPORT_UNSUPPORTED");
             refused.put("report_rows", List.of());
             refused.put("report_columns", List.of());
-            addProvenance(refused, window, "unavailable", null, null);
+            addProvenance(refused, window, "unavailable", null, null, timezone);
             return refused;
         }
-        TenantContext tenant = ReportGraphState.tenant(state);
         NativeAiReportQueryService.Result result;
         boolean hasCategory = ReportGraphState.slots(state).containsKey("category");
         boolean asksProfit = question != null && question.matches("(?is).*(利润|毛利|profit|margin).*");
@@ -144,7 +146,7 @@ public class NativeReportQueryNode implements NodeAction {
                 : reportSource == null ? "incomplete"
                 : noData || "no_data".equals(rowStatus) ? "no_data"
                 : "incomplete".equals(rowStatus) || dataAsOf == null ? "incomplete" : "available";
-        addProvenance(out, window, dataStatus, dataAsOf, reportSource);
+        addProvenance(out, window, dataStatus, dataAsOf, reportSource, timezone);
         return out;
     }
 
@@ -234,8 +236,7 @@ public class NativeReportQueryNode implements NodeAction {
     }
 
     private static void addProvenance(Map<String, Object> target, ReportPeriodResolver.Window window,
-                                      String status, String dataAsOf, String dataSource) {
-        ZoneId timezone = com.orithos.common.AustraliaTime.ZONE;
+                                      String status, String dataAsOf, String dataSource, ZoneId timezone) {
         if (dataAsOf != null && !dataAsOf.isBlank()) target.put("report_data_as_of", dataAsOf);
         target.put("report_data_source", dataSource);
         target.put("report_store_scope", "current_authenticated_store");

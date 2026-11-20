@@ -1,7 +1,6 @@
 package com.orithos.modules.report;
 
 import com.orithos.common.ApiResult;
-import com.orithos.common.AustraliaTime;
 import com.orithos.modules.ai.report.TenantContextFactory;
 import com.orithos.security.PermissionAccess;
 import com.orithos.security.CurrentUser;
@@ -45,10 +44,11 @@ public class ReportController {
     public ApiResult<DailySalesReport> dailySales() {
         var tenant = tenantContextFactory.fromSecurity();
         Long outletId = tenant.requireOutletId();
+        LocalDate today = reportQueryService.today(tenant.vendorId());
         if (outletId == null) {
-            return ApiResult.ok(DailySalesReport.of(AustraliaTime.today(), null, null, 0));
+            return ApiResult.ok(DailySalesReport.of(today, null, null, 0));
         }
-        return ApiResult.ok(reportQueryService.dailySales(outletId, AustraliaTime.today()));
+        return ApiResult.ok(reportQueryService.dailySales(outletId, today));
     }
 
     @GetMapping("/native-overview")
@@ -109,9 +109,10 @@ public class ReportController {
     public ApiResult<List<DailySalesReport>> weeklySales() {
         var tenant = tenantContextFactory.fromSecurity();
         Long outletId = tenant.requireOutletId();
-        LocalDate today = AustraliaTime.today();
+        LocalDate today = reportQueryService.today(tenant.vendorId());
         if (outletId == null) {
-            return ApiResult.ok(ReportQueryService.weekThroughToday(today));
+            return ApiResult.ok(ReportQueryService.weekThrough(today,
+                    reportQueryService.weekStart(today, tenant.vendorId())));
         }
         return ApiResult.ok(reportQueryService.weeklySales(outletId, today));
     }
@@ -123,7 +124,8 @@ public class ReportController {
         if (outletId == null) {
             return ApiResult.ok(ReportQueryService.lastWeekEmpty());
         }
-        return ApiResult.ok(reportQueryService.lastWeekSales(outletId, AustraliaTime.today()));
+        return ApiResult.ok(reportQueryService.lastWeekSales(outletId,
+                reportQueryService.today(tenant.vendorId())));
     }
 
     @GetMapping("/last-month-sales")
@@ -133,14 +135,15 @@ public class ReportController {
         if (outletId == null) {
             return ApiResult.ok(ReportQueryService.lastMonthEmpty());
         }
-        return ApiResult.ok(reportQueryService.lastMonthSales(outletId, AustraliaTime.today()));
+        return ApiResult.ok(reportQueryService.lastMonthSales(outletId,
+                reportQueryService.today(tenant.vendorId())));
     }
 
     @GetMapping("/this-month-sales")
     public ApiResult<List<DailySalesReport>> thisMonthSales() {
         var tenant = tenantContextFactory.fromSecurity();
         Long outletId = tenant.requireOutletId();
-        LocalDate today = AustraliaTime.today();
+        LocalDate today = reportQueryService.today(tenant.vendorId());
         if (outletId == null) {
             return ApiResult.ok(ReportQueryService.thisMonthThroughToday(today));
         }

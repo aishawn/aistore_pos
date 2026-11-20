@@ -1,6 +1,7 @@
 package com.orithos.modules.supplier;
 
 import com.orithos.common.BusinessException;
+import com.orithos.common.BusinessTimezoneService;
 import com.orithos.modules.customer.Contact;
 import com.orithos.modules.customer.mapper.ContactMapper;
 import com.orithos.modules.supplier.mapper.SupplierAdditionalContactMapper;
@@ -15,7 +16,6 @@ import com.orithos.common.PageResult;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -25,7 +25,6 @@ import java.util.Map;
 @Service
 public class SupplierService {
 
-    static final ZoneId STORE_ZONE = ZoneId.of("Australia/Melbourne");
     static final int PERFORMANCE_DAYS = 30;
 
     private final SupplierMapper supplierMapper;
@@ -34,26 +33,29 @@ public class SupplierService {
     private final SupplierAdditionalContactMapper additionalContactMapper;
     private final PasswordEncoder passwordEncoder;
     private final OutletMapper outletMapper;
+    private final BusinessTimezoneService businessTimezone;
 
     public SupplierService(SupplierMapper supplierMapper,
                            ContactMapper contactMapper,
                            SupplierAuthenticationMapper authenticationMapper,
                            SupplierAdditionalContactMapper additionalContactMapper,
                            PasswordEncoder passwordEncoder,
-                           OutletMapper outletMapper) {
+                           OutletMapper outletMapper,
+                           BusinessTimezoneService businessTimezone) {
         this.supplierMapper = supplierMapper;
         this.contactMapper = contactMapper;
         this.authenticationMapper = authenticationMapper;
         this.additionalContactMapper = additionalContactMapper;
         this.passwordEncoder = passwordEncoder;
         this.outletMapper = outletMapper;
+        this.businessTimezone = businessTimezone;
     }
 
     public PageResult<Supplier> list(String name, int page, int size) {
         Long vendorId = requireVendorId();
         int offset = Math.max(0, (page - 1) * size);
         List<Supplier> items = supplierMapper.page(name, vendorId, size, offset);
-        attachPerformance(items, vendorId, LocalDate.now(STORE_ZONE));
+        attachPerformance(items, vendorId, businessTimezone.today(vendorId));
         return PageResult.of(items, supplierMapper.count(name, vendorId), page, size);
     }
 

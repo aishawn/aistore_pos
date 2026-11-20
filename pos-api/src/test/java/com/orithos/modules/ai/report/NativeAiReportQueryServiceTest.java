@@ -5,6 +5,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import com.orithos.modules.report.ReportQueryService;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -28,6 +29,15 @@ class NativeAiReportQueryServiceTest {
     private final NativeAiReportQueryService service = new NativeAiReportQueryService(dataSources, templates, reportQuery);
     private final ReportPeriodResolver.Window window = new ReportPeriodResolver.Window(
             LocalDateTime.parse("2026-11-10T00:00:00"), LocalDateTime.parse("2026-11-11T00:00:00"), 1);
+
+    @Test
+    void businessTimezoneComesFromTenantScopedReportSettings() {
+        TenantContext tenant = tenant(Set.of(TenantContext.PERM_QUERY));
+        when(reportQuery.zoneForVendor(tenant.vendorId())).thenReturn(ZoneId.of("Australia/Adelaide"));
+
+        assertEquals(ZoneId.of("Australia/Adelaide"), service.businessTimezone(tenant));
+        verify(reportQuery).zoneForVendor(tenant.vendorId());
+    }
 
     @Test
     void executesBoundTemplateAgainstOutletScopedOrithosReadSource() {
