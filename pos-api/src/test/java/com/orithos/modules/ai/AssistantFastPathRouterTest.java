@@ -280,6 +280,11 @@ class AssistantFastPathRouterTest {
         assertEquals("report_stock", reverseChinese.intent());
         assertEquals("VB CAN", reverseChinese.slots().get("query"));
 
+        AssistantFastPathRouter.Match chineseRemainingStock = AssistantFastPathRouter.maybeMatch(
+                "VB CAN 10PK 375ML 的库存还剩多少？");
+        assertEquals("report_stock", chineseRemainingStock.intent());
+        assertEquals("VB CAN 10PK 375ML", chineseRemainingStock.slots().get("query"));
+
     }
 
     @Test
