@@ -14,6 +14,7 @@ from app.db import Base
 from app.config import Settings
 from app.models import DailySalesSummary, InventorySnapshot, InventorySnapshotManifest, Product, Sale, SaleItem, ShopfrontReportSnapshot, Store, SyncJob, SyncRun
 from app.sync import _upsert_sale_product, merge_sale_detail
+from app.pos import PosIntegrationError
 
 
 def test_report_sync_notification_url_defaults_to_frontend_completion_endpoint(monkeypatch):
@@ -54,6 +55,130 @@ def test_report_sync_notification_falls_back_when_dedicated_secret_is_missing(mo
     monkeypatch.setattr(main.settings, "pos_api_token", "legacy-token")
 
     assert main.report_sync_notification_token() == "integration-token"
+
+
+def test_sales_receipt_requires_every_sale_and_line_to_be_imported():
+    receipt = {
+        "data": {
+            "status": "IMPORTED",
+            "item_count": 2,
+            "mapping_ready": True,
+            "native_ledger": {
+                "enabled": True,
+                "created": 1,
+                "updated": 1,
+                "skipped": 0,
+                "unmatched_lines": 0,
+                "errors": [],
+            },
+        },
+    }
+
+    validated = main.validate_pos_sales_import_receipt(receipt, 2)
+
+    assert validated["accepted_sales"] == 2
+    assert validated["unmatched_lines"] == 0
+
+
+@pytest.mark.parametrize("native_changes", [
+    {"skipped": 1},
+    {"errors": ["bad sale"]},
+    {"unmatched_lines": 1},
+    {"enabled": False},
+])
+def test_sales_receipt_rejects_incomplete_native_ledger_acknowledgement(native_changes):
+    native = {
+        "enabled": True,
+        "created": 2,
+        "updated": 0,
+        "skipped": 0,
+        "unmatched_lines": 0,
+        "errors": [],
+        **native_changes,
+    }
+    receipt = {"data": {"status": "IMPORTED", "item_count": 2, "native_ledger": native}}
+
+    with pytest.raises(PosIntegrationError):
+        main.validate_pos_sales_import_receipt(receipt, 2)
+
+
+def test_sales_receipt_rejects_missing_native_ledger_acknowledgement():
+    receipt = {"data": {"status": "IMPORTED", "item_count": 2}}
+
+    with pytest.raises(PosIntegrationError):
+        main.validate_pos_sales_import_receipt(receipt, 2)
+
+
+def test_sales_coverage_requires_all_targets_and_a_complete_inventory_snapshot():
+    audits = [
+        {
+            "store_key": "skr",
+            "target_name": target,
+            "payload_count": 2,
+            "response": {"native_ledger": {
+                "created": 2, "updated": 0, "skipped": 0, "errors": 0, "unmatched_lines": 0,
+            }},
+        }
+        for target in ("primary", "mirror")
+    ]
+
+    records = main.build_sales_coverage_records(
+        source_sales=2,
+        unchanged_sales=0,
+        replay_sales_window=True,
+        store_keys=["skr"],
+        target_names=["primary", "mirror"],
+        batch_audits=audits,
+        inventory_snapshot_complete=True,
+        inventory_snapshot_at="2026-11-20T03:00:00Z",
+    )
+
+    assert records == [{
+        "store_key": "skr",
+        "source_sales": 2,
+        "expected_sales": 2,
+        "accepted_sales": 2,
+        "skipped_sales": 0,
+        "error_count": 0,
+        "unmatched_lines": 0,
+        "sales_complete": True,
+        "inventory_snapshot_at": "2026-11-20T03:00:00Z",
+    }]
+
+
+@pytest.mark.parametrize("change", ["missing_target", "unmatched_line", "partial_import", "no_inventory_snapshot", "not_replayed"])
+def test_sales_coverage_stays_incomplete_when_any_evidence_is_missing(change):
+    audits = [
+        {
+            "store_key": "skr",
+            "target_name": target,
+            "payload_count": 2,
+            "response": {"native_ledger": {
+                "created": 2, "updated": 0, "skipped": 0, "errors": 0, "unmatched_lines": 0,
+            }},
+        }
+        for target in ("primary", "mirror")
+    ]
+    if change == "missing_target":
+        audits.pop()
+    elif change == "unmatched_line":
+        audits[0]["response"]["native_ledger"]["unmatched_lines"] = 1
+    elif change == "partial_import":
+        audits[1]["response"]["native_ledger"]["created"] = 1
+        audits[1]["response"]["native_ledger"]["skipped"] = 1
+
+    records = main.build_sales_coverage_records(
+        source_sales=2,
+        unchanged_sales=1 if change == "not_replayed" else 0,
+        replay_sales_window=change != "not_replayed",
+        store_keys=["skr"],
+        target_names=["primary", "mirror"],
+        batch_audits=audits,
+        inventory_snapshot_complete=change != "no_inventory_snapshot",
+        inventory_snapshot_at=None if change == "no_inventory_snapshot" else "2026-11-20T03:00:00Z",
+    )
+
+    assert records[0]["sales_complete"] is False
 
 
 def test_audit_odoo_sales_batch_counts_formal_orders_and_allowed_skips():
@@ -373,7 +498,11 @@ async def test_push_pos_snapshot_returns_batch_and_response_summary(db_session, 
 
         async def upsert_sales(self, payload):
             self.sales_payloads.append(payload)
-            return {"data": {"upserted": len(payload["items"])}}
+            count = len(payload["items"])
+            return {"data": {"upserted": count, "mapping_ready": True, "native_ledger": {
+                "enabled": True, "created": count, "updated": 0, "skipped": 0,
+                "unmatched_lines": 0, "errors": [],
+            }}}
 
         async def close(self):
             self.closed = True
@@ -394,9 +523,14 @@ async def test_push_pos_snapshot_returns_batch_and_response_summary(db_session, 
     assert result["sales_batch_audit"] == [
         {
             "target": target,
+            "store_key": "skr",
+            "target_name": target,
             "offset": 0,
             "payload_count": 1,
-            "response": {"upserted": 1},
+            "response": {
+                "upserted": 1,
+                "native_ledger": {"created": 1, "updated": 0, "skipped": 0, "errors": 0, "unmatched_lines": 0},
+            },
         }
         for target in targets
     ]
@@ -437,7 +571,11 @@ async def test_push_pos_snapshot_bounds_sales_batches_and_advances_by_committed_
 
         async def upsert_sales(self, payload):
             self.batch_sizes.append(len(payload["items"]))
-            return {"data": {"upserted": len(payload["items"])}}
+            count = len(payload["items"])
+            return {"data": {"upserted": count, "mapping_ready": True, "native_ledger": {
+                "enabled": True, "created": count, "updated": 0, "skipped": 0,
+                "unmatched_lines": 0, "errors": [],
+            }}}
 
         async def close(self):
             pass
@@ -468,7 +606,11 @@ async def test_sales_reconcile_does_not_require_formal_order_receipt(db_session,
             return {"data": {"replaced": len(payload["items"])}}
 
         async def upsert_sales(self, payload):
-            return {"data": {"upserted": len(payload["items"])}}
+            count = len(payload["items"])
+            return {"data": {"upserted": count, "mapping_ready": True, "native_ledger": {
+                "enabled": True, "created": count, "updated": 0, "skipped": 0,
+                "unmatched_lines": 0, "errors": [],
+            }}}
 
         async def close(self):
             pass

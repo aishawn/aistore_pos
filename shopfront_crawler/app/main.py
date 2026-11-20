@@ -200,6 +200,113 @@ def validate_pos_import_receipt(response: Any, expected_count: int, entity: str)
             f"POS {entity} receipt count mismatch: expected {expected_count}, got {acknowledged!r}"
         )
     return receipt
+
+
+def validate_pos_sales_import_receipt(response: Any, expected_count: int) -> dict[str, int]:
+    receipt = validate_pos_import_receipt(response, expected_count, "sales")
+    native = receipt.get("native_ledger")
+    if receipt.get("mapping_ready") is not True or not isinstance(native, dict) or native.get("enabled") is not True:
+        raise PosIntegrationError("POS sales import did not confirm native ledger processing")
+
+    def count(name: str, default: int = 0) -> int:
+        value = native.get(name, default)
+        if type(value) is not int or value < 0:
+            raise PosIntegrationError(f"POS sales receipt contains invalid {name}")
+        return value
+
+    created = count("created")
+    updated = count("updated")
+    skipped = count("skipped")
+    unmatched_lines = count("unmatched_lines")
+    errors = native.get("errors", [])
+    if not isinstance(errors, list):
+        raise PosIntegrationError("POS sales receipt contains invalid errors")
+    accepted_sales = created + updated
+    if accepted_sales != expected_count or skipped or unmatched_lines or errors:
+        raise PosIntegrationError(
+            "POS sales import is incomplete: "
+            f"expected={expected_count}, accepted={accepted_sales}, skipped={skipped}, "
+            f"unmatched_lines={unmatched_lines}, errors={len(errors)}"
+        )
+    return {
+        "accepted_sales": accepted_sales,
+        "skipped_sales": skipped,
+        "unmatched_lines": unmatched_lines,
+        "error_count": len(errors),
+    }
+
+
+def build_sales_coverage_records(
+    *,
+    source_sales: int,
+    unchanged_sales: int,
+    replay_sales_window: bool,
+    store_keys: list[str],
+    target_names: list[str],
+    batch_audits: list[dict[str, Any]],
+    inventory_snapshot_complete: bool,
+    inventory_snapshot_at: str | None,
+) -> list[dict[str, Any]]:
+    records = []
+    expected_sales = max(0, source_sales if replay_sales_window else source_sales - unchanged_sales)
+    for store_key in store_keys:
+        store_audits = [item for item in batch_audits if item.get("store_key") == store_key]
+        per_target_accepted = []
+        skipped = errors = unmatched = 0
+        targets_complete = bool(target_names)
+        for target in target_names:
+            target_audits = [item for item in store_audits if item.get("target_name") == target]
+            if expected_sales and not target_audits:
+                targets_complete = False
+            target_accepted = 0
+            for audit in target_audits:
+                payload_count = audit.get("payload_count")
+                response = audit.get("response") if isinstance(audit.get("response"), dict) else {}
+                native = response.get("native_ledger") if isinstance(response.get("native_ledger"), dict) else {}
+                created, updated = native.get("created"), native.get("updated")
+                batch_skipped = native.get("skipped")
+                batch_errors = native.get("errors")
+                batch_unmatched = native.get("unmatched_lines")
+                counts_valid = all(type(value) is int and value >= 0 for value in (
+                    payload_count, created, updated, batch_skipped, batch_errors, batch_unmatched,
+                ))
+                if not counts_valid:
+                    targets_complete = False
+                    continue
+                batch_accepted = created + updated
+                target_accepted += batch_accepted
+                skipped += batch_skipped
+                errors += batch_errors
+                unmatched += batch_unmatched
+                if batch_accepted != payload_count or batch_skipped or batch_errors or batch_unmatched:
+                    targets_complete = False
+            if target_accepted != expected_sales:
+                targets_complete = False
+            per_target_accepted.append(target_accepted)
+        accepted = min(per_target_accepted, default=0)
+        sales_complete = bool(
+            replay_sales_window
+            and targets_complete
+            and accepted == expected_sales
+            and not skipped
+            and not errors
+            and not unmatched
+            and inventory_snapshot_complete
+            and inventory_snapshot_at
+        )
+        records.append({
+            "store_key": store_key,
+            "source_sales": source_sales,
+            "expected_sales": expected_sales,
+            "accepted_sales": accepted,
+            "skipped_sales": skipped,
+            "error_count": errors,
+            "unmatched_lines": unmatched,
+            "sales_complete": sales_complete,
+            "inventory_snapshot_at": inventory_snapshot_at if inventory_snapshot_complete else None,
+        })
+    return records
+
 scheduler = AsyncIOScheduler(timezone=settings.sync_timezone)
 sync_lock = __import__("asyncio").Lock()
 history_lock = __import__("asyncio").Lock()
@@ -2700,6 +2807,15 @@ async def push_pos_snapshot(
                 audit[key] = len(value) if isinstance(value, (list, dict)) else value
         if "status" in payload:
             audit["status"] = payload["status"]
+        native = payload.get("native_ledger")
+        if isinstance(native, dict):
+            audit["native_ledger"] = {
+                "created": native.get("created"),
+                "updated": native.get("updated"),
+                "skipped": native.get("skipped"),
+                "errors": len(native.get("errors", [])) if isinstance(native.get("errors"), list) else None,
+                "unmatched_lines": native.get("unmatched_lines"),
+            }
         return audit
 
     products_by_source = {str(product.shopfront_product_id): product for product in products}
@@ -3284,10 +3400,12 @@ async def push_pos_snapshot(
                         if sales_reconcile_job:
                             sales_payload["business_write"] = False
                         response = await client.upsert_sales(jsonable_encoder(sales_payload))
-                        validate_pos_import_receipt(response, len(items), "sales")
+                        validate_pos_sales_import_receipt(response, len(items))
                         audit_key = target_name if sales_store == store_key else f"{target_name}:{sales_store}"
                         result["sales_batch_audit"].append({
                             "target": audit_key,
+                            "store_key": sales_store,
+                            "target_name": target_name,
                             "offset": offset,
                             "payload_count": len(items),
                             "response": sales_response_audit(response),
@@ -3356,6 +3474,22 @@ async def push_pos_snapshot(
             result["mirror_errors"].append(
                 f"sales import incomplete: expected {total_sales}, imported {result['sales_imported']}"
             )
+        if include_sales:
+            coverage = build_sales_coverage_records(
+                source_sales=total_sales,
+                unchanged_sales=0,
+                replay_sales_window=replay_sales_window,
+                store_keys=sales_store_keys,
+                target_names=list(clients),
+                batch_audits=result["sales_batch_audit"],
+                inventory_snapshot_complete=bool(include_inventory_snapshot and inventory_snapshot_at),
+                inventory_snapshot_at=inventory_snapshot_at,
+            )
+            result["sales_coverage"] = coverage
+            if run is not None:
+                prior_counts = dict(run.counts or {})
+                run.counts = {**prior_counts, "sales_coverage": coverage}
+                db.commit()
         if result["inventory_reconciliation_required"]:
             result["mirror_errors"].append(
                 f"inventory reconciliation required for {len(result['inventory_unmatched'])} unmatched source row(s)"
