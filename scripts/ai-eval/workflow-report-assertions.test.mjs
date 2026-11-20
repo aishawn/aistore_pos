@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { aggregateSalesAcceptance, averageTicketAcceptance } from "./workflow-report-assertions.mjs";
+import { aggregateSalesAcceptance, averageTicketAcceptance, refundBreakdownAcceptance } from "./workflow-report-assertions.mjs";
 
 const period = { from: "2026-11-01", to: "2026-11-21" };
 
@@ -49,4 +49,27 @@ test("missing authoritative metrics never reconcile as zero", () => {
   assert.equal(averageTicketAcceptance("Average Ticket for 2026-11-01 to 2026-11-21 is AUD 0.00 across 3 sales transactions.", {
     averageSale: null, transactions: 3,
   }, period).passed, false);
+});
+
+test("refund reporting reconciles gross sales, refunds and net revenue", () => {
+  const report = {
+    grossSales: 5294.14, refunds: 9.48, refundTransactions: 2,
+    revenue: 5284.66, transactions: 168, costAvailable: false,
+  };
+  const answer = "Sales for 2026-11-14 were AUD 5284.66 after AUD 9.48 in refunds across 2 refund transactions (gross sales AUD 5294.14); gross profit is unavailable.";
+  assert.equal(refundBreakdownAcceptance(answer, report).passed, true);
+  assert.equal(refundBreakdownAcceptance(answer.replace("2 refund transactions", "1 refund transaction"), report).passed, false);
+  assert.equal(refundBreakdownAcceptance(answer, { ...report, revenue: 5284.65 }).passed, false);
+  assert.equal(refundBreakdownAcceptance("营业额 AUD 5284.66", report).passed, false);
+});
+
+test("refund-only days require the refund amount and negative net sales", () => {
+  const report = {
+    grossSales: 0, refunds: 9.48, refundTransactions: 1,
+    revenue: -9.48, transactions: 0, costAvailable: true,
+  };
+  assert.equal(aggregateSalesAcceptance(
+    "No completed sale transactions were recorded for 2026-11-14; AUD 9.48 in refunds across 1 refund transaction resulted in net sales of AUD -9.48.",
+    report, { from: "2026-11-14", to: "2026-11-14" },
+  ).passed, true);
 });

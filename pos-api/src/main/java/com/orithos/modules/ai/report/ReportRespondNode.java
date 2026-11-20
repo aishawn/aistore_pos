@@ -120,36 +120,76 @@ public class ReportRespondNode implements NodeAction {
         if (Boolean.TRUE.equals(row.get("comparison"))) return formatSalesComparison(row, chinese);
         BigDecimal sales = ReportQueryService.toDecimal(row.get("sales"));
         if (ReportQueryService.toDecimal(row.get("transactions")).signum() == 0) {
+            BigDecimal refunds = ReportQueryService.toDecimal(row.get("refunds"));
+            if (refunds.signum() > 0) {
+                String refundCount = positiveCount(row.get("refundTransactions"));
+                return chinese
+                        ? rangeText(from, to) + "没有已完成销售交易；退款 AUD " + money(refunds)
+                                + (refundCount.isEmpty() ? "" : "，共 " + refundCount + " 笔")
+                                + "，净营业额 AUD " + money(sales) + "。数据来源：Orithos POS 报表。"
+                        : "No completed sale transactions were recorded for " + rangeText(from, to)
+                                + "; AUD " + money(refunds) + " in refunds"
+                                + (refundCount.isEmpty() ? "" : " across " + refundCount
+                                        + ("1".equals(refundCount) ? " refund transaction" : " refund transactions"))
+                                + " resulted in net sales of AUD " + money(sales)
+                                + ". Source: Orithos POS report.";
+            }
             return chinese ? rangeText(from, to) + "没有已完成销售记录。数据来源：Orithos POS 报表。"
                     : "No completed sales found for " + rangeText(from, to) + ". Source: Orithos POS report.";
         }
         Object profit = row.get("grossProfit");
         String range = rangeText(from, to);
+        String refundDisclosure = refundDisclosure(row, chinese);
         if (Boolean.FALSE.equals(row.get("costAvailable")) || profit == null
                 || profit.toString().isBlank()) {
             if ("permission".equals(row.get("profitUnavailableReason"))) {
                 return chinese
-                        ? range + "营业额 AUD " + money(sales) + "；毛利暂不可用，因为当前账号没有查看成本数据的权限。数据来源：Orithos POS 报表。"
+                        ? range + "营业额 AUD " + money(sales) + refundDisclosure + "；毛利暂不可用，因为当前账号没有查看成本数据的权限。数据来源：Orithos POS 报表。"
                         : "Sales for " + range + " were AUD " + money(sales)
+                            + refundDisclosure
                             + "; gross profit is unavailable because your account cannot view cost data. Source: Orithos POS report.";
             }
             if ("tax".equals(row.get("profitUnavailableReason"))) {
                 return chinese
-                        ? range + "营业额 AUD " + money(sales) + "；毛利暂不可用，销售税额数据不完整。数据来源：Orithos POS 报表。"
+                        ? range + "营业额 AUD " + money(sales) + refundDisclosure + "；毛利暂不可用，销售税额数据不完整。数据来源：Orithos POS 报表。"
                         : "Sales for " + range + " were AUD " + money(sales)
+                            + refundDisclosure
                             + "; gross profit is unavailable because sale tax data is incomplete. Source: Orithos POS report.";
             }
             return chinese
-                    ? range + "营业额 AUD " + money(sales) + "；毛利暂不可用，销售成本数据不完整。数据来源：Orithos POS 报表。"
+                    ? range + "营业额 AUD " + money(sales) + refundDisclosure + "；毛利暂不可用，销售成本数据不完整。数据来源：Orithos POS 报表。"
                     : "Sales for " + range + " were AUD " + money(sales)
+                        + refundDisclosure
                         + "; gross profit is unavailable because sale cost data is incomplete. Source: Orithos POS report.";
         }
         String profitText = money(ReportQueryService.toDecimal(profit));
         return chinese
-                ? range + "营业额 AUD " + money(sales) + "，毛利 AUD " + profitText
+                ? range + "营业额 AUD " + money(sales) + refundDisclosure + "，毛利 AUD " + profitText
                     + "（税前营业额减成本）。数据来源：Orithos POS 报表。"
-                : "Sales for " + range + " were AUD " + money(sales) + " and gross profit was AUD " + profitText
+                : "Sales for " + range + " were AUD " + money(sales) + refundDisclosure + " and gross profit was AUD " + profitText
                     + " (ex-GST sales less cost). Source: Orithos POS report.";
+    }
+
+    private String refundDisclosure(Map<String, Object> row, boolean chinese) {
+        BigDecimal refunds = ReportQueryService.toDecimal(row.get("refunds"));
+        if (refunds.signum() <= 0) return "";
+        String refundCount = positiveCount(row.get("refundTransactions"));
+        Object grossSalesValue = row.get("grossSales");
+        String grossSales = grossSalesValue == null ? ""
+                : (chinese ? "，退款前销售额 AUD " : "; gross sales AUD ")
+                        + money(ReportQueryService.toDecimal(grossSalesValue));
+        return chinese
+                ? "（退款 AUD " + money(refunds)
+                        + (refundCount.isEmpty() ? "" : "，共 " + refundCount + " 笔") + grossSales + "）"
+                : " after AUD " + money(refunds) + " in refunds"
+                        + (refundCount.isEmpty() ? "" : " across " + refundCount
+                                + ("1".equals(refundCount) ? " refund transaction" : " refund transactions"))
+                        + (grossSales.isEmpty() ? "" : " (" + grossSales.substring(2) + ")");
+    }
+
+    private String positiveCount(Object value) {
+        BigDecimal count = ReportQueryService.toDecimal(value);
+        return count.signum() > 0 ? count.stripTrailingZeros().toPlainString() : "";
     }
 
     @SuppressWarnings("unchecked")
@@ -160,8 +200,11 @@ public class ReportRespondNode implements NodeAction {
         String secondDate = String.valueOf(row.get("secondDate"));
         BigDecimal firstSales = ReportQueryService.toDecimal(first.get("sales"));
         BigDecimal secondSales = ReportQueryService.toDecimal(second.get("sales"));
+        BigDecimal firstRefunds = ReportQueryService.toDecimal(first.get("refunds"));
+        BigDecimal secondRefunds = ReportQueryService.toDecimal(second.get("refunds"));
         if (ReportQueryService.toDecimal(first.get("transactions")).signum() == 0
-                && ReportQueryService.toDecimal(second.get("transactions")).signum() == 0) {
+                && ReportQueryService.toDecimal(second.get("transactions")).signum() == 0
+                && firstRefunds.signum() == 0 && secondRefunds.signum() == 0) {
             return chinese
                     ? firstDate + "和" + secondDate + "均没有已完成销售记录。数据来源：Orithos POS 报表。"
                     : "No completed sales were found on " + firstDate + " or " + secondDate
@@ -171,6 +214,7 @@ public class ReportRespondNode implements NodeAction {
                 ? firstDate + "营业额 AUD " + money(firstSales) + "；" + secondDate + "营业额 AUD " + money(secondSales)
                 : "Sales on " + firstDate + " were AUD " + money(firstSales)
                     + "; sales on " + secondDate + " were AUD " + money(secondSales);
+        comparison += comparisonRefundDisclosure(first, second, firstDate, secondDate, chinese);
         boolean costComplete = Boolean.TRUE.equals(first.get("costAvailable"))
                 && Boolean.TRUE.equals(second.get("costAvailable"))
                 && first.get("grossProfit") != null && second.get("grossProfit") != null;
@@ -198,6 +242,41 @@ public class ReportRespondNode implements NodeAction {
                 : "; gross profit was AUD " + money(ReportQueryService.toDecimal(first.get("grossProfit")))
                     + " and AUD " + money(ReportQueryService.toDecimal(second.get("grossProfit")))
                     + " (ex-GST sales less cost). Source: Orithos POS report.");
+    }
+
+    private String comparisonRefundDisclosure(Map<String, Object> first, Map<String, Object> second,
+                                              String firstDate, String secondDate, boolean chinese) {
+        List<String> breakdown = new java.util.ArrayList<>();
+        addRefundBreakdown(breakdown, first, firstDate, chinese);
+        addRefundBreakdown(breakdown, second, secondDate, chinese);
+        if (breakdown.isEmpty()) return "";
+        return chinese
+                ? "；退款拆分：" + String.join("；", breakdown)
+                : "; refunds: " + String.join("; ", breakdown);
+    }
+
+    private void addRefundBreakdown(List<String> breakdown, Map<String, Object> row,
+                                    String date, boolean chinese) {
+        BigDecimal refunds = ReportQueryService.toDecimal(row.get("refunds"));
+        if (refunds.signum() <= 0) return;
+        String count = positiveCount(row.get("refundTransactions"));
+        Object grossSalesValue = row.get("grossSales");
+        String grossSales = grossSalesValue == null ? ""
+                : "gross sales AUD " + money(ReportQueryService.toDecimal(grossSalesValue));
+        if (chinese) {
+            breakdown.add(date + "退款 AUD " + money(refunds)
+                    + (count.isEmpty() ? "" : "（" + count + " 笔")
+                    + (grossSales.isEmpty() ? "" : (count.isEmpty() ? "（" : "，")
+                            + "退款前销售额 AUD " + money(ReportQueryService.toDecimal(grossSalesValue)))
+                    + (count.isEmpty() && !grossSales.isEmpty() || !count.isEmpty() ? "）" : ""));
+            return;
+        }
+        String refundCount = count.isEmpty() ? "" : count
+                + ("1".equals(count) ? " refund transaction" : " refund transactions");
+        String details = refundCount.isEmpty() ? grossSales
+                : grossSales.isEmpty() ? refundCount : refundCount + "; " + grossSales;
+        breakdown.add(date + " AUD " + money(refunds)
+                + (details.isEmpty() ? "" : " (" + details + ")"));
     }
 
     private String formatSeries(List<Map<String, Object>> rows, String metricKey, String label,

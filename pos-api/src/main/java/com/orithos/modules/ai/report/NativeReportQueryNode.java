@@ -89,6 +89,12 @@ public class NativeReportQueryNode implements NodeAction {
                             && secondTransactions instanceof Number secondCount
                             ? ReportQueryService.toDecimal(firstCount).add(ReportQueryService.toDecimal(secondCount))
                             : null);
+                    Object firstRefundTransactions = ((Map<?, ?>) row.get("first")).get("refundTransactions");
+                    Object secondRefundTransactions = ((Map<?, ?>) row.get("second")).get("refundTransactions");
+                    row.put("refundTransactions", firstRefundTransactions instanceof Number firstCount
+                            && secondRefundTransactions instanceof Number secondCount
+                            ? ReportQueryService.toDecimal(firstCount).add(ReportQueryService.toDecimal(secondCount))
+                            : null);
                     String firstSource = normalizedDataSource(first);
                     String secondSource = normalizedDataSource(second);
                     row.put("dataSource", firstSource != null && firstSource.equals(secondSource)
@@ -126,9 +132,14 @@ public class NativeReportQueryNode implements NodeAction {
         out.put("report_rows", result.rows());
         out.put("report_columns", result.rows().isEmpty()
                 ? List.of() : List.copyOf(result.rows().get(0).keySet()));
-        boolean noData = result.rows().isEmpty() || result.rows().stream().anyMatch(row ->
-                row.get("transactions") instanceof Number transactions && transactions.doubleValue() == 0
-                || row.get("tickets") instanceof Number tickets && tickets.doubleValue() == 0);
+        boolean noData = result.rows().isEmpty() || result.rows().stream().anyMatch(row -> {
+            boolean noSales = row.get("transactions") instanceof Number transactions
+                    && transactions.doubleValue() == 0;
+            boolean hasRefunds = row.get("refundTransactions") instanceof Number refunds
+                    && refunds.doubleValue() > 0;
+            return (noSales || row.get("tickets") instanceof Number tickets && tickets.doubleValue() == 0)
+                    && !hasRefunds;
+        });
         var syncSnapshot = "report_dead_stock".equals(intent) && syncWatermark != null
                 && tenant.canQueryReport() && tenant.requireOutletId() != null
                 ? syncWatermark.read(tenant) : java.util.Optional.<ShopfrontSyncWatermark.Snapshot>empty();
@@ -156,6 +167,9 @@ public class NativeReportQueryNode implements NodeAction {
                 : overview.get("reportDataStatus").toString().trim().toLowerCase(java.util.Locale.ROOT);
         boolean hasData = !"no_data".equals(status) && !"unavailable".equals(status);
         metrics.put("sales", hasData ? overview.get("revenue") : null);
+        metrics.put("grossSales", hasData ? overview.get("grossSales") : null);
+        metrics.put("refunds", hasData ? overview.get("refunds") : null);
+        metrics.put("refundTransactions", hasData ? overview.get("refundTransactions") : null);
         metrics.put("grossProfit", hasData && canViewCost ? overview.get("grossProfit") : null);
         metrics.put("costAvailable", canViewCost && Boolean.TRUE.equals(overview.get("costAvailable")));
         if (!canViewCost) metrics.put("profitUnavailableReason", "permission");

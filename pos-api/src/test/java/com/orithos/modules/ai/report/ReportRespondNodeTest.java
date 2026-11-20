@@ -59,6 +59,41 @@ class ReportRespondNodeTest {
     }
 
     @Test
+    void authoritativeSalesDisclosesRefundsIncludedInNetRevenue() {
+        OverAllState state = state("", List.of(Map.of("sales", 5284.66, "grossSales", 5294.14,
+                "refunds", 9.48, "refundTransactions", 2, "grossProfit", "",
+                "costAvailable", false, "transactions", 168)), "2026-11-14", "2026-11-14");
+        when(state.value("intent", String.class)).thenReturn(Optional.of("report_sales"));
+
+        assertEquals("Sales for 2026-11-14 were AUD 5284.66 after AUD 9.48 in refunds across 2 refund transactions (gross sales AUD 5294.14); gross profit is unavailable because sale cost data is incomplete. Source: Orithos POS report.",
+                node.apply(state).get("answer"));
+    }
+
+    @Test
+    void chineseSalesAnswerDisclosesRefundsIncludedInNetRevenue() {
+        OverAllState state = state("", List.of(Map.of("sales", 5284.66, "grossSales", 5294.14,
+                "refunds", 9.48, "refundTransactions", 2, "grossProfit", "",
+                "costAvailable", false, "transactions", 168)), "2026-11-14", "2026-11-14");
+        when(state.value("intent", String.class)).thenReturn(Optional.of("report_sales"));
+        when(state.value("question", String.class)).thenReturn(Optional.of("11月14日营业额多少？"));
+
+        assertEquals("2026-11-14营业额 AUD 5284.66（退款 AUD 9.48，共 2 笔，退款前销售额 AUD 5294.14）；毛利暂不可用，销售成本数据不完整。数据来源：Orithos POS 报表。",
+                node.apply(state).get("answer"));
+    }
+
+    @Test
+    void refundOnlyDayReportsTheRefundAndNegativeNetSales() {
+        OverAllState state = state("", List.of(Map.of("sales", -9.48, "grossSales", 0.00,
+                "refunds", 9.48, "refundTransactions", 1, "transactions", 0,
+                "grossProfit", -8.62, "costAvailable", true)),
+                "2026-11-14", "2026-11-14");
+        when(state.value("intent", String.class)).thenReturn(Optional.of("report_sales"));
+
+        assertEquals("No completed sale transactions were recorded for 2026-11-14; AUD 9.48 in refunds across 1 refund transaction resulted in net sales of AUD -9.48. Source: Orithos POS report.",
+                node.apply(state).get("answer"));
+    }
+
+    @Test
     void authoritativeSalesAnswerUsesChineseExGstGrossProfitBasis() {
         OverAllState state = state("", List.of(Map.of("sales", 125.50, "grossProfit", 40.25,
                 "costAvailable", true, "transactions", 4)), "2026-10-16", "2026-10-16");
@@ -121,6 +156,21 @@ class ReportRespondNodeTest {
                 "2026-10-14", "2026-10-15");
         when(state.value("intent", String.class)).thenReturn(Optional.of("report_sales"));
         assertEquals("Sales on 2026-10-14 were AUD 100.00; sales on 2026-10-15 were AUD 120.00. Gross profit comparison is unavailable because sale cost data is incomplete for at least one date. Source: Orithos POS report.",
+                node.apply(state).get("answer"));
+    }
+
+    @Test
+    void comparisonDisclosesRefundsForTheAffectedDate() {
+        OverAllState state = state("", List.of(Map.of("comparison", true,
+                "firstDate", "2026-11-14", "secondDate", "2026-11-15",
+                "first", Map.of("sales", 5284.66, "grossSales", 5294.14, "refunds", 9.48,
+                        "refundTransactions", 2, "grossProfit", "", "costAvailable", false, "transactions", 168),
+                "second", Map.of("sales", 100.00, "grossSales", 100.00, "refunds", 0.00,
+                        "refundTransactions", 0, "grossProfit", 20.00, "costAvailable", true, "transactions", 4))),
+                "2026-11-14", "2026-11-15");
+        when(state.value("intent", String.class)).thenReturn(Optional.of("report_sales"));
+
+        assertEquals("Sales on 2026-11-14 were AUD 5284.66; sales on 2026-11-15 were AUD 100.00; refunds: 2026-11-14 AUD 9.48 (2 refund transactions; gross sales AUD 5294.14). Gross profit comparison is unavailable because sale cost data is incomplete for at least one date. Source: Orithos POS report.",
                 node.apply(state).get("answer"));
     }
 

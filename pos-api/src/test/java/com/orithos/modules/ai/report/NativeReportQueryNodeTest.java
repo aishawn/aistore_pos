@@ -177,6 +177,41 @@ class NativeReportQueryNodeTest {
     }
 
     @Test
+    void refundOnlySalesDayIsNotMarkedAsNoDataAndKeepsRefundMetrics() {
+        NativeAiReportQueryService queryService = mock(NativeAiReportQueryService.class);
+        ReportQueryService reportQuery = mock(ReportQueryService.class);
+        NativeReportQueryNode node = new NativeReportQueryNode(queryService,
+                new ReportPeriodResolver(), reportQuery);
+        OverAllState state = mock(OverAllState.class);
+        LocalDate date = LocalDate.parse("2026-11-14");
+        when(state.value(anyString())).thenReturn(Optional.empty());
+        when(state.value("intent", String.class)).thenReturn(Optional.of("report_sales"));
+        when(state.value("question", String.class)).thenReturn(Optional.of("sales on 14 November 2026"));
+        when(state.value("report_from")).thenReturn(Optional.of(date.atStartOfDay()));
+        when(state.value("report_to")).thenReturn(Optional.of(date.plusDays(1).atStartOfDay()));
+        when(state.value("vendor_id")).thenReturn(Optional.of(1L));
+        when(state.value("outlet_id")).thenReturn(Optional.of(1L));
+        when(state.value("can_report_query")).thenReturn(Optional.of(true));
+        when(state.value("can_report_cost")).thenReturn(Optional.of(true));
+        when(state.value("slots")).thenReturn(Optional.of(Map.of("from", date.toString(), "to", date.toString())));
+        when(reportQuery.nativeOverview(1L, 1L, date, date)).thenReturn(Map.ofEntries(
+                Map.entry("revenue", -9.48), Map.entry("grossSales", 0.0), Map.entry("refunds", 9.48),
+                Map.entry("refundTransactions", 1), Map.entry("transactions", 0), Map.entry("grossProfit", -8.62),
+                Map.entry("tickets", 0),
+                Map.entry("costAvailable", true), Map.entry("taxAvailable", true),
+                Map.entry("dataAsOf", "2026-11-14T14:30:00Z"), Map.entry("dataSource", "orithos_ledger"),
+                Map.entry("reportDataStatus", "available")));
+
+        Map<String, Object> result = node.apply(state);
+
+        assertEquals("available", result.get("report_data_status"));
+        @SuppressWarnings("unchecked")
+        Map<String, Object> row = (Map<String, Object>) ((List<?>) result.get("report_rows")).get(0);
+        assertEquals(9.48, row.get("refunds"));
+        assertEquals(1, row.get("refundTransactions"));
+    }
+
+    @Test
     void averageTicketIntentUsesTheSharedNativeQueryService() {
         NativeAiReportQueryService queryService = mock(NativeAiReportQueryService.class);
         ReportQueryService reportQuery = mock(ReportQueryService.class);
