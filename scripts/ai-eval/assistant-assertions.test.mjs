@@ -15,7 +15,7 @@ import {
 const expected = {
   from: "2026-11-12",
   to: "2026-11-12",
-  timeZone: "Australia/Adelaide",
+  timeZone: "Australia/Melbourne",
 };
 
 function response(overrides = {}) {

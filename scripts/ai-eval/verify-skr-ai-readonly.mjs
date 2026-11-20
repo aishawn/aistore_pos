@@ -56,7 +56,7 @@ async function api(pathname, method = "GET", body) {
 
 function formatBusinessDate(date = new Date()) {
   const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Australia/Adelaide", year: "numeric", month: "2-digit", day: "2-digit",
+    timeZone: "Australia/Melbourne", year: "numeric", month: "2-digit", day: "2-digit",
   }).formatToParts(date);
   const part = (type) => parts.find((item) => item.type === type)?.value;
   return `${part("year")}-${part("month")}-${part("day")}`;
@@ -175,7 +175,7 @@ try {
   ]);
   const report = unwrap(reportResults[0].body);
   const weeklyReport = unwrap(reportResults[1].body);
-  const timezone = report.timeZone || "Australia/Adelaide";
+  const timezone = report.timeZone || "Australia/Melbourne";
   const businessDate = yesterday;
   const exactDate = process.env.SKR_EXACT_DATE || "2026-10-16";
   const [salesAssistantResult, averageSaleAssistantResult, exactSalesAssistantResult, exactSalesHistoryResult,
@@ -301,7 +301,7 @@ try {
     ...assistantTraceability(exactSalesAssistant, {
       from: exactDate,
       to: exactDate,
-      timeZone: "Australia/Adelaide",
+      timeZone: "Australia/Melbourne",
     }),
   };
   results = {

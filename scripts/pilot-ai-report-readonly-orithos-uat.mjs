@@ -109,7 +109,7 @@ try {
   addCheck("authenticated Orithos login", true, `status=${login.status()}`);
 
   const today = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Australia/Adelaide", year: "numeric", month: "2-digit", day: "2-digit",
+    timeZone: "Australia/Melbourne", year: "numeric", month: "2-digit", day: "2-digit",
   }).format(new Date());
   const yesterday = new Date(`${today}T12:00:00Z`);
   yesterday.setUTCDate(yesterday.getUTCDate() - 1);

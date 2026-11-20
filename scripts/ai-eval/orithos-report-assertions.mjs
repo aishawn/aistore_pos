@@ -1,5 +1,5 @@
 const AUTHORITATIVE_SOURCE = "orithos_ledger";
-const BUSINESS_TIMEZONE = "Australia/Adelaide";
+const BUSINESS_TIMEZONE = "Australia/Melbourne";
 
 function deterministicRoute(assistant) {
   return assistant?.source === "deterministic" && assistant?.llmFallback === false;

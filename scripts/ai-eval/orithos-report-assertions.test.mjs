@@ -17,13 +17,13 @@ const report = {
   to: period.to,
   reportPeriodFrom: period.from,
   reportPeriodTo: period.to,
-  timeZone: "Australia/Adelaide",
+  timeZone: "Australia/Melbourne",
   reportDataStatus: "available",
   revenue: 4127.55,
   averageSale: 28.47,
 };
 
-test("previous complete business week is Monday to Sunday in Adelaide calendar dates", () => {
+test("previous complete business week is Monday to Sunday in Melbourne calendar dates", () => {
   assert.deepEqual(previousCompleteBusinessWeek("2026-11-20"), {
     from: "2026-11-09",
     to: "2026-11-15",
@@ -35,7 +35,7 @@ test("previous complete business week is Monday to Sunday in Adelaide calendar d
   assert.throws(() => previousCompleteBusinessWeek("2026-02-30"), /INVALID_BUSINESS_DATE/);
 });
 
-test("Orithos native overview requires source, Adelaide timezone, date range, and comparable totals", () => {
+test("Orithos native overview requires source, Melbourne timezone, date range, and comparable totals", () => {
   assert.deepEqual(nativeOverviewAcceptance(report, period), {
     checks: { source: true, period: true, timezone: true, dataStatus: true, revenue: true },
     passed: true,
@@ -52,7 +52,7 @@ test("assistant sales answer reconciles with native Orithos revenue and stays re
     llmFallback: false,
     reportPeriodFrom: period.from,
     reportPeriodTo: period.to,
-    reportTimeZone: "Australia/Adelaide",
+    reportTimeZone: "Australia/Melbourne",
     reportDataStatus: "available",
     answer: "Sales were AUD 4,127.55.",
     writeRequests: [],
@@ -69,7 +69,7 @@ test("assistant sales acceptance rejects model-classified or fallback answers", 
     llmFallback: true,
     reportPeriodFrom: period.from,
     reportPeriodTo: period.to,
-    reportTimeZone: "Australia/Adelaide",
+    reportTimeZone: "Australia/Melbourne",
     reportDataStatus: "available",
     answer: "Sales were AUD 4,127.55.",
     writeRequests: [],
@@ -88,7 +88,7 @@ test("assistant AOV can reconcile from a structured table", () => {
     llmFallback: false,
     reportPeriodFrom: period.from,
     reportPeriodTo: period.to,
-    reportTimeZone: "Australia/Adelaide",
+    reportTimeZone: "Australia/Melbourne",
     reportDataStatus: "incomplete",
     table: { rows: [{ averageSale: 28.47 }] },
     writeRequests: [],
@@ -103,7 +103,7 @@ test("unreconciled amount, missing provenance, or any write request fails accept
     storeScope: "current_authenticated_store",
     reportPeriodFrom: period.from,
     reportPeriodTo: period.to,
-    reportTimeZone: "Australia/Adelaide",
+    reportTimeZone: "Australia/Melbourne",
     reportDataStatus: "available",
     answer: "Sales were AUD 4,999.00.",
     writeRequests: ["POST /api/sales"],
