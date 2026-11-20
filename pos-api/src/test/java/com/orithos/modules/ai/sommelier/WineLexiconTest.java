@@ -6,6 +6,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class WineLexiconTest {
@@ -41,6 +42,15 @@ class WineLexiconTest {
     void beerNameIsNotWine() {
         assertFalse(WineLexicon.looksLikeWine("Carlton Draught Btl 375ml", "Beer Local", "Beer"));
         assertTrue(WineLexicon.looksLikeWine("155 PINOT NOIR 750ML", "Beer Local", null));
+    }
+
+    @Test
+    void regionInferenceTreatsStateAbbreviationsAsWholeTokens() {
+        WineProfile brandMatch = WineLexicon.infer("LA BOSSA SHIRAZ 750ML", "Wine", "Wine", null);
+        WineProfile stateMatch = WineLexicon.infer("Shiraz SA 750ml", "Wine", "Wine", null);
+
+        assertNull(brandMatch.region());
+        assertEquals("Australia", stateMatch.region());
     }
 
     @Test

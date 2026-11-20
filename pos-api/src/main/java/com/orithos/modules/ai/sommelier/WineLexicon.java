@@ -302,7 +302,7 @@ public final class WineLexicon {
         if (containsAny(b, "chianti", "tuscany")) return "Tuscany";
         if (containsAny(b, "rioja")) return "Rioja";
         if (containsAny(b, "napa")) return "Napa";
-        if (containsAny(b, "australia", "australian", "sa ", "nsw", "vic ")) return "Australia";
+        if (containsAny(b, "australia", "australian") || containsToken(b, "sa", "nsw", "vic")) return "Australia";
         return null;
     }
 
