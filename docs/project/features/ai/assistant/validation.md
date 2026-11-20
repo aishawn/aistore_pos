@@ -2,7 +2,7 @@
 
 ## 2026-11-20 侍酒推荐推断档案提示
 
-Demo 与 SKR 前后端运行 SHA 均为 `25b2d72666bb3a96ebd47c6c8212064e9231532f`。两店只读推荐验收各 7/7 通过；各返回 3 张卡片，响应均有 `inferred=true`。Microsoft Edge 浏览器流程在两店均显示 3 个 `Estimated profile` 标记，进入商品详情后显示估算档案与搭配提示。没有模型调用或 POS 业务写入。该轮只验证字段及告知展示，不代表推断品鉴资料准确；准确性仍需标注样本和侍酒师/店员评分。详见[本轮记录](../../../../test-sessions/2026-11-20-sommelier-inference-profile-uat.md)。
+侍酒推断提示代码提交 `25b2d726`；随后 Demo 与 SKR 前后端均运行 `ae39da3d60aba024b5ab8e2c161b9f1709eed1d3`。新增可重复的 `recommendation-inference-provenance` UAT 检查后，两店只读推荐验收各 8/8 通过；每店返回 3 张卡片，响应均有布尔型 `inferred`，本轮样本均为 `true`。Microsoft Edge 浏览器流程在两店均显示 3 个 `Estimated profile` 标记，进入商品详情后显示估算档案与搭配提示。没有模型调用或 POS 业务写入。该轮只验证字段及告知展示，不代表推断品鉴资料准确；准确性仍需标注样本和侍酒师/店员评分。详见[本轮记录](../../../../test-sessions/2026-11-20-sommelier-inference-profile-uat.md)。
 
 ## 2026-11-19 滞销回答中文回归
 

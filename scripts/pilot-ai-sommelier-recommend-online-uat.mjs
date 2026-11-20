@@ -127,6 +127,15 @@ try {
   });
   if (!requestPassed) throw new Error("RECOMMENDATION_EMPTY_OR_UNAVAILABLE");
 
+  const cardsWithInferenceFlag = cards.filter((card) => typeof card.inferred === "boolean").length;
+  const inferredCount = cards.filter((card) => card.inferred === true).length;
+  const inferenceProvenancePassed = cardsWithInferenceFlag === cards.length;
+  record("recommendation-inference-provenance", inferenceProvenancePassed ? "PASS" : "FAIL", {
+    cards: cards.length,
+    cardsWithInferenceFlag,
+    inferredCount,
+  });
+
   const uniqueProducts = new Set(cards.map((card) => card.productId)).size === cards.length;
   const allRedWine = cards.every((card) => card.wineType?.toLowerCase() === "red" && !nonWineTerms.test(card.name ?? ""));
   const allInBudgetAndStock = cards.every((card) => Number(card.sellPrice) >= 0

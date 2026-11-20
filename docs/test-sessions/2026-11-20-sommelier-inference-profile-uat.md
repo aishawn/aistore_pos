@@ -2,17 +2,17 @@
 
 ## Runtime identity
 
-Demo and SKR `/api/public/version` both returned frontend and backend SHA `25b2d72666bb3a96ebd47c6c8212064e9231532f`, matching the source commit under test.
+The feature commit `25b2d72666bb3a96ebd47c6c8212064e9231532f` was initially live on Demo and SKR. After the evidence record was pushed, both stores redeployed the current `main` SHA `ae39da3d60aba024b5ab8e2c161b9f1709eed1d3`; final API and browser reruns below used that exact runtime SHA, which includes the feature commit.
 
 ## API checks
 
-The existing authenticated read-only runner `scripts/pilot-ai-sommelier-recommend-online-uat.mjs` passed 7/7 checks on each store: runtime identity, login, Shiraz identification, recommendation response, requested wine type, unique in-stock products within budget, and catalog identity. The request returned three cards per store. A follow-up response-shape check confirmed every card included the boolean `inferred` field and all three were `true` on both stores.
+The authenticated read-only runner `scripts/pilot-ai-sommelier-recommend-online-uat.mjs` passed 8/8 checks on each store: runtime identity, login, Shiraz identification, recommendation response, inference provenance, requested wine type, unique in-stock products within budget, and catalog identity. The response-shape check requires each card's `inferred` field to be boolean; it does not require either value. On this sample, all three cards were `true` on both stores.
 
 Raw runner summaries are in the ignored local files `.local/ai-eval/sommelier-recommend-20261120T014730899Z.json` (Demo) and `.local/ai-eval/sommelier-recommend-20261120T014747748Z.json` (SKR). They contain no credentials.
 
 ## Browser checks
 
-Authenticated Playwright runs on Microsoft Edge completed the red-wine recommendation flow on both stores. Each page displayed three result cards and three `Estimated profile` labels. Opening the first card's `Help me sell` page displayed `Tasting profile and food pairings are estimated.` Both runs passed.
+Authenticated Playwright runs on Microsoft Edge completed the red-wine recommendation flow on both stores at runtime `ae39da3d60aba024b5ab8e2c161b9f1709eed1d3`. Each page displayed three result cards and three `Estimated profile` labels. Opening the first card's `Help me sell` page displayed `Tasting profile and food pairings are estimated.` Both runs passed.
 
 ## Scope and limits
 
