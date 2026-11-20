@@ -6,6 +6,11 @@ export function formatCompanySetting(field: CompanyField, value: string): string
   return parsed ? parsed.join("\n") : value;
 }
 
+export function normalizeCompanySetting(field: CompanyField, value: string): string {
+  if (field.key === "company.login.login_type" && value === "PIN") return "USERNAME_PASSWORD";
+  return value;
+}
+
 export function parseStringListSetting(value: string): string[] | null {
   try {
     const parsed: unknown = JSON.parse(value);

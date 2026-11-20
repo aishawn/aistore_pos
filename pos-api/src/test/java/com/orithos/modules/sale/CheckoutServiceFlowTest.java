@@ -8,6 +8,7 @@ import com.orithos.modules.eftpos.EftposService;
 import com.orithos.modules.payment.PaymentMethod;
 import com.orithos.modules.payment.PaymentMethodMapper;
 import com.orithos.modules.product.Product;
+import com.orithos.modules.product.ProductPrice;
 import com.orithos.modules.product.mapper.ProductMapper;
 import com.orithos.modules.register.Register;
 import com.orithos.modules.register.RegisterMapper;
@@ -55,6 +56,10 @@ class CheckoutServiceFlowTest {
         product.setPrice(new BigDecimal("10.02"));
         product.setCaseQuantity(BigDecimal.ONE);
         product.setTrackInventory(true);
+        ProductPrice price = new ProductPrice();
+        price.setQuantity(BigDecimal.ONE);
+        price.setPrice(product.getPrice());
+        when(products.findPricesForOutlet(42L, 12L)).thenReturn(List.of(price));
         when(products.findSellableForOutlet(42L, 3L, 12L, BigDecimal.ONE)).thenReturn(product);
         when(products.findByIdAndOutlet(42L, 3L, 12L)).thenReturn(product);
         when(sales.findTaxRateId(42L, 3L, 12L)).thenReturn(9L);

@@ -6,7 +6,7 @@ import { CompanySettingsScaffold } from "@/components/admin/CompanySettingsScaff
 import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { type CompanyField, type CompanySection } from "@/lib/company-settings-catalog";
-import { formatCompanySetting, serializeCompanySetting, validateCompanySetting } from "@/lib/company-settings-form";
+import { formatCompanySetting, normalizeCompanySetting, serializeCompanySetting, validateCompanySetting } from "@/lib/company-settings-form";
 
 type SettingView = { name: string; value: string; datatype?: string; orithosOwned?: boolean; persisted?: boolean };
 
@@ -31,12 +31,15 @@ export function CompanyKvEditor({ section }: { section: CompanySection }) {
     try {
       const bundle = await api.get<Record<string, SettingView>>("/api/settings/company");
       const next: Record<string, string> = {};
+      const baseline: Record<string, string> = {};
       for (const field of section.fields) {
         const raw = bundle[field.key]?.value ?? "";
-        next[field.key] = field.type === "string-list" ? formatCompanySetting(field, raw) : raw;
+        const normalized = normalizeCompanySetting(field, raw);
+        next[field.key] = field.type === "string-list" ? formatCompanySetting(field, normalized) : normalized;
+        baseline[field.key] = field.type === "string-list" ? formatCompanySetting(field, raw) : raw;
       }
       setValues(next);
-      setSaved(next);
+      setSaved(baseline);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not load company settings.");
     } finally {

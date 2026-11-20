@@ -9,10 +9,13 @@ import com.orithos.common.CashRounding;
 import com.orithos.common.GstMath;
 import com.orithos.common.Ids;
 import com.orithos.modules.config.CompanySettingsService;
+import com.orithos.modules.config.CompanySettingsKeys;
 import com.orithos.modules.payment.PaymentMethod;
 import com.orithos.modules.payment.PaymentMethodMapper;
 import com.orithos.modules.product.Product;
 import com.orithos.modules.product.mapper.ProductMapper;
+import com.orithos.modules.pricing.FamilyPriceCalculator;
+import com.orithos.modules.pricing.TierPriceCalculator;
 import com.orithos.modules.register.Register;
 import com.orithos.modules.register.RegisterMapper;
 import com.orithos.modules.register.RegisterSessionMapper;
@@ -27,6 +30,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.time.LocalDateTime;
 import java.security.MessageDigest;
 
@@ -446,6 +452,8 @@ public class CheckoutService {
             throw new BusinessException(40900,
                     "This customer has an assigned price list. Customer-specific pricing is not yet supported; remove the customer or use a supported price before selling.");
         }
+        Map<Long, Product> products = new LinkedHashMap<>();
+        Map<Long, List<TierPriceCalculator.Tier>> productTiers = new LinkedHashMap<>();
         for (CheckoutRequest.Item item : req.getItems()) {
             if (item == null || item.getProductId() == null) {
                 throw new BusinessException(40000, "Each sale line must reference a catalogue product.");
@@ -470,19 +478,45 @@ public class CheckoutService {
             if (taxRateId == null || taxPercent == null) {
                 throw new BusinessException("Product tax rate is missing. Configure GST before selling.");
             }
+            List<com.orithos.modules.product.ProductPrice> outletPrices = productMapper.findPricesForOutlet(product.getId(), outletId);
+            List<TierPriceCalculator.Tier> tiers = outletPrices == null ? List.of() : outletPrices.stream()
+                    .map(price -> new TierPriceCalculator.Tier(price.getQuantity(), price.getPrice())).toList();
+            products.put(product.getId(), product);
+            productTiers.put(product.getId(), tiers);
+            BigDecimal baseUnitPrice = tiers.isEmpty() ? unitPrice : TierPriceCalculator.price(BigDecimal.ONE, tiers,
+                    "HIGH_MIX_PRICE", "REDISTRIBUTE").lineTotal();
+            if (baseUnitPrice.signum() < 0) {
+                throw new BusinessException("Product has no valid outlet price. Configure a price before selling.");
+            }
             if (req.getExpectedTotal() != null
-                    && ((item.getUnitPrice() != null && item.getUnitPrice().compareTo(unitPrice) != 0)
+                    && ((item.getUnitPrice() != null && item.getUnitPrice().compareTo(baseUnitPrice) != 0)
                     || (item.getExpectedTaxRate() != null && item.getExpectedTaxRate().compareTo(taxPercent) != 0))) {
                 throw new BusinessException(40900, "A quoted product price or GST rate changed. Refresh the quote before payment.");
             }
             item.setQuantity(quantity);
-            item.setUnitPrice(unitPrice);
+            item.setUnitPrice(baseUnitPrice);
             item.setDiscountPercent(discount);
-            BigDecimal gross = quantity.multiply(unitPrice);
-            item.setLineTotal(gross.multiply(BigDecimal.ONE.subtract(discount.movePointLeft(2)))
+            item.setLineTotal(quantity.multiply(baseUnitPrice).multiply(BigDecimal.ONE.subtract(discount.movePointLeft(2)))
                     .setScale(2, RoundingMode.HALF_UP));
             item.setExpectedTaxRate(taxPercent);
             item.setName(product.getName());
+        }
+
+        String quantityRate = companySettings.getString(CompanySettingsKeys.QUANTITY_RATE, vendorId, "HIGH_MIX_PRICE");
+        String distribution = companySettings.getString(CompanySettingsKeys.FAMILY_PRICE, vendorId, "MATCH_PRICE_POINTS");
+        String rounding = companySettings.getString(CompanySettingsKeys.PRICE_ROUNDING, vendorId, "REDISTRIBUTE");
+        List<FamilyPriceCalculator.Line> pricingLines = new ArrayList<>(req.getItems().size());
+        for (CheckoutRequest.Item item : req.getItems()) {
+            Product product = products.get(item.getProductId());
+            List<TierPriceCalculator.Tier> tiers = productTiers.getOrDefault(product.getId(), List.of());
+            pricingLines.add(new FamilyPriceCalculator.Line(product.getId(), product.getFamilyId(), item.getQuantity(),
+                    item.getUnitPrice(), tiers));
+        }
+        List<BigDecimal> totals = FamilyPriceCalculator.price(pricingLines, distribution, quantityRate, rounding);
+        for (int i = 0; i < req.getItems().size(); i++) {
+            CheckoutRequest.Item item = req.getItems().get(i);
+            BigDecimal discountFactor = BigDecimal.ONE.subtract(item.getDiscountPercent().movePointLeft(2));
+            item.setLineTotal(totals.get(i).multiply(discountFactor).setScale(2, RoundingMode.HALF_UP));
         }
     }
 

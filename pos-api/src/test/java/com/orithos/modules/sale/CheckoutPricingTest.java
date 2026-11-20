@@ -7,6 +7,7 @@ import com.orithos.modules.eftpos.EftposService;
 import com.orithos.modules.payment.PaymentMethod;
 import com.orithos.modules.payment.PaymentMethodMapper;
 import com.orithos.modules.product.Product;
+import com.orithos.modules.product.ProductPrice;
 import com.orithos.modules.product.mapper.ProductMapper;
 import com.orithos.modules.register.RegisterMapper;
 import com.orithos.modules.register.RegisterSessionMapper;
@@ -42,6 +43,7 @@ class CheckoutPricingTest {
     @BeforeEach
     void authenticateOutlet() {
         when(companySettings.cashRoundTo(3L)).thenReturn(new BigDecimal("0.05"));
+        when(productMapper.findPricesForOutlet(anyLong(), eq(12L))).thenReturn(List.of(price("1", "3.25")));
         SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
                 new AuthUser(7L, "cashier", false, 12L, 3L), null, List.of()));
     }
@@ -128,6 +130,26 @@ class CheckoutPricingTest {
     }
 
     @Test
+    void quoteAppliesQuantityTierToLineTotal() {
+        Product product = product("10.00");
+        product.setFamilyId(null);
+        when(productMapper.findSellableForOutlet(42L, 3L, 12L, new BigDecimal("2"))).thenReturn(product);
+        when(productMapper.findPricesForOutlet(42L, 12L)).thenReturn(List.of(
+                price("1", "10.00"), price("2", "7.50")));
+        when(saleMapper.findTaxRateId(42L, 3L, 12L)).thenReturn(9L);
+        when(saleMapper.findSellTaxPercent(42L, 3L, 12L)).thenReturn(new BigDecimal("10"));
+        when(registerMapper.findById(99L)).thenReturn(openRegister());
+        when(registerSessionMapper.findActiveSession(99L, 3L, 12L)).thenReturn(new RegisterSession());
+
+        CheckoutRequest request = request(42L, "2", "999.00", "1998.00");
+        request.setRegisterId(99L);
+        var quote = service.quote(request);
+
+        assertEquals(new BigDecimal("15.00"), quote.lines().get(0).total());
+        assertEquals(new BigDecimal("15.00"), quote.total());
+    }
+
+    @Test
     void quoteRequiresAnOpenRegisterSession() {
         CheckoutRequest request = request(42L, "1", "0.00", null);
         request.setRegisterId(99L);
@@ -160,6 +182,20 @@ class CheckoutPricingTest {
         product.setPrice(price == null ? null : new BigDecimal(price));
         product.setCaseQuantity(new BigDecimal("6"));
         return product;
+    }
+
+    private static ProductPrice price(String quantity, String amount) {
+        ProductPrice price = new ProductPrice();
+        price.setQuantity(new BigDecimal(quantity));
+        price.setPrice(new BigDecimal(amount));
+        return price;
+    }
+
+    private static Register openRegister() {
+        Register register = new Register();
+        register.setOutletId(12L);
+        register.setClosed(false);
+        return register;
     }
 
     private static CheckoutRequest request(Long productId, String quantity, String price, String lineTotal) {

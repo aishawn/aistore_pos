@@ -197,6 +197,11 @@ public interface ProductMapper {
             + "WHERE product_id = #{productId} ORDER BY quantity")
     List<ProductPrice> findPricesByProductId(@Param("productId") Long productId);
 
+    @Select("SELECT id, product_id AS productId, quantity, price FROM product_price "
+            + "WHERE product_id = #{productId} AND outlet_id = #{outletId} ORDER BY quantity")
+    List<ProductPrice> findPricesForOutlet(@Param("productId") Long productId,
+                                           @Param("outletId") Long outletId);
+
     @Select("SELECT name FROM product WHERE family_id = #{familyId} AND id != #{productId} "
             + "AND deleted_at IS NULL ORDER BY name LIMIT 6")
     List<String> findFamilyMemberNames(@Param("familyId") Long familyId,
@@ -281,7 +286,7 @@ public interface ProductMapper {
     List<Product> browseForSell(@Param("stem") String stem, @Param("q") String q,
                                 @Param("vendorId") Long vendorId, @Param("outletId") Long outletId);
 
-    @Select("SELECT p.id, p.name, p.case_quantity AS caseQuantity, "
+    @Select("SELECT p.id, p.name, p.family_id AS familyId, p.case_quantity AS caseQuantity, "
             + "(SELECT pp.price FROM product_price pp WHERE pp.product_id=p.id AND pp.outlet_id=#{outletId} "
             + "AND pp.quantity <= #{quantity} ORDER BY pp.quantity DESC LIMIT 1) AS price "
             + "FROM product p JOIN outlet o ON o.id=p.outlet_id "

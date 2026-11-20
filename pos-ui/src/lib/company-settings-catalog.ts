@@ -23,16 +23,16 @@ export const COMPANY_SECTIONS: CompanySection[] = [
     title: "General",
     href: "/settings/company/general",
     fields: [
-      { key: "company.general.use_quantity_rate", label: "Use Quantity Rate", description: "Saved preference only. Orithos checkout does not currently apply this pricing algorithm.", type: "select", options: [
+      { key: "company.general.use_quantity_rate", label: "Use Quantity Rate", type: "select", options: [
         { value: "HIGH_MIX_PRICE", label: "High Mix Price" },
         { value: "LOW_MIX_PRICE", label: "Low Mix Price" },
         { value: "AVERAGE", label: "Average" },
       ]},
-      { key: "company.general.family_price_distribution", label: "Family Price Distribution Method", description: "Saved preference only. Orithos checkout does not currently apply this pricing algorithm.", type: "select", options: [
+      { key: "company.general.family_price_distribution", label: "Family Price Distribution Method", type: "select", options: [
         { value: "MATCH_PRICE_POINTS", label: "Match Price Points" },
         { value: "PROPORTIONAL", label: "Proportional" },
       ]},
-      { key: "company.general.price_rounding_mode", label: "Price Rounding Mode", description: "Saved preference only. Orithos checkout does not currently apply this pricing algorithm.", type: "select", options: [
+      { key: "company.general.price_rounding_mode", label: "Price Rounding Mode", type: "select", options: [
         { value: "REDISTRIBUTE", label: "Redistribute" },
         { value: "TRUNCATE", label: "Truncate" },
         { value: "ROUND", label: "Round" },
@@ -77,9 +77,8 @@ export const COMPANY_SECTIONS: CompanySection[] = [
     title: "Login",
     href: "/settings/company/login-after-sale",
     fields: [
-      { key: "company.login.login_type", label: "Login Type", type: "select", options: [
+      { key: "company.login.login_type", label: "Login Type", description: "PIN login is unavailable; save to use username and password.", type: "select", options: [
         { value: "USERNAME_PASSWORD", label: "Username & password" },
-        { value: "PIN", label: "PIN" },
       ]},
       { key: "company.login.mask_username", label: "Mask Username", type: "boolean" },
       { key: "company.login.require_password", label: "Require Password", type: "boolean" },

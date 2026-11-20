@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { COMPANY_SECTIONS } from "./company-settings-catalog.ts";
-import { formatCompanySetting, serializeCompanySetting, validateCompanySetting } from "./company-settings-form.ts";
+import { formatCompanySetting, normalizeCompanySetting, serializeCompanySetting, validateCompanySetting } from "./company-settings-form.ts";
 
 test("date and time settings expose the supported Shopfront formats", () => {
   const section = COMPANY_SECTIONS.find((item) => item.id === "date-time");
@@ -12,6 +12,15 @@ test("date and time settings expose the supported Shopfront formats", () => {
   assert.equal(timeFormat?.type, "select");
   assert.ok(timeFormat?.options?.some((option) => option.value === "HH:mm:ss"));
   assert.ok(dateFormat?.options?.some((option) => option.value === "DD/MM/YYYY"));
+});
+
+test("login settings do not offer the unimplemented PIN flow", () => {
+  const section = COMPANY_SECTIONS.find((item) => item.id === "login");
+  const loginType = section?.fields.find((field) => field.key === "company.login.login_type");
+  assert.ok(loginType);
+  assert.deepEqual(loginType.options?.map((option) => option.value), ["USERNAME_PASSWORD"]);
+  assert.equal(normalizeCompanySetting(loginType, "PIN"), "USERNAME_PASSWORD");
+  assert.equal(normalizeCompanySetting(loginType, "USERNAME_PASSWORD"), "USERNAME_PASSWORD");
 });
 
 test("cash reason settings render one reason per line", () => {
