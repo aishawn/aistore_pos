@@ -421,6 +421,7 @@ public class CheckoutService {
             Long productId = item.getProductId();
             Product product = productMapper.findSellableForOutlet(productId, CurrentUser.vendorId(),
                     CurrentUser.outletId(), qty);
+            si.setCost(SaleCostSnapshot.knownUnitCost(product));
             si.setProductId(productId);
             si.setCaseQuantity(product.getCaseQuantity());
             si.setNote(product.getName());
