@@ -140,10 +140,12 @@ export function singleProductStockAcceptance(assistant, expected) {
   const name = typeof expected?.name === "string" ? expected.name.trim() : "";
   const nameIndex = name ? answer.toLowerCase().indexOf(name.toLowerCase()) : -1;
   const afterName = nameIndex < 0 ? "" : answer.slice(nameIndex + name.length);
-  const quantityMatch = afterName.match(/^\s*(?:库存\s*)?[:：]\s*(-?\d+(?:\.\d+)?)/i);
+  const quantityMatch = afterName.match(/^\s*(?:库存\s*)?[:：]\s*(?:(?:系统记录库存为|system-recorded stock is)\s*)?(-?\d+(?:\.\d+)?)/i);
   const answerQuantity = quantityMatch ? Number(quantityMatch[1]) : null;
   const expectedQuantity = Number(expected?.quantity);
   const dataAsOf = assistant?.dataAsOf ?? assistant?.report_data_as_of ?? assistant?.reportDataAsOf;
+  const negativeStockDisclosure = expectedQuantity >= 0
+    || /负库存属于数据异常|negative stock is a data anomaly/i.test(answer);
   const freshnessHonest = Boolean(dataAsOf)
     || /inventory update time unknown|库存更新时间未知/i.test(answer);
   const checks = {
@@ -151,6 +153,7 @@ export function singleProductStockAcceptance(assistant, expected) {
     deterministicRoute: deterministicRoute(assistant),
     exactProductVisible: nameIndex >= 0,
     quantityMatches: Number.isFinite(expectedQuantity) && answerQuantity === expectedQuantity,
+    negativeStockDisclosure,
     route: assistant?.route == null,
     dataSource: assistant?.dataSource === "orithos_ledger",
     storeScope: assistant?.storeScope === "current_authenticated_store",

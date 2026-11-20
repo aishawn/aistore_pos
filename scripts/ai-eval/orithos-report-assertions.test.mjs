@@ -169,7 +169,7 @@ test("product count matches the authenticated active catalogue without requiring
 test("single-product stock answer matches the current quantity with provenance and freshness", () => {
   const result = singleProductStockAcceptance({
     intent: "report_stock",
-    answer: "Sample Shiraz: -13 (inventory updated: 2026-11-20T04:15:00Z)",
+    answer: "Sample Shiraz：系统记录库存为 -13 件，负库存属于数据异常，请核查库存记录。（库存更新于 2026-11-20T04:15:00Z）",
     dataSource: "orithos_ledger",
     storeScope: "current_authenticated_store",
     source: "deterministic",
@@ -180,6 +180,41 @@ test("single-product stock answer matches the current quantity with provenance a
 
   assert.equal(result.passed, true);
   assert.equal(result.answerQuantity, -13);
+  assert.equal(result.checks.negativeStockDisclosure, true);
+});
+
+test("single-product English negative stock answer parses the warning quantity", () => {
+  const result = singleProductStockAcceptance({
+    intent: "report_stock",
+    answer: "Sample Shiraz: system-recorded stock is -13; negative stock is a data anomaly and should be reviewed. (inventory updated: 2026-11-20T04:15:00Z)",
+    dataSource: "orithos_ledger",
+    storeScope: "current_authenticated_store",
+    source: "deterministic",
+    llmFallback: false,
+    report_data_as_of: "2026-11-20T04:15:00Z",
+    writeRequests: [],
+  }, { name: "Sample Shiraz", quantity: -13 });
+
+  assert.equal(result.passed, true);
+  assert.equal(result.answerQuantity, -13);
+  assert.equal(result.checks.negativeStockDisclosure, true);
+});
+
+test("single-product negative stock without an anomaly warning is rejected", () => {
+  const result = singleProductStockAcceptance({
+    intent: "report_stock",
+    answer: "Sample Shiraz: -13 (inventory updated: 2026-11-20T04:15:00Z)",
+    dataSource: "orithos_ledger",
+    storeScope: "current_authenticated_store",
+    source: "deterministic",
+    llmFallback: false,
+    report_data_as_of: "2026-11-20T04:15:00Z",
+    writeRequests: [],
+  }, { name: "Sample Shiraz", quantity: -13 });
+
+  assert.equal(result.checks.quantityMatches, true);
+  assert.equal(result.checks.negativeStockDisclosure, false);
+  assert.equal(result.passed, false);
 });
 
 test("single-product stock answer rejects quantity, scope, and write mismatches", () => {
