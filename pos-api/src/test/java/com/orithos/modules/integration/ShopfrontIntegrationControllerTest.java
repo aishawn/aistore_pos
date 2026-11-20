@@ -345,6 +345,43 @@ class ShopfrontIntegrationControllerTest {
     }
 
     @Test
+    void productImportPreservesCrawlerNormalizedQuantityTierUnitPrices() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true, true);
+        Class<?> batchType = Class.forName(ShopfrontIntegrationController.class.getName() + "$ProductImportBatch");
+        Constructor<?> constructor = batchType.getDeclaredConstructor();
+        constructor.setAccessible(true);
+        Object batch = constructor.newInstance();
+        Method upsert = ShopfrontIntegrationController.class.getDeclaredMethod(
+                "upsertBusinessProduct", JsonNode.class, String.class, long.class, Map.class,
+                Long.class, batchType);
+        upsert.setAccessible(true);
+
+        upsert.invoke(controller, new ObjectMapper().readTree("""
+                {"source_id":"tiered-1","name":"Tiered item","source_status":"ACTIVE","case_quantity":1,
+                 "tax_rate_name":"GST",
+                 "prices":[{"quantity":1,"price":8.99,"price_ex":8.172727},
+                           {"quantity":4,"price":6.7475,"price_ex":6.134091},
+                           {"quantity":10,"price":5.199,"price_ex":4.726364}],
+                 "barcodes":[{"code":"930010","quantity":10}]}
+                """), "skr", 87L, new java.util.HashMap<>(Map.of("gst", 7L)), 123L, batch);
+
+        var pricesField = batchType.getDeclaredField("pricesByProduct");
+        pricesField.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        Map<Long, List<Object[]>> pricesByProduct = (Map<Long, List<Object[]>>) pricesField.get(batch);
+        List<Object[]> prices = pricesByProduct.get(123L);
+
+        assertEquals(3, prices.size());
+        assertEquals(new BigDecimal("8.99"), prices.get(0)[2]);
+        assertEquals(new BigDecimal("8.172727"), prices.get(0)[3]);
+        assertEquals(new BigDecimal("6.7475"), prices.get(1)[2]);
+        assertEquals(new BigDecimal("6.134091"), prices.get(1)[3]);
+        assertEquals(new BigDecimal("5.199"), prices.get(2)[2]);
+        assertEquals(new BigDecimal("4.726364"), prices.get(2)[3]);
+    }
+
+    @Test
     void releasesExistingProductNamesBeforeApplyingBatchNames() throws Exception {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
         var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true, true);
@@ -1168,7 +1205,7 @@ class ShopfrontIntegrationControllerTest {
     }
 
     @Test
-    void packagePriceTierIsConvertedToPosUnitPriceOnlyForMatchingBarcodeQuantity() throws Exception {
+    void productImportPreservesNormalizedQuantityTierUnitPrices() throws Exception {
         var controller = new ShopfrontIntegrationController(mock(JdbcTemplate.class), new ObjectMapper(), "token", true, true);
         Class<?> batchType = Class.forName(ShopfrontIntegrationController.class.getName() + "$ProductImportBatch");
         Constructor<?> constructor = batchType.getDeclaredConstructor();
@@ -1178,11 +1215,11 @@ class ShopfrontIntegrationControllerTest {
                 "collectProductPrices", long.class, com.fasterxml.jackson.databind.JsonNode.class, long.class, batchType);
         collect.setAccessible(true);
         collect.invoke(controller, 17L, new ObjectMapper().readTree("""
-                {"prices":[{"quantity":4,"price":7.99,"priceEx":7.263636}],
+                {"prices":[{"quantity":4,"price":1.9975,"priceEx":1.815909}],
                  "barcodes":[{"code":"9300004","quantity":4}]}
                 """), 48L, batch);
         collect.invoke(controller, 18L, new ObjectMapper().readTree("""
-                {"prices":[{"quantity":10,"price":64.99}],
+                {"prices":[{"quantity":10,"price":6.499}],
                  "barcodes":[{"code":"9300030","quantity":30}]}
                 """), 48L, batch);
 
@@ -1190,9 +1227,9 @@ class ShopfrontIntegrationControllerTest {
         field.setAccessible(true);
         @SuppressWarnings("unchecked")
         Map<Long, List<Object[]>> prices = (Map<Long, List<Object[]>>) field.get(batch);
-        assertEquals(new BigDecimal("1.997500"), prices.get(17L).get(0)[2]);
+        assertEquals(new BigDecimal("1.9975"), prices.get(17L).get(0)[2]);
         assertEquals(new BigDecimal("1.815909"), prices.get(17L).get(0)[3]);
-        assertEquals(new BigDecimal("64.99"), prices.get(18L).get(0)[2]);
+        assertEquals(new BigDecimal("6.499"), prices.get(18L).get(0)[2]);
     }
 
     @Test

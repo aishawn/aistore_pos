@@ -4210,7 +4210,6 @@ public class ShopfrontIntegrationController {
     private void collectProductPrices(long productId, JsonNode item, long outletId, ProductImportBatch batch) {
         List<Object[]> prices = new ArrayList<>();
         boolean hasUnitPrice = false;
-        Set<BigDecimal> barcodeQuantities = barcodePackQuantities(item);
         JsonNode sourcePrices = item.get("prices");
         if (sourcePrices != null && sourcePrices.isArray()) {
             for (JsonNode price : sourcePrices) {
@@ -4219,11 +4218,6 @@ public class ShopfrontIntegrationController {
                 if (quantity == null || quantity.signum() <= 0 || value == null) continue;
                 BigDecimal priceEx = decimal(price, "price_ex");
                 if (priceEx == null) priceEx = decimal(price, "priceEx");
-                if (quantity.compareTo(BigDecimal.ONE) > 0
-                        && barcodeQuantities.contains(quantity.stripTrailingZeros())) {
-                    value = value.divide(quantity, 6, RoundingMode.HALF_UP);
-                    if (priceEx != null) priceEx = priceEx.divide(quantity, 6, RoundingMode.HALF_UP);
-                }
                 prices.add(new Object[]{productId, quantity, value, priceEx, outletId});
                 if (quantity.compareTo(BigDecimal.ONE) == 0) hasUnitPrice = true;
             }
