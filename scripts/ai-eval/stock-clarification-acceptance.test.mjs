@@ -91,3 +91,12 @@ test("last-week report UAT stops before login when runtime SHA is wrong", () => 
   assert.ok(guard < source.indexOf("/api/auth/login"));
   assert.ok(guard < source.indexOf("/api/ai/assistant"));
 });
+
+test("provenance UI UAT validates runtime SHA before creating a browser session", () => {
+  const source = fs.readFileSync(path.join(repoRoot, "scripts", "pilot-ai-provenance-ui-uat.mjs"), "utf8");
+  const guard = source.indexOf("if (!runtimePreflight.allowed)");
+
+  assert.notEqual(guard, -1);
+  assert.ok(guard < source.indexOf("const browser = await chromium.launch"));
+  assert.ok(guard < source.indexOf("/api/auth/login"));
+});

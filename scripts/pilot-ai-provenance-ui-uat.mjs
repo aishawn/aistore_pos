@@ -1,7 +1,9 @@
 import fs from "node:fs";
 import path from "node:path";
+import { execFileSync } from "node:child_process";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { reconcileAiReportMetrics } from "./ai-report-metric-reconciliation.mjs";
+import { assistantRuntimePreflight } from "./ai-eval/stock-clarification-acceptance.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const base = (process.env.PILOT_BASE_URL || "https://skr.orithos.com.au").replace(/\/+$/, "");
@@ -14,6 +16,28 @@ const playwrightEntry = process.env.CODEX_NODE_MODULES
   ? path.join(process.env.CODEX_NODE_MODULES, "playwright", "index.mjs")
   : null;
 if (!username || !password) throw new Error("Store credentials are required through environment variables");
+const sourceCommit = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
+const runtimeResponse = await fetch(`${base}/api/public/version`, { signal: AbortSignal.timeout(15000) });
+const runtime = runtimeResponse.ok ? await runtimeResponse.json().catch(() => null) : null;
+const runtimePreflight = assistantRuntimePreflight(runtime, sourceCommit);
+if (!runtimePreflight.allowed) {
+  const outputPath = process.env.PILOT_UAT_OUTPUT_PATH
+    ? path.resolve(root, process.env.PILOT_UAT_OUTPUT_PATH)
+    : path.join(root, ".local", "ai-eval", "assistant-provenance-ui-current.json");
+  const blockedReport = {
+    generatedAt: new Date().toISOString(),
+    sourceCommit,
+    target: base,
+    scope: "browser provenance UAT preflight; no login or assistant query sent",
+    runtimeIdentity: runtimePreflight,
+    checks: [{ name: "runtime identity", status: "BLOCKED" }],
+    result: "BLOCKED",
+  };
+  fs.mkdirSync(path.dirname(outputPath), { recursive: true });
+  fs.writeFileSync(outputPath, `${JSON.stringify(blockedReport, null, 2)}\n`);
+  console.log(JSON.stringify({ outputPath, result: "BLOCKED", reason: runtimePreflight.reason }));
+  process.exit(2);
+}
 const { chromium } = playwrightEntry && fs.existsSync(playwrightEntry)
   ? await import(pathToFileURL(playwrightEntry).href)
   : await import("playwright");
@@ -27,7 +51,6 @@ const browser = await chromium.launch({
 const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
 let assistantResponse = null;
 let checks = [];
-let runtime = null;
 
 function isoDate(value) {
   const text = String(value ?? "").trim();
@@ -52,8 +75,6 @@ function isoDate(value) {
 }
 
 try {
-  const versionResponse = await context.request.get(`${base}/api/public/version`);
-  runtime = versionResponse.ok() ? await versionResponse.json().catch(() => null) : null;
   const login = await context.request.post(`${base}/api/auth/login`, {
     data: { username, password },
     headers: { Origin: base },
@@ -136,7 +157,9 @@ try {
   ];
   const summary = {
     generatedAt: new Date().toISOString(),
+    sourceCommit,
     target: base,
+    runtimeIdentity: runtimePreflight,
     runtime: {
       frontendCommit: runtime?.frontend?.commit ?? null,
       backendCommit: runtime?.backend?.commit ?? null,
@@ -171,7 +194,7 @@ try {
   };
   const outputPath = process.env.PILOT_UAT_OUTPUT_PATH
     ? path.resolve(root, process.env.PILOT_UAT_OUTPUT_PATH)
-    : path.join(root, "docs", "UAT_SKR_AI_PROVENANCE_UI_CURRENT.json");
+    : path.join(root, ".local", "ai-eval", "assistant-provenance-ui-current.json");
   fs.mkdirSync(path.dirname(outputPath), { recursive: true });
   fs.writeFileSync(outputPath, `${JSON.stringify(summary, null, 2)}\n`);
   console.log(JSON.stringify({ outputPath, result: summary.result, checks, query: summary.query, visibleMetadata }, null, 2));
