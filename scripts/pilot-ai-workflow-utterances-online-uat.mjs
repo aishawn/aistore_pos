@@ -277,6 +277,8 @@ const cases = [
   { id: "stock-lookup-natural-en", question: "What's the stock level for VB Cans?", intent: "report_stock", query: "VB CAN" },
   { id: "stock-lookup-exact-vb-can-en", question: "How many VB CAN 10PK 375ML are in stock?", intent: "report_stock", query: "VB CAN 10PK 375ML", stockOracle: true },
   { id: "stock-lookup-exact-vb-can-zh", question: "VB CAN 10PK 375ML 的库存还剩多少？", intent: "report_stock", noRoute: true, query: "VB CAN 10PK 375ML", responseSource: "deterministic", answerLanguage: "zh", stockOracle: true },
+  { id: "stock-lookup-exact-vb-can-zh-available", question: "VB CAN 10PK 375ML 还有多少库存？", intent: "report_stock", noRoute: true, query: "VB CAN 10PK 375ML", responseSource: "deterministic", answerLanguage: "zh", stockOracle: true },
+  { id: "stock-lookup-exact-vb-can-zh-units", question: "VB CAN 10PK 375ML 还剩多少件？", intent: "report_stock", noRoute: true, query: "VB CAN 10PK 375ML", responseSource: "deterministic", answerLanguage: "zh", stockOracle: true },
   { id: "stock-lookup-inventory-en", question: "What is the inventory level for VB Cans?", intent: "report_stock", query: "VB CAN" },
   { id: "stock-lookup-is-in-stock-en", question: "Is VB Cans in stock?", intent: "report_stock", query: "VB CAN" },
   { id: "stock-lookup-left-en", question: "How many VB Cans are left?", intent: "report_stock", query: "VB CAN" },
