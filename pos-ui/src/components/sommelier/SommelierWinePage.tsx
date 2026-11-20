@@ -201,7 +201,7 @@ export function SommelierWinePage({ productId }: { productId: string }) {
 
       {wine.inferred ? (
         <p className="mt-3 text-[12px] font-medium text-amber-800">
-          Tasting profile and food pairings are estimated.
+          Some wine details may be estimated from the product listing. Check varietal, region and vintage on the bottle; tasting notes and pairings are suggestions.
         </p>
       ) : null}
 
