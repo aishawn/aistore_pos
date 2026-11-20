@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 import { stockClarificationAcceptance, runtimeMatchesSource, assistantRuntimePreflight } from "./stock-clarification-acceptance.mjs";
 
 const validResponse = {
@@ -10,6 +13,7 @@ const validResponse = {
   ui: { route: null },
   writeRequests: [],
 };
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
 test("stock clarification requires a deterministic answer without fallback or writes", () => {
   const result = stockClarificationAcceptance(validResponse, {
@@ -60,4 +64,21 @@ test("assistant runtime preflight reports mismatches before online cases are all
   assert.equal(result.reason, "RUNTIME_SHA_MISMATCH");
   assert.equal(result.frontendCommit, "abc");
   assert.equal(result.backendCommit, "old");
+});
+
+test("report UAT checks deployment SHA before sending assistant questions", () => {
+  const source = fs.readFileSync(path.join(repoRoot, "scripts", "pilot-ai-report-readonly-orithos-uat.mjs"), "utf8");
+
+  const guard = source.indexOf("if (!runtimePreflight.allowed)");
+  assert.notEqual(guard, -1);
+  assert.ok(guard < source.indexOf('assistant("How much did we sell yesterday?")'));
+});
+
+test("workflow UAT checks deployment SHA before login and AI endpoint probes", () => {
+  const source = fs.readFileSync(path.join(repoRoot, "scripts", "pilot-ai-workflow-utterances-online-uat.mjs"), "utf8");
+
+  const guard = source.indexOf("if (!runtimeIdentity?.matchesSourceCommit)");
+  assert.notEqual(guard, -1);
+  assert.ok(guard < source.indexOf("let login;"));
+  assert.ok(guard < source.indexOf('"/api/ai/assistant"'));
 });

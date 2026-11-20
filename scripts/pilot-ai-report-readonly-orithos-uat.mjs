@@ -17,6 +17,7 @@ import {
   parseDynamicReportFixtures,
   resolveDynamicReportPeriod,
 } from "./ai-eval/dynamic-report-periods.mjs";
+import { assistantRuntimePreflight } from "./ai-eval/stock-clarification-acceptance.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const { chromium } = createRequire(path.join(root, "pos-ui", "package.json"))("playwright");
@@ -54,6 +55,7 @@ const runtimeVersion = await fetch(`${base}/api/public/version`, { signal: Abort
 const frontendCommit = runtimeVersion.body.frontend?.commit ?? null;
 const backendCommit = runtimeVersion.body.backend?.commit ?? null;
 const runtimeCommit = frontendCommit && frontendCommit === backendCommit ? backendCommit : null;
+const runtimePreflight = assistantRuntimePreflight(runtimeVersion.body, sourceCommit);
 const checks = [];
 const addCheck = (name, passed, evidence) => checks.push({ name, status: passed ? "PASS" : "FAIL", evidence });
 const browser = await chromium.launch({ headless: true });
@@ -113,6 +115,7 @@ async function evaluateStockQuestion(label, sample, question) {
 
 let authenticated = false;
 try {
+  if (!runtimePreflight.allowed) throw new Error("RUNTIME_SHA_MISMATCH; assistant questions were not sent");
   const login = await context.request.post(`${base}/api/auth/login`, {
     data: { username, password },
     headers: { Origin: base },
@@ -216,7 +219,11 @@ try {
     && pageErrors.length === 0, { pageErrors });
   await page.close();
 } catch (error) {
-  addCheck("Orithos report UAT completed", false, safeErrorSummary(error));
+  if (/RUNTIME_SHA_MISMATCH/.test(error instanceof Error ? error.message : "")) {
+    checks.push({ name: "runtime identity", status: "BLOCKED", evidence: runtimePreflight });
+  } else {
+    addCheck("Orithos report UAT completed", false, safeErrorSummary(error));
+  }
 } finally {
   if (authenticated) await context.request.post(`${base}/api/auth/logout`, { headers: { Origin: base } }).catch(() => null);
   await context.close();

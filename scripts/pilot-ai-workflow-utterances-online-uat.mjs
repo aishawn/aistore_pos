@@ -47,7 +47,7 @@ const evidenceOnlyPath = (statusLine) => {
 const sourceChanges = worktreeStatus.split(/\r?\n/).filter(Boolean).filter((line) => !evidenceOnlyPath(line));
 const worktreeDirty = sourceChanges.length > 0;
 const runStamp = new Date().toISOString().replace(/[-:.]/g, "");
-const defaultOutputPath = path.join(root, "docs", `UAT_AI_WORKFLOW_UTTERANCES_ONLINE_${runStamp}_${sourceCommit.slice(0, 8)}.json`);
+const defaultOutputPath = path.join(root, ".local", "ai-eval", `workflow-utterances-online-${runStamp}-${sourceCommit.slice(0, 8)}.json`);
 const outputPath = process.env.PILOT_UAT_OUTPUT_PATH
   ? path.resolve(root, process.env.PILOT_UAT_OUTPUT_PATH)
   : defaultOutputPath;
@@ -613,6 +613,7 @@ const redactError = (value) => String(value)
   .replace(/Bearer\s+[A-Za-z0-9._-]+/gi, "Bearer [redacted]")
   .replace(/(password|api[_-]?key|token)\s*[=:]\s*[^\s,;]+/gi, "$1=[redacted]");
 
+let runtimeIdentity = null;
 try {
   if (requestedIds && selectedCases.length !== requestedIds.size) {
     const knownIds = new Set(cases.map((item) => item.id));
@@ -620,7 +621,6 @@ try {
     throw new Error(`UNKNOWN_UTTERANCE_ID:${unknownIds.join(",")}`);
   }
 
-  let runtimeIdentity = null;
   try {
     const versionResponse = await context.request.get(`${base}/api/public/version`);
     const versionBody = await versionResponse.json().catch(() => ({}));
@@ -645,6 +645,9 @@ try {
       httpStatus: null,
       errorType: error instanceof Error ? error.name : "UnknownError",
     };
+  }
+  if (!runtimeIdentity?.matchesSourceCommit) {
+    throw new Error("RUNTIME_SHA_MISMATCH; assistant workflow cases were not sent");
   }
 
   for (const pathName of ["/api/auth/me", "/api/ai/config/client", "/api/ai/assistant"]) {
@@ -1112,12 +1115,13 @@ try {
   else if (output.status === "BLOCKED") process.exitCode = 2;
 } catch (error) {
   const detail = redactError(error instanceof Error ? error.message : "Unexpected failure");
-  const blocked = /LOGIN_FAILED_(?:502|503|504)|AI_CONFIG_FAILED_(?:502|503|504)|(?:HTTP|API)_(?:50210|50301|502|503|504)|ECONNRESET|ETIMEDOUT/i.test(detail);
+  const blocked = /RUNTIME_SHA_MISMATCH|LOGIN_FAILED_(?:502|503|504)|AI_CONFIG_FAILED_(?:502|503|504)|(?:HTTP|API)_(?:50210|50301|502|503|504)|ECONNRESET|ETIMEDOUT/i.test(detail);
   const output = {
     generatedAt: new Date().toISOString(),
     sourceCommit,
     worktreeDirty,
     target: base,
+    runtimeIdentity,
     scope: "authenticated natural-language workflow routing; assistant API only; no business writes",
     catalogTotal: cases.length,
     selectedCount: selectedCases.length,
