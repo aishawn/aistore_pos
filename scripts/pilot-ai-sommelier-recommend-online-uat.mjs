@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { reconcileRecommendationCard } from "./sommelier-recommendation-reconciliation.mjs";
+import { recommendationMismatchFields } from "./sommelier-recommendation-reconciliation.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const sourceCommit = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
@@ -151,18 +151,33 @@ try {
     allInBudgetAndStock,
   });
 
-  const catalogMatches = [];
+  const catalogMismatches = [];
+  let catalogMatched = 0;
   for (const card of cards) {
-    const response = await context.get(`${base}/api/ai/sommelier/wines/${card.productId}`);
-    const body = await response.json().catch(() => ({}));
-    const catalogWine = body.data;
-    catalogMatches.push(response.ok() && body.code === 0
-      && catalogWine?.name === card.name
-      && reconcileRecommendationCard(card, catalogWine));
+    const [productResponse, detailResponse] = await Promise.all([
+      context.get(`${base}/api/products?name=${encodeURIComponent(card.name)}&size=100`),
+      context.get(`${base}/api/ai/sommelier/wines/${card.productId}`),
+    ]);
+    const [productBody, detailBody] = await Promise.all([
+      productResponse.json().catch(() => ({})),
+      detailResponse.json().catch(() => ({})),
+    ]);
+    const catalogProducts = productBody.data?.items ?? [];
+    const catalogProduct = catalogProducts.find((product) => String(product.id) === String(card.productId));
+    const mismatches = !productResponse.ok() || productBody.code !== 0
+      ? ["product_catalog_api"]
+      : !catalogProduct
+        ? ["product_catalog_item_missing"]
+      : !detailResponse.ok() || detailBody.code !== 0
+        ? ["wine_detail_unavailable"]
+        : recommendationMismatchFields(card, catalogProduct, detailBody.data);
+    if (mismatches.length === 0) catalogMatched += 1;
+    catalogMismatches.push(...mismatches);
   }
-  record("recommendation-price-promotion-stock-match-current-catalog", catalogMatches.every(Boolean) ? "PASS" : "FAIL", {
-    matched: catalogMatches.filter(Boolean).length,
+  record("recommendation-matches-product-catalog-and-wine-detail", catalogMismatches.length === 0 ? "PASS" : "FAIL", {
+    matched: catalogMatched,
     compared: cards.length,
+    mismatchFields: [...new Set(catalogMismatches)],
   });
 } catch (error) {
   if (error instanceof Error && error.message === "RUNTIME_SHA_MISMATCH") {
