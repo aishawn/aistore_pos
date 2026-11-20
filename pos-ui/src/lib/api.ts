@@ -1401,6 +1401,7 @@ export interface SommelierRecommendCard {
   finishNote: string | null;
   pitch: string;
   whyUpgrade: string | null;
+  inferred: boolean;
 }
 
 export interface SommelierRecommendResponse {

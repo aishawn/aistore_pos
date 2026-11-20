@@ -199,6 +199,12 @@ export function SommelierWinePage({ productId }: { productId: string }) {
         </div>
       </div>
 
+      {wine.inferred ? (
+        <p className="mt-3 text-[12px] font-medium text-amber-800">
+          Tasting profile and food pairings are estimated.
+        </p>
+      ) : null}
+
       <section className="mt-5">
         <h2 className="text-[14px] font-semibold text-[var(--oh-text)]">Tasting notes</h2>
         <div className="mt-2 flex flex-wrap gap-1.5">

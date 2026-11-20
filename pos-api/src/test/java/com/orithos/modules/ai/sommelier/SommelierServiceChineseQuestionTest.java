@@ -42,6 +42,8 @@ class SommelierServiceChineseQuestionTest {
         assertEquals(1, response.alternatives().size());
         assertEquals(2L, response.alternatives().get(0).productId());
         assertTrue(response.answer().contains("Value Shiraz"));
+        assertTrue(new ObjectMapper().valueToTree(response.alternatives().get(0))
+                .path("inferred").asBoolean(false));
     }
 
     private static WineCandidate wine(long id, String name, String price) {

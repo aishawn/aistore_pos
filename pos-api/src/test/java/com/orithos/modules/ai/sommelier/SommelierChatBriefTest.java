@@ -104,6 +104,6 @@ class SommelierChatBriefTest {
         return new RecommendCard(
                 1L, name, "good", badge, new BigDecimal(price), new BigDecimal(price),
                 false, BigDecimal.ONE, null, 80, 50, 50, 50, 50, 80,
-                "red", null, null, null, List.of(), List.of(), List.of(), null, null, null);
+                "red", null, null, null, List.of(), List.of(), List.of(), null, null, null, false);
     }
 }

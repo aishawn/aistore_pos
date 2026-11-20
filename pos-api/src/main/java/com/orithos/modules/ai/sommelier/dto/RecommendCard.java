@@ -28,5 +28,6 @@ public record RecommendCard(
         List<String> foodTags,
         String finishNote,
         String pitch,
-        String whyUpgrade
+        String whyUpgrade,
+        boolean inferred
 ) {}

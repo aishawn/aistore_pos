@@ -63,6 +63,7 @@ export function WineCard({
       <p className="mt-1 text-[13px] text-[var(--oh-muted)]">
         {[card.varietal, card.drynessLabel, card.bodyLabel].filter(Boolean).join(" · ")}
       </p>
+      {card.inferred ? <p className="mt-1 text-[12px] font-medium text-amber-800">Estimated profile</p> : null}
 
       <div className="mt-3 flex flex-wrap gap-1.5">
         {(card.aromaTags ?? []).slice(0, 4).map((tag) => (

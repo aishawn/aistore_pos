@@ -222,7 +222,8 @@ public class SommelierService {
                 p == null ? List.of() : p.foodTags(),
                 p == null ? null : p.finishNote(),
                 pitchService.template(wine, profile, "card"),
-                why
+                why,
+                p == null || p.inferred()
         );
     }
 
