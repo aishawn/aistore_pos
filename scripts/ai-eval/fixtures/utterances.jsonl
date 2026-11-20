@@ -13,8 +13,4 @@
 {"id":"missing-stock-zh","category":"clarification","locale":"zh-CN","question":"为什么查不到库存？","expected":{"intent":"qa","route":null,"answerIncludes":["查无匹配","库存数据暂不可用"],"negative":["writeRequests empty"]}}
 {"id":"followup-sales","category":"multiturn","locale":"en-AU","question":"What about yesterday?","context":{"thread":[{"role":"user","text":"How much did we make today?"}]},"expected":{"intent":"report_sales","route":null,"entities":{"date":"2026-10-27"},"data":{"revenue":1622},"negative":["writeRequests empty"]}}
 {"id":"product-count-en","category":"catalogue","locale":"en-AU","question":"How many sellable products are in the catalogue?","expected":{"intent":"product_count","route":"/products","answerIncludes":["sellable products"],"answerRegex":"\\b\\d+\\b","negative":["writeRequests empty"]}}
-{"id":"aov-this-week-zh","category":"sales","locale":"zh-CN","question":"本周客单价多少？","expected":{"intent":"report_aov","route":null,"negative":["writeRequests empty"]}}
-{"id":"sales-this-month-zh","category":"sales","locale":"zh-CN","question":"本月营业额多少？","expected":{"intent":"report_sales","route":null,"negative":["writeRequests empty"]}}
-{"id":"sales-last-7-en","category":"sales","locale":"en-AU","question":"How much did we make in the last 7 days?","expected":{"intent":"report_sales","route":null,"negative":["writeRequests empty"]}}
-{"id":"aov-last-week-en","category":"sales","locale":"en-AU","question":"What was average ticket last week?","expected":{"intent":"report_aov","route":null,"negative":["writeRequests empty"]}}
 {"id":"growth-hero-en","category":"opportunities","locale":"en-AU","question":"Suggest ways to grow my store","expected":{"intent":"navigate","route":null,"negative":["writeRequests empty"]}}

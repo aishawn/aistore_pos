@@ -1,0 +1,6 @@
+{"id":"aov-this-week-zh","category":"sales","locale":"zh-CN","question":"本周客单价多少？","expected":{"intent":"report_aov","route":null,"metric":"aov","period":"current_week"}}
+{"id":"sales-this-month-zh","category":"sales","locale":"zh-CN","question":"本月营业额多少？","expected":{"intent":"report_sales","route":null,"metric":"sales","period":"current_month"}}
+{"id":"sales-last-7-en","category":"sales","locale":"en-AU","question":"How much did we make in the last 7 days?","expected":{"intent":"report_sales","route":null,"metric":"sales","period":"last_7_days"}}
+{"id":"aov-last-week-en","category":"sales","locale":"en-AU","question":"What was average ticket last week?","expected":{"intent":"report_aov","route":null,"metric":"aov","period":"previous_week"}}
+{"id":"aov-this-month-en","category":"sales","locale":"en-AU","question":"What's our average sale this month?","expected":{"intent":"report_aov","route":null,"metric":"aov","period":"current_month"}}
+{"id":"aov-last-month-zh","category":"sales","locale":"zh-CN","question":"上月平均客单价是多少？","expected":{"intent":"report_aov","route":null,"metric":"aov","period":"previous_month"}}

@@ -57,6 +57,36 @@ fixed fixture assertions cover that behavior. Use Java router tests for
 deterministic routing and the read-only live evaluator for deployed behavior
 and report reconciliation.
 
+### Fixed and dynamic report questions
+
+`fixtures/utterances.jsonl` is the offline fixed-answer contract. Do not put
+relative-date report questions there without a fixed answer: their answer
+changes with the business date and source data. `fixtures/dynamic-report-utterances.jsonl`
+holds dynamic periods instead. The Demo read-only report UAT resolves each
+period using the Melbourne business date and compares the assistant response
+with the native overview for exactly the same inclusive date window.
+
+Run the local contract tests and fixture audit:
+
+```powershell
+node --test scripts/ai-eval/*.test.mjs
+node scripts/ai-eval/run-local-eval.mjs --cases scripts/ai-eval/fixtures/utterances.jsonl
+```
+
+Run dynamic report reconciliation against Demo only after its frontend and
+backend runtime SHAs match the checked-out source commit. Credentials stay in
+the local `.env` or process environment; the suite performs authenticated reads
+and records an empty write list:
+
+```powershell
+$env:PILOT_BASE_URL = "https://demo.orithos.com.au"
+$env:PILOT_REPORT_CASES = "scripts/ai-eval/fixtures/dynamic-report-utterances.jsonl"
+node scripts/pilot-ai-report-readonly-orithos-uat.mjs
+```
+
+Use `PILOT_UAT_OUTPUT_PATH` to choose a report path. A runtime/source SHA
+mismatch is `BLOCKED`; period or value disagreement is `FAIL`.
+
 For forecast backtests, pass the generated native inventory history as the
 third argument. Complete date coverage replaces inferred `stock.move` flags;
 partial coverage is reported as incomplete and is never treated as zero

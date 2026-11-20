@@ -30,13 +30,8 @@ test("offline fixture checks are blocked as assistant acceptance and return exit
   assert.ok(report.results.every((result) => result.status === "BLOCKED"));
   assert.ok(report.results.every((result) => result.assistantStatus === "NOT_CONFIGURED"));
   assert.ok(report.results.every((result) => result.blockReason === "ENDPOINT_NOT_CONFIGURED"));
-  assert.equal(report.fixtureContractAudit.complete + report.fixtureContractAudit.incomplete, report.results.length);
-  assert.equal(report.fixtureContractAudit.complete, 16);
-  assert.deepEqual(report.fixtureContractAudit.missingAnswerAssertions, [
-    "aov-this-week-zh",
-    "sales-this-month-zh",
-    "sales-last-7-en",
-    "aov-last-week-en",
-  ]);
+  assert.equal(report.fixtureContractAudit.complete, report.results.length);
+  assert.equal(report.fixtureContractAudit.incomplete, 0);
+  assert.deepEqual(report.fixtureContractAudit.missingAnswerAssertions, []);
   assert.deepEqual(report.fixtureContractAudit.unsupportedNegativeAssertions, []);
 });
