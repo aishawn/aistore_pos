@@ -40,6 +40,7 @@ class WinePitchServiceGroundingTest {
         assertTrue(answer.contains("current style profile suggests pairing"));
         assertTrue(answer.contains("steak"));
         assertTrue(answer.contains("lamb"));
+        assertFalse(answer.contains("BBQ, BBQ"));
         assertFalse(pitch.toLowerCase().contains("alcohol"));
         assertFalse(pitch.toLowerCase().contains("decant"));
         assertFalse(answer.toLowerCase().contains("alcohol"));

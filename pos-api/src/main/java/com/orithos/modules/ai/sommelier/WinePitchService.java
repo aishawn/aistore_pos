@@ -223,7 +223,8 @@ public class WinePitchService {
             if (p == null) return "I don't have verified food-pairing details for this bottle yet.";
             String foods = p == null || p.foodTags().isEmpty()
                     ? "dinner"
-                    : p.foodTags().stream().map(WinePitchService::humanFood).collect(Collectors.joining(", "));
+                    : p.foodTags().stream().map(WinePitchService::humanFood).distinct()
+                            .collect(Collectors.joining(", "));
             return p != null && p.inferred()
                     ? "The current style profile suggests pairing it with " + foods + "."
                     : "Best with " + foods + ".";
