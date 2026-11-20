@@ -283,9 +283,12 @@
         VALUES ( #{p.name}, #{p.type}, #{p.status}, #{p.description}, #{p.categoryId},
                 #{p.brandId}, #{p.familyId}, #{p.taxRateId}, #{p.costTaxRateId}, #{p.cost}, #{p.caseCost},
                 #{p.caseQuantity}, CAST(CASE WHEN #{p.costPercentage} THEN 1 ELSE 0 END AS SMALLINT),
-                #{p.preventManualDiscounts},
-                #{p.requestPrice}, #{p.requestQuantity}, #{p.trackInventory},
-                #{p.showShortcuts}, #{p.abv}, #{p.volumeMl}, #{p.region}, #{p.vintage}, #{p.image})
+                CAST(CASE WHEN #{p.preventManualDiscounts} THEN 1 ELSE 0 END AS SMALLINT),
+                CAST(CASE WHEN #{p.requestPrice} THEN 1 ELSE 0 END AS SMALLINT),
+                CAST(CASE WHEN #{p.requestQuantity} THEN 1 ELSE 0 END AS SMALLINT),
+                CAST(CASE WHEN #{p.trackInventory} THEN 1 ELSE 0 END AS SMALLINT),
+                CAST(CASE WHEN #{p.showShortcuts} THEN 1 ELSE 0 END AS SMALLINT),
+                #{p.abv}, #{p.volumeMl}, #{p.region}, #{p.vintage}, #{p.image})
     </insert>
 
     <update id="update">
@@ -304,9 +307,11 @@
                                                THEN FALSE ELSE shopfront_catalog_confirmed END,
             case_quantity = #{p.caseQuantity},
             cost_percentage = CAST(CASE WHEN #{p.costPercentage} THEN 1 ELSE 0 END AS SMALLINT),
-            prevent_manual_discounts = #{p.preventManualDiscounts},
-            request_price = #{p.requestPrice}, request_quantity = #{p.requestQuantity},
-            track_inventory = #{p.trackInventory}, show_shortcuts = #{p.showShortcuts},
+            prevent_manual_discounts = CAST(CASE WHEN #{p.preventManualDiscounts} THEN 1 ELSE 0 END AS SMALLINT),
+            request_price = CAST(CASE WHEN #{p.requestPrice} THEN 1 ELSE 0 END AS SMALLINT),
+            request_quantity = CAST(CASE WHEN #{p.requestQuantity} THEN 1 ELSE 0 END AS SMALLINT),
+            track_inventory = CAST(CASE WHEN #{p.trackInventory} THEN 1 ELSE 0 END AS SMALLINT),
+            show_shortcuts = CAST(CASE WHEN #{p.showShortcuts} THEN 1 ELSE 0 END AS SMALLINT),
             abv = #{p.abv}, volume_ml = #{p.volumeMl},
             region = #{p.region}, vintage = #{p.vintage}, image = #{p.image}
         WHERE id = #{p.id}
