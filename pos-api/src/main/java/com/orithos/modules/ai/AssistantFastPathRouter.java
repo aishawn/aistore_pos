@@ -615,9 +615,19 @@ public final class AssistantFastPathRouter {
                     "");
         }
         if (HELP.matcher(normalized).matches()) {
+            boolean chinese = normalized.matches("(?s).*[\\u3400-\\u9fff].*");
+            boolean asksBusinessWrite = normalized.matches("(?s).*(?:create|place|submit|change|adjust|set).*(?:purchase )?orders?|"
+                    + ".*(?:change|adjust|set) prices?|.*(?:下(?:采购)?单|下订单|提交(?:采购)?订单?|生成(?:采购)?订单?|改价|调价).*");
+            String summary = asksBusinessWrite
+                    ? chinese
+                            ? "不会。AI 只会生成建议或草稿，不会在聊天中直接下采购单或改价；请在对应页面核对后确认。"
+                            : "No. AI only prepares suggestions or drafts; it will not place purchase orders or change prices from chat. Review the changes on their pages and confirm them yourself."
+                    : chinese
+                            ? "我可以协助查询销售、库存和商品信息，查看补货与价格复核建议、葡萄酒推荐和发票预览。AI 只提供建议和预览；采购、改价和发票收货仍需员工在对应页面核对并确认。"
+                            : "I can help with sales, stock, products, replenishment, pricing, wine recommendations and invoice previews. I only prepare suggestions and previews; staff confirm business actions.";
             return new Match(
                     "qa",
-                    "I can help with sales, stock, products, replenishment, pricing, wine recommendations and invoice previews. I only prepare suggestions and previews; staff confirm business actions.",
+                    summary,
                     Map.of(),
                     "",
                     "",

@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class AssistantFastPathRouterTest {
 
@@ -542,7 +543,20 @@ class AssistantFastPathRouterTest {
             assertNotNull(match, question);
             assertEquals("qa", match.intent(), question);
             assertEquals("", match.route(), question);
+            if (question.matches("(?s).*[\\u3400-\\u9fff].*")) {
+                assertTrue(match.summary().matches("(?s).*[\\u3400-\\u9fff].*"), question);
+            }
         }
+    }
+
+    @Test
+    void directlyAskedChinesePurchaseOrderQuestionStatesHumanConfirmationBoundary() {
+        AssistantFastPathRouter.Match match = AssistantFastPathRouter.maybeMatch("AI 会直接下采购单吗？");
+
+        assertNotNull(match);
+        assertEquals("qa", match.intent());
+        assertTrue(match.summary().contains("不会"));
+        assertTrue(match.summary().contains("确认"));
     }
 
     @Test
