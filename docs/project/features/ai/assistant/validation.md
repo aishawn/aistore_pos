@@ -1,5 +1,9 @@
 # 门店助手、语音与历史：验证与效果
 
+## 2026-11-20 侍酒推荐推断档案提示
+
+Demo 与 SKR 前后端运行 SHA 均为 `25b2d72666bb3a96ebd47c6c8212064e9231532f`。两店只读推荐验收各 7/7 通过；各返回 3 张卡片，响应均有 `inferred=true`。Microsoft Edge 浏览器流程在两店均显示 3 个 `Estimated profile` 标记，进入商品详情后显示估算档案与搭配提示。没有模型调用或 POS 业务写入。该轮只验证字段及告知展示，不代表推断品鉴资料准确；准确性仍需标注样本和侍酒师/店员评分。详见[本轮记录](../../../../test-sessions/2026-11-20-sommelier-inference-profile-uat.md)。
+
 ## 2026-11-19 滞销回答中文回归
 
 提交 `e58b6bc6` 修复中文滞销回答的日期连接词及空结果英文文案；不改变查询口径。Java 21 `ReportRespondNodeTest` 35/35 PASS，`git diff --check` PASS。Demo、SKR 只读复测中英文问题均进入 deterministic `report_dead_stock`，无模型回退、无 POS 业务写请求；中文日期使用“至”，空结果保持中文。在线问答会生成常规审计/会话记录。
