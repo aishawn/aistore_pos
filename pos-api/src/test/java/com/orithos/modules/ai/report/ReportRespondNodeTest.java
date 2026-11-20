@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -252,7 +253,7 @@ class ReportRespondNodeTest {
         when(stock.value("slots")).thenReturn(Optional.of(Map.of(
                 "query", "Shiraz", "from", "2026-11-13", "to", "2026-11-14")));
 
-        assertEquals("Shiraz库存合计 3 件（1 个商品）：Blickinstal Black on Black Shiraz 750ML 3（库存更新时间未知，请核实）",
+        assertEquals("Blickinstal Black on Black Shiraz 750ML库存：3 件（库存更新时间未知，请核实）",
                 node.apply(stock).get("answer"));
     }
 
@@ -270,7 +271,7 @@ class ReportRespondNodeTest {
     }
 
     @Test
-    void stockAnswerSummarizesMultipleProductMatchesInBothLanguages() {
+    void stockAnswerAsksForAnExactProductWhenMultipleMatchesExist() {
         String asOf = "2026-11-19T06:15:00Z";
         List<Map<String, Object>> rows = List.of(
                 Map.of("name", "A Shiraz", "quantity", 3, "dataAsOf", asOf),
@@ -280,21 +281,28 @@ class ReportRespondNodeTest {
         when(english.value("question", String.class)).thenReturn(Optional.of("How much Shiraz stock?"));
         when(english.value("slots")).thenReturn(Optional.of(Map.of("query", "Shiraz")));
 
-        assertEquals("Shiraz total 8 units across 2 products: A Shiraz 3; B Shiraz 5 (inventory updated: "
-                        + asOf + ")",
-                node.apply(english).get("answer"));
+        String englishAnswer = String.valueOf(node.apply(english).get("answer"));
+        assertTrue(englishAnswer.contains("A Shiraz"));
+        assertTrue(englishAnswer.contains("B Shiraz"));
+        assertTrue(englishAnswer.contains("exact product name or barcode"));
+        assertFalse(englishAnswer.contains("total 8 units"));
+        assertFalse(englishAnswer.contains(" 3;"));
 
         OverAllState chinese = state("", rows);
         when(chinese.value("intent", String.class)).thenReturn(Optional.of("report_stock"));
         when(chinese.value("question", String.class)).thenReturn(Optional.of("西拉现在有多少库存"));
         when(chinese.value("slots")).thenReturn(Optional.of(Map.of("query", "Shiraz")));
 
-        assertEquals("Shiraz库存合计 8 件（2 个商品）：A Shiraz 3；B Shiraz 5（库存更新于 " + asOf + "）",
-                node.apply(chinese).get("answer"));
+        String chineseAnswer = String.valueOf(node.apply(chinese).get("answer"));
+        assertTrue(chineseAnswer.contains("A Shiraz"));
+        assertTrue(chineseAnswer.contains("B Shiraz"));
+        assertTrue(chineseAnswer.contains("准确商品名称或条码"));
+        assertFalse(chineseAnswer.contains("库存合计 8 件"));
+        assertFalse(chineseAnswer.contains("A Shiraz 3"));
     }
 
     @Test
-    void stockAnswerLabelsSubtotalWhenTheResultLimitIsReached() {
+    void stockAnswerNeverTotalsATruncatedSetOfProductMatches() {
         String asOf = "2026-11-19T06:15:00Z";
         List<Map<String, Object>> rows = new java.util.ArrayList<>();
         for (int i = 0; i < 50; i++) {
@@ -306,11 +314,13 @@ class ReportRespondNodeTest {
         when(stock.value("slots")).thenReturn(Optional.of(Map.of("query", "Shiraz")));
 
         String answer = String.valueOf(node.apply(stock).get("answer"));
-        assertTrue(answer.startsWith("Shiraz subtotal 100 units (first 50 matches):"));
+        assertTrue(answer.startsWith("At least 50 products match Shiraz:"));
+        assertTrue(answer.contains("specify the exact product name or barcode"));
+        assertFalse(answer.contains("100 units"));
     }
 
     @Test
-    void stockAnswerDoesNotCallTruncatedNegativeInventoryTotalALowerBound() {
+    void stockAnswerDoesNotExposePartialNegativeTotalsForAmbiguousMatches() {
         String asOf = "2026-11-19T06:15:00Z";
         List<Map<String, Object>> rows = new java.util.ArrayList<>();
         for (int i = 0; i < 50; i++) {
@@ -322,8 +332,26 @@ class ReportRespondNodeTest {
         when(stock.value("slots")).thenReturn(Optional.of(Map.of("query", "Shiraz")));
 
         String answer = String.valueOf(node.apply(stock).get("answer"));
-        assertTrue(answer.startsWith("Shiraz库存小计 -1413 件（前50个匹配商品）："));
-        assertTrue(!answer.contains("至少"));
+        assertTrue(answer.startsWith("至少 50 个商品匹配 Shiraz："));
+        assertTrue(answer.contains("准确商品名称或条码"));
+        assertFalse(answer.contains("-1413"));
+        assertFalse(answer.contains("库存小计"));
+    }
+
+    @Test
+    void exactProductWithNegativeStockIsMarkedForReview() {
+        String product = "Example Shiraz 750ML";
+        OverAllState stock = state("", List.of(Map.of("name", product, "quantity", -4,
+                "dataAsOf", "2026-11-19T06:15:00Z")));
+        when(stock.value("intent", String.class)).thenReturn(Optional.of("report_stock"));
+        when(stock.value("question", String.class)).thenReturn(Optional.of("How much Example Shiraz is in stock?"));
+        when(stock.value("slots")).thenReturn(Optional.of(Map.of("query", product)));
+
+        String answer = String.valueOf(node.apply(stock).get("answer"));
+
+        assertTrue(answer.contains("system-recorded stock is -4"));
+        assertTrue(answer.contains("negative stock is a data anomaly"));
+        assertTrue(answer.contains("2026-11-19T06:15:00Z"));
     }
 
     @Test
@@ -334,7 +362,7 @@ class ReportRespondNodeTest {
         when(stock.value("question", String.class)).thenReturn(Optional.of("还剩多少库存？"));
         when(stock.value("slots")).thenReturn(Optional.of(Map.of("query", product)));
 
-        assertEquals(product + "库存：100（库存更新时间未知，请核实）",
+        assertEquals(product + "库存：100 件（库存更新时间未知，请核实）",
                 node.apply(stock).get("answer"));
     }
 
@@ -358,7 +386,7 @@ class ReportRespondNodeTest {
         when(stock.value("question", String.class)).thenReturn(Optional.of("该商品还剩多少库存？"));
         when(stock.value("slots")).thenReturn(Optional.of(Map.of("query", product)));
 
-        assertEquals(product + "库存：100（库存更新时间未知，请核实）", node.apply(stock).get("answer"));
+        assertEquals(product + "库存：100 件（库存更新时间未知，请核实）", node.apply(stock).get("answer"));
     }
 
     @Test

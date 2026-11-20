@@ -236,57 +236,50 @@ public class ReportRespondNode implements NodeAction {
     }
 
     private String formatStock(List<Map<String, Object>> rows, String query, boolean chinese) {
-        StringBuilder sb = new StringBuilder();
         String label = query == null || query.isBlank() ? (chinese ? "当前库存" : "Stock") : query;
-        boolean exactSingleProduct = rows.size() == 1 && query != null
-                && query.trim().equalsIgnoreCase(String.valueOf(rows.get(0).get("name")).trim());
-        if (!exactSingleProduct) {
-            BigDecimal total = rows.stream()
-                    .map(row -> ReportQueryService.toDecimal(row.get("quantity")))
-                    .reduce(BigDecimal.ZERO, BigDecimal::add);
-            String totalText = total.stripTrailingZeros().toPlainString();
-            boolean resultLimitReached = rows.size() >= STOCK_RESULT_LIMIT;
-            if (chinese) {
-                sb.append(label).append(resultLimitReached ? "库存小计 " : "库存合计 ")
-                        .append(totalText).append(" 件");
-                sb.append(resultLimitReached
-                        ? "（前50个匹配商品）："
-                        : "（" + rows.size() + " 个商品）：");
-            } else {
-                sb.append(label).append(resultLimitReached ? " subtotal " : " total ")
-                        .append(totalText).append(" units");
-                sb.append(resultLimitReached
-                        ? " (first 50 matches): "
-                        : " across " + rows.size() + " products: ");
+        if (rows.size() == 1) {
+            Map<String, Object> row = rows.get(0);
+            String name = String.valueOf(row.getOrDefault("name", ""));
+            BigDecimal quantity = ReportQueryService.toDecimal(row.get("quantity"));
+            String amount = quantity.stripTrailingZeros().toPlainString();
+            if (quantity.signum() < 0) {
+                return chinese
+                        ? name + "：系统记录库存为 " + amount + " 件，负库存属于数据异常，请核查库存记录。"
+                                + stockAsOfSuffix(rows, true)
+                        : name + ": system-recorded stock is " + amount
+                                + "; negative stock is a data anomaly and should be reviewed."
+                                + stockAsOfSuffix(rows, false);
             }
+            return name + (chinese ? "库存：" : ": ") + amount + (chinese ? " 件" : "")
+                    + stockAsOfSuffix(rows, chinese);
+        }
+
+        StringBuilder sb = new StringBuilder();
+        boolean resultLimitReached = rows.size() >= STOCK_RESULT_LIMIT;
+        if (chinese) {
+            sb.append(resultLimitReached ? "至少 50 个商品匹配 " : "多个商品匹配 ").append(label).append("：");
+        } else {
+            sb.append(resultLimitReached ? "At least 50 products match " : "Multiple products match ")
+                    .append(label).append(": ");
         }
         int n = Math.min(rows.size(), 8);
-        for (int i = 0; i < n; i++) {
-            Map<String, Object> row = rows.get(i);
-            if (i > 0) {
-                sb.append(chinese ? "；" : "; ");
-            }
-            String name = String.valueOf(row.getOrDefault("name", ""));
-            if (exactSingleProduct) {
-                sb.append(name).append(chinese ? "库存：" : ": ");
-            } else {
-                sb.append(name).append(" ");
-            }
-            sb.append(ReportQueryService.toDecimal(row.get("quantity")).stripTrailingZeros().toPlainString());
-        }
-        if (rows.size() > n) {
-            sb.append(chinese ? "……另有 " : " …and ").append(rows.size() - n)
-                    .append(chinese ? " 个商品" : " more");
-        }
+        sb.append(rows.stream().limit(n)
+                .map(row -> String.valueOf(row.getOrDefault("name", "")))
+                .collect(Collectors.joining(chinese ? "；" : "; ")));
+        if (rows.size() > n) sb.append(chinese ? "……等" : " …and more");
+        sb.append(chinese
+                ? "。请提供准确商品名称或条码，以查询单个商品库存。"
+                : ". Please specify the exact product name or barcode to check one item's stock.");
+        return sb.toString();
+    }
+
+    private static String stockAsOfSuffix(List<Map<String, Object>> rows, boolean chinese) {
         String dataAsOf = trustedStockDataAsOf(rows);
         if (dataAsOf == null) {
-            sb.append(chinese ? "（库存更新时间未知，请核实）"
-                    : " (inventory update time unknown; verify before relying on it)");
-        } else {
-            sb.append(chinese ? "（库存更新于 " : " (inventory updated: ")
-                    .append(dataAsOf).append(chinese ? "）" : ")");
+            return chinese ? "（库存更新时间未知，请核实）"
+                    : " (inventory update time unknown; verify before relying on it)";
         }
-        return sb.toString();
+        return (chinese ? "（库存更新于 " : " (inventory updated: ") + dataAsOf + (chinese ? "）" : ")");
     }
 
     private static String trustedStockDataAsOf(List<Map<String, Object>> rows) {

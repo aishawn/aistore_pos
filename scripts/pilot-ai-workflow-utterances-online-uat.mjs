@@ -438,7 +438,7 @@ const cases = [
   // deterministic so a provider fallback cannot turn a lookup into a write.
   { id: "natural-stock-short-en", question: "How many Carlton Draught left?", intent: "report_stock", noRoute: true, query: "Carlton Draught" },
   { id: "natural-stock-short-zh", question: "啤酒还剩多少", intent: "report_stock", noRoute: true, query: "啤酒" },
-  { id: "natural-stock-store-zh", question: "店里还有 Shiraz 吗？", intent: "report_stock", noRoute: true, query: "Shiraz", answerLanguage: "zh", stockOracle: true },
+  { id: "natural-stock-store-zh", question: "店里还有 Shiraz 吗？", intent: "report_stock", noRoute: true, query: "Shiraz", answerLanguage: "zh", answerIncludes: ["准确商品名称或条码"] },
   { id: "stock-clarify-why-missing-en", question: "Why can't you find the stock?", intent: "qa", noRoute: true, answerIncludes: ["product name or barcode"] },
   { id: "stock-clarify-not-showing-en", question: "Why is the inventory not showing?", intent: "qa", noRoute: true, answerIncludes: ["product name or barcode"] },
   { id: "stock-clarify-find-inventory-en", question: "Why can't I find inventory?", intent: "qa", noRoute: true, answerIncludes: ["product name or barcode"] },
