@@ -15,6 +15,20 @@
 
 限制：未声称像素级 UI 克隆；未声称定价算法语义 1:1；Sell/register 未写入。
 
+## 2026-11-21 当前线上 Settings / Pricing 只读验收
+
+| 检查 | 环境/版本 | 结果 | 证据/范围 |
+|------|-----------|------|-----------|
+| Settings 页面/主题/权限/502 重试矩阵 | SKR + Demo，`7b8e9cc` | PASS | `scripts/settings-audit-readonly.cjs`，390/768/1440；只读 |
+| Company settings bundle 键和值一致 | SKR + Demo，`7b8e9cc` | PASS | 两边各 66 键，完全相同；公司资料 7 键缺失属已知资料缺口 |
+| Tier pricing read-back + quote | SKR + Demo，`7b8e9cc` | PASS（限定样本） | `-196 LEMON P/F 6% 330ML`，数量 1/3/4/7/10；报价依次 `$8.99/$26.97/$26.99/$53.96/$51.99` |
+| 设置读回关键值 | SKR + Demo，`7b8e9cc` | PASS | Melbourne、High Mix、Match Price Points、Redistribute、Require Password=true |
+| 设置保存/登录登出写入验收 | SKR + Demo | NOT_RUN | 本轮未修改设置，也未执行登录登出操作 |
+| Shopfront 设置页逐字段在线复核 | Shopfront | NOT_RUN | 当前浏览器 URL 许可校验阻断自动化；Shopfront 仍只读 |
+| 全部 60 个公司字段的真实业务消费者 | 源码 + 线上 | PARTIAL | 约 43 字段静态扫描未见明确消费点；须逐项人工追踪，不可据此宣告所有字段失效 |
+
+限制：Pricing PASS 仅适用于记录的商品、阶梯及数量；不是全目录、价格表、会员价或促销的完整等价证明。线上读回、只读报价、源码验证和未执行的写入验收分别记录，不相互替代。
+
 ## 2026-11-15 latest-main 源码及回归检查
 
 | 检查 | 环境 | 结果 | 证据 |
