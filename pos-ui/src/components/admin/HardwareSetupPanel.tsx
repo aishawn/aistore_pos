@@ -8,6 +8,7 @@ import {
   formatCashDrawerKickCode,
   isQzTrayFallbackEnabled,
   getLocalHardwareSettingsSnapshot,
+  hasBarcodeScannerTested,
   parseLocalHardwareSettings,
   printReceiptTestThroughLocalBridge,
   readSerialDiagnostic,
@@ -45,6 +46,12 @@ const emptySettings: HardwareSettings = {
 
 export function HardwareSetupPanel() {
   const settingsSnapshot = useSyncExternalStore(subscribeLocalHardwareSettings, getLocalHardwareSettingsSnapshot, () => "");
+  const scannerVerified =
+    useSyncExternalStore(
+      subscribeLocalHardwareSettings,
+      () => (hasBarcodeScannerTested() ? "1" : "0"),
+      () => "0",
+    ) === "1";
   const savedSettings = settingsSnapshot ? parseLocalHardwareSettings(settingsSnapshot) : emptySettings;
   const [draft, setDraft] = useState<HardwareSettings>(savedSettings);
   const [state, setState] = useState<LocalHardwareState>({
@@ -550,19 +557,26 @@ export function HardwareSetupPanel() {
         </div>
       </section>
 
-      <details id="hardware-optional-tests" className="rounded-lg border border-[var(--oh-border)] bg-white px-4 py-3 sm:px-5">
-        <summary className="cursor-pointer text-sm font-medium text-[var(--oh-text)]">Test scanner & scale</summary>
-        <p className="mt-2 text-xs text-[var(--oh-muted)]">Run after the printer is saved. Scanner uses USB keyboard mode.</p>
-        <details className="mt-2 rounded-md border border-[var(--oh-border)] px-3 py-2 text-xs text-[var(--oh-muted)]">
-          <summary className="cursor-pointer font-medium text-[var(--oh-text)]">Scanner setup (USB keyboard mode)</summary>
-          <ul className="mt-2 list-disc space-y-1 pl-4">
-            <li>Use HID keyboard mode with an Enter suffix after each scan (Zebra: scan the CR barcodes in the quick-start guide).</li>
-            <li>If scans stay in the search bar, the suffix is missing — rescan the Enter setup barcodes.</li>
-            <li>Leading zeros on barcodes must be preserved; test with a known product.</li>
-          </ul>
-        </details>
+      <section id="hardware-scanner" className="rounded-lg border border-[var(--oh-border)] bg-white p-4 sm:p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-base font-semibold text-[var(--oh-text)]">Barcode scanner</h2>
+            <p className="mt-1 text-xs text-[var(--oh-muted)]">
+              USB keyboard mode — plug in the scanner; no Hardware Connect or pairing.
+            </p>
+          </div>
+          <span
+            className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${
+              scannerVerified
+                ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+                : "border-amber-200 bg-amber-50 text-amber-950"
+            }`}
+          >
+            {scannerVerified ? "Input verified on this PC" : "Not verified yet"}
+          </span>
+        </div>
         <label className="mt-4 grid max-w-lg gap-1 text-sm font-medium">
-          Barcode input check
+          Scan test
           <input
             value={scanTest}
             onChange={(event) => setScanTest(event.target.value)}
@@ -572,19 +586,33 @@ export function HardwareSetupPanel() {
                 setNotice(`Barcode input captured: ${scanTest.trim()}`);
               }
             }}
-            placeholder="Focus here and scan a barcode"
+            placeholder="Click here, then scan a product barcode"
             className="h-11 rounded-md border border-[var(--oh-border)] px-3 font-normal"
             autoComplete="off"
           />
         </label>
         <p className="mt-2 text-xs text-[var(--oh-muted)]">
-          BarcodeDetector: {supportsBarcodeDetection() ? "available" : "not available in this browser"}.
+          If characters appear when you scan, the scanner is connected. Press Enter after scan (or set scanner suffix to Enter).
+          Sell search uses the same input path.
         </p>
-        <div className="mt-5 flex flex-wrap items-start justify-between gap-3 border-t border-[var(--oh-border)] pt-4">
-          <div>
-            <h3 className="text-sm font-semibold text-[var(--oh-text)]">Electronic scale (diagnostic)</h3>
-            <p className="mt-1 text-xs text-[var(--oh-muted)]">9600 baud Web Serial · not used for pricing.</p>
-          </div>
+        <details className="mt-3 rounded-md border border-[var(--oh-border)] px-3 py-2 text-xs text-[var(--oh-muted)]">
+          <summary className="cursor-pointer font-medium text-[var(--oh-text)]">Scanner setup tips</summary>
+          <ul className="mt-2 list-disc space-y-1 pl-4">
+            <li>Use HID keyboard mode with an Enter suffix after each scan (Zebra: scan the CR barcodes in the quick-start guide).</li>
+            <li>If scans stay in the search bar, the suffix is missing — rescan the Enter setup barcodes.</li>
+            <li>Leading zeros on barcodes must be preserved; test with a known product.</li>
+          </ul>
+        </details>
+      </section>
+
+      <details id="hardware-optional-tests" className="rounded-lg border border-[var(--oh-border)] bg-white px-4 py-3 sm:px-5">
+        <summary className="cursor-pointer text-sm font-medium text-[var(--oh-text)]">Electronic scale (diagnostic)</summary>
+        <p className="mt-2 text-xs text-[var(--oh-muted)]">
+          Optional Web Serial check — not used for checkout pricing. BarcodeDetector (camera):{" "}
+          {supportsBarcodeDetection() ? "available" : "not available in this browser"}.
+        </p>
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-xs text-[var(--oh-muted)]">9600 baud Web Serial</p>
           <div className="flex gap-2">
             <button type="button" onClick={() => void readScale()} disabled={scaleReading} className="min-h-10 rounded-md border border-[var(--oh-border)] px-3 text-sm font-semibold disabled:opacity-50">
               Connect scale reader

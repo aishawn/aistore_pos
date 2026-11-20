@@ -53,8 +53,7 @@ test("hardware setup reports bridge availability without enabling Linkly payment
   await expect(paymentsToggle).not.toBeChecked();
   await expect(page.getByRole("button", { name: "Test $1.00" })).toBeDisabled();
 
-  await page.getByText("Test scanner & scale").click();
-  const scannerInput = page.getByLabel("Barcode input check");
+  const scannerInput = page.getByLabel("Scan test");
   await scannerInput.fill("0001234567890");
   await scannerInput.press("Enter");
   await expect(page.getByRole("status").filter({ hasText: "Barcode input captured: 0001234567890" })).toBeVisible();

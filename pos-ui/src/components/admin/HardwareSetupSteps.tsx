@@ -23,7 +23,7 @@ const STEP_META: { id: StepId; label: string; anchor: string }[] = [
   { id: "network", label: "Browser access", anchor: "hardware-connect" },
   { id: "connect", label: "Connect on this PC", anchor: "hardware-connect" },
   { id: "printer", label: "Save printer", anchor: "hardware-printer" },
-  { id: "test", label: "Test devices", anchor: "hardware-optional-tests" },
+  { id: "test", label: "Test devices", anchor: "hardware-scanner" },
   { id: "eftpos", label: "Card payments", anchor: "hardware-eftpos" },
 ];
 
@@ -87,7 +87,7 @@ function stepHint(id: StepId, bridge: boolean, network: LocalNetworkAccessState)
     case "printer":
       return settings.printer.trim() && !bridge ? "Saved — connect first" : "Choose receipt printer";
     case "test":
-      return "Test print, drawer, or scan";
+      return hasBarcodeScannerTested() ? "Scanner verified on this PC" : "Scan a barcode below";
     case "eftpos":
       return eftpos.paymentsEnabled ? "Start EFTPOS bridge" : "Optional · Linkly";
     default:
