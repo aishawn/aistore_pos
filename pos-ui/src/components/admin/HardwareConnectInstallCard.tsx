@@ -22,8 +22,11 @@ function InstallSteps({ compact }: { compact?: boolean }) {
         Open your <span className="font-medium">Downloads</span> folder and double‑click the installer.
       </li>
       <li>
-        If Windows asks whether to run the file, choose <span className="font-medium">Run</span>. On SmartScreen, choose{" "}
-        <span className="font-medium">More info</span> → <span className="font-medium">Run anyway</span>.
+        If Windows SmartScreen shows an unknown publisher (same as Shopfront before their installer is trusted), choose{" "}
+        <span className="font-medium">More info</span> → <span className="font-medium">Run anyway</span>. Signed releases will remove this step once deployed.
+      </li>
+      <li>
+        After install, tray <span className="font-medium">About</span> should show <span className="font-medium">1.1.2</span> (not 1.0.0) — otherwise you are still on an old download; use the latest Setup from this page.
       </li>
       <li>
         Click <span className="font-medium">Yes</span> in the installer window. Install .NET prerequisites if Windows prompts you.
