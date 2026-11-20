@@ -3,6 +3,7 @@ import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
+import { assistantRuntimePreflight } from "./ai-eval/stock-clarification-acceptance.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const sourceCommit = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
@@ -117,65 +118,72 @@ const checks = [];
 let runtime = {};
 try {
   runtime = await context.request.get(`${base}/api/public/version`).then((response) => response.json());
-  const login = await context.request.post(`${base}/api/auth/login`, {
-    data: { username: "admin", password },
-    headers: { Origin: base },
-  });
-  const loginBody = await login.json().catch(() => ({}));
-  if (!login.ok() || loginBody.code !== 0) throw new Error(`LOGIN_FAILED_${login.status()}`);
-
-  for (const item of cases) {
-    const response = await context.request.post(`${base}/api/ai/assistant`, {
-      data: { question: item.question, surface: "sell" },
+  const preflight = assistantRuntimePreflight(runtime, sourceCommit);
+  if (!preflight.allowed) {
+    checks.push({ id: "runtime-identity", status: "BLOCKED", evidence: preflight });
+  } else {
+    const login = await context.request.post(`${base}/api/auth/login`, {
+      data: { username: "admin", password },
       headers: { Origin: base },
-      timeout: 120000,
     });
-    const body = await response.json().catch(() => ({}));
-    const data = body.data ?? {};
-    const cards = Array.isArray(data.cards) ? data.cards : [];
-    const card = cards.find((candidate) => candidate?.type === item.type);
-    const language = /[\u3400-\u9fff]/.test(item.question) ? "zh" : "en";
-    const expectedTitle = titles[language][item.type];
-    const expectedCtaLabel = ctaLabels[language][item.route];
-    const passed = response.ok()
-      && body.code === 0
-      && Boolean(card)
-      && card.status !== "unavailable"
-      && card.ctaRoute === item.route
-      && card.cta?.route === item.route
-      && typeof card.cta?.label === "string"
-      && card.cta?.label === card.ctaLabel
-      && card.title === expectedTitle
-      && card.cta?.label === expectedCtaLabel
-      && (!item.answerPattern || item.answerPattern.test(String(data.answer ?? "")))
-      && Array.isArray(data.writeRequests)
-      && data.writeRequests.length === 0;
-    checks.push({
-      id: item.id,
-      question: item.question,
-      status: passed ? "PASS" : "FAIL",
-      httpStatus: response.status(),
-      intent: data.intent ?? null,
-      cardPresent: Boolean(card),
-      cardStatus: card?.status ?? null,
-      ctaRouteMatches: card?.ctaRoute === item.route && card?.cta?.route === item.route,
-      ctaLabelMatches: typeof card?.cta?.label === "string" && card.cta.label === card.ctaLabel,
-      titleMatches: card?.title === expectedTitle,
-      localizedCtaMatches: card?.cta?.label === expectedCtaLabel,
-      expectedTitle,
-      actualTitle: card?.title ?? null,
-      expectedCtaLabel,
-      actualCtaLabel: card?.cta?.label ?? card?.ctaLabel ?? null,
-      answerMatches: !item.answerPattern || item.answerPattern.test(String(data.answer ?? "")),
-      writeRequestCount: Array.isArray(data.writeRequests) ? data.writeRequests.length : null,
-      actualCards: cards.map((candidate) => ({
-        type: candidate?.type ?? null,
-        title: candidate?.title ?? null,
-        status: candidate?.status ?? null,
-        route: candidate?.cta?.route ?? candidate?.ctaRoute ?? null,
-        label: candidate?.cta?.label ?? candidate?.ctaLabel ?? null,
-      })),
-    });
+    const loginBody = await login.json().catch(() => ({}));
+    if (!login.ok() || loginBody.code !== 0) throw new Error(`LOGIN_FAILED_${login.status()}`);
+
+    for (const item of cases) {
+      const response = await context.request.post(`${base}/api/ai/assistant`, {
+        data: { question: item.question, surface: "sell" },
+        headers: { Origin: base },
+        timeout: 120000,
+      });
+      const body = await response.json().catch(() => ({}));
+      const data = body.data ?? {};
+      const cards = Array.isArray(data.cards) ? data.cards : [];
+      const card = cards.find((candidate) => candidate?.type === item.type);
+      const language = /[\u3400-\u9fff]/.test(item.question) ? "zh" : "en";
+      const expectedTitle = titles[language][item.type];
+      const expectedCtaLabel = ctaLabels[language][item.route];
+      const passed = response.ok()
+        && body.code === 0
+        && Boolean(card)
+        && card.status !== "unavailable"
+        && card.ctaRoute === item.route
+        && card.cta?.route === item.route
+        && typeof card.cta?.label === "string"
+        && card.cta?.label === card.ctaLabel
+        && card.title === expectedTitle
+        && card.cta?.label === expectedCtaLabel
+        && (!item.answerPattern || item.answerPattern.test(String(data.answer ?? "")))
+        && Array.isArray(data.writeRequests)
+        && data.writeRequests.length === 0;
+      checks.push({
+        id: item.id,
+        question: item.question,
+        status: passed ? "PASS" : "FAIL",
+        httpStatus: response.status(),
+        intent: data.intent ?? null,
+        cardPresent: Boolean(card),
+        cardStatus: card?.status ?? null,
+        ctaRouteMatches: card?.ctaRoute === item.route && card?.cta?.route === item.route,
+        ctaLabelMatches: typeof card?.cta?.label === "string" && card.cta.label === card.ctaLabel,
+        titleMatches: card?.title === expectedTitle,
+        localizedCtaMatches: card?.cta?.label === expectedCtaLabel,
+        expectedTitle,
+        actualTitle: card?.title ?? null,
+        expectedCtaLabel,
+        actualCtaLabel: card?.cta?.label ?? card?.ctaLabel ?? null,
+        answerMatches: !item.answerPattern || item.answerPattern.test(String(data.answer ?? "")),
+        source: data.source ?? null,
+        llmFallback: data.llmFallback ?? null,
+        writeRequestCount: Array.isArray(data.writeRequests) ? data.writeRequests.length : null,
+        actualCards: cards.map((candidate) => ({
+          type: candidate?.type ?? null,
+          title: candidate?.title ?? null,
+          status: candidate?.status ?? null,
+          route: candidate?.cta?.route ?? candidate?.ctaRoute ?? null,
+          label: candidate?.cta?.label ?? candidate?.ctaLabel ?? null,
+        })),
+      });
+    }
   }
 } finally {
   await context.request.post(`${base}/api/auth/logout`, { headers: { Origin: base } }).catch(() => null);
@@ -191,22 +199,21 @@ const output = {
     encoding: "utf8",
   }).trim().length > 0,
   runtimeCommit: runtime.frontend?.commit === runtime.backend?.commit ? runtime.backend.commit : null,
-  runtimeIdentity: {
-    frontendCommit: runtime.frontend?.commit ?? null,
-    backendCommit: runtime.backend?.commit ?? null,
-    matchesSourceCommit: runtime.frontend?.commit === sourceCommit && runtime.backend?.commit === sourceCommit,
-  },
+  runtimeIdentity: assistantRuntimePreflight(runtime, sourceCommit),
   target: base,
   scope: "authenticated assistant API-only card contract; no business writes",
   checks,
   passed: checks.filter((check) => check.status === "PASS").length,
   failed: checks.filter((check) => check.status === "FAIL").length,
+  blocked: checks.filter((check) => check.status === "BLOCKED").length,
   writeRequests: ["none: assistant API only"],
 };
+output.status = output.failed ? "FAIL" : output.blocked ? "BLOCKED" : "PASS";
 const outputPath = process.env.PILOT_UAT_OUTPUT_PATH
   ? path.resolve(root, process.env.PILOT_UAT_OUTPUT_PATH)
-  : path.join(root, "docs", "UAT_AI_CARD_CONTRACT_ONLINE.json");
+  : path.join(root, ".local", "ai-eval", "assistant-card-contract-online-current.json");
 fs.mkdirSync(path.dirname(outputPath), { recursive: true });
 fs.writeFileSync(outputPath, `${JSON.stringify(output, null, 2)}\n`);
-console.log(JSON.stringify({ outputPath, passed: output.passed, failed: output.failed, runtimeCommit: output.runtimeCommit, worktreeDirty: output.worktreeDirty }));
-if (output.failed) process.exitCode = 1;
+console.log(JSON.stringify({ outputPath, status: output.status, passed: output.passed, failed: output.failed, blocked: output.blocked, runtimeCommit: output.runtimeCommit }));
+if (output.status === "FAIL") process.exitCode = 1;
+else if (output.status === "BLOCKED") process.exitCode = 2;

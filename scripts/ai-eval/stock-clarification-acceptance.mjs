@@ -1,8 +1,19 @@
 export function runtimeMatchesSource(body, sourceCommit) {
+  return assistantRuntimePreflight(body, sourceCommit).allowed;
+}
+
+export function assistantRuntimePreflight(body, sourceCommit) {
   const data = body?.data ?? body ?? {};
   const frontendCommit = data.frontend?.commit ?? data.frontendCommit ?? data.frontendSha ?? null;
   const backendCommit = data.backend?.commit ?? data.backendCommit ?? data.backendSha ?? null;
-  return Boolean(sourceCommit && frontendCommit === sourceCommit && backendCommit === sourceCommit);
+  const allowed = Boolean(sourceCommit && frontendCommit === sourceCommit && backendCommit === sourceCommit);
+  return {
+    allowed,
+    reason: allowed ? null : "RUNTIME_SHA_MISMATCH",
+    sourceCommit,
+    frontendCommit,
+    backendCommit,
+  };
 }
 
 export function stockClarificationAcceptance(data = {}, {
