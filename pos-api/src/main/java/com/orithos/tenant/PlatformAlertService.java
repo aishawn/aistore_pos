@@ -3,6 +3,7 @@ package com.orithos.tenant;
 import com.orithos.common.BusinessException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Propagation;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
@@ -12,7 +13,7 @@ public class PlatformAlertService {
     private final PlatformAlertMapper mapper;
     public PlatformAlertService(PlatformAlertMapper mapper) { this.mapper = mapper; }
 
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void record(String fingerprint, String environment, String service, Long tenantId,
                        String correlationId, String runtimeCommit, LocalDateTime occurredAt) {
         mapper.upsert(fingerprint, environment, service, tenantId, correlationId, runtimeCommit, occurredAt);

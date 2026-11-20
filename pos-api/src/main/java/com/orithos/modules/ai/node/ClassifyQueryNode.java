@@ -1,5 +1,7 @@
 package com.orithos.modules.ai.node;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.alibaba.cloud.ai.graph.OverAllState;
 import com.alibaba.cloud.ai.graph.action.NodeAction;
 import com.orithos.modules.ai.AiProperties;
@@ -37,7 +39,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -48,6 +49,7 @@ import java.util.stream.Collectors;
 public class ClassifyQueryNode implements NodeAction {
 
     private static final Logger log = LoggerFactory.getLogger(ClassifyQueryNode.class);
+    private static final ObjectMapper JSON = new ObjectMapper();
 
     private static final String FALLBACK_CLASSIFY_PROMPT = """
             You are an intent classifier for Orithos POS.
@@ -927,10 +929,20 @@ public class ClassifyQueryNode implements NodeAction {
         RawIntent parsed = parseRawJson(completion.value());
         if (parsed.intent() != null && !parsed.intent().isBlank()) return parsed;
 
-        AiCompletion<LlmIntentOutput> structured = gateway.completeStructured(
-                tenant, AiTask.CLASSIFICATION, prompt, input, LlmIntentOutput.class);
+        String reason = completion.value() == null || completion.value().isBlank()
+                ? "empty_text_output" : "invalid_json_or_missing_intent";
+        log.warn("AI intent text output rejected reason={} correlationId={}", reason, tenant.correlationId());
+        AiCompletion<LlmIntentOutput> structured;
+        try {
+            structured = gateway.completeStructured(tenant, AiTask.CLASSIFICATION, prompt, input, LlmIntentOutput.class);
+        } catch (RuntimeException failure) {
+            log.warn("AI intent structured fallback failed correlationId={} failureType={}",
+                    tenant.correlationId(), failure.getClass().getSimpleName());
+            throw failure;
+        }
         LlmIntentOutput entity = structured.value();
-        if (entity.intent() == null || entity.intent().isBlank()) {
+        if (entity == null || entity.intent() == null || entity.intent().isBlank()) {
+            log.warn("AI intent structured output rejected reason=missing_intent correlationId={}", tenant.correlationId());
             throw new IllegalStateException("AI gateway returned invalid classify output");
         }
         return new RawIntent(entity.intent(), entity.summary(), entity.query(), entity.route(), entity.view(),
@@ -1015,36 +1027,39 @@ public class ClassifyQueryNode implements NodeAction {
 
     private static RawIntent parseRawJson(String raw) {
         if (raw == null) {
-            return new RawIntent("unknown", "empty model response",
+            return new RawIntent(null, "empty model response",
                     null, null, null, null, null, null, null, null, null, null, null);
         }
-        return new RawIntent(
-                extract(raw, "intent"),
-                extract(raw, "summary"),
-                extract(raw, "query"),
-                extract(raw, "route"),
-                extract(raw, "view"),
-                extract(raw, "panel"),
-                extract(raw, "action"),
-                extract(raw, "entity"),
-                extract(raw, "op"),
-                extract(raw, "from"),
-                extract(raw, "to"),
-                extract(raw, "days"),
-                extract(raw, "category")
-        );
+        String json = raw.trim();
+        if (json.startsWith("```") && json.endsWith("```")) {
+            int newline = json.indexOf('\n');
+            json = newline >= 0 ? json.substring(newline + 1, json.length() - 3).trim()
+                    : json.substring(3, json.length() - 3).trim();
+        }
+        int objectStart = json.indexOf('{');
+        int objectEnd = json.lastIndexOf('}');
+        if (objectStart < 0 || objectEnd <= objectStart) {
+            return new RawIntent(null, "invalid model response", null, null, null, null, null,
+                    null, null, null, null, null, null);
+        }
+        try {
+            JsonNode fields = JSON.readTree(json.substring(objectStart, objectEnd + 1));
+            return new RawIntent(
+                    jsonValue(fields, "intent"), jsonValue(fields, "summary"), jsonValue(fields, "query"),
+                    jsonValue(fields, "route"), jsonValue(fields, "view"), jsonValue(fields, "panel"),
+                    jsonValue(fields, "action"), jsonValue(fields, "entity"), jsonValue(fields, "op"),
+                    jsonValue(fields, "from"), jsonValue(fields, "to"), jsonValue(fields, "days"),
+                    jsonValue(fields, "category"));
+        } catch (Exception ignored) {
+            return new RawIntent(null, "invalid model response", null, null, null, null, null,
+                    null, null, null, null, null, null);
+        }
     }
 
-    private static String extract(String raw, String field) {
-        Pattern p = Pattern.compile("\"" + field + "\"\\s*:\\s*(\"(?:\\\\.|[^\"])*\"|null)", Pattern.CASE_INSENSITIVE);
-        Matcher m = p.matcher(raw);
-        if (!m.find()) return null;
-        String v = m.group(1);
-        if (v == null || "null".equalsIgnoreCase(v)) return null;
-        if (v.length() >= 2 && v.startsWith("\"") && v.endsWith("\"")) {
-            return v.substring(1, v.length() - 1);
-        }
-        return v;
+    private static String jsonValue(JsonNode fields, String field) {
+        JsonNode value = fields == null ? null : fields.get(field);
+        if (value == null || value.isNull() || value.isMissingNode()) return null;
+        return value.isValueNode() ? value.asText() : null;
     }
 
     private static String nullToEmpty(String v) {

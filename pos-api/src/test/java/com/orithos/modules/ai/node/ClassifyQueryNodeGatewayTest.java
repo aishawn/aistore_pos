@@ -25,8 +25,24 @@ class ClassifyQueryNodeGatewayTest {
         assertEquals(2, gateway.calls);
     }
 
+    @Test
+    void parsesFencedJsonAndUnescapesClassifierFields() {
+        StubGateway gateway = new StubGateway("Result:\n```json\n{\"intent\":\"report_sales\",\"summary\":\"Sales \\\"today\\\"\",\"query\":null}\n```");
+        AiTenantContext tenant = new AiTenantContext(1L, 1L, 1L, "correlation");
+
+        var result = ClassifyQueryNode.classifyThroughGateway(gateway, tenant, "classifier input");
+
+        assertEquals("report_sales", result.intent());
+        assertEquals("Sales \"today\"", result.summary());
+        assertEquals(1, gateway.calls);
+    }
+
     private static final class StubGateway implements AiGateway {
+        private final String text;
         private int calls;
+
+        private StubGateway() { this("not-json"); }
+        private StubGateway(String text) { this.text = text; }
 
         @Override
         @SuppressWarnings("unchecked")
@@ -35,7 +51,7 @@ class ClassifyQueryNodeGatewayTest {
             calls++;
             if (task != AiTask.CLASSIFICATION) throw new AssertionError("Unexpected task");
             if (outputType == String.class) {
-                return (AiCompletion<T>) completion("not-json");
+                return (AiCompletion<T>) completion(text);
             }
             if (outputType == ClassifyQueryNode.LlmIntentOutput.class) {
                 return (AiCompletion<T>) completion(new ClassifyQueryNode.LlmIntentOutput(

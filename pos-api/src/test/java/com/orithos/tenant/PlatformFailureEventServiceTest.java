@@ -7,6 +7,8 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.jdbc.BadSqlGrammarException;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.SQLException;
 
@@ -14,6 +16,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -58,5 +61,15 @@ class PlatformFailureEventServiceTest {
 
         assertEquals("42601", PlatformFailureEventService.sqlState(failure));
         assertEquals(7, PlatformFailureEventService.sqlVendorCode(failure));
+    }
+
+    @Test
+    void alertRecordingUsesAnIndependentTransaction() throws Exception {
+        var record = PlatformAlertService.class.getMethod("record", String.class, String.class, String.class,
+                Long.class, String.class, String.class, java.time.LocalDateTime.class);
+        Transactional transactional = record.getAnnotation(Transactional.class);
+
+        assertNotNull(transactional);
+        assertEquals(Propagation.REQUIRES_NEW, transactional.propagation());
     }
 }

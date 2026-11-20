@@ -36,6 +36,7 @@ public class PlatformLifecycleSchemaMigrator implements CommandLineRunner {
             if (!tableExists("platform_alert")) {
                 apply("db/migration_platform_alerts.sql");
             }
+            ensureAlertFingerprintIndex();
             if (!tableExists("platform_failure_event")) {
                 apply("db/migration_platform_failure_events.sql");
             }
@@ -68,6 +69,26 @@ public class PlatformLifecycleSchemaMigrator implements CommandLineRunner {
             try (ResultSet result = statement.executeQuery()) {
                 return result.next() && result.getInt(1) > 0;
             }
+        }
+    }
+
+    private void ensureAlertFingerprintIndex() throws Exception {
+        try (Connection connection = dataSource.getConnection();
+             PreparedStatement statement = connection.prepareStatement("""
+                     SELECT COUNT(*) FROM (
+                       SELECT fingerprint FROM platform_alert GROUP BY fingerprint HAVING COUNT(*) > 1
+                     ) duplicates
+                     """);
+             ResultSet result = statement.executeQuery()) {
+            if (result.next() && result.getLong(1) > 0) {
+                log.warn("Skipped platform alert fingerprint index: duplicate fingerprints exist count={}", result.getLong(1));
+                return;
+            }
+        }
+        try (Connection connection = dataSource.getConnection();
+             PreparedStatement statement = connection.prepareStatement(
+                     "CREATE UNIQUE INDEX IF NOT EXISTS uq_platform_alert_fingerprint ON platform_alert (fingerprint)")) {
+            statement.execute();
         }
     }
 }

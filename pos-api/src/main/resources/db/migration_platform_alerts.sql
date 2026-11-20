@@ -19,3 +19,5 @@ CREATE TABLE IF NOT EXISTS platform_alert (
   updated_at TIMESTAMP(3) NOT NULL,
   PRIMARY KEY (id),
   CONSTRAINT uq_platform_alert_fingerprint UNIQUE (fingerprint));
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_platform_alert_fingerprint ON platform_alert (fingerprint);
