@@ -15,7 +15,9 @@ export function aggregateSalesAcceptance(answer, report, { from, to }) {
   const noSales = Number(report?.transactions) === 0 && !hasRefunds;
   const labels = [
     `Sales for ${from} to ${to} were`,
+    ...(from === to ? [`Sales for ${from} were`] : []),
     `${from} to ${to}营业额`,
+    ...(from === to ? [`${from}营业额`] : []),
     "net sales of",
     "净营业额",
     "净营业额",

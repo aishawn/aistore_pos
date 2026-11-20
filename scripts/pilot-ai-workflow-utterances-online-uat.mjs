@@ -904,7 +904,10 @@ try {
     const writeRequestsCheck = Array.isArray(data.writeRequests) && data.writeRequests.length === 0;
     const responseSourceCheck = !item.responseSource || data.source === item.responseSource;
     const verifiedCostGap = item.compareReport
-      && authoritativeReportCheck
+      && authoritativeReportEvidence?.httpStatus === 200
+      && authoritativeReportEvidence?.source === item.reportSource
+      && authoritativeReportEvidence?.from === item.reportFrom
+      && authoritativeReportEvidence?.to === item.reportTo
       && authoritativeReportEvidence?.costAvailable === false;
     const reportStatusMatches = item.reportStatus?.includes(data.reportDataStatus)
       || (data.reportDataStatus === "incomplete" && verifiedCostGap);

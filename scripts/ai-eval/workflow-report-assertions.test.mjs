@@ -63,6 +63,14 @@ test("refund reporting reconciles gross sales, refunds and net revenue", () => {
   assert.equal(refundBreakdownAcceptance("营业额 AUD 5284.66", report).passed, false);
 });
 
+test("single-day sales answers reconcile without a repeated date range", () => {
+  const report = { revenue: 5294.14, transactions: 168, costAvailable: true };
+  assert.equal(aggregateSalesAcceptance(
+    "Sales for 2026-11-14 were AUD 5294.14 and gross profit was AUD 1208.10.",
+    report, { from: "2026-11-14", to: "2026-11-14" },
+  ).passed, true);
+});
+
 test("refund-only days require the refund amount and negative net sales", () => {
   const report = {
     grossSales: 0, refunds: 9.48, refundTransactions: 1,
