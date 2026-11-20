@@ -120,7 +120,7 @@ public class SommelierCatalogService {
                 parseTags(row.getStoredPalateTags()),
                 parseTags(row.getStoredFoodTags()),
                 row.getStoredFinishNote(),
-                false
+                !"curated".equalsIgnoreCase(row.getStoredProfileSource())
         );
     }
 

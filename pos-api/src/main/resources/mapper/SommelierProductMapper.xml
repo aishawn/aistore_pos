@@ -26,6 +26,7 @@
                p.track_inventory AS track_inventory,
                p.case_quantity AS case_quantity,
                wp.wine_type AS stored_wine_type,
+               wp.source AS stored_profile_source,
                wp.dryness AS stored_dryness,
                wp.body AS stored_body,
                wp.fruitiness AS stored_fruitiness,

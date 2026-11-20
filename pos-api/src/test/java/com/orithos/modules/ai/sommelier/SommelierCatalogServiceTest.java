@@ -51,6 +51,38 @@ class SommelierCatalogServiceTest {
     }
 
     @Test
+    void storedInferredProfileRemainsMarkedAsEstimated() {
+        SommelierProductMapper mapper = mock(SommelierProductMapper.class);
+        SommelierProductMapper.CatalogRow wine = new SommelierProductMapper.CatalogRow();
+        wine.setId(14347L);
+        wine.setName("Babich Marlborough Pinot Noir Rose 750ml");
+        wine.setCategoryName("Wine");
+        wine.setStoredWineType("rose");
+        wine.setStoredProfileSource("inferred");
+        when(mapper.listCatalog(1L)).thenReturn(List.of(wine));
+        SommelierCatalogService service = new SommelierCatalogService(mapper, new ObjectMapper());
+        TenantContext tenant = new TenantContext(42L, 7L, 1L, List.of(1L), Set.of());
+
+        assertTrue(service.listWines(tenant).get(0).profile().inferred());
+    }
+
+    @Test
+    void curatedProfileIsMarkedAsReviewed() {
+        SommelierProductMapper mapper = mock(SommelierProductMapper.class);
+        SommelierProductMapper.CatalogRow wine = new SommelierProductMapper.CatalogRow();
+        wine.setId(14347L);
+        wine.setName("Babich Marlborough Pinot Noir Rose 750ml");
+        wine.setCategoryName("Wine");
+        wine.setStoredWineType("rose");
+        wine.setStoredProfileSource("curated");
+        when(mapper.listCatalog(1L)).thenReturn(List.of(wine));
+        SommelierCatalogService service = new SommelierCatalogService(mapper, new ObjectMapper());
+        TenantContext tenant = new TenantContext(42L, 7L, 1L, List.of(1L), Set.of());
+
+        assertTrue(!service.listWines(tenant).get(0).profile().inferred());
+    }
+
+    @Test
     void listSearchAndLookupUseCurrentOrithosOutlet() {
         SommelierProductMapper mapper = mock(SommelierProductMapper.class);
         when(mapper.listCatalog(1L)).thenReturn(List.of());

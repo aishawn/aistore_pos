@@ -43,6 +43,7 @@ public interface SommelierProductMapper {
         private Boolean trackInventory;
         private BigDecimal caseQuantity;
         private String storedWineType;
+        private String storedProfileSource;
         private Double storedDryness;
         private Double storedBody;
         private Double storedFruitiness;
