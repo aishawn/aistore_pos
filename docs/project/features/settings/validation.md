@@ -19,11 +19,11 @@
 
 | 检查 | 环境/版本 | 结果 | 证据/范围 |
 |------|-----------|------|-----------|
-| 当前应用版本探测 | SKR + Demo，2026-11-21 | PASS | 只读 `/api/public/version`；两店 frontend/backend 均为 `37ab0d5c0c446def40abd689ba4bf6d2df9bb2b3` |
-| Settings 页面/主题/权限/502 重试矩阵 | 上次记录；审计脚本修订 `7b8e9cc` | HISTORICAL PASS，当前版本待复验 | 记录摘要为 390/768/1440、只读；没有可关联当前运行 SHA 的完整结果证据 |
-| Company settings bundle 键和值一致 | 上次记录 | HISTORICAL PASS，当前版本待复验 | 记录为两边各 66 键且完全相同；公司资料 7 键缺失属已知资料缺口 |
+| 当前应用版本探测 | SKR + Demo，2026-11-21 | PASS | 只读 `/api/public/version`；稳定复验两店 frontend/backend 均为 `d30165c0027e8664538eec401f2fce2d2642f4dc` |
+| Settings 页面/主题/权限/502 重试矩阵 | SKR + Demo，`d30165c0`，2026-11-21 | PASS | 每店 51 页面/视口组合（17 路由 × 390/768/1440）；无错误/写入；Demo 角色权限对照 PASS，SKR 因 Add staff 不可用而跳过该项；证据 `temp/settings-audit-current-20261121/retry/report.json`（本地，不提交） |
+| Company settings bundle 键和值一致 | SKR + Demo，`d30165c0`，2026-11-21 | PASS | 当前只读 API 两边键集合相同，关键值完全一致；公司资料 7 键缺失属已知资料缺口 |
 | Tier pricing read-back + quote | 上次记录 | PASS（限定样本；运行 SHA 未在本次资料中关联） | `-196 LEMON P/F 6% 330ML`，数量 1/3/4/7/10；报价依次 `$8.99/$26.97/$26.99/$53.96/$51.99` |
-| 设置读回关键值 | 上次记录 | HISTORICAL PASS，当前版本待复验 | Melbourne、High Mix、Match Price Points、Redistribute、Require Password=true |
+| 设置读回关键值 | SKR + Demo，`d30165c0`，2026-11-21 | PASS | Melbourne、`DD/MM/YYYY`、`HH:mm:ss`、Monday、High Mix、Match Price Points、Redistribute、Require Password=true；值相同 |
 | 设置保存/登录登出写入验收 | SKR + Demo | NOT_RUN | 本轮未修改设置，也未执行登录登出操作 |
 | Shopfront 设置页逐字段在线复核 | Shopfront | NOT_RUN | 当前浏览器 URL 许可校验阻断自动化；Shopfront 仍只读 |
 | 全部 60 个公司字段的真实业务消费者 | 源码 + 线上 | PARTIAL | 约 43 字段静态扫描未见明确消费点；须逐项人工追踪，不可据此宣告所有字段失效 |

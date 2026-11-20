@@ -33,13 +33,15 @@
 
 - Shopfront OAuth scopes 可能对部分 settings 根返回 403；导入会记 entity errors，不阻断 Orithos 本地编辑。
 
-## 2026-11-21 继续验收（当前运行版本 37ab0d5）
+## 2026-11-21 继续验收（当前运行版本 d30165c0）
 
-- `7b8e9cc` 仅更新 `scripts/settings-audit-readonly.cjs`，不是应用部署版本。2026-11-21 对两店 `/api/public/version` 的直接只读探测均返回应用 SHA `37ab0d5c0c446def40abd689ba4bf6d2df9bb2b3`。因此此前记录的 Settings UAT 通过结果和脚本版本不能替代当前 `37ab0d5` 运行版本上的复验。
-- 此前 UAT 摘要记载只读审计在 SKR/Demo 通过 390/768/1440 三视口矩阵，覆盖设置路由/主题溢出、员工角色只读权限、502 重试恢复、运行 SHA 稳定和无业务写入断言；但该摘要没有保留与当前版本探测可关联的完整结果文件。应在当前运行版本重跑后再标记为最新 PASS。
-- 最近一次已记录的两店 `/api/settings/company` 比较均返回 66 个键且值完全一致。公司资料目录的 7 个资料键（名称、ABN、地址、城市、邮编、电话、邮箱）不在该 bundle；没有来源资料，不得代填。当前 `37ab0d5` 尚未重新比较 bundle。
+- `7b8e9cc` 仅更新 `scripts/settings-audit-readonly.cjs`，不是应用部署版本。文档提交期间两店先后从 `37ab0d5` 自动部署到 `d30165c0`；最终稳定版本已完成下述复验。
+- 本轮文档提交后，脚本运行时 API 观察到自动部署从 `86802d13` 更新到 `d30165c0`；中间一次 SKR company settings 请求返回 502 并终止。部署稳定后完整重跑通过，SKR 与 Demo 起止 frontend/backend SHA 均稳定为 `d30165c0027e8664538eec401f2fce2d2642f4dc`。本轮结果文件在本地 `temp/settings-audit-current-20261121/retry/report.json`，不提交。
+- 稳定版本复验：每店 51 个路由/视口页面组合 PASS（17 个页面 × 390/768/1440 三个视口），公司设置 API/地区数据、导航/溢出、旧路由、地区 API 故障重试、无浏览器错误/无业务写入均 PASS。Demo 的只读员工角色权限对照 PASS；SKR 当前账号不显示可用的 Add staff，故该项安全跳过。该脚本没有逐项比较所有两个套餐店的 setting KV 值。
+- 更早的 UAT 摘要未保存与应用 SHA 可关联的完整结果文件；它仅作历史记录，不作为本次 `d30165c0` 复验依据。
+- 当前 `d30165c0` 的只读 API 比对确认 SKR/Demo 键集合相同，且关键值一致：时区 `Australia/Melbourne`、日期格式 `DD/MM/YYYY`、时间格式 `HH:mm:ss`、周起始 `MONDAY`、定价 `HIGH_MIX_PRICE / MATCH_PRICE_POINTS / REDISTRIBUTE`、Require Password `true`。公司资料目录的 7 个资料键（名称、ABN、地址、城市、邮编、电话、邮箱）仍不在 bundle；没有来源资料，不得代填。
 - 定价只读 UAT 商品 `-196 LEMON P/F 6% 330ML` 的阶梯读回为 `1→$8.99、4→$6.7475、10→$5.199`；数量 1/3/4/7/10 的报价为 `$8.99/$26.97/$26.99/$53.96/$51.99`，SKR 与 Demo 一致。没有创建销售或修改设置。该样本只验证此商品和这些数量，不证明所有价格表、促销或客户等级定价等价。
-- 之前记录的设置读回为 `Australia/Melbourne`、`HIGH_MIX_PRICE`、`MATCH_PRICE_POINTS`、`REDISTRIBUTE`、`Require Password=true`。认证源码链路含员工选项、租户设置读取、密码必填 UI 和后端校验；这些设置值尚未在本轮对当前 `37ab0d5` 重新读回，也没有重新做线上登录登出操作。
+- 认证源码链路含员工选项、租户设置读取、密码必填 UI 和后端校验。本轮只读读回 Require Password=true；没有重新做登录登出操作或变更设置。
 - `company-settings-catalog.ts` 定义 60 个字段。此前静态消费者盘点中约 43 个字段没有找到明确的运行时消费点；此计数用于排查优先级，不是运行时失效结论。必须逐项追踪动态 key、专页设置及最终业务动作后，才能决定补引擎、标记仅保存或移除入口。高影响成本算法、盈利展示、自动登出、搜索选项、组件/重量/箱售及多项收银行为仍需单独核实。
 - Settings UAT 本轮没有写入设置。Shopfront 保持只读；浏览器自动化本轮因 URL 许可校验未能继续，因此不把本轮记为 Shopfront 页面逐字段复核。
 - 定价字段已接入报价路径，但完整公式语义没有 Shopfront 官方公式/完整例子佐证；继续按当前商品阶梯和 family 数据结构做分批 UAT，不用单个样例宣称 1:1。
