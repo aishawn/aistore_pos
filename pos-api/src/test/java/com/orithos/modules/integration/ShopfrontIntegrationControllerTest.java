@@ -290,6 +290,64 @@ class ShopfrontIntegrationControllerTest {
     }
 
     @Test
+    void completeMatchingCatalogSnapshotRemovesAndAuditsOnlyStaleShopfrontBarcodes() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        when(jdbc.queryForList(contains("SELECT company_id, outlet_id, enabled FROM shopfront_store_mapping"), any(Object[].class)))
+                .thenReturn(List.of(Map.of("company_id", 55L, "outlet_id", 87L, "enabled", true)));
+        when(jdbc.queryForObject(contains("COUNT(DISTINCT m.source_product_id)"), eq(Long.class), any(Object[].class)))
+                .thenReturn(2L);
+        when(jdbc.update(contains("UPDATE product p SET shopfront_catalog_confirmed=TRUE"), any(Object[].class)))
+                .thenReturn(2);
+        when(jdbc.queryForObject(contains("COUNT(DISTINCT m.pos_product_id)"), eq(Long.class), any(Object[].class)))
+                .thenReturn(2L, 0L, 0L);
+        when(jdbc.queryForList(contains("SELECT fingerprint,source_ids::text AS source_ids,barcode_sources::text AS barcode_sources"), any(Object[].class)))
+                .thenReturn(List.of(Map.of(
+                        "fingerprint", "a".repeat(64),
+                        "source_ids", "[\"p-1\",\"p-2\"]",
+                        "barcode_sources", "{\"DUP\":[\"p-1\",\"p-2\"],\"KEEP\":[\"p-2\"]}")));
+        when(jdbc.queryForList(contains("SELECT m.source_product_id,m.pos_product_id,pb.code"), any(Object[].class)))
+                .thenReturn(List.of(
+                        Map.of("source_product_id", "p-1", "pos_product_id", 23L, "code", "STALE"),
+                        Map.of("source_product_id", "p-2", "pos_product_id", 24L, "code", "DUP"),
+                        Map.of("source_product_id", "p-2", "pos_product_id", 24L, "code", "KEEP")));
+        when(jdbc.update(contains("INSERT INTO shopfront_product_barcode_removal_audit"), any(Object[].class)))
+                .thenReturn(1);
+        when(jdbc.update(contains("DELETE FROM product_barcode"), any(Object[].class))).thenReturn(1);
+
+        var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true, true);
+        var response = controller.reconcileProductCatalog("token", new ObjectMapper().readTree("""
+                {"store_key":"skr","snapshot_complete":true,"expected_count":2,
+                 "source_ids":["p-1","p-2"],"barcode_snapshot_fingerprint":"%s"}
+                """.formatted("a".repeat(64))));
+
+        assertEquals(1, response.data().get("barcode_removed_count"));
+        verify(jdbc).update(contains("INSERT INTO shopfront_product_barcode_removal_audit"), any(Object[].class));
+        verify(jdbc).update(contains("DELETE FROM product_barcode"), any(Object[].class));
+    }
+
+    @Test
+    void mismatchedBarcodeSnapshotFingerprintNeverRemovesBarcodes() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        when(jdbc.queryForList(contains("SELECT company_id, outlet_id, enabled FROM shopfront_store_mapping"), any(Object[].class)))
+                .thenReturn(List.of(Map.of("company_id", 55L, "outlet_id", 87L, "enabled", true)));
+        when(jdbc.queryForObject(contains("COUNT(DISTINCT m.source_product_id)"), eq(Long.class), any(Object[].class)))
+                .thenReturn(1L);
+        when(jdbc.queryForObject(contains("COUNT(DISTINCT m.pos_product_id)"), eq(Long.class), any(Object[].class)))
+                .thenReturn(1L, 0L, 0L);
+        when(jdbc.queryForList(contains("SELECT fingerprint,source_ids::text AS source_ids,barcode_sources::text AS barcode_sources"), any(Object[].class)))
+                .thenReturn(List.of());
+
+        var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true, true);
+        var response = controller.reconcileProductCatalog("token", new ObjectMapper().readTree("""
+                {"store_key":"skr","snapshot_complete":true,"expected_count":1,
+                 "source_ids":["p-1"],"barcode_snapshot_fingerprint":"%s"}
+                """.formatted("a".repeat(64))));
+
+        assertEquals(0, response.data().get("barcode_removed_count"));
+        verify(jdbc, never()).update(contains("DELETE FROM product_barcode"), any(Object[].class));
+    }
+
+    @Test
     void catalogReconciliationRejectsConfirmedIdsOutsideSnapshotBeforeChangingProducts() throws Exception {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
         var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true, true);

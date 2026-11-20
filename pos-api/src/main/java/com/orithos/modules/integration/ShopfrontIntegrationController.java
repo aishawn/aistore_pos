@@ -372,6 +372,63 @@ public class ShopfrontIntegrationController {
                     "Catalog snapshot IDs must all be mapped before reconciliation");
         }
 
+        int barcodeRemoved = 0;
+        String barcodeSnapshotFingerprint = body.path("barcode_snapshot_fingerprint").asText("").trim();
+        if (barcodeSnapshotFingerprint.matches("[a-f0-9]{64}")) {
+            ensureBarcodeSnapshotTable();
+            List<Map<String, Object>> snapshots = jdbc.queryForList("""
+                    SELECT fingerprint,source_ids::text AS source_ids,barcode_sources::text AS barcode_sources
+                    FROM shopfront_product_barcode_snapshot
+                    WHERE store_key=? AND outlet_id=? AND fingerprint=?
+                    FOR UPDATE
+                    """, store, outletId, barcodeSnapshotFingerprint);
+            if (!snapshots.isEmpty()) {
+                try {
+                    Map<String, Object> snapshot = snapshots.getFirst();
+                    JsonNode snapshotIds = objectMapper.readTree(String.valueOf(snapshot.get("source_ids")));
+                    JsonNode barcodeSources = objectMapper.readTree(String.valueOf(snapshot.get("barcode_sources")));
+                    Set<String> registeredIds = new HashSet<>();
+                    if (snapshotIds.isArray()) snapshotIds.forEach(id -> registeredIds.add(id.asText()));
+                    if (snapshotIds.isArray() && snapshotIds.size() == registeredIds.size()
+                            && barcodeSources.isObject() && registeredIds.equals(sourceIds)) {
+                        List<Map<String, Object>> currentBarcodes = jdbc.queryForList("""
+                                SELECT m.source_product_id,m.pos_product_id,pb.code
+                                FROM shopfront_product_mapping m
+                                JOIN product p ON p.id=m.pos_product_id AND p.outlet_id=? AND p.deleted_at IS NULL
+                                JOIN product_barcode pb ON pb.product_id=p.id
+                                WHERE m.store_key=? AND m.status='MAPPED'
+                                  AND m.source_product_id=(
+                                    SELECT MIN(m2.source_product_id)
+                                    FROM shopfront_product_mapping m2
+                                    WHERE m2.store_key=m.store_key AND m2.status='MAPPED'
+                                      AND m2.pos_product_id=m.pos_product_id
+                                  )
+                                ORDER BY m.source_product_id,pb.code
+                                FOR UPDATE OF pb
+                                """, outletId, store);
+                        for (Map<String, Object> row : currentBarcodes) {
+                            String code = String.valueOf(row.get("code"));
+                            if (barcodeSources.has(code)) continue;
+                            String sourceId = String.valueOf(row.get("source_product_id"));
+                            long productId = longValue(row.get("pos_product_id"));
+                            jdbc.update("""
+                                    INSERT INTO shopfront_product_barcode_removal_audit
+                                        (store_key,outlet_id,source_product_id,pos_product_id,barcode,catalog_fingerprint,reason)
+                                    VALUES (?,?,?,?,?,?,'absent_from_verified_shopfront_snapshot')
+                                    """, store, outletId, sourceId, productId, code, barcodeSnapshotFingerprint);
+                            barcodeRemoved += jdbc.update(
+                                    "DELETE FROM product_barcode WHERE product_id=? AND code=?", productId, code);
+                        }
+                    }
+                } catch (ResponseStatusException ex) {
+                    throw ex;
+                } catch (Exception ex) {
+                    throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                            "Unable to reconcile verified Shopfront barcode snapshot", ex);
+                }
+            }
+        }
+
         int confirmed = 0;
         if (!confirmedSourceIds.isEmpty()) {
             String confirmedPlaceholders = String.join(",", java.util.Collections.nCopies(confirmedSourceIds.size(), "?"));
@@ -454,7 +511,8 @@ public class ShopfrontIntegrationController {
                 "confirmed_total_count", confirmedTotal == null ? 0L : confirmedTotal,
                 "unconfirmed_count", unconfirmed,
                 "unconfirmed_total_count", unconfirmedTotal == null ? 0L : unconfirmedTotal,
-                "outside_snapshot_count", outsideSnapshotCount == null ? 0L : outsideSnapshotCount));
+                "outside_snapshot_count", outsideSnapshotCount == null ? 0L : outsideSnapshotCount,
+                "barcode_removed_count", barcodeRemoved));
     }
 
     @PostMapping("/products:clear-unverified-costs")
@@ -2579,6 +2637,7 @@ public class ShopfrontIntegrationController {
     private void ensureBarcodeSnapshotTable() {
         ensureShadowTables();
         jdbc.update("CREATE TABLE IF NOT EXISTS shopfront_product_barcode_snapshot (store_key VARCHAR(64) NOT NULL, outlet_id BIGINT NOT NULL, fingerprint VARCHAR(64) NOT NULL, source_ids JSONB NOT NULL, barcode_sources JSONB NOT NULL, recorded_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (store_key,outlet_id))");
+        jdbc.update("CREATE TABLE IF NOT EXISTS shopfront_product_barcode_removal_audit (id BIGSERIAL PRIMARY KEY, store_key VARCHAR(64) NOT NULL, outlet_id BIGINT NOT NULL, source_product_id VARCHAR(160) NOT NULL, pos_product_id BIGINT NOT NULL, barcode VARCHAR(128) NOT NULL, catalog_fingerprint VARCHAR(64) NOT NULL, reason VARCHAR(96) NOT NULL, recorded_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP)");
         jdbc.update("ALTER TABLE shopfront_product_barcode_audit ADD COLUMN IF NOT EXISTS catalog_fingerprint VARCHAR(64)");
     }
 
