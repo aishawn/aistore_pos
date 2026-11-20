@@ -3,10 +3,11 @@ package com.orithos.modules.ai.report;
 import com.alibaba.cloud.ai.graph.OverAllState;
 import com.alibaba.cloud.ai.graph.action.NodeAction;
 import com.orithos.modules.report.ReportQueryService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import java.time.LocalDateTime;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.HashMap;
 import java.util.List;
@@ -18,12 +19,20 @@ public class NativeReportQueryNode implements NodeAction {
     private final NativeAiReportQueryService queryService;
     private final ReportPeriodResolver periodResolver;
     private final ReportQueryService reportQueryService;
+    private final ShopfrontSyncWatermark syncWatermark;
 
+    @Autowired
     public NativeReportQueryNode(NativeAiReportQueryService queryService, ReportPeriodResolver periodResolver,
-                                 ReportQueryService reportQueryService) {
+                                 ReportQueryService reportQueryService, ShopfrontSyncWatermark syncWatermark) {
         this.queryService = queryService;
         this.periodResolver = periodResolver;
         this.reportQueryService = reportQueryService;
+        this.syncWatermark = syncWatermark;
+    }
+
+    NativeReportQueryNode(NativeAiReportQueryService queryService, ReportPeriodResolver periodResolver,
+                          ReportQueryService reportQueryService) {
+        this(queryService, periodResolver, reportQueryService, null);
     }
 
     @Override
@@ -118,14 +127,19 @@ public class NativeReportQueryNode implements NodeAction {
         boolean noData = result.rows().isEmpty() || result.rows().stream().anyMatch(row ->
                 row.get("transactions") instanceof Number transactions && transactions.doubleValue() == 0
                 || row.get("tickets") instanceof Number tickets && tickets.doubleValue() == 0);
-        String dataAsOf = result.dataAsOf() == null ? latestDataAsOf(result.rows()) : result.dataAsOf();
+        var syncSnapshot = "report_dead_stock".equals(intent) && syncWatermark != null
+                && tenant.canQueryReport() && tenant.requireOutletId() != null
+                ? syncWatermark.read(tenant) : java.util.Optional.<ShopfrontSyncWatermark.Snapshot>empty();
+        String dataAsOf = "report_dead_stock".equals(intent)
+                ? syncSnapshot.map(snapshot -> snapshot.syncedAt().toString()).orElse(null)
+                : result.dataAsOf() == null ? latestDataAsOf(result.rows()) : result.dataAsOf();
         String rowStatus = reportDataStatus(result.rows());
         String reportSource = dataSource(result.rows(), result.dataSource());
-        boolean deadStockFreshnessUnknown = "report_dead_stock".equals(intent)
-                && (dataAsOf == null || dataAsOf.isBlank());
+        boolean deadStockFreshnessUnverified = "report_dead_stock".equals(intent)
+                && syncSnapshot.map(snapshot -> !snapshot.fresh()).orElse(true);
         String dataStatus = result.error() != null ? "unavailable"
                 : "unavailable".equals(rowStatus) ? "unavailable"
-                : deadStockFreshnessUnknown ? "incomplete"
+                : deadStockFreshnessUnverified ? "incomplete"
                 : hasConflictingDataSources(result.rows(), result.dataSource()) ? "incomplete"
                 : reportSource == null ? "incomplete"
                 : noData || "no_data".equals(rowStatus) ? "no_data"
