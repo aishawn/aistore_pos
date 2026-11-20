@@ -808,6 +808,31 @@ try {
           || (productCountCard.status === "empty"
             && /\b0\b|no sellable products|没有可售商品|没有商品/i.test(String(productCountCard.summary ?? ""))))
         && !/open products to browse|打开商品(?:页|目录)查看/i.test(String(productCountCard.summary ?? "")));
+    let productCountOracleCheck = true;
+    let productCountOracleEvidence = null;
+    if (item.intent === "product_count") {
+      try {
+        const oracleResponse = await context.request.get(`${base}/api/products?status=ACTIVE&page=1&size=1`);
+        const oracleBody = await oracleResponse.json().catch(() => ({}));
+        const total = Number(oracleBody.data?.total);
+        const countMatch = String(productCountCard?.summary ?? "").match(/\b[\d,]+\b/);
+        const cardCount = countMatch ? Number(countMatch[0].replaceAll(",", "")) : null;
+        productCountOracleCheck = oracleResponse.ok()
+          && oracleBody.code === 0
+          && Number.isSafeInteger(total)
+          && total >= 0
+          && cardCount === total;
+        productCountOracleEvidence = {
+          httpStatus: oracleResponse.status(),
+          total: Number.isSafeInteger(total) ? total : null,
+          cardCount,
+          matches: productCountOracleCheck,
+        };
+      } catch (error) {
+        productCountOracleCheck = false;
+        productCountOracleEvidence = { errorType: error instanceof Error ? error.name : "UnknownError" };
+      }
+    }
     const answerChecks = (item.answerIncludes ?? []).map((text) => answer.includes(text));
     const answerExcludesCheck = (item.answerExcludes ?? []).every((text) => !answer.includes(text));
     const answerRegexCheck = item.answerRegex ? new RegExp(item.answerRegex, "i").test(answer) : true;
@@ -908,6 +933,7 @@ try {
       && answerLanguageCheck
       && responseSourceCheck
       && productCountCardCheck
+      && productCountOracleCheck
       && authoritativeReportCheck
       && reportMetadataCheck
       && reportFreshnessCheck
@@ -969,6 +995,8 @@ try {
         ...(answerChecks.length ? { answerChecks } : {}),
         ...(item.intent === "product_count" ? {
           productCountCardCheck,
+          productCountOracleCheck,
+          productCountOracleEvidence,
           productCountCard: productCountCard ? {
             status: productCountCard.status ?? null,
             hasLiveNumber: /\d+/.test(String(productCountCard.summary ?? "")),
