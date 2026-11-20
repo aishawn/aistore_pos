@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   assistantTraceability,
+  assistantReportFreshnessAcceptance,
   assistantFastPathSafety,
   assistantUtteranceAcceptance,
   assistantUtteranceStatus,
@@ -32,6 +33,79 @@ function response(overrides = {}) {
     ...overrides,
   };
 }
+
+test("dead-stock traceability requires fresh authoritative data for the authenticated store", () => {
+  const nowMs = Date.parse("2026-11-20T09:00:00Z");
+  const result = assistantReportFreshnessAcceptance({
+    dataAsOf: "2026-11-20T08:58:14.092Z",
+    dataSource: AUTHORITATIVE_ASSISTANT_DATA_SOURCE,
+    storeScope: "current_authenticated_store",
+    reportDataStatus: "available",
+    source: "deterministic",
+    llmFallback: false,
+    writeRequests: [],
+  }, {
+    nowMs,
+    maxAgeMs: 90 * 60 * 1000,
+    watermark: "2026-11-20T08:58:14.092Z",
+  });
+
+  assert.deepEqual(result, {
+    dataAsOfValid: true,
+    dataAsOfFresh: true,
+    storeScope: true,
+    dataSource: true,
+    dataStatus: true,
+    deterministicRoute: true,
+    writeSafety: true,
+  });
+});
+
+test("dead-stock traceability rejects missing, invalid, stale, and future timestamps", () => {
+  const nowMs = Date.parse("2026-11-20T09:00:00Z");
+  const base = {
+    dataSource: AUTHORITATIVE_ASSISTANT_DATA_SOURCE,
+    storeScope: "current_authenticated_store",
+    reportDataStatus: "available",
+    source: "deterministic",
+    llmFallback: false,
+    writeRequests: [],
+  };
+  const evaluate = (dataAsOf) => assistantReportFreshnessAcceptance(
+    { ...base, dataAsOf }, { nowMs, maxAgeMs: 90 * 60 * 1000 },
+  );
+
+  assert.equal(evaluate(undefined).dataAsOfValid, false);
+  assert.equal(evaluate("not-a-date").dataAsOfValid, false);
+  assert.equal(evaluate("2026-11-20T06:00:00Z").dataAsOfFresh, false);
+  assert.equal(evaluate("2026-11-20T09:01:00Z").dataAsOfFresh, false);
+});
+
+test("dead-stock traceability rejects watermark, scope, status, source, and write mismatches", () => {
+  const nowMs = Date.parse("2026-11-20T09:00:00Z");
+  const base = {
+    dataAsOf: "2026-11-20T08:58:14.092Z",
+    dataSource: AUTHORITATIVE_ASSISTANT_DATA_SOURCE,
+    storeScope: "current_authenticated_store",
+    reportDataStatus: "available",
+    source: "deterministic",
+    llmFallback: false,
+    writeRequests: [],
+  };
+  const expected = { nowMs, maxAgeMs: 90 * 60 * 1000 };
+
+  assert.equal(assistantReportFreshnessAcceptance(base, {
+    ...expected, watermark: "2026-11-20T08:58:14.093Z",
+  }).dataAsOfFresh, false);
+  assert.equal(assistantReportFreshnessAcceptance({ ...base, storeScope: "another_store" }, expected).storeScope, false);
+  assert.equal(assistantReportFreshnessAcceptance({ ...base, reportDataStatus: "incomplete" }, expected).dataStatus, false);
+  assert.equal(assistantReportFreshnessAcceptance({ ...base, reportDataStatus: "no_data" }, {
+    ...expected, status: ["available", "no_data"],
+  }).dataStatus, true);
+  assert.equal(assistantReportFreshnessAcceptance({ ...base, dataSource: "legacy_odoo" }, expected).dataSource, false);
+  assert.equal(assistantReportFreshnessAcceptance({ ...base, source: "llm", llmFallback: true }, expected).deterministicRoute, false);
+  assert.equal(assistantReportFreshnessAcceptance({ ...base, writeRequests: ["POST /api/purchase-orders"] }, expected).writeSafety, false);
+});
 
 test("authoritative report traceability passes only for current provenance and read-only response", () => {
   assert.deepEqual(assistantTraceability(response(), expected), {

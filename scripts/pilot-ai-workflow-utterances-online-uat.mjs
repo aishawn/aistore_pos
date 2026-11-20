@@ -2,6 +2,10 @@ import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import {
+  assistantReportFreshnessAcceptance,
+  REPORT_FRESHNESS_MAX_AGE_MS,
+} from "./ai-eval/assistant-assertions.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const adelaideBusinessDate = (offsetDays = 0) => {
@@ -393,8 +397,8 @@ const cases = [
   { id: "report-ticket-count-en", question: "How many transactions did we have today?", intent: "report_aov" },
   { id: "report-average-sale-en", question: "What was our average sale today?", intent: "report_aov" },
   { id: "report-quantity-week-zh", question: "这周卖了多少件", intent: "report_qty" },
-  { id: "report-dead-stock-en", question: "Which products have had no sales for 30 days?", intent: "report_dead_stock", noRoute: true },
-  { id: "report-dead-stock-zh", question: "连续30天没有销售的商品有哪些？", intent: "report_dead_stock", noRoute: true, answerLanguage: "zh" },
+  { id: "report-dead-stock-en", question: "Which products have had no sales for 30 days?", intent: "report_dead_stock", noRoute: true, requireReportFreshness: true },
+  { id: "report-dead-stock-zh", question: "连续30天没有销售的商品有哪些？", intent: "report_dead_stock", noRoute: true, answerLanguage: "zh", requireReportFreshness: true },
   { id: "report-stock-value-en", question: "Which inventory items tie up the most cash?", intent: "report_stock_value", noRoute: true, answerRegex: "(?:Inventory value is unavailable because no on-hand products have verifiable positive costs;|Known-cost on-hand inventory subtotal:)" },
   { id: "report-mixed-metrics-en", question: "Give me sales and units for yesterday", intent: "report_adhoc", noRoute: true },
   { id: "report-ranking-zh", question: "昨天卖得最好的商品是什么", intent: "report_adhoc", noRoute: true },
@@ -875,6 +879,14 @@ try {
       && data.reportPeriodFrom === item.reportFrom
       && data.reportPeriodTo === item.reportTo
       && data.reportTimeZone === item.reportTimeZone);
+    const reportFreshnessChecks = item.requireReportFreshness
+      ? assistantReportFreshnessAcceptance(data, {
+        maxAgeMs: REPORT_FRESHNESS_MAX_AGE_MS,
+        status: ["available", "no_data"],
+      })
+      : null;
+    const reportFreshnessCheck = !reportFreshnessChecks
+      || Object.values(reportFreshnessChecks).every(Boolean);
     const intentMatches = Array.isArray(item.intent)
       ? item.intent.includes(data.intent)
       : data.intent === item.intent;
@@ -897,6 +909,7 @@ try {
       && productCountCardCheck
       && authoritativeReportCheck
       && reportMetadataCheck
+      && reportFreshnessCheck
       && writeRequestsCheck;
     const dataUnavailable = !passed && (isDataUnavailableAnswer(answer)
       && !(item.compareReport && authoritativeReportCheck)
@@ -917,6 +930,7 @@ try {
         ...(item.answerRegex ? { answerRegex: item.answerRegex } : {}),
         ...(item.stockOracle ? { stockOracle: true } : {}),
         ...(item.answerLanguage ? { answerLanguage: item.answerLanguage } : {}),
+        ...(item.requireReportFreshness ? { reportFreshness: true } : {}),
         ...(item.aggregateReport ? { aggregateReport: true } : {}),
       },
       evidence: {
@@ -937,6 +951,16 @@ try {
           reportPeriodFrom: data.reportPeriodFrom ?? null,
           reportPeriodTo: data.reportPeriodTo ?? null,
           reportTimeZone: data.reportTimeZone ?? null,
+        } : {}),
+        ...(reportFreshnessChecks ? {
+          reportFreshnessCheck,
+          reportFreshness: {
+            dataAsOf: data.dataAsOf ?? null,
+            dataSource: data.dataSource ?? null,
+            storeScope: data.storeScope ?? null,
+            reportDataStatus: data.reportDataStatus ?? null,
+            checks: reportFreshnessChecks,
+          },
         } : {}),
         ...(item.compareReport ? { authoritativeReportCheck, authoritativeReportEvidence } : {}),
         writeRequestsCheck,

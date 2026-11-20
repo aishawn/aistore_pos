@@ -1,4 +1,5 @@
 export const AUTHORITATIVE_ASSISTANT_DATA_SOURCE = "orithos_ledger";
+export const REPORT_FRESHNESS_MAX_AGE_MS = 90 * 60 * 1000;
 
 const ANSWER_CONTENT_INTENTS = new Set([
   "product_count",
@@ -223,6 +224,33 @@ export function assistantTraceability(assistant, expected) {
     period: assistant.reportPeriodFrom === expected.from && assistant.reportPeriodTo === expected.to,
     timezone: assistant.reportTimeZone === expected.timeZone,
     dataStatus: assistant.reportDataStatus?.toLowerCase() === (expected.status ?? "available"),
+    ...safety,
+  };
+}
+
+export function assistantReportFreshnessAcceptance(assistant, expected = {}) {
+  const dataAsOf = typeof assistant.dataAsOf === "string" ? assistant.dataAsOf : "";
+  const dataAsOfMs = Date.parse(dataAsOf);
+  const isoTimestamp = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/i.test(dataAsOf);
+  const validDataAsOf = isoTimestamp && Number.isFinite(dataAsOfMs);
+  const nowMs = expected.nowMs ?? Date.now();
+  const maxAgeMs = expected.maxAgeMs ?? REPORT_FRESHNESS_MAX_AGE_MS;
+  const watermarkMs = expected.watermark == null ? null : Date.parse(expected.watermark);
+  const ageMs = nowMs - dataAsOfMs;
+  const expectedStatuses = Array.isArray(expected.status)
+    ? expected.status.map((status) => String(status).toLowerCase())
+    : [String(expected.status ?? "available").toLowerCase()];
+  const safety = assistantFastPathSafety(assistant);
+
+  return {
+    dataAsOfValid: validDataAsOf,
+    dataAsOfFresh: validDataAsOf
+      && ageMs >= 0
+      && ageMs <= maxAgeMs
+      && (watermarkMs === null || (Number.isFinite(watermarkMs) && dataAsOfMs === watermarkMs)),
+    storeScope: assistant.storeScope === (expected.storeScope ?? "current_authenticated_store"),
+    dataSource: assistant.dataSource === (expected.dataSource ?? AUTHORITATIVE_ASSISTANT_DATA_SOURCE),
+    dataStatus: expectedStatuses.includes(assistant.reportDataStatus?.toLowerCase()),
     ...safety,
   };
 }
