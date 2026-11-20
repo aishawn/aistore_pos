@@ -41,3 +41,12 @@ test("empty sales periods require an explicit no completed sales answer", () => 
   assert.equal(averageTicketAcceptance("No completed sales found for the period.", report, period).passed, true);
   assert.equal(averageTicketAcceptance("AUD 0.00", report, period).passed, false);
 });
+
+test("missing authoritative metrics never reconcile as zero", () => {
+  assert.equal(aggregateSalesAcceptance("2026-11-01 to 2026-11-21营业额 AUD 0.00", {
+    revenue: null, transactions: 3, costAvailable: true,
+  }, period).passed, false);
+  assert.equal(averageTicketAcceptance("Average Ticket for 2026-11-01 to 2026-11-21 is AUD 0.00 across 3 sales transactions.", {
+    averageSale: null, transactions: 3,
+  }, period).passed, false);
+});

@@ -4,7 +4,9 @@ function answerMoney(answer, labels) {
   return match ? Number(match[1].replaceAll(",", "")) : null;
 }
 
-const equalMoney = (left, right) => Number.isFinite(Number(left))
+const equalMoney = (left, right) => left != null && left !== ""
+  && right != null && right !== ""
+  && Number.isFinite(Number(left))
   && Number.isFinite(Number(right))
   && Math.abs(Number(left) - Number(right)) < 0.005;
 
