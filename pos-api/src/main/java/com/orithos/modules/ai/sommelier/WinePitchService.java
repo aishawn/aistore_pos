@@ -39,6 +39,7 @@ public class WinePitchService {
     /** Gateway-backed path used by authenticated production requests. */
     public String pitch(WineCandidate wine, CustomerWineProfile customer, String length, TenantContext tenant) {
         String fallback = template(wine, customer, length);
+        if (!hasVerifiedProfile(wine)) return fallback;
         AiGateway provider = gateway == null ? null : gateway.getIfAvailable();
         if (!validScope(provider, tenant)) return fallback;
         try {
@@ -57,6 +58,7 @@ public class WinePitchService {
     public String answer(WineCandidate wine, String question, List<WineMatcher.ScoredWine> alts,
                          TenantContext tenant) {
         String fallback = cannedAnswer(wine, question, alts);
+        if (!hasVerifiedProfile(wine)) return fallback;
         AiGateway provider = gateway == null ? null : gateway.getIfAvailable();
         if (!validScope(provider, tenant)) return answer(wine, question, alts);
         try {
@@ -81,6 +83,10 @@ public class WinePitchService {
                 CorrelationIdContext.current());
     }
 
+    private static boolean hasVerifiedProfile(WineCandidate wine) {
+        return wine != null && wine.profile() != null && !wine.profile().inferred();
+    }
+
     private static String clean(String value, String fallback) {
         if (value == null || value.isBlank()) return fallback;
         return value.replace('"', ' ').replace('\n', ' ').trim();
@@ -95,7 +101,8 @@ public class WinePitchService {
                     .system("""
                             You are Orion Sommelier, a wine sales assistant standing next to a liquor-store staff member.
                             Write spoken English the staff can say out loud. No markdown, no quotes, no emoji.
-                            Stay faithful to the tasting profile. Do not invent regions, vintages, or awards.
+                            Use only the supplied product fields. Do not add alcohol strength, region, vintage, awards,
+                            production or ageing methods, serving temperature, decanting advice, or unlisted tasting notes.
                             Never recommend a bottle that is not the current product unless asked for an alternative.
                             """)
                     .user(llmUser(wine, customer, length))
@@ -117,8 +124,10 @@ public class WinePitchService {
             String raw = client.prompt()
                     .system("""
                             You are Orion Sommelier helping a store staff member answer a customer's wine question.
-                            Use only the given product profile and in-stock alternatives. English, 2-4 short sentences.
-                            No markdown.
+                            Use only the supplied product fields and in-stock alternatives. Answer in the same language
+                            as the question in at most two short sentences. Never infer alcohol strength, region, vintage,
+                            awards, production or ageing methods, serving temperature, decanting advice, or unlisted aromas.
+                            If a requested fact is absent, say that verified details are unavailable. No markdown.
                             """)
                     .user(questionUser(wine, question, alts))
                     .call()
@@ -133,6 +142,7 @@ public class WinePitchService {
 
     public String template(WineCandidate wine, CustomerWineProfile customer, String length) {
         WineProfile p = wine.profile();
+        if (p == null || p.inferred()) return inferredProfileTemplate(wine, p, customer, length);
         String dry = drynessLabel(p == null ? null : p.dryness());
         String body = bodyLabel(p == null ? null : p.body());
         String varietal = p != null && p.varietal() != null ? p.varietal() : wine.name();
@@ -160,6 +170,30 @@ public class WinePitchService {
                 + "It's showing " + aromas + " and still easy to drink.";
     }
 
+    private static String inferredProfileTemplate(WineCandidate wine, WineProfile profile,
+                                                   CustomerWineProfile customer, String length) {
+        if (profile == null) return "I don't have verified tasting details for this bottle yet.";
+        String varietal = profile.varietal() == null || profile.varietal().isBlank()
+                ? wine.name() : profile.varietal();
+        StringBuilder text = new StringBuilder("The current style profile lists this ").append(varietal);
+        List<String> traits = new java.util.ArrayList<>();
+        if (profile.dryness() != null) traits.add(drynessLabel(profile.dryness()).toLowerCase(Locale.ROOT));
+        if (profile.body() != null) traits.add(bodyLabel(profile.body()).toLowerCase(Locale.ROOT));
+        if (!traits.isEmpty()) text.append(" as ").append(String.join(" and ", traits));
+        if (!profile.aromaTags().isEmpty()) {
+            text.append(" with profile notes of ")
+                    .append(String.join(", ", profile.aromaTags().subList(0, Math.min(3, profile.aromaTags().size()))));
+        }
+        List<String> foods = customer != null && !customer.food().isEmpty()
+                ? customer.food() : profile.foodTags();
+        String foodPhrase = foodPhrase(foods);
+        if (!foodPhrase.isBlank()) text.append("; suggested pairings include ").append(foodPhrase);
+        if ("30s".equals(length) && profile.finishNote() != null && !profile.finishNote().isBlank()) {
+            text.append(". The profile also notes a ").append(profile.finishNote().toLowerCase(Locale.ROOT));
+        }
+        return text.append('.').toString();
+    }
+
     String cannedAnswer(WineCandidate wine, String question, List<WineMatcher.ScoredWine> alts) {
         WineProfile p = wine.profile();
         String q = question == null ? "" : question.toLowerCase(Locale.ROOT);
@@ -168,10 +202,12 @@ public class WinePitchService {
                 : " Try " + alts.get(0).wine().name() + " at $"
                 + alts.get(0).wine().effectivePrice().stripTrailingZeros().toPlainString() + " instead.";
         if (q.contains("sweet") || q.contains("dry")) {
+            if (p == null) return "I don't have verified tasting details for this bottle yet.";
             double d = p != null && p.dryness() != null ? p.dryness() : 0.7;
-            if (d >= 0.75) return "No — it's on the dry side." + (q.contains("sweet") ? altLine : "");
-            if (d <= 0.4) return "Yes, it's on the sweeter, fruitier side.";
-            return "It's more dry than sweet, with a bit of fruit in the middle.";
+            String qualifier = p != null && p.inferred() ? "The current style profile suggests " : "";
+            if (d >= 0.75) return qualifier + "it's on the dry side." + (q.contains("sweet") ? altLine : "");
+            if (d <= 0.4) return qualifier + "it's on the sweeter, fruitier side.";
+            return qualifier + "it's more dry than sweet, with a bit of fruit in the middle.";
         }
         if (q.contains("cheap") || q.contains("less") || q.contains("similar")) {
             return alts == null || alts.isEmpty()
@@ -184,15 +220,21 @@ public class WinePitchService {
                     : "If you want to step up:" + altLine;
         }
         if (q.contains("food") || q.contains("pair") || q.contains("steak") || q.contains("dinner")) {
+            if (p == null) return "I don't have verified food-pairing details for this bottle yet.";
             String foods = p == null || p.foodTags().isEmpty()
                     ? "dinner"
                     : p.foodTags().stream().map(WinePitchService::humanFood).collect(Collectors.joining(", "));
-            return "Best with " + foods + ".";
+            return p != null && p.inferred()
+                    ? "The current style profile suggests pairing it with " + foods + "."
+                    : "Best with " + foods + ".";
         }
+        if (p == null) return "I don't have verified tasting details for this bottle yet.";
         String dry = drynessLabel(p == null ? null : p.dryness());
         String body = bodyLabel(p == null ? null : p.body());
-        return "It's a " + dry.toLowerCase(Locale.ROOT) + ", " + body.toLowerCase(Locale.ROOT)
-                + " " + (p != null && p.varietal() != null ? p.varietal() : "wine") + ".";
+        String statement = "It's a " + dry.toLowerCase(Locale.ROOT) + ", " + body.toLowerCase(Locale.ROOT)
+                + " " + (p.varietal() != null ? p.varietal() : "wine") + ".";
+        return p.inferred() ? "The current style profile suggests " + statement.substring(0, 1).toLowerCase(Locale.ROOT)
+                + statement.substring(1) : statement;
     }
 
     static String drynessLabel(Double v) {
@@ -272,6 +314,7 @@ public class WinePitchService {
                 Palate: %s
                 Food: %s
                 Finish: %s
+                Profile inferred: %s
                 Customer food: %s
                 Customer occasion: %s
                 %s
@@ -286,6 +329,7 @@ public class WinePitchService {
                 p == null ? "" : String.join(", ", p.palateTags()),
                 p == null ? "" : String.join(", ", p.foodTags()),
                 p == null ? "" : p.finishNote(),
+                p == null || p.inferred(),
                 customer == null ? "" : String.join(", ", customer.food()),
                 customer == null ? "" : customer.occasion(),
                 target
@@ -302,7 +346,7 @@ public class WinePitchService {
                         + " match " + WineMatcher.pct(s.match()) + "%")
                 .collect(Collectors.joining("; "));
         return """
-                Current bottle: %s ($%s) %s %s, dryness=%s body=%s food=%s
+                Current bottle: %s ($%s) %s %s, dryness=%s body=%s aromas=%s palate=%s food=%s finish=%s region=%s vintage=%s profileInferred=%s
                 In-stock alternatives: %s
                 Customer question: %s
                 """.formatted(
@@ -312,7 +356,13 @@ public class WinePitchService {
                 p == null ? "" : p.varietal(),
                 drynessLabel(p == null ? null : p.dryness()),
                 bodyLabel(p == null ? null : p.body()),
+                p == null ? "" : String.join(",", p.aromaTags()),
+                p == null ? "" : String.join(",", p.palateTags()),
                 p == null ? "" : String.join(",", p.foodTags()),
+                p == null ? "" : p.finishNote(),
+                p == null ? "" : p.region(),
+                p == null ? "" : p.vintage(),
+                p == null || p.inferred(),
                 alt,
                 question
         );
