@@ -560,6 +560,21 @@ class AssistantFastPathRouterTest {
     }
 
     @Test
+    void directlyAskedChineseBusinessActionQuestionsStateHumanConfirmationBoundary() {
+        for (String question : new String[]{
+                "AI 会自动改价吗？",
+                "AI 会直接收货发票吗？"
+        }) {
+            AssistantFastPathRouter.Match match = AssistantFastPathRouter.maybeMatch(question);
+
+            assertNotNull(match, question);
+            assertEquals("qa", match.intent(), question);
+            assertTrue(match.summary().contains("不会"), question);
+            assertTrue(match.summary().contains("确认"), question);
+        }
+    }
+
+    @Test
     void answersCommonHelpQuestionsWithoutTheClassifier() {
         for (String question : new String[]{
                 "Help", "What can you do?", "How can you help?", "What data do you use for suggestions?",
