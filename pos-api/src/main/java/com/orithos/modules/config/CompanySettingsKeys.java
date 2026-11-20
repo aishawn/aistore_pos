@@ -70,7 +70,7 @@ public final class CompanySettingsKeys {
         d.put("company.outlets.share_parked_sales", "false");
         d.put("company.outlets.share_gift_cards", "false");
         // Date & time
-        d.put(TIMEZONE, "Australia/Adelaide");
+        d.put(TIMEZONE, "Australia/Melbourne");
         d.put(DATE_FORMAT, "DD/MM/YYYY");
         d.put(TIME_FORMAT, "HH:mm");
         d.put(START_OF_WEEK, "MONDAY");

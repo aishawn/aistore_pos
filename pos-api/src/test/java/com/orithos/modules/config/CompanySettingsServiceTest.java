@@ -69,6 +69,11 @@ class CompanySettingsServiceTest {
     }
 
     @Test
+    void companyTimezoneDefaultsToMelbourne() {
+        assertEquals("Australia/Melbourne", CompanySettingsKeys.defaults().get(CompanySettingsKeys.TIMEZONE));
+    }
+
+    @Test
     void vendorSettingOverridesLegacyGlobalValueWithoutReadingOtherVendors() {
         authenticate();
         SettingMapper mapper = mock(SettingMapper.class);
