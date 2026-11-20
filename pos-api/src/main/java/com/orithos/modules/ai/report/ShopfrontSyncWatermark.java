@@ -3,6 +3,7 @@ package com.orithos.modules.ai.report;
 import com.orithos.modules.vendor.Vendor;
 import com.orithos.modules.vendor.VendorMapper;
 import com.orithos.tenant.TenantProperties;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
@@ -24,6 +25,7 @@ public class ShopfrontSyncWatermark {
     private final TenantProperties tenantProperties;
     private final Clock clock;
 
+    @Autowired
     public ShopfrontSyncWatermark(
             @Qualifier("shopfrontSyncRedisTemplate") StringRedisTemplate redis,
             VendorMapper vendorMapper,
