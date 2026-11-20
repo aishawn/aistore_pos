@@ -87,9 +87,9 @@ responses receive bounded exponential retries; an SHA mismatch or unavailable
 runtime is `BLOCKED`, never a pass.
 
 Run the small read-only smoke set against Demo after its version endpoint
-reports the expected deployed backend commit. The two cases cover pricing-page
-navigation and the invoice-record boundary; both are deterministic paths and
-do not perform business writes:
+reports the expected deployed backend commit. The cases cover pricing-page
+navigation, price-change confirmation guidance, and the invoice-record
+boundary; all are deterministic paths and do not perform business writes:
 
 ```powershell
 $env:SKR_BASE_URL = "https://demo.orithos.com.au"
