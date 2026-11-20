@@ -1,8 +1,9 @@
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 
-const SETUP_EXE_URL =
-  "https://github.com/aishawn/aistore_pos/releases/download/hardware-connect-latest/OrithosHardwareConnect-1.0.0-win-x64-Setup.exe";
+import { ORITHOS_HC_OFFICIAL_WINDOWS_URL } from "@/lib/hardware-connect-download";
+
+const SETUP_EXE_URL = ORITHOS_HC_OFFICIAL_WINDOWS_URL;
 
 /** One download for register staff: fetches the setup EXE and passes this store's hardware settings URL. */
 export async function GET() {
