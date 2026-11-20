@@ -243,11 +243,11 @@ public final class AssistantFastPathRouter {
                     + "ai\\s*(?:(?:会|能)(?:不|否)?|可不可以|可以不可以|能不能|会不会)\\s*(?:帮我\\s*)?(?:直接|自动)?\\s*(?:下(?:采购)?单|下订单|提交(?:采购)?订单?|生成(?:采购)?订单?|改价|调价|收货(?:供应商)?(?:发票|货物)|接收(?:供应商)?(?:发票|货物)|完成(?:发票)?收货|发票(?:收货|入库)|推荐(?:什么酒|商品|葡萄酒|红酒)|(?:识别|读取|扫描)(?:供应商)?(?:发票|账单)|回答(?:销售|库存)问题)\\s*(?:吗)?)[?.!。！？]*$",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern TICKET_COUNT = Pattern.compile(
-            "^(?:(?:what was|what's|what is) (?:our )?average (?:sale|ticket) (?:today|yesterday|(?:this|last) week)|"
-                    + "average (?:sale|ticket) (?:for )?(?:this|last) week|"
+            "^(?:(?:what was|what's|what is) (?:our )?average (?:sale|ticket) (?:today|yesterday|(?:this|last) (?:week|month))|"
+                    + "average (?:sale|ticket) (?:for )?(?:this|last) (?:week|month)|"
                     + "how many (?:transactions?|tickets?|orders?)(?: did we have)? (?:today|yesterday)|"
-                    + "(?:(?:昨天|昨日|今天|今日|本周|这周|上周|上星期)(?:的)?(?:平均)?客单价(?:是多少|如何|怎么样|多少)?|"
-                    + "(?:平均)?客单价(?:是)?(?:昨天|昨日|今天|今日|本周|这周|上周|上星期))|"
+                    + "(?:(?:昨天|昨日|今天|今日|本周|这周|上周|上星期|本月|这个月|上月|上个月)(?:的)?(?:平均)?客单价(?:是多少|如何|怎么样|多少)?|"
+                    + "(?:平均)?客单价(?:是)?(?:昨天|昨日|今天|今日|本周|这周|上周|上星期|本月|这个月|上月|上个月))|"
                     + "(?:today|yesterday)\\s+(?:transaction|ticket|order) count|今天(?:有)?多少笔(?:交易|订单)|"
                     + "今天(?:有)?几笔(?:交易|订单)?)[?.!。！？]*$",
             Pattern.CASE_INSENSITIVE);

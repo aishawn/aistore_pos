@@ -28,6 +28,14 @@ class AssistantFastPathRouterTest {
         assertEquals("report_qty", AssistantFastPathRouter.maybeMatch("最近7天销量").intent());
     }
 
+    @Test
+    void routesMonthlyAverageTicketPeriodsWithoutTheClassifier() {
+        assertEquals("report_aov", AssistantFastPathRouter.maybeMatch("What's our average sale this month?").intent());
+        assertEquals("report_aov", AssistantFastPathRouter.maybeMatch("What was average ticket last month?").intent());
+        assertEquals("report_aov", AssistantFastPathRouter.maybeMatch("本月客单价多少？").intent());
+        assertEquals("report_aov", AssistantFastPathRouter.maybeMatch("上月平均客单价是多少？").intent());
+    }
+
     @ParameterizedTest
     @ValueSource(strings = {
             "昨天销售额如何？",

@@ -65,6 +65,18 @@ async function assistant(question) {
   }), "ASSISTANT");
 }
 
+async function evaluatePeriodReport(label, result, period, metric) {
+  const report = await getJson(await context.request.get(
+    `${base}/api/reports/native-overview?from=${period.from}&to=${period.to}`,
+  ), "NATIVE_OVERVIEW");
+  const acceptance = assistantReportAcceptance(result, {
+    ...period,
+    intent: metric === "aov" ? "report_aov" : "report_sales",
+    metric,
+  }, report);
+  addCheck(`assistant ${label} reconciles with native overview`, acceptance.passed, acceptance);
+}
+
 async function evaluateStockQuestion(label, sample, question) {
   const name = `single-product stock answer (${label}) matches the current catalogue`;
   if (!sample?.name || !Number.isFinite(Number(sample.stockQuantity))) {
@@ -116,7 +128,8 @@ try {
   const previousDay = yesterday.toISOString().slice(0, 10);
   const period = { from: previousDay, to: today };
   const [overview, catalogue, activeCatalogue, inventorySummary, stockSamples, zeroStockSamples,
-    nonzeroStockSamples, sales, salesChinese, aov, stockValue, productCount] = await Promise.all([
+    nonzeroStockSamples, sales, salesChinese, aov, salesThisMonth, salesLastSevenDays,
+    aovThisWeek, aovLastWeek, aovThisMonth, aovLastMonth, stockValue, productCount] = await Promise.all([
     getJson(await context.request.get(`${base}/api/reports/native-overview?from=${period.from}&to=${period.to}`), "NATIVE_OVERVIEW"),
     getJson(await context.request.get(`${base}/api/products?page=1&size=20`), "PRODUCTS"),
     getJson(await context.request.get(`${base}/api/products?status=ACTIVE&page=1&size=1`), "ACTIVE_PRODUCTS"),
@@ -127,6 +140,12 @@ try {
     assistant("How much did we sell yesterday?"),
     assistant("昨天营业额是多少？"),
     assistant("What was our average sale yesterday?"),
+    assistant("本月营业额多少？"),
+    assistant("How much did we make in the last 7 days?"),
+    assistant("本周客单价多少？"),
+    assistant("What was average ticket last week?"),
+    assistant("What's our average sale this month?"),
+    assistant("上月平均客单价是多少？"),
     assistant("Which inventory items tie up the most cash?"),
     assistant("How many products do we have?"),
   ]);
@@ -170,6 +189,34 @@ try {
     ...period, from: previousDay, to: previousDay, intent: "report_aov", metric: "aov",
   }, dailyOverview);
   addCheck("assistant average sale reconciles with native overview", aovCheck.passed, aovCheck);
+
+  const todayDate = new Date(`${today}T12:00:00Z`);
+  const dateText = (date) => date.toISOString().slice(0, 10);
+  const currentMonth = { from: `${today.slice(0, 7)}-01`, to: today };
+  const lastSevenStart = new Date(todayDate);
+  lastSevenStart.setUTCDate(lastSevenStart.getUTCDate() - 6);
+  const lastSevenDays = { from: dateText(lastSevenStart), to: today };
+  const daysSinceMonday = (todayDate.getUTCDay() + 6) % 7;
+  const thisWeekStart = new Date(todayDate);
+  thisWeekStart.setUTCDate(thisWeekStart.getUTCDate() - daysSinceMonday);
+  const thisWeek = { from: dateText(thisWeekStart), to: today };
+  const lastWeekEnd = new Date(thisWeekStart);
+  lastWeekEnd.setUTCDate(lastWeekEnd.getUTCDate() - 1);
+  const lastWeekStart = new Date(lastWeekEnd);
+  lastWeekStart.setUTCDate(lastWeekStart.getUTCDate() - 6);
+  const lastWeek = { from: dateText(lastWeekStart), to: dateText(lastWeekEnd) };
+  const lastMonthEnd = new Date(`${currentMonth.from}T12:00:00Z`);
+  lastMonthEnd.setUTCDate(0);
+  const lastMonthTo = dateText(lastMonthEnd);
+  const lastMonth = { from: `${lastMonthTo.slice(0, 7)}-01`, to: lastMonthTo };
+  await Promise.all([
+    evaluatePeriodReport("current-month Chinese sales", salesThisMonth, currentMonth, "sales"),
+    evaluatePeriodReport("rolling seven-day sales", salesLastSevenDays, lastSevenDays, "sales"),
+    evaluatePeriodReport("current-week Chinese average ticket", aovThisWeek, thisWeek, "aov"),
+    evaluatePeriodReport("previous-week average ticket", aovLastWeek, lastWeek, "aov"),
+    evaluatePeriodReport("current-month average ticket", aovThisMonth, currentMonth, "aov"),
+    evaluatePeriodReport("previous-month Chinese average ticket", aovLastMonth, lastMonth, "aov"),
+  ]);
 
   const stockValueCheck = stockValueHonestyAcceptance(stockValue);
   addCheck("stock value explains unavailable costs without inventing a total", stockValueCheck.passed, {
