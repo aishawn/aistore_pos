@@ -18,3 +18,7 @@ The sales suite covered Chinese and English questions for Adelaide business week
 ## Limits
 
 This is a selected read-only baseline, not the full assistant utterance catalog or a model-quality evaluation. Dead-stock freshness remains incomplete until the sales/inventory source exposes a trusted watermark. `Offline Test Gates` has `startup_failure` with no Actions jobs created for this commit; Java 21 verification passed. The separate Project fact library check remains blocked by ignored/untracked documentation in a clean checkout.
+
+## Re-run after documentation release
+
+After the documentation-only release, source SHA and frontend/backend runtime SHA matched `6f7d9a9f1fde0eeb0336e47bf75b9e0da7272b65` on both stores. The report/inventory suite again passed 14/14 per store, and the previous complete business week suite passed 4/4 per store. All four runs had zero failures, zero blocked checks, and zero business writes. Raw reports were refreshed in local `.local/ai-eval/`.
