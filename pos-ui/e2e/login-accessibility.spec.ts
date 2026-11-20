@@ -44,7 +44,7 @@ test("hardware setup reports bridge availability without enabling Linkly payment
   await expect(page.getByRole("button", { name: "Test drawer" })).toBeDisabled();
   await page.getByText("More · brand, drawer pin, docket").click();
   await expect(page.getByLabel("Cash drawer kick code")).toHaveValue("27, 112, 0, 25, 250");
-  await page.getByRole("button", { name: "Connect on this PC" }).click();
+  await page.getByRole("button", { name: "Connect on this PC", exact: true }).click();
   await expect(page.getByRole("status").filter({
     hasText: /Start Orithos Hardware Connect on this PC/,
   })).toBeVisible({ timeout: 15_000 });
