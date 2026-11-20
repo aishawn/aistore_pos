@@ -23,8 +23,8 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "test:unit": "node --experimental-strip-types --test src/lib/**/*.test.ts",
-    "test:unit:ci": "node --experimental-strip-types --test --test-reporter=junit --test-reporter-destination=../reports/test-runs/pos-ui.xml src/lib/**/*.test.ts",
+    "test:unit": "tsx --test src/lib/**/*.test.ts",
+    "test:unit:ci": "tsx --test --test-reporter=junit --test-reporter-destination=../reports/test-runs/pos-ui.xml src/lib/**/*.test.ts",
     "test:e2e": "playwright test",
     "check": "npm run lint && npm run typecheck && npm run build"
   },
@@ -53,6 +53,7 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "shadcn": "^4.1.0",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "tsx": "^4.23.15"
   }
 }

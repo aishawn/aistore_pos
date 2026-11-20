@@ -7,14 +7,18 @@ import { requestConnectorPurchase, requestConnectorQuery } from "./linkly-connec
 
 const DISPATCH_KEY_PREFIX = "orithos.eftpos.purchase-dispatched.";
 
-function wasPurchaseDispatched(orderUuid: string): boolean {
-  if (typeof sessionStorage === "undefined") return false;
-  return sessionStorage.getItem(`${DISPATCH_KEY_PREFIX}${orderUuid}`) === "1";
+type SessionStorageLike = Pick<Storage, "getItem" | "setItem">;
+
+function browserSessionStorage(): SessionStorageLike | null {
+  return typeof sessionStorage === "undefined" ? null : sessionStorage;
 }
 
-function markPurchaseDispatched(orderUuid: string) {
-  if (typeof sessionStorage === "undefined") return;
-  sessionStorage.setItem(`${DISPATCH_KEY_PREFIX}${orderUuid}`, "1");
+export function wasPurchaseDispatched(orderUuid: string, storage = browserSessionStorage()): boolean {
+  return storage?.getItem(`${DISPATCH_KEY_PREFIX}${orderUuid}`) === "1";
+}
+
+export function markPurchaseDispatched(orderUuid: string, storage = browserSessionStorage()) {
+  storage?.setItem(`${DISPATCH_KEY_PREFIX}${orderUuid}`, "1");
 }
 
 async function dispatchConnector(attempt: EftposAttempt): Promise<void> {
