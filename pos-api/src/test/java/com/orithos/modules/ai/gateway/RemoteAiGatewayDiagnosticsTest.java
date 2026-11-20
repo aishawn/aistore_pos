@@ -23,4 +23,14 @@ class RemoteAiGatewayDiagnosticsTest {
     void reportsMissingProviderStatusAsNull() {
         assertNull(RemoteAiGateway.providerStatus(new IllegalStateException("private message")));
     }
+
+    @Test
+    void classifiesSafeProviderFailureKinds() {
+        assertEquals("empty_output", RemoteAiGateway.failureKind(
+                new IllegalStateException("AI provider returned empty output")));
+        assertEquals("invalid_structured_output", RemoteAiGateway.failureKind(
+                new IllegalStateException("AI provider returned invalid structured output")));
+        assertEquals("provider_request_failed", RemoteAiGateway.failureKind(
+                new IllegalStateException("private provider details")));
+    }
 }

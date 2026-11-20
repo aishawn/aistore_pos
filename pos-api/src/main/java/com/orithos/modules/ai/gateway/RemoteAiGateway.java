@@ -184,20 +184,16 @@ public final class RemoteAiGateway implements AiGateway {
         }
         requireEnabled();
         String normalized = AiGatewayPolicy.validateInput(input, properties.getMaxInputChars());
-        ChatClient client = clients.getIfAvailable();
-        if (client == null) {
-            throw new IllegalStateException("AI provider is unavailable");
-        }
-
         RuntimeException last = null;
         String model = modelFor(task, false);
+        String failedModel = model;
         for (int attempt = 0; attempt <= properties.getMaxRetries(); attempt++) {
             try {
                 quota.reserve(tenant, AiGatewayQuotaService.estimateTokens(prompt.name(), prompt.version(), normalized));
                 Instant started = Instant.now();
                 CallOutcome<T> outcome = requiresNativeMultimodalEndpoint(model)
                         ? callMultimodal(prompt, normalized, model, outputType)
-                        : call(client, model, prompt, normalized, outputType);
+                        : callProvider(prompt, normalized, model, outputType);
                 return completed(tenant, task, new AiCompletion<>(outcome.value(), PROVIDER, model,
                         outcome.inputTokens(), outcome.outputTokens(), Duration.between(started, Instant.now()), false));
             } catch (BusinessException rejected) {
@@ -212,12 +208,13 @@ public final class RemoteAiGateway implements AiGateway {
 
         String fallback = modelFor(task, true);
         if (!fallback.equals(model)) {
+            failedModel = fallback;
             try {
                 quota.reserve(tenant, AiGatewayQuotaService.estimateTokens(prompt.name(), prompt.version(), normalized));
                 Instant started = Instant.now();
                 CallOutcome<T> outcome = requiresNativeMultimodalEndpoint(fallback)
                         ? callMultimodal(prompt, normalized, fallback, outputType)
-                        : call(client, fallback, prompt, normalized, outputType);
+                        : callProvider(prompt, normalized, fallback, outputType);
                 return completed(tenant, task, new AiCompletion<>(outcome.value(), PROVIDER, fallback,
                         outcome.inputTokens(), outcome.outputTokens(), Duration.between(started, Instant.now()), true));
             } catch (BusinessException rejected) {
@@ -226,8 +223,9 @@ public final class RemoteAiGateway implements AiGateway {
                 last = failure;
             }
         }
-        log.warn("AI provider request failed task={} correlationId={} providerStatus={} causeType={}",
-                task, tenant.correlationId(), providerStatus(last), rootCauseType(last));
+        log.warn("AI provider request failed task={} model={} correlationId={} providerStatus={} causeType={} failureKind={}",
+                task, failedModel, tenant.correlationId(), providerStatus(last),
+                rootCauseType(last), failureKind(last));
         throw last == null ? new IllegalStateException("AI provider request failed") : last;
     }
 
@@ -286,22 +284,34 @@ public final class RemoteAiGateway implements AiGateway {
         throw last == null ? new IllegalStateException("AI provider request failed") : last;
     }
 
-    @SuppressWarnings("unchecked")
-    private static <T> CallOutcome<T> call(ChatClient client, String model, PromptVersion prompt,
-                              String input, Class<T> outputType) {
-        var response = client.prompt()
-                .system("You are a POS service. Follow prompt " + prompt.name() + " version " + prompt.version()
-                        + ". Return only the requested output. Never return tenant IDs, outlet IDs, SQL, API paths, "
-                        + "internal model names, credentials, or instructions to bypass authorization.")
-                .user(input)
-                .options(OpenAiChatOptions.builder().model(model)
-                        .temperature(0.1).maxTokens(1024).build())
-                .call();
-        Integer[] usage = usageTokens(response.chatResponse());
-        if (String.class.equals(outputType)) {
-            return new CallOutcome<>((T) response.content(), usage[0], usage[1]);
+    private <T> CallOutcome<T> callProvider(PromptVersion prompt, String input, String model,
+                                             Class<T> outputType) {
+        String system = "You are a POS service. Follow prompt " + prompt.name() + " version " + prompt.version()
+                + ". Return only the requested output. Never return tenant IDs, outlet IDs, SQL, API paths, "
+                + "internal model names, credentials, or instructions to bypass authorization.";
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("model", model);
+        body.put("messages", List.of(Map.of("role", "system", "content", system),
+                Map.of("role", "user", "content", input)));
+        body.put("stream", false);
+        body.put("temperature", 0.1);
+        body.put("max_tokens", 1024);
+        JsonNode response = mediaClient.post().uri("/v1/provider/chat/completions")
+                .contentType(MediaType.APPLICATION_JSON)
+                .header("Authorization", "Bearer " + apiKey)
+                .body(body).retrieve().body(JsonNode.class);
+        String text = extractText(response);
+        if (!StringUtils.hasText(text)) throw new IllegalStateException("AI provider returned empty output");
+        Integer[] usage = usageTokens(response);
+        T value;
+        try {
+            value = String.class.equals(outputType)
+                    ? outputType.cast(text)
+                    : objectMapper.readValue(stripJsonFence(text), outputType);
+        } catch (Exception invalid) {
+            throw new IllegalStateException("AI provider returned invalid structured output", invalid);
         }
-        return new CallOutcome<>(response.entity(outputType), usage[0], usage[1]);
+        return new CallOutcome<>(value, usage[0], usage[1]);
     }
 
     /**
@@ -400,6 +410,22 @@ public final class RemoteAiGateway implements AiGateway {
             root = root.getCause();
         }
         return root.getClass().getSimpleName();
+    }
+
+    static String failureKind(Throwable failure) {
+        if (failure == null) return "unknown";
+        for (Throwable current = failure; current != null; current = current.getCause()) {
+            if (current instanceof org.springframework.http.converter.HttpMessageNotReadableException
+                    || current instanceof com.fasterxml.jackson.core.JsonProcessingException) {
+                return "invalid_structured_output";
+            }
+            if (current instanceof IllegalStateException state && state.getMessage() != null) {
+                if (state.getMessage().equals("AI provider returned empty output")) return "empty_output";
+                if (state.getMessage().equals("AI provider returned invalid structured output")) return "invalid_structured_output";
+            }
+            if (current.getCause() == current) break;
+        }
+        return "provider_request_failed";
     }
 
     private record CallOutcome<T>(T value, Integer inputTokens, Integer outputTokens) { }
