@@ -3,6 +3,7 @@ import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { request } from "playwright";
+import { runtimeMatchesSource, stockClarificationAcceptance } from "./ai-eval/stock-clarification-acceptance.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const envPath = path.join(root, ".env");
@@ -19,7 +20,7 @@ const password = process.env.INITIAL_ADMIN_PASSWORD || env.INITIAL_ADMIN_PASSWOR
 const username = process.env.PILOT_USERNAME || "admin";
 const sourceCommit = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
 const outputPath = path.resolve(root, process.env.PILOT_UAT_OUTPUT_PATH ||
-  "docs/UAT_AI_STOCK_CLARIFICATION_VARIANTS_ONLINE_CURRENT.json");
+  ".local/ai-eval/stock-clarification-variants-online-current.json");
 
 const redactError = (value) => String(value)
   .replace(/cookie:\s*[^\r\n]*/gi, "cookie: [redacted]")
@@ -93,6 +94,9 @@ if (!password) {
 
     const version = await context.get(`${base}/api/public/version`);
     runtime = await version.json().catch(() => ({}));
+    if (!runtimeMatchesSource(runtime, sourceCommit)) {
+      throw new Error("RUNTIME_SHA_MISMATCH; assistant cases were not sent");
+    }
     for (const [id, question, answerIncludes] of cases) {
       const response = await postAssistantWithRetry(context, `${base}/api/ai/assistant`, {
         data: { question },
@@ -102,17 +106,19 @@ if (!password) {
       const data = body.data ?? {};
       const answer = typeof data.answer === "string" ? data.answer : "";
       const route = data.ui?.route ?? null;
-      const noRoute = route === null || route === "";
-      const noWrites = Array.isArray(data.writeRequests) && data.writeRequests.length === 0;
       const isNamedUnknown = id === "named-unknown-product";
-      const intentOk = isNamedUnknown ? data.intent === "report_stock" : data.intent === "qa";
-      const answerOk = isNamedUnknown ? true
-        : answerIncludes === "product name or barcode"
-          ? /product name/i.test(answer) && /barcode/i.test(answer)
-          : answerIncludes === "具体商品名称或条码"
-            ? /具体商品(?:名称|全称)/.test(answer) && /条码/.test(answer)
+      const answerCheck = isNamedUnknown || answerIncludes === "product name or barcode"
+        ? isNamedUnknown || (/product name/i.test(answer) && /barcode/i.test(answer))
+        : answerIncludes === "具体商品名称或条码"
+          ? /具体商品(?:名称|全称)/.test(answer) && /条码/.test(answer)
           : answer.includes(answerIncludes);
-      const passed = response.ok() && body.code === 0 && intentOk && noRoute && noWrites && answerOk;
+      const acceptance = stockClarificationAcceptance(data, {
+        responseOk: response.ok(),
+        code: body.code,
+        answerCheck,
+        namedUnknown: isNamedUnknown,
+      });
+      const passed = acceptance.passed;
       checks.push({
         id,
         question,
@@ -125,6 +131,9 @@ if (!password) {
           code: body.code ?? null,
           intent: data.intent ?? null,
           route,
+          source: data.source ?? null,
+          llmFallback: data.llmFallback ?? null,
+          acceptance: acceptance.checks,
           answer,
           writeRequests: data.writeRequests ?? null,
           correlationId: response.headers()["x-correlation-id"] ?? null,
