@@ -144,9 +144,11 @@ public class SommelierService {
     public AskResponse ask(AskRequest request, TenantContext tenant) {
         WineCandidate wine = requireWine(request.productId(), tenant);
         String q = request.question().toLowerCase(Locale.ROOT);
-        String direction = (q.contains("cheap") || q.contains("less") || q.contains("similar"))
+        String direction = (q.contains("cheap") || q.contains("less") || q.contains("similar")
+                || q.contains("便宜") || q.contains("实惠") || q.contains("相似") || q.contains("类似"))
                 ? "cheaper"
-                : ((q.contains("better") || q.contains("upgrade") || q.contains("premium")) ? "upgrade" : null);
+                : ((q.contains("better") || q.contains("upgrade") || q.contains("premium")
+                || q.contains("升级") || q.contains("更好")) ? "upgrade" : null);
         List<WineMatcher.ScoredWine> alts = List.of();
         if (direction != null) {
             alts = matcher.similar(catalog.listWines(tenant), wine, direction);
