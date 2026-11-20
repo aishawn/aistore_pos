@@ -1,6 +1,10 @@
 const AUTHORITATIVE_SOURCE = "orithos_ledger";
 const BUSINESS_TIMEZONE = "Australia/Adelaide";
 
+function deterministicRoute(assistant) {
+  return assistant?.source === "deterministic" && assistant?.llmFallback === false;
+}
+
 export function previousCompleteBusinessWeek(today) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(today)) throw new Error("INVALID_BUSINESS_DATE");
   const date = new Date(`${today}T12:00:00Z`);
@@ -67,6 +71,7 @@ export function assistantReportAcceptance(assistant, expected, report) {
   const result = {
     intent: assistant?.intent === expected.intent,
     route: assistant?.route == null,
+    deterministicRoute: deterministicRoute(assistant),
     source: assistant?.dataSource === AUTHORITATIVE_SOURCE,
     storeScope: assistant?.storeScope === "current_authenticated_store",
     period: assistant?.reportPeriodFrom === expected.from && assistant?.reportPeriodTo === expected.to,
@@ -91,12 +96,16 @@ export function stockValueHonestyAcceptance(assistant) {
   const unvaluedCountVisible = /\b\d[\d,]*\s+products?\s+(?:were\s+)?not\s+valued|\d[\d,]*\s*(?:个)?商品[^。；;]*(?:未计价|未估值)/i.test(answer);
   const provenance = assistant?.dataSource === AUTHORITATIVE_SOURCE
     && assistant?.storeScope === "current_authenticated_store";
+  const deterministic = deterministicRoute(assistant);
   const noWrites = Array.isArray(assistant?.writeRequests) && assistant.writeRequests.length === 0;
   return {
-    checks: { incomplete, unavailableCopy, costGapVisible, amountsAreLabelled, unvaluedCountVisible, provenance, noWrites },
+    checks: {
+      incomplete, unavailableCopy, costGapVisible, amountsAreLabelled, unvaluedCountVisible,
+      provenance, deterministicRoute: deterministic, noWrites,
+    },
     evidence: { answer, cardText },
     passed: incomplete && unavailableCopy && costGapVisible && amountsAreLabelled
-      && unvaluedCountVisible && provenance && noWrites,
+      && unvaluedCountVisible && provenance && deterministic && noWrites,
   };
 }
 
@@ -112,6 +121,7 @@ export function productCountAcceptance(assistant, catalogue) {
   return {
     checks: {
       intent: assistant?.intent === "product_count",
+      deterministicRoute: deterministicRoute(assistant),
       activeCatalogueScope,
       liveCount: Number.isFinite(cardCount),
       countMatchesCatalogue: countMatches,
@@ -119,7 +129,7 @@ export function productCountAcceptance(assistant, catalogue) {
     },
     cardCount: Number.isFinite(cardCount) ? cardCount : null,
     catalogueCount: Number.isFinite(total) ? total : null,
-    passed: assistant?.intent === "product_count" && activeCatalogueScope
+    passed: assistant?.intent === "product_count" && deterministicRoute(assistant) && activeCatalogueScope
       && Number.isFinite(cardCount) && countMatches
       && Array.isArray(assistant?.writeRequests) && assistant.writeRequests.length === 0,
   };
@@ -138,6 +148,7 @@ export function singleProductStockAcceptance(assistant, expected) {
     || /inventory update time unknown|库存更新时间未知/i.test(answer);
   const checks = {
     intent: assistant?.intent === "report_stock",
+    deterministicRoute: deterministicRoute(assistant),
     exactProductVisible: nameIndex >= 0,
     quantityMatches: Number.isFinite(expectedQuantity) && answerQuantity === expectedQuantity,
     route: assistant?.route == null,

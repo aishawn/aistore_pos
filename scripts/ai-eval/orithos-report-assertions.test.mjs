@@ -48,6 +48,8 @@ test("assistant sales answer reconciles with native Orithos revenue and stays re
     intent: "report_sales",
     dataSource: "orithos_ledger",
     storeScope: "current_authenticated_store",
+    source: "deterministic",
+    llmFallback: false,
     reportPeriodFrom: period.from,
     reportPeriodTo: period.to,
     reportTimeZone: "Australia/Adelaide",
@@ -58,11 +60,32 @@ test("assistant sales answer reconciles with native Orithos revenue and stays re
   assert.equal(result.passed, true);
 });
 
+test("assistant sales acceptance rejects model-classified or fallback answers", () => {
+  const result = assistantReportAcceptance({
+    intent: "report_sales",
+    dataSource: "orithos_ledger",
+    storeScope: "current_authenticated_store",
+    source: "llm",
+    llmFallback: true,
+    reportPeriodFrom: period.from,
+    reportPeriodTo: period.to,
+    reportTimeZone: "Australia/Adelaide",
+    reportDataStatus: "available",
+    answer: "Sales were AUD 4,127.55.",
+    writeRequests: [],
+  }, { ...period, intent: "report_sales", metric: "sales" }, report);
+
+  assert.equal(result.checks.deterministicRoute, false);
+  assert.equal(result.passed, false);
+});
+
 test("assistant AOV can reconcile from a structured table", () => {
   const result = assistantReportAcceptance({
     intent: "report_aov",
     dataSource: "orithos_ledger",
     storeScope: "current_authenticated_store",
+    source: "deterministic",
+    llmFallback: false,
     reportPeriodFrom: period.from,
     reportPeriodTo: period.to,
     reportTimeZone: "Australia/Adelaide",
@@ -98,6 +121,8 @@ test("stock value gaps pass only when the incomplete status and reason stay expl
     reportDataStatus: "incomplete",
     dataSource: "orithos_ledger",
     storeScope: "current_authenticated_store",
+    source: "deterministic",
+    llmFallback: false,
     writeRequests: [],
   };
   assert.equal(stockValueHonestyAcceptance(response).passed, true);
@@ -111,6 +136,8 @@ test("partial stock value accepts a labelled known-cost subtotal without implyin
     reportDataStatus: "incomplete",
     dataSource: "orithos_ledger",
     storeScope: "current_authenticated_store",
+    source: "deterministic",
+    llmFallback: false,
     writeRequests: [],
   };
   assert.equal(stockValueHonestyAcceptance(response).passed, true);
@@ -128,6 +155,8 @@ test("product count matches the authenticated active catalogue without requiring
   const response = {
     intent: "product_count",
     cards: [{ type: "product_count", count: 10854 }],
+    source: "deterministic",
+    llmFallback: false,
     writeRequests: [],
   };
   const result = productCountAcceptance(response, { total: 10854, status: "ACTIVE" });
@@ -143,6 +172,8 @@ test("single-product stock answer matches the current quantity with provenance a
     answer: "Sample Shiraz: -13 (inventory updated: 2026-11-20T04:15:00Z)",
     dataSource: "orithos_ledger",
     storeScope: "current_authenticated_store",
+    source: "deterministic",
+    llmFallback: false,
     report_data_as_of: "2026-11-20T04:15:00Z",
     writeRequests: [],
   }, { name: "Sample Shiraz", quantity: -13 });
@@ -157,6 +188,8 @@ test("single-product stock answer rejects quantity, scope, and write mismatches"
     answer: "Sample Shiraz: 0 (inventory update time unknown; verify before relying on it)",
     dataSource: "orithos_ledger",
     storeScope: "another_store",
+    source: "deterministic",
+    llmFallback: false,
     writeRequests: ["POST /api/sales"],
   }, { name: "Sample Shiraz", quantity: -13 });
 
@@ -172,10 +205,42 @@ test("single-product stock answer accepts Chinese quantity and unknown-freshness
     answer: "样品西拉库存：0（库存更新时间未知，请核实）",
     dataSource: "orithos_ledger",
     storeScope: "current_authenticated_store",
+    source: "deterministic",
+    llmFallback: false,
     writeRequests: [],
   }, { name: "样品西拉", quantity: 0 });
 
   assert.equal(result.passed, true);
   assert.equal(result.answerQuantity, 0);
   assert.equal(result.dataAsOfPresent, false);
+});
+
+test("inventory value, product count, and stock acceptance reject model fallback", () => {
+  const modelRoute = { source: "llm", llmFallback: true };
+  const stockValue = stockValueHonestyAcceptance({
+    ...modelRoute,
+    answer: "Inventory value is unavailable because no products were valued.",
+    reportDataStatus: "incomplete",
+    dataSource: "orithos_ledger",
+    storeScope: "current_authenticated_store",
+    writeRequests: [],
+  });
+  const productCount = productCountAcceptance({
+    ...modelRoute,
+    intent: "product_count",
+    cards: [{ type: "product_count", count: 2 }],
+    writeRequests: [],
+  }, { total: 2, status: "ACTIVE" });
+  const stock = singleProductStockAcceptance({
+    ...modelRoute,
+    intent: "report_stock",
+    answer: "Sample Shiraz: 2 (inventory update time unknown)",
+    dataSource: "orithos_ledger",
+    storeScope: "current_authenticated_store",
+    writeRequests: [],
+  }, { name: "Sample Shiraz", quantity: 2 });
+
+  assert.equal(stockValue.checks.deterministicRoute, false);
+  assert.equal(productCount.checks.deterministicRoute, false);
+  assert.equal(stock.checks.deterministicRoute, false);
 });

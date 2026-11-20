@@ -4,6 +4,10 @@
 
 侍酒推断提示代码提交 `25b2d726`；随后 Demo 与 SKR 前后端均运行 `ae39da3d60aba024b5ab8e2c161b9f1709eed1d3`。新增可重复的 `recommendation-inference-provenance` UAT 检查后，两店只读推荐验收各 8/8 通过；每店返回 3 张卡片，响应均有布尔型 `inferred`，本轮样本均为 `true`。Microsoft Edge 浏览器流程在两店均显示 3 个 `Estimated profile` 标记，进入商品详情后显示估算档案与搭配提示。没有模型调用或 POS 业务写入。该轮只验证字段及告知展示，不代表推断品鉴资料准确；准确性仍需标注样本和侍酒师/店员评分。详见[本轮记录](../../../../test-sessions/2026-11-20-sommelier-inference-profile-uat.md)。
 
+## 2026-11-20 报表问答 deterministic 验收门禁
+
+共享报告验收函数现要求销售额、客单价、库存金额、商品数和单品库存回答必须 `source=deterministic` 且 `llmFallback=false`；先添加失败回归，再实现检查，Node 测试 13/13 通过。当前线上两店运行 `89a461f4`：周销售精确 SHA 回归各 4/4 通过；完整只读报表基准各 14/14 子检查通过，9 个回答均为 deterministic、无回退、业务写入 0。完整基准顶层因本地源码 SHA `2ad8bc13` 与运行 SHA 不符而标记 `BLOCKED`，不作为精确版本验收。滞销问答仍因销售源缺少可信水位标为 `incomplete`。详见[本轮记录](../../../../test-sessions/2026-11-20-ai-report-deterministic-acceptance.md)。
+
 ## 2026-11-19 滞销回答中文回归
 
 提交 `e58b6bc6` 修复中文滞销回答的日期连接词及空结果英文文案；不改变查询口径。Java 21 `ReportRespondNodeTest` 35/35 PASS，`git diff --check` PASS。Demo、SKR 只读复测中英文问题均进入 deterministic `report_dead_stock`，无模型回退、无 POS 业务写请求；中文日期使用“至”，空结果保持中文。在线问答会生成常规审计/会话记录。

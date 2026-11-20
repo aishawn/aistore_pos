@@ -97,6 +97,8 @@ try {
       period,
       assistant: {
         intent: assistant.intent,
+        source: assistant.source,
+        llmFallback: assistant.llmFallback,
         reportPeriodFrom: assistant.reportPeriodFrom,
         reportPeriodTo: assistant.reportPeriodTo,
         dataSource: assistant.dataSource,
