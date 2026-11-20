@@ -1934,7 +1934,7 @@ export async function postOdooSessionCash(body: {
   configId: number;
   direction: "in" | "out";
   amount: number;
-  reason?: string;
+  reason: string;
 }): Promise<{ sessionName: string; recordedAt: string }> {
   const session = await getRetailRegisterSession(body.configId);
   if (!session?.id) throw new OdooApiError("Open a register session before recording cash movements.", 409);
@@ -1942,10 +1942,19 @@ export async function postOdooSessionCash(body: {
     await api.post(`/api/retail/registers/sessions/${session.id}/cash-movements`, {
       type: body.direction === "in" ? "CASH_IN" : "CASH_OUT",
       amount: body.amount,
-      reason: body.reason?.trim() || (body.direction === "in" ? "Cash in" : "Cash out"),
+      reason: body.reason.trim(),
     }, { headers: { "Idempotency-Key": crypto.randomUUID() } });
     return { sessionName: `Session ${session.id}`, recordedAt: new Date().toISOString() };
   } catch (cause) {
     throw new OdooApiError(cause instanceof Error ? cause.message : "Cash adjustment failed", 502);
   }
+}
+
+export interface OdooCashReasonOptions {
+  cashInReasons: string[];
+  cashOutReasons: string[];
+}
+
+export function getOdooCashReasonOptions(): Promise<OdooCashReasonOptions> {
+  return api.get<OdooCashReasonOptions>("/api/retail/registers/cash-reason-options");
 }

@@ -21,6 +21,7 @@ export {
   getOdooCustomerInvoices as getRetailCustomerInvoices,
   getOdooGiftCards as getRetailGiftCards,
   getOdooPosBootstrap as getRetailPosBootstrap,
+  getOdooCashReasonOptions as getRetailCashReasonOptions,
   getOdooPriceRules as getRetailPriceRules,
   getOdooPricelists as getRetailPricelists,
   getOdooPurchaseOrderDetail as getRetailPurchaseOrderDetail,

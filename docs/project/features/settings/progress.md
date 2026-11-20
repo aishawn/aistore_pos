@@ -56,3 +56,10 @@
 - 商品 CSV 导出当前实际分页读取 Orithos `/api/products`，只是 `exportOdooProductsCsv` 旧名称/注释未清理，不属于 Odoo 数据依赖故障。
 - 尚未完成线上验收或部署。本轮未访问 Shopfront、未写 SKR/Demo 线上设置；发布仍需精确候选 SHA 的 Java 21 `mvn -B clean verify` 远端工作流，以及部署后 SKR 只读、Demo 可回滚验证。
 
+## 2026-11-21 现金理由消费路径修复（本地候选）
+
+- 根因：Manage Cash 与 Sell/Register 曾通过需要 `settings.view` 的 `/api/settings/company` 读取完整设置；普通收银员没有该权限时会静默回退到自由输入，保存的 `cash_in_reasons` / `cash_out_reasons` 无法被消费。现金提交客户端还会在理由为空时写入通用理由，掩盖未选择的情况。
+- 实现：新增已认证、按当前 vendor 作用域的 `/api/retail/registers/cash-reason-options`，只读两组现金理由并返回 JSON 数组；两个现金操作表单改读该窄接口，支持配置项、自定义理由和空配置时自由输入，提交前要求非空理由。客户端移除通用理由兜底。
+- 本地验证：`RetailRegisterControllerTest`（2）与 `RegisterSessionServiceTest`（5）PASS；`company-setting-options.test.ts`（4）PASS；`npm run typecheck` PASS；限定 ESLint 退出码 0、0 errors、13 warnings（既有 React hooks 规则与 `ODOO_QUOTE_TIMEOUT_MS` 未使用告警）。`git diff --check` PASS。
+- 验收边界：尚未部署，未做线上收银员登录或现金调整写入；Shopfront 只读、未复核理由列表设置值。因此只证明本地代码路径与租户作用域，不证明线上配置/页面已生效，也不构成 Settings 与 Shopfront 全面对齐结论。
+

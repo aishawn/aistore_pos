@@ -24,6 +24,7 @@ import {
 } from "@/components/register-sell/shared";
 import {
   getRetailPosBootstrap,
+  getRetailCashReasonOptions,
   openRetailPosSession,
   getRetailSession,
   quoteRetailOrder,
@@ -45,6 +46,7 @@ import { cn } from "@/lib/utils";
 import { friendlyProductName } from "@/lib/product-display-name";
 import { splitMoney } from "@/lib/sell-screen";
 import { formatStoreDateTime } from "@/lib/retail-date";
+import { companySettingOptions, normalizeRequiredCashReason } from "@/lib/company-setting-options";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
 import { useAuth } from "@/lib/auth";
 import {
@@ -207,6 +209,8 @@ export function OdooRegisterPage() {
   const [cashOutOpen, setCashOutOpen] = useState(false);
   const [cashOutAmount, setCashOutAmount] = useState("");
   const [cashOutReason, setCashOutReason] = useState("");
+  const [cashOutReasonIsCustom, setCashOutReasonIsCustom] = useState(false);
+  const [cashOutReasons, setCashOutReasons] = useState<string[]>([]);
   const [cashOutBusy, setCashOutBusy] = useState(false);
   const [parkedSales, setParkedSales] = useState<ParkedSale[]>([]);
   const [parkedLoaded, setParkedLoaded] = useState(false);
@@ -258,6 +262,16 @@ export function OdooRegisterPage() {
   useEffect(() => {
     setCustomerDisplayOpen(isCustomerDisplayMarkedOpen());
     setScannerHintVisible(!hasBarcodeScannerTested());
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    void getRetailCashReasonOptions()
+      .then((settings) => {
+        if (active) setCashOutReasons(companySettingOptions(settings.cashOutReasons));
+      })
+      .catch(() => undefined);
+    return () => { active = false; };
   }, []);
 
   useEffect(() => {
@@ -713,6 +727,11 @@ export function OdooRegisterPage() {
       setError("Open a register session before recording cash out.");
       return;
     }
+    const reason = normalizeRequiredCashReason(cashOutReason);
+    if (!reason) {
+      setError("Choose or enter a reason for this cash out.");
+      return;
+    }
     setCashOutBusy(true);
     setError(null);
     try {
@@ -720,11 +739,12 @@ export function OdooRegisterPage() {
         configId: selectedConfig.id,
         direction: "out",
         amount: Math.round(amount * 100) / 100,
-        reason: cashOutReason.trim() || undefined,
+        reason,
       });
       setCashOutOpen(false);
       setCashOutAmount("");
       setCashOutReason("");
+      setCashOutReasonIsCustom(false);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Cash out could not be recorded.");
     } finally {
@@ -1687,7 +1707,7 @@ export function OdooRegisterPage() {
           totalCents={totalCents}
           onSelectCard={() => selectCardPayment()}
           onSelectCash={() => selectCashPayment(true)}
-          onCashOut={() => { setCashOutAmount(""); setCashOutReason(""); setCashOutOpen(true); }}
+          onCashOut={() => { setCashOutAmount(""); setCashOutReason(""); setCashOutReasonIsCustom(false); setCashOutOpen(true); }}
           onClear={requestClearSale}
           onCashTenderedChange={(value) => { setExactCashArmed(false); setCashTendered(value); }}
         />
@@ -1771,8 +1791,21 @@ export function OdooRegisterPage() {
               <input autoFocus type="number" min="0.01" step="0.01" inputMode="decimal" value={cashOutAmount} onChange={(event) => setCashOutAmount(event.target.value)} className="h-11 rounded-md border border-[var(--oh-border)] bg-white px-3 tabular-nums outline-none focus:border-[var(--oh-primary)]" placeholder="0.00" />
             </label>
             <label className="mt-4 grid gap-1.5 text-sm font-medium text-[var(--oh-text)]">
-              Reason <span className="font-normal text-[var(--oh-muted)]">(optional)</span>
-              <input type="text" value={cashOutReason} onChange={(event) => setCashOutReason(event.target.value)} className="h-11 rounded-md border border-[var(--oh-border)] bg-white px-3 outline-none focus:border-[var(--oh-primary)]" placeholder="Safe drop, supplier payment…" />
+              Reason <span className="font-normal text-[var(--oh-muted)]">(required)</span>
+              {cashOutReasons.length > 0 && <select
+                value={cashOutReasonIsCustom ? "__other__" : cashOutReason}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  setCashOutReasonIsCustom(value === "__other__");
+                  setCashOutReason(value === "__other__" ? "" : value);
+                }}
+                className="h-11 rounded-md border border-[var(--oh-border)] bg-white px-3 outline-none focus:border-[var(--oh-primary)]"
+              >
+                <option value="">Select a reason</option>
+                {cashOutReasons.map((option) => <option key={option} value={option}>{option}</option>)}
+                <option value="__other__">Other</option>
+              </select>}
+              {(cashOutReasonIsCustom || cashOutReasons.length === 0) && <input type="text" value={cashOutReason} onChange={(event) => { setCashOutReason(event.target.value); setCashOutReasonIsCustom(true); }} maxLength={200} className="h-11 rounded-md border border-[var(--oh-border)] bg-white px-3 outline-none focus:border-[var(--oh-primary)]" placeholder="Enter reason" />}
             </label>
             <div className="mt-6 flex justify-end gap-2">
               <button type="button" onClick={() => setCashOutOpen(false)} disabled={cashOutBusy} className="min-h-11 rounded-md border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-text)] disabled:opacity-50">Cancel</button>

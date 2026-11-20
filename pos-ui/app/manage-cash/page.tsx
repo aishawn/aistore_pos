@@ -6,7 +6,9 @@ import { AlertCircle, LoaderCircle, RefreshCw, Wallet } from "lucide-react";
 import {
   AdminPageLayout,
 } from "@/components/admin/AdminPageLayout";
-import { getRetailPosBootstrap, postRetailSessionCash, type RetailPosBootstrap } from "@/lib/retail-api";
+import { companySettingOptions } from "@/lib/company-setting-options";
+import { getRetailCashReasonOptions, getRetailPosBootstrap, postRetailSessionCash, type RetailPosBootstrap } from "@/lib/retail-api";
+import { normalizeRequiredCashReason } from "@/lib/company-setting-options";
 
 const MAX_CASH_ADJUSTMENT = 1_000_000;
 
@@ -18,6 +20,9 @@ export default function ManageCashPage() {
   const [direction, setDirection] = useState<"in" | "out">("in");
   const [amount, setAmount] = useState("");
   const [reason, setReason] = useState("");
+  const [reasonIsCustom, setReasonIsCustom] = useState(false);
+  const [cashInReasons, setCashInReasons] = useState<string[]>([]);
+  const [cashOutReasons, setCashOutReasons] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
   const [retryKey, setRetryKey] = useState(0);
@@ -28,7 +33,14 @@ export default function ManageCashPage() {
       setLoading(true);
       setError(null);
       try {
-        const data = await getRetailPosBootstrap();
+        const [data] = await Promise.all([
+          getRetailPosBootstrap(),
+          getRetailCashReasonOptions().then((settings) => {
+            if (cancelled) return;
+            setCashInReasons(companySettingOptions(settings.cashInReasons));
+            setCashOutReasons(companySettingOptions(settings.cashOutReasons));
+          }).catch(() => undefined),
+        ]);
         if (cancelled) return;
         setBootstrap(data);
         const open = data.configs.find((config) => config.session);
@@ -46,12 +58,19 @@ export default function ManageCashPage() {
 
   const selected = bootstrap?.configs.find((config) => config.id === configId) ?? null;
   const openSession = selected?.session ?? null;
+  const reasonOptions = direction === "in" ? cashInReasons : cashOutReasons;
+  const showCustomReason = reasonIsCustom || !reasonOptions.length;
 
   async function submit() {
     if (!configId || busy) return;
     const value = Number(amount);
     if (!Number.isFinite(value) || value <= 0 || value > MAX_CASH_ADJUSTMENT) {
       setError(`Enter an amount greater than zero and no more than $${MAX_CASH_ADJUSTMENT.toLocaleString("en-AU")}.`);
+      return;
+    }
+    const normalizedReason = normalizeRequiredCashReason(reason);
+    if (!normalizedReason) {
+      setError("Choose or enter a reason for this cash adjustment.");
       return;
     }
     setBusy(true);
@@ -62,11 +81,12 @@ export default function ManageCashPage() {
         configId,
         direction,
         amount: value,
-        reason: reason.trim() || undefined,
+        reason: normalizedReason,
       });
       setSuccess(`${direction === "in" ? "Cash in" : "Cash out"} $${value.toFixed(2)} recorded on ${result.sessionName}.`);
       setAmount("");
       setReason("");
+      setReasonIsCustom(false);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Cash adjustment failed.");
     } finally {
@@ -138,8 +158,8 @@ export default function ManageCashPage() {
                 <>
                   <p className="text-sm text-[var(--oh-text-secondary)]">Session <strong className="text-[var(--oh-text)]">{openSession.name}</strong></p>
                   <div role="group" aria-label="Cash adjustment direction" className="grid grid-cols-2 gap-2">
-                    <button type="button" aria-pressed={direction === "in"} onClick={() => setDirection("in")} className={`min-h-11 rounded-lg border px-3 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] ${direction === "in" ? "border-[var(--oh-primary)] bg-[var(--oh-orange-light)] text-[var(--oh-primary)]" : "border-[var(--oh-border)] text-[var(--oh-text)]"}`}>Cash in</button>
-                    <button type="button" aria-pressed={direction === "out"} onClick={() => setDirection("out")} className={`min-h-11 rounded-lg border px-3 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] ${direction === "out" ? "border-[var(--oh-primary)] bg-[var(--oh-orange-light)] text-[var(--oh-primary)]" : "border-[var(--oh-border)] text-[var(--oh-text)]"}`}>Cash out</button>
+                    <button type="button" aria-pressed={direction === "in"} onClick={() => { setDirection("in"); setReason(""); setReasonIsCustom(false); }} className={`min-h-11 rounded-lg border px-3 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] ${direction === "in" ? "border-[var(--oh-primary)] bg-[var(--oh-orange-light)] text-[var(--oh-primary)]" : "border-[var(--oh-border)] text-[var(--oh-text)]"}`}>Cash in</button>
+                    <button type="button" aria-pressed={direction === "out"} onClick={() => { setDirection("out"); setReason(""); setReasonIsCustom(false); }} className={`min-h-11 rounded-lg border px-3 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] ${direction === "out" ? "border-[var(--oh-primary)] bg-[var(--oh-orange-light)] text-[var(--oh-primary)]" : "border-[var(--oh-border)] text-[var(--oh-text)]"}`}>Cash out</button>
                   </div>
                   <label className="grid gap-1 text-xs font-medium text-[var(--oh-muted)]">
                     Amount (AUD)
@@ -155,15 +175,28 @@ export default function ManageCashPage() {
                     />
                   </label>
                   <label className="grid gap-1 text-xs font-medium text-[var(--oh-muted)]">
-                    Reason (optional)
-                    <input
+                    Reason (required)
+                    {reasonOptions.length > 0 && <select
+                      value={reasonIsCustom ? "__other__" : reason}
+                      onChange={(event) => {
+                        const value = event.target.value;
+                        setReasonIsCustom(value === "__other__");
+                        setReason(value === "__other__" ? "" : value);
+                      }}
+                      className="h-11 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3 text-sm text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)]"
+                    >
+                      <option value="">Select a reason</option>
+                      {reasonOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+                      <option value="__other__">Other</option>
+                    </select>}
+                    {showCustomReason && <input
                       type="text"
                       value={reason}
-                      onChange={(event) => setReason(event.target.value)}
+                      onChange={(event) => { setReason(event.target.value); setReasonIsCustom(true); }}
                       maxLength={200}
                       className="h-11 rounded-lg border border-[var(--oh-border)] px-3 text-sm text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)]"
-                      placeholder="Float top-up, petty cash…"
-                    />
+                      placeholder="Enter reason"
+                    />}
                   </label>
                   <button
                     type="button"
