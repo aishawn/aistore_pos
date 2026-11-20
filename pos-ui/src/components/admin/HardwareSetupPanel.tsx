@@ -215,6 +215,7 @@ export function HardwareSetupPanel() {
 
   return (
     <div className="space-y-6">
+      <section id="hardware-connect" className="sr-only" aria-hidden="true" />
       <section id="hardware-printer" className="rounded-lg border border-[var(--oh-border)] bg-white p-4 sm:p-5">
         <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[var(--oh-border)] pb-4">
           <div>
@@ -232,35 +233,34 @@ export function HardwareSetupPanel() {
               )}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={saveDraft}
-            disabled={!dirty}
-            className="inline-flex min-h-10 items-center gap-2 rounded-md bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white disabled:opacity-50"
-          >
-            <Save size={15} aria-hidden="true" />
-            Save
-          </button>
+          <div className="text-right">
+            <button
+              type="button"
+              onClick={saveDraft}
+              disabled={!dirty}
+              className="inline-flex min-h-10 items-center gap-2 rounded-md bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white disabled:opacity-50"
+            >
+              <Save size={15} aria-hidden="true" />
+              Save
+            </button>
+            <p className="mt-1 max-w-[14rem] text-[11px] leading-snug text-[var(--oh-muted)]">Saved on this PC only (this browser).</p>
+          </div>
         </div>
 
-        {state.bridge !== "orithos-hc" && (
+        {state.bridge !== "orithos-hc" && !state.connected ? (
           <div
             role="status"
             className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-amber-950"
           >
-            {state.connected && isQzTrayFallbackEnabled() ? (
-              <p className="text-sm font-semibold">Optional: switch to Orithos Hardware Connect (preferred over QZ Tray).</p>
-            ) : !state.connected ? (
-              <HardwareConnectInstallCard />
-            ) : null}
-            <details className="mt-3 text-xs text-amber-950/90">
-              <summary className="cursor-pointer font-medium">IT: publish installer to this site</summary>
-              <p className="mt-1 font-mono leading-5">
-                tools\orithos-hardware-connect\stage-ui-download.ps1 → pos-ui/public/downloads (then deploy)
-              </p>
-            </details>
+            <HardwareConnectInstallCard stepsCollapsed />
           </div>
-        )}
+        ) : null}
+        {state.connected && state.bridge !== "orithos-hc" && isQzTrayFallbackEnabled() ? (
+          <p className="mt-4 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 py-2 text-sm text-[var(--oh-text)]">
+            Using QZ Tray.{" "}
+            <span className="font-medium">Orithos Hardware Connect</span> is recommended — install it above, then reconnect.
+          </p>
+        ) : null}
         {!state.connected ? (
           <div className="mt-4 flex flex-wrap items-center gap-2">
             {loadQzFallback && state.bridge !== "orithos-hc" && (
@@ -276,7 +276,7 @@ export function HardwareSetupPanel() {
               className="inline-flex min-h-10 items-center gap-2 rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white disabled:opacity-50"
             >
               <RefreshCw size={15} className={connectBusy ? "animate-spin" : undefined} aria-hidden="true" />
-              {connectBusy ? "Connecting…" : "Connect local bridge"}
+              {connectBusy ? "Connecting…" : "Connect on this PC"}
             </button>
           </div>
         ) : null}
@@ -550,8 +550,9 @@ export function HardwareSetupPanel() {
         </div>
       </section>
 
-      <details id="hardware-optional-tests" className="rounded-lg border border-dashed border-[var(--oh-border)] bg-white px-4 py-3 sm:px-5">
-        <summary className="cursor-pointer text-sm font-medium text-[var(--oh-muted)]">Scanner & scale tests</summary>
+      <details id="hardware-optional-tests" className="rounded-lg border border-[var(--oh-border)] bg-white px-4 py-3 sm:px-5">
+        <summary className="cursor-pointer text-sm font-medium text-[var(--oh-text)]">Test scanner & scale</summary>
+        <p className="mt-2 text-xs text-[var(--oh-muted)]">Run after the printer is saved. Scanner uses USB keyboard mode.</p>
         <details className="mt-2 rounded-md border border-[var(--oh-border)] px-3 py-2 text-xs text-[var(--oh-muted)]">
           <summary className="cursor-pointer font-medium text-[var(--oh-text)]">Scanner setup (USB keyboard mode)</summary>
           <ul className="mt-2 list-disc space-y-1 pl-4">

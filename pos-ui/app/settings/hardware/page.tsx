@@ -6,7 +6,6 @@ import { DevicesSettingsTabs } from "@/components/admin/SetupHubTabs";
 import { HardwareSetupPanel } from "@/components/admin/HardwareSetupPanel";
 import { HardwareSetupSteps } from "@/components/admin/HardwareSetupSteps";
 import { LinklyEftposPanel } from "@/components/admin/LinklyEftposPanel";
-import { HardwareReadinessStrip } from "@/components/admin/HardwareReadinessStrip";
 import { LocalNetworkAccessGate } from "@/components/admin/LocalNetworkAccessGate";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -49,9 +48,8 @@ export default function HardwareSettingsPage() {
       {error && <p className="mb-3 text-sm text-red-700">{error}</p>}
       {notice && <p className="mb-3 text-sm text-emerald-800">{notice}</p>}
       <LocalNetworkAccessGate>
-        <div className="space-y-6">
+        <div className="space-y-4">
           <HardwareSetupSteps />
-          <HardwareReadinessStrip />
           <HardwareSetupPanel />
           <LinklyEftposPanel canEdit={canEdit} />
         </div>
@@ -59,7 +57,7 @@ export default function HardwareSettingsPage() {
       <details className="mt-6 rounded-lg border border-dashed border-[var(--oh-border)] px-4 py-3">
         <summary className="cursor-pointer text-sm font-medium text-[var(--oh-muted)]">Legacy company hardware JSON</summary>
         <p className="my-3 text-sm text-[var(--oh-muted)]">
-          Legacy JSON in Orithos; printer selection above is per browser on this PC.
+          Company-wide legacy JSON. Printer and drawer choices above are stored on this PC only (not in Orithos cloud).
         </p>
         <textarea
           aria-label="Company hardware settings JSON"

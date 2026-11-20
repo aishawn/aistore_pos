@@ -69,6 +69,17 @@ export function LinklyEftposPanel({ canEdit }: Props) {
     [],
   );
 
+  useEffect(() => {
+    function onFocus(event: Event) {
+      const anchor = (event as CustomEvent<{ anchor: string }>).detail?.anchor;
+      if (anchor !== "hardware-eftpos") return;
+      const el = document.getElementById("hardware-eftpos");
+      if (el instanceof HTMLDetailsElement) el.open = true;
+    }
+    window.addEventListener("hardware-setup-focus", onFocus);
+    return () => window.removeEventListener("hardware-setup-focus", onFocus);
+  }, []);
+
   const applyConnectorToLocalPc = useCallback(
     async (baseUrl: string, token: string | null | undefined) => {
       const trimmed = token?.trim();

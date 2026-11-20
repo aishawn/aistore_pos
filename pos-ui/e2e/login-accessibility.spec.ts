@@ -44,7 +44,7 @@ test("hardware setup reports bridge availability without enabling Linkly payment
   await expect(page.getByRole("button", { name: "Test drawer" })).toBeDisabled();
   await page.getByText("More · brand, drawer pin, docket").click();
   await expect(page.getByLabel("Cash drawer kick code")).toHaveValue("27, 112, 0, 25, 250");
-  await page.getByRole("button", { name: "Connect local bridge" }).click();
+  await page.getByRole("button", { name: "Connect on this PC" }).click();
   await expect(page.getByRole("status").filter({
     hasText: /Start Orithos Hardware Connect on this PC/,
   })).toBeVisible({ timeout: 15_000 });
@@ -53,7 +53,7 @@ test("hardware setup reports bridge availability without enabling Linkly payment
   await expect(paymentsToggle).not.toBeChecked();
   await expect(page.getByRole("button", { name: "Test $1.00" })).toBeDisabled();
 
-  await page.getByText("Scanner & scale tests").click();
+  await page.getByText("Test scanner & scale").click();
   const scannerInput = page.getByLabel("Barcode input check");
   await scannerInput.fill("0001234567890");
   await scannerInput.press("Enter");
