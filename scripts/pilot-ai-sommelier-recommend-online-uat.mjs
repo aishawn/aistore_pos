@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { reconcileRecommendationCard } from "./sommelier-recommendation-reconciliation.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const sourceCommit = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
@@ -152,13 +153,14 @@ try {
 
   const catalogMatches = [];
   for (const card of cards) {
-    const response = await context.get(`${base}/api/products/${card.productId}`);
+    const response = await context.get(`${base}/api/ai/sommelier/wines/${card.productId}`);
     const body = await response.json().catch(() => ({}));
+    const catalogWine = body.data;
     catalogMatches.push(response.ok() && body.code === 0
-      && body.data?.id === card.productId
-      && body.data?.name === card.name);
+      && catalogWine?.name === card.name
+      && reconcileRecommendationCard(card, catalogWine));
   }
-  record("all-products-exist-in-current-catalog", catalogMatches.every(Boolean) ? "PASS" : "FAIL", {
+  record("recommendation-price-promotion-stock-match-current-catalog", catalogMatches.every(Boolean) ? "PASS" : "FAIL", {
     matched: catalogMatches.filter(Boolean).length,
     compared: cards.length,
   });
