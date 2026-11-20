@@ -17,12 +17,24 @@ async function main() {
       const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
       const login = await context.request.post(base + '/api/auth/login', { headers: { Origin: base }, data: { username, password } });
       assert.equal((await login.json()).code, 0, `${host} login`);
-      await context.request.get(base + '/api/odoo/session');
       const version = await (await context.request.get(base + '/api/public/version')).json();
       checks.push({ host, check: 'Runtime identity', version });
-      const company = (await (await context.request.get(base + '/api/odoo/company')).json()).data;
-      assert.ok(company?.id && company.name && company.timezone && company.currency_id);
-      checks.push({ host, check: 'Company envelope and real regional data', result: 'PASS' });
+      const settingsResponse = await context.request.get(base + '/api/settings/company');
+      assert.equal(settingsResponse.status(), 200, `${host} company settings`);
+      const settingsEnvelope = await settingsResponse.json();
+      const companySettings = settingsEnvelope?.data ?? settingsEnvelope;
+      const company = {
+        name: companySettings?.['company.name']?.value,
+        timezone: companySettings?.['company.timezone']?.value,
+        currencyCode: companySettings?.['company.currency.code']?.value,
+      };
+      assert.ok(company.timezone?.trim() && company.currencyCode?.trim());
+      checks.push({
+        host,
+        check: 'Company settings API and regional data',
+        result: 'PASS',
+        legalCompanyNameConfigured: Boolean(company.name?.trim()),
+      });
       const blockedWrites = [];
       await context.route('**/api/**', async route => {
         const req = route.request();
@@ -37,7 +49,7 @@ async function main() {
       page.on('pageerror', e => pageErrors.push(e.message));
       for (const width of (env.SETTINGS_UAT_WIDTHS ? env.SETTINGS_UAT_WIDTHS.split(',').map(Number) : [390, 768, 1440])) {
         await page.setViewportSize({ width, height: 900 });
-        for (const [label, route] of [['Company','/settings/company/general'],['Company','/settings/company/date-time'],['Staff & access','/settings/staff'],['Store','/settings/registers-outlets'],['Store','/settings/payment'],['Store','/settings/tax'],['Store','/settings/hardware'],['Store','/settings/receipts'],['Store','/settings/keys'],['Store','/settings/rules'],['Store','/settings/loyalty'],['Store','/settings/surcharging'],['Store','/settings/push'],['Data','/settings/data'],['Account','/settings/account?tab=connection'],['Account','/settings/account?tab=unknown']]) {
+        for (const [label, route] of [['Company','/settings/company/general'],['Company','/settings/company/date-time'],['Staff & access','/settings/staff'],['Store','/settings/registers-outlets'],['Store','/settings/payment'],['Store','/settings/tax'],['Store','/settings/hardware'],['Store','/settings/customerdisplay'],['Store','/settings/receipts'],['Store','/settings/keys'],['Store','/settings/rules'],['Store','/settings/loyalty'],['Store','/settings/surcharging'],['Store','/settings/push'],['Data','/settings/data'],['Account','/settings/account?tab=connection'],['Account','/settings/account?tab=unknown']]) {
           await page.goto(base + route, { waitUntil: 'domcontentloaded' });
           const nav = page.getByRole('navigation', { name: 'Settings sections', exact: true });
           await nav.waitFor();
@@ -46,7 +58,14 @@ async function main() {
             assert.equal(await nav.locator('[aria-current="page"]').innerText(), label);
             assert.equal(await nav.getByRole('link').evaluateAll(links => links.filter(link => link.getClientRects().length).some(link => { const range = document.createRange(); range.selectNodeContents(link); const text = range.getBoundingClientRect(); const box = link.getBoundingClientRect(); return text.left < box.left || text.right > box.right; })), false, 'Tab text must fit its control');
           }
-          if (route.endsWith('/general')) { await page.getByLabel('Legal company name').waitFor(); assert.equal(await page.getByLabel('Legal company name').inputValue(), company.name); assert.equal(await page.getByLabel('Business timezone').inputValue(), company.timezone); }
+          if (route.endsWith('/general')) {
+            await page.getByLabel('Legal company name').waitFor();
+            assert.equal(await page.getByLabel('Legal company name').inputValue(), company.name ?? '');
+          }
+          if (route.endsWith('/date-time')) {
+            await page.getByLabel('Timezone').waitFor();
+            assert.equal(await page.getByLabel('Timezone').inputValue(), company.timezone);
+          }
           if (['/settings/registers-outlets','/settings/payment','/settings/tax'].includes(route)) {
             await page.waitForFunction(() => !document.querySelector('main [aria-busy="true"]'));
             assert.deepEqual((await page.locator('main').getByRole('alert').allTextContents()).map(text => text.trim()).filter(Boolean), [], `${route} must load real data without an error`);
@@ -83,22 +102,27 @@ async function main() {
         await dialog.waitFor({ state: 'hidden' });
         checks.push({ host, check: 'Read-only staff modal matches each real role permission list; Escape closes', result: 'PASS' });
       }
-      for (const [oldRoute, destination] of [['/settings/company/currency','/settings/company/date-time'],['/settings/company/integrations','/settings/account?tab=connection'],['/settings/registers/general','/settings/registers-outlets'],['/settings/customerdisplay','/settings/hardware']]) {
+      for (const [oldRoute, destination] of [['/settings/registers/general','/settings/registers-outlets']]) {
         await page.goto(base + oldRoute); await page.waitForURL(base + destination);
         checks.push({ host, check: 'Legacy redirect', oldRoute, destination, result: 'PASS' });
       }
       // Fault injection verifies UI retry behavior only, not service acceptance.
       let failCompany = true;
-      await context.route('**/api/odoo/company', route => failCompany ? route.fulfill({ status: 502, json: { message: 'Temporary company failure' } }) : route.continue());
+      await context.route('**/api/settings/company', route => failCompany ? route.fulfill({ status: 502, json: { message: 'Temporary company failure' } }) : route.continue());
       await page.goto(base + '/settings/company/date-time');
-      await page.getByRole('alert').filter({ hasText: 'Could not load regional settings' }).waitFor();
+      await page.getByRole('alert').filter({ hasText: 'Temporary company failure' }).waitFor();
       failCompany = false;
-      await page.getByRole('button', { name: 'Refresh', exact: true }).click();
-      await page.getByText(company.timezone, { exact: true }).waitFor();
+      await page.getByRole('button', { name: 'Retry', exact: true }).click();
+      await page.getByLabel('Timezone').waitFor();
+      assert.equal(await page.getByLabel('Timezone').inputValue(), company.timezone);
       checks.push({ host, check: 'Regional failure and retry', evidence: 'UI fault injection', result: 'PASS' });
       assert.deepEqual(blockedWrites, []);
       assert.deepEqual(pageErrors, []);
       checks.push({ host, check: 'No browser page errors or attempted business writes', result: 'PASS' });
+      const finalVersion = await (await context.request.get(base + '/api/public/version')).json();
+      assert.equal(finalVersion.frontend?.commit, version.frontend?.commit, `${host} frontend SHA changed during UAT`);
+      assert.equal(finalVersion.backend?.commit, version.backend?.commit, `${host} backend SHA changed during UAT`);
+      checks.push({ host, check: 'Runtime identity stable during UAT', version: finalVersion, result: 'PASS' });
       console.log(`${host}: PASS`);
       await context.close();
     }
