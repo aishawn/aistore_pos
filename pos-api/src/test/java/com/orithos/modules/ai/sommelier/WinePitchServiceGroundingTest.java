@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -34,6 +35,7 @@ class WinePitchServiceGroundingTest {
 
         String pitch = service.pitch(wine, null, "10s", tenant);
         String answer = service.answer(wine, "What food would pair well with this wine?", List.of(), tenant);
+        String chineseAnswer = service.answer(wine, "这款酒适合搭配什么食物？", List.of(), tenant);
 
         assertTrue(pitch.contains("current style profile"));
         assertTrue(pitch.contains("Plum, Spice, Oak"));
@@ -41,6 +43,7 @@ class WinePitchServiceGroundingTest {
         assertTrue(answer.contains("steak"));
         assertTrue(answer.contains("lamb"));
         assertFalse(answer.contains("BBQ, BBQ"));
+        assertEquals("当前风格资料建议搭配：牛排、羊肉、烧烤。", chineseAnswer);
         assertFalse(pitch.toLowerCase().contains("alcohol"));
         assertFalse(pitch.toLowerCase().contains("decant"));
         assertFalse(answer.toLowerCase().contains("alcohol"));

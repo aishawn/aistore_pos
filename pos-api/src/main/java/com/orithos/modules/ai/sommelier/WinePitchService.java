@@ -197,10 +197,16 @@ public class WinePitchService {
     String cannedAnswer(WineCandidate wine, String question, List<WineMatcher.ScoredWine> alts) {
         WineProfile p = wine.profile();
         String q = question == null ? "" : question.toLowerCase(Locale.ROOT);
+        boolean chinese = containsHan(question);
         String altLine = alts == null || alts.isEmpty()
                 ? ""
                 : " Try " + alts.get(0).wine().name() + " at $"
                 + alts.get(0).wine().effectivePrice().stripTrailingZeros().toPlainString() + " instead.";
+        if (chinese && (q.contains("甜") || q.contains("干") || q.contains("口感"))) {
+            if (p == null || p.dryness() == null) return "目前没有可核验的干甜度资料。";
+            String label = p.dryness() >= 0.75 ? "偏干" : (p.dryness() <= 0.4 ? "偏甜" : "干甜适中");
+            return (p.inferred() ? "当前风格资料推测" : "资料显示") + "这款酒" + label + "。";
+        }
         if (q.contains("sweet") || q.contains("dry")) {
             if (p == null) return "I don't have verified tasting details for this bottle yet.";
             double d = p != null && p.dryness() != null ? p.dryness() : 0.7;
@@ -209,33 +215,104 @@ public class WinePitchService {
             if (d <= 0.4) return qualifier + "it's on the sweeter, fruitier side.";
             return qualifier + "it's more dry than sweet, with a bit of fruit in the middle.";
         }
-        if (q.contains("cheap") || q.contains("less") || q.contains("similar")) {
+        if (q.contains("cheap") || q.contains("less") || q.contains("similar")
+                || q.contains("便宜") || q.contains("实惠") || q.contains("相似") || q.contains("类似")) {
             return alts == null || alts.isEmpty()
-                    ? "I don't have a cheaper in-stock match in the same style right now."
-                    : "Closest cheaper in-stock match:" + altLine;
+                    ? chinese ? "目前没有找到同风格且有库存的更实惠酒款。"
+                            : "I don't have a cheaper in-stock match in the same style right now."
+                    : chinese ? "找到一款更实惠的同风格酒款：" + alternativeName(alts.get(0)) + "。"
+                            : "Closest cheaper in-stock match:" + altLine;
         }
-        if (q.contains("better") || q.contains("upgrade") || q.contains("premium")) {
+        if (q.contains("better") || q.contains("upgrade") || q.contains("premium")
+                || q.contains("升级") || q.contains("更好")) {
             return alts == null || alts.isEmpty()
-                    ? "This is already one of the stronger bottles we have in this style."
-                    : "If you want to step up:" + altLine;
+                    ? chinese ? "目前没有找到合适的升级款。"
+                            : "This is already one of the stronger bottles we have in this style."
+                    : chinese ? "可以考虑这款升级选择：" + alternativeName(alts.get(0)) + "。"
+                            : "If you want to step up:" + altLine;
         }
-        if (q.contains("food") || q.contains("pair") || q.contains("steak") || q.contains("dinner")) {
-            if (p == null) return "I don't have verified food-pairing details for this bottle yet.";
+        if (q.contains("food") || q.contains("pair") || q.contains("steak") || q.contains("dinner")
+                || q.contains("食物") || q.contains("搭配") || q.contains("配餐") || q.contains("佐餐")
+                || q.contains("牛排")) {
+            if (p == null) return chinese ? "目前没有可核验的餐酒搭配资料。"
+                    : "I don't have verified food-pairing details for this bottle yet.";
+            if (p.foodTags().isEmpty()) return chinese ? "目前没有可核验的餐酒搭配资料。"
+                    : "I don't have verified food-pairing details for this bottle yet.";
             String foods = p == null || p.foodTags().isEmpty()
                     ? "dinner"
-                    : p.foodTags().stream().map(WinePitchService::humanFood).distinct()
+                    : p.foodTags().stream().map(food -> chinese ? chineseFood(food) : humanFood(food)).distinct()
                             .collect(Collectors.joining(", "));
+            if (chinese) return (p.inferred() ? "当前风格资料建议搭配：" : "资料显示适合搭配：")
+                    + foods.replace(", ", "、") + "。";
             return p != null && p.inferred()
                     ? "The current style profile suggests pairing it with " + foods + "."
                     : "Best with " + foods + ".";
         }
-        if (p == null) return "I don't have verified tasting details for this bottle yet.";
+        if (p == null) return chinese ? "目前没有可核验的品酒资料。"
+                : "I don't have verified tasting details for this bottle yet.";
+        if (chinese) {
+            List<String> style = new java.util.ArrayList<>();
+            if (p.dryness() != null) style.add(chineseDrynessLabel(p.dryness()));
+            if (p.body() != null) style.add(chineseBodyLabel(p.body()));
+            if (style.isEmpty() && (p.varietal() == null || p.varietal().isBlank())) {
+                return "目前没有可核验的品酒资料。";
+            }
+            String varietal = p.varietal() == null || p.varietal().isBlank() ? "葡萄酒" : p.varietal();
+            String description = style.isEmpty() ? varietal : String.join("、", style) + "的" + varietal;
+            return (p.inferred() ? "当前风格资料推测" : "资料显示") + "这款酒是" + description + "。";
+        }
         String dry = drynessLabel(p == null ? null : p.dryness());
         String body = bodyLabel(p == null ? null : p.body());
         String statement = "It's a " + dry.toLowerCase(Locale.ROOT) + ", " + body.toLowerCase(Locale.ROOT)
                 + " " + (p.varietal() != null ? p.varietal() : "wine") + ".";
         return p.inferred() ? "The current style profile suggests " + statement.substring(0, 1).toLowerCase(Locale.ROOT)
                 + statement.substring(1) : statement;
+    }
+
+    private static boolean containsHan(String text) {
+        return text != null && text.codePoints()
+                .anyMatch(codePoint -> Character.UnicodeScript.of(codePoint) == Character.UnicodeScript.HAN);
+    }
+
+    private static String alternativeName(WineMatcher.ScoredWine alternative) {
+        return alternative.wine().name() + "（$"
+                + alternative.wine().effectivePrice().stripTrailingZeros().toPlainString() + "）";
+    }
+
+    private static String chineseFood(String raw) {
+        String canonical = WineLexicon.canonicalFoodOne(raw);
+        if (canonical == null) return raw;
+        return switch (canonical) {
+            case "steak" -> "牛排";
+            case "lamb" -> "羊肉";
+            case "chicken" -> "鸡肉";
+            case "fish" -> "鱼类";
+            case "seafood" -> "海鲜";
+            case "pasta" -> "意面";
+            case "pizza" -> "披萨";
+            case "cheese" -> "奶酪";
+            case "spicy" -> "辛辣菜肴";
+            case "asian" -> "亚洲风味菜";
+            case "bbq", "grilled_meat" -> "烧烤";
+            case "party" -> "聚会";
+            case "gift" -> "送礼";
+            case "special" -> "特殊场合";
+            default -> canonical.replace('_', ' ');
+        };
+    }
+
+    private static String chineseDrynessLabel(Double value) {
+        if (value < 0.35) return "甜型";
+        if (value < 0.55) return "微甜";
+        if (value < 0.75) return "干型";
+        return "非常干";
+    }
+
+    private static String chineseBodyLabel(Double value) {
+        if (value < 0.35) return "轻酒体";
+        if (value < 0.6) return "中等酒体";
+        if (value < 0.82) return "饱满酒体";
+        return "非常饱满酒体";
     }
 
     static String drynessLabel(Double v) {
