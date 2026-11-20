@@ -9,6 +9,7 @@ internal static class RegisterAgentInstaller
     private const string RunKeyName = "OrithosHardwareConnect";
     private const string SettingsUrlEnv = "ORITHOS_HC_SETTINGS_URL";
     private const string DefaultSettingsUrl = "https://skr.orithos.com.au/settings/hardware";
+    private const string UninstallRegistryKey = @"Software\Microsoft\Windows\CurrentVersion\Uninstall\OrithosHardwareConnect";
 
     public static string InstallDir { get; } = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -93,19 +94,67 @@ internal static class RegisterAgentInstaller
 
         RegisterStartup(InstalledExePath);
         Environment.SetEnvironmentVariable(SettingsUrlEnv, resolvedSettingsUrl, EnvironmentVariableTarget.User);
+        RegisterProgramsAndFeatures(InstalledExePath);
     }
 
     public static void Uninstall()
     {
+        DeleteProgramsAndFeatures();
         DeleteScheduledTask();
         DeleteRunKey();
         StopRunningAgent();
+        Thread.Sleep(500);
+
         if (Directory.Exists(InstallDir))
         {
-            Directory.Delete(InstallDir, recursive: true);
+            try
+            {
+                Directory.Delete(InstallDir, recursive: true);
+            }
+            catch
+            {
+                foreach (var file in Directory.EnumerateFiles(InstallDir, "*", SearchOption.AllDirectories))
+                {
+                    try
+                    {
+                        File.SetAttributes(file, FileAttributes.Normal);
+                        File.Delete(file);
+                    }
+                    catch
+                    {
+                        /* best effort */
+                    }
+                }
+
+                try
+                {
+                    Directory.Delete(InstallDir, recursive: true);
+                }
+                catch
+                {
+                    /* leave partial tree; user can delete folder manually */
+                }
+            }
         }
 
         Environment.SetEnvironmentVariable(SettingsUrlEnv, null, EnvironmentVariableTarget.User);
+        Environment.SetEnvironmentVariable("ORITHOS_CONNECTOR_TOKEN", null, EnvironmentVariableTarget.User);
+        Environment.SetEnvironmentVariable("ORITHOS_API_URL", null, EnvironmentVariableTarget.User);
+    }
+
+    public static void RequestUninstallFromTray()
+    {
+        if (File.Exists(InstalledExePath))
+        {
+            Process.Start(new ProcessStartInfo(InstalledExePath, "--uninstall")
+            {
+                UseShellExecute = true,
+                WorkingDirectory = InstallDir,
+            });
+            return;
+        }
+
+        Uninstall();
     }
 
     public static void LaunchInstalledAgent()
@@ -194,6 +243,39 @@ internal static class RegisterAgentInstaller
         {
             var runKey = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run", writable: true);
             runKey?.DeleteValue(RunKeyName, throwOnMissingValue: false);
+        }
+        catch
+        {
+            /* ignore */
+        }
+    }
+
+    private static void RegisterProgramsAndFeatures(string exePath)
+    {
+        try
+        {
+            using var key = Registry.CurrentUser.CreateSubKey(UninstallRegistryKey, writable: true);
+            if (key is null) return;
+            key.SetValue("DisplayName", AgentVersion.Product);
+            key.SetValue("DisplayVersion", AgentVersion.DisplayVersion);
+            key.SetValue("Publisher", "Orithos");
+            key.SetValue("InstallLocation", InstallDir);
+            key.SetValue("UninstallString", $"\"{exePath}\" --uninstall");
+            key.SetValue("QuietUninstallString", $"\"{exePath}\" --uninstall");
+            key.SetValue("NoModify", 1, RegistryValueKind.DWord);
+            key.SetValue("NoRepair", 1, RegistryValueKind.DWord);
+        }
+        catch
+        {
+            /* non-fatal */
+        }
+    }
+
+    private static void DeleteProgramsAndFeatures()
+    {
+        try
+        {
+            Registry.CurrentUser.DeleteSubKey(UninstallRegistryKey, throwOnMissingSubKey: false);
         }
         catch
         {

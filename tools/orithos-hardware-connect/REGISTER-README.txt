@@ -14,4 +14,8 @@ For a real Linkly terminal, install Linkly on this PC and set user env ORITHOS_L
 
 ZIP bundle (optional IT path): unzip, double-click Install-Orithos-Hardware-Connect.cmd.
 
-Uninstall: run OrithosHardwareConnect.exe --uninstall from the install folder, or uninstall.ps1 in the zip.
+Uninstall (pick one):
+- Tray icon → right-click → Uninstall
+- Windows Settings → Apps → Orithos Hardware Connect → Uninstall
+- Run Uninstall-Orithos-Hardware-Connect.cmd from the download folder
+- Or: %LocalAppData%\Orithos\HardwareConnect\OrithosHardwareConnect.exe --uninstall

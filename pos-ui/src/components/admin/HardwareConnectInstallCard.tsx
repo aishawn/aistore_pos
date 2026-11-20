@@ -120,6 +120,10 @@ export function HardwareConnectInstallCard({ compact }: Props) {
         After browser access is allowed, use <span className="font-medium text-[var(--oh-text)]">Connect local bridge</span>{" "}
         and choose your receipt printer.
       </p>
+      <p className="mt-2 text-xs text-[var(--oh-muted)]">
+        Replacing an old build? Uninstall via tray → <span className="font-medium">Uninstall</span>, Windows Apps, or run{" "}
+        <span className="font-mono">%LOCALAPPDATA%\Orithos\HardwareConnect\OrithosHardwareConnect.exe --uninstall</span>.
+      </p>
     </div>
   );
 }

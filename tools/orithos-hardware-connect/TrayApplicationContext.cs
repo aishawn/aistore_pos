@@ -35,6 +35,11 @@ internal sealed class TrayApplicationContext : ApplicationContext
                 MessageBoxIcon.Information);
         });
         menu.Items.Add(new ToolStripSeparator());
+        if (RegisterAgentInstaller.IsRunningFromInstallDir())
+        {
+            menu.Items.Add("Uninstall…", null, (_, _) => UninstallFromTray());
+        }
+
         menu.Items.Add("Exit", null, (_, _) => Exit());
 
         trayIcon.ContextMenuStrip = menu;
@@ -51,6 +56,21 @@ internal sealed class TrayApplicationContext : ApplicationContext
         {
             /* ignore */
         }
+    }
+
+    private void UninstallFromTray()
+    {
+        var confirm = MessageBox.Show(
+            "Remove Orithos Hardware Connect from this PC?\n\nReceipt printing and EFTPOS bridge on this register will stop until you install again.",
+            AgentVersion.Product,
+            MessageBoxButtons.YesNo,
+            MessageBoxIcon.Warning,
+            MessageBoxDefaultButton.Button2);
+        if (confirm != DialogResult.Yes) return;
+
+        trayIcon.Visible = false;
+        RegisterAgentInstaller.RequestUninstallFromTray();
+        Application.Exit();
     }
 
     private void Exit()

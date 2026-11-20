@@ -5,9 +5,9 @@ param(
 $ErrorActionPreference = "Stop"
 $taskName = "Orithos Hardware Connect"
 
-schtasks.exe /Query /TN $taskName 2>$null | Out-Null
+cmd /c "schtasks /Query /TN `"$taskName`" >nul 2>nul"
 if ($LASTEXITCODE -eq 0) {
-  schtasks.exe /Delete /TN $taskName /F | Out-Null
+  cmd /c "schtasks /Delete /TN `"$taskName`" /F >nul 2>nul"
 }
 
 $runKey = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run"
@@ -22,5 +22,13 @@ if (Test-Path $InstallDir) {
 }
 
 [Environment]::SetEnvironmentVariable("ORITHOS_HC_SETTINGS_URL", $null, "User")
+[Environment]::SetEnvironmentVariable("ORITHOS_CONNECTOR_TOKEN", $null, "User")
+[Environment]::SetEnvironmentVariable("ORITHOS_API_URL", $null, "User")
+
+try {
+  Remove-Item -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\OrithosHardwareConnect" -Recurse -Force -ErrorAction SilentlyContinue
+} catch {
+  /* ignore */
+}
 
 Write-Host "Orithos Hardware Connect removed."

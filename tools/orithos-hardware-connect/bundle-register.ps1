@@ -21,6 +21,7 @@ Copy-Item "$PSScriptRoot\publish\*" $stage -Recurse
 Copy-Item "$PSScriptRoot\install.ps1" $stage
 Copy-Item "$PSScriptRoot\uninstall.ps1" $stage
 Copy-Item "$PSScriptRoot\Install-Orithos-Hardware-Connect.cmd" $stage
+Copy-Item "$PSScriptRoot\Uninstall-Orithos-Hardware-Connect.cmd" $stage
 Copy-Item "$PSScriptRoot\REGISTER-README.txt" $stage
 
 $setupExe = Join-Path $PSScriptRoot "dist\OrithosHardwareConnect-$version-win-x64-Setup.exe"
