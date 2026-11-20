@@ -1,8 +1,8 @@
 import fs from "node:fs";
+import { createRequire } from "node:module";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { chromium } from "playwright";
 import { safeErrorSummary } from "./lib/safe-error-summary.mjs";
 import {
   assistantReportAcceptance,
@@ -14,6 +14,7 @@ import {
 } from "./ai-eval/orithos-report-assertions.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const { chromium } = createRequire(path.join(root, "pos-ui", "package.json"))("playwright");
 let envFile = process.env.PILOT_ENV_FILE || path.join(root, ".env");
 if (!process.env.PILOT_ENV_FILE) {
   let directory = root;
