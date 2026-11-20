@@ -21,7 +21,7 @@ export function HardwareReadinessStrip() {
   const items: HardwareReadinessItem[] = snapshot ? JSON.parse(snapshot) : getHardwareReadinessItems();
 
   return (
-    <ul className="flex flex-wrap gap-2" aria-label="Hardware readiness">
+    <ul className="flex flex-wrap gap-2" aria-label="Device readiness">
       {items.map((item) => (
         <li key={item.id} className={`rounded-lg border px-3 py-2 text-xs ${toneClass(item.tone)}`}>
           <span className="font-semibold">{item.label}</span>

@@ -54,7 +54,7 @@ export function HardwareSetupSteps() {
   void eftposSnap;
 
   return (
-    <nav aria-label="Hardware setup steps" className="rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3 py-3">
+    <nav aria-label="Device setup steps" className="rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3 py-3">
       <p className="text-xs font-medium uppercase tracking-wide text-[var(--oh-muted)]">Setup checklist</p>
       <ol className="mt-2 flex flex-wrap gap-2">
         {STEP_META.map((step) => {

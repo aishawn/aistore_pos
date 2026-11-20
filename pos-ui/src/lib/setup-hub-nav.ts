@@ -14,7 +14,7 @@ export const STORE_SETTINGS_TABS: SetupHubTab[] = [
 
 export const DEVICES_SETTINGS_TABS: SetupHubTab[] = [
   { id: "receipts", label: "Receipts", href: "/settings/receipts" },
-  { id: "hardware", label: "Hardware", href: "/settings/hardware" },
+  { id: "hardware", label: "Devices", href: "/settings/hardware" },
 ];
 
 export const STORE_HUB_DEFAULT = STORE_SETTINGS_TABS[0].href;

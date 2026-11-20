@@ -41,8 +41,8 @@ export default function HardwareSettingsPage() {
 
   return (
     <AdminPageLayout
-      title="Hardware"
-      subtitle="Choose a receipt printer and card terminal for this register"
+      title="Devices"
+      subtitle="Set up the receipt printer, cash drawer, barcode scanner and EFTPOS terminal for this register."
       toolbar={<DevicesSettingsTabs activeHref="/settings/hardware" />}
       showRelatedAside={false}
     >

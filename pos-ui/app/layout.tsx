@@ -21,8 +21,8 @@ const themeInitScript = `(() => {
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Orithos | Smart Point of Sale",
-  description: "Orithos — AI-powered retail point of sale for bottle shops and specialty retail",
+  title: "Orithos Retail POS | Store Management for Australian Retailers",
+  description: "Point of sale and store management for independent Australian liquor, grocery and convenience retailers. Optional AI suggestions stay under staff control.",
   icons: {
     icon: [{ url: ORITHOS_BRAND.icon, type: "image/svg+xml" }],
     shortcut: ORITHOS_BRAND.icon,

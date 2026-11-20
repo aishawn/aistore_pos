@@ -150,7 +150,9 @@ export default function LoginPage() {
             <p className="mt-1 text-sm text-[var(--oh-text-secondary)]">
               {tenantSlug
                 ? `Store ${tenantSlug}.${tenantBaseDomain()}`
-                : "Orithos platform console"}
+                : controlPlane
+                  ? "Orithos Retail POS · Platform console"
+                  : "Orithos Retail POS · Store sign-in"}
             </p>
           </div>
 
@@ -281,12 +283,12 @@ export default function LoginPage() {
           <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/35 to-transparent" />
           <div className="relative z-10 space-y-2 p-8 text-white">
             <p className="text-lg font-semibold tracking-tight">
-              {controlPlane ? "Manage every Orithos store" : "Sell, stock and store ops"}
+              {controlPlane ? "Manage every Orithos store" : "Retail POS and store management"}
             </p>
             <p className="max-w-sm text-sm text-white/85">
               {controlPlane
-                ? "Platform console for store list and operator access."
-                : "Australian liquor retail workspace."}
+                ? "Platform console for Australian retail stores and operator access."
+                : "For independent Australian liquor, grocery and convenience retailers."}
             </p>
             {controlPlane && (
               <a
