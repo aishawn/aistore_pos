@@ -282,7 +282,8 @@
                              track_inventory, show_shortcuts, abv, volume_ml, region, vintage, image)
         VALUES ( #{p.name}, #{p.type}, #{p.status}, #{p.description}, #{p.categoryId},
                 #{p.brandId}, #{p.familyId}, #{p.taxRateId}, #{p.costTaxRateId}, #{p.cost}, #{p.caseCost},
-                #{p.caseQuantity}, #{p.costPercentage}, #{p.preventManualDiscounts},
+                #{p.caseQuantity}, CAST(CASE WHEN #{p.costPercentage} THEN 1 ELSE 0 END AS SMALLINT),
+                #{p.preventManualDiscounts},
                 #{p.requestPrice}, #{p.requestQuantity}, #{p.trackInventory},
                 #{p.showShortcuts}, #{p.abv}, #{p.volumeMl}, #{p.region}, #{p.vintage}, #{p.image})
     </insert>
@@ -294,13 +295,15 @@
             tax_rate_id = #{p.taxRateId}, cost_tax_rate_id = #{p.costTaxRateId},
             cost = #{p.cost},
             case_cost = CASE WHEN cost IS DISTINCT FROM #{p.cost} OR case_quantity IS DISTINCT FROM #{p.caseQuantity}
-                                  OR cost_percentage IS DISTINCT FROM #{p.costPercentage}
+                                  OR cost_percentage IS DISTINCT FROM
+                                     CAST(CASE WHEN #{p.costPercentage} THEN 1 ELSE 0 END AS SMALLINT)
                              THEN NULL ELSE case_cost END,
             shopfront_catalog_confirmed = CASE WHEN cost IS DISTINCT FROM #{p.cost} OR case_quantity IS DISTINCT FROM #{p.caseQuantity}
-                                                    OR cost_percentage IS DISTINCT FROM #{p.costPercentage}
+                                                    OR cost_percentage IS DISTINCT FROM
+                                                       CAST(CASE WHEN #{p.costPercentage} THEN 1 ELSE 0 END AS SMALLINT)
                                                THEN FALSE ELSE shopfront_catalog_confirmed END,
             case_quantity = #{p.caseQuantity},
-            cost_percentage = #{p.costPercentage},
+            cost_percentage = CAST(CASE WHEN #{p.costPercentage} THEN 1 ELSE 0 END AS SMALLINT),
             prevent_manual_discounts = #{p.preventManualDiscounts},
             request_price = #{p.requestPrice}, request_quantity = #{p.requestQuantity},
             track_inventory = #{p.trackInventory}, show_shortcuts = #{p.showShortcuts},
