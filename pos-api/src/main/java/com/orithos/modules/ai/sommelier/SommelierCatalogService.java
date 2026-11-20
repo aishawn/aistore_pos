@@ -79,6 +79,9 @@ public class SommelierCatalogService {
                     : WineProfile.empty(WineLexicon.inferType(
                             WineLexicon.normalize(nullToEmpty(row.getName()) + " " + nullToEmpty(row.getCategoryName()))));
         }
+        if (looksWine) {
+            profile = mergeProductOrigin(profile, row);
+        }
         BigDecimal list = nz(row.getPrice());
         BigDecimal promo = row.getPromoPrice();
         boolean onPromo = promo != null && promo.compareTo(BigDecimal.ZERO) > 0 && promo.compareTo(list) < 0;
@@ -100,6 +103,38 @@ public class SommelierCatalogService {
                 row.getCaseQuantity() == null ? BigDecimal.ONE : row.getCaseQuantity(),
                 profile
         );
+    }
+
+    private static WineProfile mergeProductOrigin(WineProfile profile, CatalogRow row) {
+        boolean inferred = profile.inferred();
+        String region = preferOrigin(profile.region(), row.getProductRegion(), inferred);
+        String vintage = preferOrigin(profile.vintage(), row.getProductVintage(), inferred);
+        return new WineProfile(
+                profile.wineType(),
+                profile.varietal(),
+                region,
+                vintage,
+                profile.dryness(),
+                profile.body(),
+                profile.fruitiness(),
+                profile.oak(),
+                profile.tannin(),
+                profile.aromaTags(),
+                profile.palateTags(),
+                profile.foodTags(),
+                profile.finishNote(),
+                inferred
+        );
+    }
+
+    private static String preferOrigin(String profileValue, String productValue, boolean inferred) {
+        return inferred
+                ? firstNonBlank(productValue, profileValue)
+                : firstNonBlank(profileValue, productValue);
+    }
+
+    private static String firstNonBlank(String preferred, String fallback) {
+        return preferred == null || preferred.isBlank() ? fallback : preferred;
     }
 
     private WineProfile storedProfile(CatalogRow row) {

@@ -8,6 +8,8 @@
                p.name,
                p.description,
                p.image,
+               p.region AS product_region,
+               p.vintage AS product_vintage,
                c.name AS category_name,
                f.name AS family_name,
                b.name AS brand_name,

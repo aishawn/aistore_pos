@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
@@ -18,6 +19,48 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class SommelierCatalogServiceTest {
+
+    @Test
+    void explicitProductOriginOverridesNameInferenceButRemainsInferred() {
+        SommelierProductMapper mapper = mock(SommelierProductMapper.class);
+        SommelierProductMapper.CatalogRow row = new SommelierProductMapper.CatalogRow();
+        row.setId(8L);
+        row.setName("Barossa Shiraz 2022");
+        row.setCategoryName("Wine");
+        row.setProductRegion("McLaren Vale");
+        row.setProductVintage("2021");
+        when(mapper.listCatalog(1L)).thenReturn(List.of(row));
+        SommelierCatalogService service = new SommelierCatalogService(mapper, new ObjectMapper());
+
+        WineProfile profile = service.listWines(1L).getFirst().profile();
+
+        assertEquals("McLaren Vale", profile.region());
+        assertEquals("2021", profile.vintage());
+        assertTrue(profile.inferred());
+    }
+
+    @Test
+    void curatedProfileOriginOverridesExplicitProductOrigin() {
+        SommelierProductMapper mapper = mock(SommelierProductMapper.class);
+        SommelierProductMapper.CatalogRow row = new SommelierProductMapper.CatalogRow();
+        row.setId(9L);
+        row.setName("Barossa Shiraz 2022");
+        row.setCategoryName("Wine");
+        row.setProductRegion("McLaren Vale");
+        row.setProductVintage("2021");
+        row.setStoredWineType("red");
+        row.setStoredProfileSource("curated");
+        row.setStoredRegion("Clare Valley");
+        row.setStoredVintage("2019");
+        when(mapper.listCatalog(1L)).thenReturn(List.of(row));
+        SommelierCatalogService service = new SommelierCatalogService(mapper, new ObjectMapper());
+
+        WineProfile profile = service.listWines(1L).getFirst().profile();
+
+        assertEquals("Clare Valley", profile.region());
+        assertEquals("2019", profile.vintage());
+        assertFalse(profile.inferred());
+    }
 
     @Test
     void excludesLimoncelloEvenWhenItHasAnIncorrectStoredWineProfile() {

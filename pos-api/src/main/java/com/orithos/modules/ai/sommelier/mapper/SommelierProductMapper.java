@@ -34,6 +34,8 @@ public interface SommelierProductMapper {
         private String name;
         private String description;
         private String image;
+        private String productRegion;
+        private String productVintage;
         private String categoryName;
         private String familyName;
         private String brandName;
