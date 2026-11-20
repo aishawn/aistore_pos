@@ -5,6 +5,7 @@ import com.orithos.modules.vendor.VendorMapper;
 import com.orithos.tenant.TenantProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.data.redis.RedisProperties;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -17,6 +18,8 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.lang.reflect.Constructor;
+import java.util.Arrays;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -33,6 +36,15 @@ class ShopfrontSyncWatermarkTest {
     private VendorMapper vendorMapper;
     private ValueOperations<String, String> values;
     private ShopfrontSyncWatermark watermark;
+
+    @Test
+    void marksTheProductionConstructorForSpringInjection() {
+        Constructor<?>[] constructors = ShopfrontSyncWatermark.class.getDeclaredConstructors();
+
+        assertEquals(1, Arrays.stream(constructors)
+                .filter(constructor -> constructor.isAnnotationPresent(Autowired.class))
+                .count());
+    }
 
     @BeforeEach
     @SuppressWarnings("unchecked")
@@ -103,18 +115,23 @@ class ShopfrontSyncWatermarkTest {
     }
 
     @Test
-    void syncRedisConnectionUsesDatabaseOne() {
+    void businessRedisKeepsConfiguredDatabaseWhileSyncReaderUsesDatabaseOne() {
         RedisProperties properties = new RedisProperties();
         properties.setUrl("redis://test-user:test-password@redis.example.test:6381/0");
-        LettuceConnectionFactory factory = new ShopfrontSyncRedisConfig()
+        ShopfrontSyncRedisConfig config = new ShopfrontSyncRedisConfig();
+        LettuceConnectionFactory businessFactory = config
+                .redisConnectionFactory(properties);
+        LettuceConnectionFactory syncFactory = config
                 .shopfrontSyncRedisConnectionFactory(properties);
         try {
-            assertEquals(1, factory.getDatabase());
-            assertEquals("redis.example.test", factory.getStandaloneConfiguration().getHostName());
-            assertEquals(6381, factory.getStandaloneConfiguration().getPort());
-            assertEquals("test-user", factory.getStandaloneConfiguration().getUsername());
+            assertEquals(0, businessFactory.getDatabase());
+            assertEquals(1, syncFactory.getDatabase());
+            assertEquals("redis.example.test", syncFactory.getStandaloneConfiguration().getHostName());
+            assertEquals(6381, syncFactory.getStandaloneConfiguration().getPort());
+            assertEquals("test-user", syncFactory.getStandaloneConfiguration().getUsername());
         } finally {
-            factory.destroy();
+            businessFactory.destroy();
+            syncFactory.destroy();
         }
     }
 
