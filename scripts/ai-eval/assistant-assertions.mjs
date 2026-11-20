@@ -101,6 +101,32 @@ function answerSlotChecks(expectedEntities, assistant) {
   return checks;
 }
 
+export function assistantFixtureContract(expected = {}) {
+  const expectedData = { ...(expected.data ?? {}) };
+  if (expected.entities?.stock !== undefined && expectedData.stock === undefined) {
+    expectedData.stock = expected.entities.stock;
+  }
+  const answerIncludes = Array.isArray(expected.answerIncludes)
+    ? expected.answerIncludes.filter((text) => typeof text === "string" && text.trim().length > 0)
+    : [];
+  const answerContentAssertionRequired = requiresAnswerContent(expected.intent);
+  const answerAssertionsPresent = !answerContentAssertionRequired
+    || answerIncludes.length > 0
+    || (typeof expected.answerRegex === "string" && expected.answerRegex.trim().length > 0)
+    || Object.values(expectedData).some((value) => value !== null && value !== undefined);
+  const unsupportedNegativeAssertions = Array.isArray(expected.negative)
+    ? expected.negative.filter((assertion) => assertion !== "writeRequests empty")
+    : expected.negative === undefined ? [] : ["expected.negative must be an array"];
+  const negativeAssertionsPresent = unsupportedNegativeAssertions.length === 0;
+  return {
+    answerContentAssertionRequired,
+    answerAssertionsPresent,
+    negativeAssertionsPresent,
+    unsupportedNegativeAssertions,
+    complete: answerAssertionsPresent && negativeAssertionsPresent,
+  };
+}
+
 export function assistantFastPathSafety(assistant) {
   return {
     deterministicRoute: assistant.source === "deterministic" && assistant.llmFallback === false,
@@ -126,14 +152,7 @@ export function assistantUtteranceAcceptance(expected = {}, assistant = {}) {
     ? expected.answerIncludes.filter((text) => typeof text === "string" && text.trim().length > 0)
     : [];
   const answerExcludes = Array.isArray(expected.answerExcludes) ? expected.answerExcludes : [];
-  const unsupportedNegativeAssertions = Array.isArray(expected.negative)
-    ? expected.negative.filter((assertion) => assertion !== "writeRequests empty")
-    : expected.negative === undefined ? [] : ["expected.negative must be an array"];
-  const answerContentAssertionRequired = requiresAnswerContent(expectedIntent);
-  const answerAssertionsPresent = !answerContentAssertionRequired
-    || answerIncludes.length > 0
-    || (typeof expected.answerRegex === "string" && expected.answerRegex.trim().length > 0)
-    || Object.keys(expectedDataChecks).length > 0;
+  const contract = assistantFixtureContract(expected);
   let answerRegex = true;
   if (expected.answerRegex) {
     try {
@@ -152,8 +171,8 @@ export function assistantUtteranceAcceptance(expected = {}, assistant = {}) {
     slots: Object.values(entitySlotChecks).every(Boolean),
     answerNonEmpty: answer.trim().length > 0,
     answerData: Object.values(expectedDataChecks).every(Boolean),
-    answerContentAssertionRequired,
-    answerAssertionsPresent,
+    answerContentAssertionRequired: contract.answerContentAssertionRequired,
+    answerAssertionsPresent: contract.answerAssertionsPresent,
     answerIncludes: answerIncludes.every((text) => answer.includes(text)),
     answerExcludes: answerExcludes.every((text) => !answer.includes(text)),
     answerRegex,
@@ -161,8 +180,8 @@ export function assistantUtteranceAcceptance(expected = {}, assistant = {}) {
       || (expected.answerLanguage === "zh"
         ? /\p{Script=Han}/u.test(answer)
         : !/\p{Script=Han}/u.test(answer)),
-    negativeAssertionsPresent: unsupportedNegativeAssertions.length === 0,
-    unsupportedNegativeAssertions,
+    negativeAssertionsPresent: contract.negativeAssertionsPresent,
+    unsupportedNegativeAssertions: contract.unsupportedNegativeAssertions,
     ...(expected.clarification === undefined
       ? {}
       : { clarification: assistant.clarificationRequired === expected.clarification }),

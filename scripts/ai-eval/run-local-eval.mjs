@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import process from "node:process";
 import path from "node:path";
-import { assistantUtteranceAcceptance, assistantUtteranceStatus } from "./assistant-assertions.mjs";
+import { assistantFixtureContract, assistantUtteranceAcceptance, assistantUtteranceStatus } from "./assistant-assertions.mjs";
 
 function option(name, fallback) {
   const index = process.argv.indexOf(`--${name}`);
@@ -53,6 +53,7 @@ const results = [];
 for (const testCase of cases) {
   const remote = await callAssistant(testCase);
   const local = localExpected(testCase);
+  const fixtureContract = assistantFixtureContract(testCase.expected || {});
   const blocked = !remote || remote.status === "BLOCKED";
   const assistant = remote?.body?.data && typeof remote.body.data === "object" ? remote.body.data : remote?.body || {};
   const acceptance = remote && !blocked
@@ -73,6 +74,7 @@ for (const testCase of cases) {
     blockReason: !remote ? "ENDPOINT_NOT_CONFIGURED"
       : blocked ? "SERVICE_UNAVAILABLE" : decision.blockReason,
     assistantStatus: !remote ? "NOT_CONFIGURED" : blocked ? "UNAVAILABLE" : "CHECKED",
+    fixtureContract,
     syntheticSnapshotCheck: local,
     acceptance,
     writeRequests: assistant.writeRequests ?? null,
@@ -83,7 +85,15 @@ for (const testCase of cases) {
 }
 
 const summary = results.reduce((acc, result) => { acc[result.status] += 1; return acc; }, { PASS: 0, PARTIAL: 0, FAIL: 0, BLOCKED: 0 });
-const output = { schemaVersion: 2, generatedAt: new Date().toISOString(), sourceSha, runtimeSha, summary, results };
+const fixtureContractAudit = {
+  complete: results.filter((result) => result.fixtureContract.complete).length,
+  incomplete: results.filter((result) => !result.fixtureContract.complete).length,
+  missingAnswerAssertions: results.filter((result) => !result.fixtureContract.answerAssertionsPresent)
+    .map((result) => result.caseId),
+  unsupportedNegativeAssertions: results.filter((result) => !result.fixtureContract.negativeAssertionsPresent)
+    .map(({ caseId, fixtureContract }) => ({ caseId, assertions: fixtureContract.unsupportedNegativeAssertions })),
+};
+const output = { schemaVersion: 3, generatedAt: new Date().toISOString(), sourceSha, runtimeSha, summary, fixtureContractAudit, results };
 const outputPath = option("output");
 if (outputPath) {
   fs.mkdirSync(path.dirname(outputPath), { recursive: true });

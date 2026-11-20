@@ -40,8 +40,10 @@ node scripts/ai-eval/run-local-eval.mjs --cases scripts/ai-eval/fixtures/utteran
 ```
 
 Without `AI_EVAL_ENDPOINT`, assistant assertions are `BLOCKED`; the runner only
-checks that fixture expectations agree with the synthetic snapshot. With an
-endpoint configured, the runner applies the same answer, metric, language,
+checks that fixture expectations agree with the synthetic snapshot and emits
+`fixtureContractAudit` so missing answer baselines and unsupported negative
+assertions are visible without a service call. With an endpoint configured,
+the runner applies the same answer, metric, language,
 slot, deterministic-route, and no-write assertions as the read-only live
 evaluator. Set both `AI_EVAL_SOURCE_SHA` and `AI_EVAL_RUNTIME_SHA` to the
 verified source and deployed runtime commits; mismatches or unknown commits
