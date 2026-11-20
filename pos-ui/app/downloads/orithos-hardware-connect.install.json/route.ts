@@ -12,7 +12,7 @@ export async function GET() {
   return NextResponse.json(
     {
       product: "Orithos Hardware Connect",
-      version: "1.1.2.0",
+      version: "1.1.3.0",
       settingsUrl,
       setupFileName: "OrithosHardwareConnect-Setup.exe",
     },

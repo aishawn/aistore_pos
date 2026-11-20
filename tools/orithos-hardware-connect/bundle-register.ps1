@@ -18,6 +18,9 @@ $stage = Join-Path $PSScriptRoot "dist\OrithosHardwareConnect-$version-win-x64"
 if (Test-Path $stage) { Remove-Item $stage -Recurse -Force }
 New-Item -ItemType Directory -Force -Path $stage | Out-Null
 Copy-Item "$PSScriptRoot\publish\*" $stage -Recurse
+if (Test-Path "$PSScriptRoot\assets") {
+  Copy-Item "$PSScriptRoot\assets\*" (Join-Path $stage "assets") -Recurse -Force
+}
 Copy-Item "$PSScriptRoot\install.ps1" $stage
 Copy-Item "$PSScriptRoot\uninstall.ps1" $stage
 Copy-Item "$PSScriptRoot\Install-Orithos-Hardware-Connect.cmd" $stage

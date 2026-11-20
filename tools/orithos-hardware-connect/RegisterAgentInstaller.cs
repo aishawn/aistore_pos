@@ -79,6 +79,8 @@ internal static class RegisterAgentInstaller
                 || string.Equals(name, "uninstall.ps1", StringComparison.OrdinalIgnoreCase)
                 || string.Equals(name, "REGISTER-README.txt", StringComparison.OrdinalIgnoreCase)
                 || string.Equals(name, "Install-Orithos-Hardware-Connect.cmd", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(name, "Uninstall-Orithos-Hardware-Connect.cmd", StringComparison.OrdinalIgnoreCase)
+                || name.EndsWith("-Setup.exe", StringComparison.OrdinalIgnoreCase)
                 || name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
             {
                 continue;
@@ -86,6 +88,8 @@ internal static class RegisterAgentInstaller
 
             File.Copy(file, Path.Combine(InstallDir, name), overwrite: true);
         }
+
+        CopyAssetsDirectory(Path.Combine(sourceDir, "assets"), Path.Combine(InstallDir, "assets"));
 
         if (!File.Exists(InstalledExePath))
         {
@@ -268,6 +272,16 @@ internal static class RegisterAgentInstaller
         catch
         {
             /* non-fatal */
+        }
+    }
+
+    private static void CopyAssetsDirectory(string source, string target)
+    {
+        if (!Directory.Exists(source)) return;
+        Directory.CreateDirectory(target);
+        foreach (var file in Directory.EnumerateFiles(source))
+        {
+            File.Copy(file, Path.Combine(target, Path.GetFileName(file)), overwrite: true);
         }
     }
 

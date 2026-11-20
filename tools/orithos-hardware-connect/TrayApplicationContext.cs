@@ -19,7 +19,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
 
         trayIcon = new NotifyIcon
         {
-            Icon = SystemIcons.Application,
+            Icon = BrandAssets.LoadTrayIcon() ?? SystemIcons.Application,
             Visible = true,
             Text = $"{AgentVersion.Product} {AgentVersion.DisplayVersion}",
         };

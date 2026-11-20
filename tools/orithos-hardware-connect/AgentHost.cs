@@ -4,6 +4,13 @@ internal static class AgentHost
 {
     private const string SingleInstanceMutexName = @"Local\OrithosHardwareConnect";
 
+    private static bool IsSetupBootstrapper()
+    {
+        var name = Path.GetFileName(Environment.ProcessPath ?? "");
+        return name.Contains("Setup", StringComparison.OrdinalIgnoreCase)
+            && name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase);
+    }
+
     public static void Run(string[] args)
     {
         if (args.Contains("--uninstall", StringComparer.OrdinalIgnoreCase))
@@ -28,6 +35,14 @@ internal static class AgentHost
 
         if (!RegisterAgentInstaller.IsRunningFromInstallDir())
         {
+            if (IsSetupBootstrapper() && !args.Contains("--install", StringComparer.OrdinalIgnoreCase))
+            {
+                ApplicationConfiguration.Initialize();
+                using var wizard = new SetupWizardForm(RegisterAgentInstaller.ResolveSettingsUrl(settingsUrl));
+                wizard.ShowDialog();
+                return;
+            }
+
             if (!RegisterAgentInstaller.IsInstalled())
             {
                 RunInstallFlow(settingsUrl, silent: false);
