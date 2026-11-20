@@ -1045,6 +1045,7 @@ class ClassifyQueryNodeTest {
         assertDeterministicResult(node, "Does AI read supplier invoices?", "qa", "");
         assertDeterministicResult(node, "Can the AI answer stock questions?", "qa", "");
         assertDeterministicResult(node, "AI会自动改价吗", "qa", "");
+        assertDeterministicResult(node, "AI 会直接收货发票吗？", "qa", "");
         assertDeterministicResult(node, "AI能推荐红酒吗", "qa", "");
         assertDeterministicResult(node, "AI能识别供应商发票吗", "qa", "");
 

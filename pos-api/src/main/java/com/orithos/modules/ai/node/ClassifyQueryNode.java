@@ -196,6 +196,14 @@ public class ClassifyQueryNode implements NodeAction {
             return out;
         }
 
+        AssistantFastPathRouter.Match helpFastPath = AssistantFastPathRouter.maybeMatch(question);
+        if (helpFastPath != null && "qa".equals(helpFastPath.intent())
+                && helpFastPath.route().isBlank()) {
+            log.info("Help question fast-path (skipped invoice and write-intent routing)");
+            return shortcutResult(helpFastPath.intent(), helpFastPath.summary(), helpFastPath.slots(),
+                    helpFastPath.panel(), helpFastPath.view(), helpFastPath.route(), helpFastPath.action());
+        }
+
         if (isInvoiceArrivalQuestion(question)) {
             boolean chinese = isChinese(question);
             String answer = chinese
