@@ -55,6 +55,12 @@ jobs:
       - name: Install UI dependencies
         id: install
         run: npm ci
+      - name: Cache Playwright browsers
+        if: steps.install.outcome == 'success'
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('pos-ui/package-lock.json') }}
       - name: Install Chromium
         id: browser
         if: steps.install.outcome == 'success'
