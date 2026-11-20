@@ -20,7 +20,7 @@ class WineMatcherTest {
         CustomerWineProfile profile = new CustomerWineProfile(
                 "red", new BigDecimal("15"), new BigDecimal("25"),
                 0.85, 0.9, null, null, null, List.of("steak"), "dinner");
-        List<WineCandidate> kept = matcher.hardFilter(List.of(oos, white, red), profile, false);
+        List<WineCandidate> kept = matcher.hardFilter(List.of(oos, white, red), profile);
         assertEquals(1, kept.size());
         assertEquals(3L, kept.get(0).productId());
     }
@@ -41,6 +41,40 @@ class WineMatcherTest {
         assertEquals(3, pick.asList().size());
         assertTrue(pick.goodValue().wine().effectivePrice().compareTo(pick.premium().wine().effectivePrice()) <= 0);
         assertEquals(3, pick.asList().stream().map(s -> s.wine().productId()).distinct().count());
+    }
+
+    @Test
+    void matchDoesNotExceedAnExplicitBudgetToFillThreeRecommendations() {
+        List<WineCandidate> inventory = List.of(
+                wine(40, "Within budget Shiraz", "red", "14.99", 8),
+                wine(41, "Over budget Shiraz one", "red", "15.99", 8),
+                wine(42, "Over budget Shiraz two", "red", "17.99", 8)
+        );
+        CustomerWineProfile profile = new CustomerWineProfile(
+                "red", BigDecimal.ZERO, new BigDecimal("15.00"),
+                0.5, 0.5, null, null, null, List.of("steak"), "dinner");
+
+        List<WineMatcher.ScoredWine> matches = matcher.match(inventory, profile);
+
+        assertEquals(List.of(40L), matches.stream().map(s -> s.wine().productId()).toList());
+        assertEquals(1, matcher.pickThree(matches).asList().size());
+    }
+
+    @Test
+    void matchDoesNotGoBelowAnExplicitMinimumBudgetToFillThreeRecommendations() {
+        List<WineCandidate> inventory = List.of(
+                wine(50, "Below budget Shiraz", "red", "13.00", 8),
+                wine(51, "Within budget Shiraz one", "red", "18.00", 8),
+                wine(52, "Within budget Shiraz two", "red", "19.00", 8)
+        );
+        CustomerWineProfile profile = new CustomerWineProfile(
+                "red", new BigDecimal("15.00"), new BigDecimal("20.00"),
+                0.5, 0.5, null, null, null, List.of("steak"), "dinner");
+
+        List<WineMatcher.ScoredWine> matches = matcher.match(inventory, profile);
+
+        assertEquals(List.of(51L, 52L), matches.stream().map(s -> s.wine().productId()).toList());
+        assertEquals(2, matcher.pickThree(matches).asList().size());
     }
 
     @Test

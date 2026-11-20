@@ -44,10 +44,7 @@ public final class WineMatcher {
     }
 
     public List<ScoredWine> match(List<WineCandidate> inventory, CustomerWineProfile profile) {
-        List<WineCandidate> filtered = hardFilter(inventory, profile, false);
-        if (filtered.size() < 3) {
-            filtered = hardFilter(inventory, profile, true);
-        }
+        List<WineCandidate> filtered = hardFilter(inventory, profile);
         List<ScoredWine> scored = new ArrayList<>(filtered.size());
         for (WineCandidate wine : filtered) {
             scored.add(score(wine, profile));
@@ -135,7 +132,7 @@ public final class WineMatcher {
         return List.copyOf(scored);
     }
 
-    List<WineCandidate> hardFilter(List<WineCandidate> inventory, CustomerWineProfile profile, boolean relaxBudget) {
+    List<WineCandidate> hardFilter(List<WineCandidate> inventory, CustomerWineProfile profile) {
         List<WineCandidate> out = new ArrayList<>();
         for (WineCandidate wine : inventory) {
             if (wine == null || wine.productId() == null) continue;
@@ -148,10 +145,6 @@ public final class WineMatcher {
                 BigDecimal price = wine.effectivePrice();
                 BigDecimal min = profile.budgetMin();
                 BigDecimal max = profile.budgetMax();
-                if (relaxBudget) {
-                    if (min != null) min = min.multiply(new BigDecimal("0.85")).setScale(2, RoundingMode.HALF_UP);
-                    if (max != null) max = max.multiply(new BigDecimal("1.20")).setScale(2, RoundingMode.HALF_UP);
-                }
                 if (min != null && price.compareTo(min) < 0) continue;
                 if (max != null && price.compareTo(max) > 0) continue;
             }
