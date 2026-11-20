@@ -23,8 +23,9 @@ export const COMPANY_SECTIONS: CompanySection[] = [
     title: "General",
     href: "/settings/company/general",
     fields: [
-      { key: "company.general.use_quantity_rate", label: "Use Quantity Rate", type: "select", options: [
+      { key: "company.general.use_quantity_rate", label: "Quantity Pricing Method", type: "select", options: [
         { value: "HIGH_MIX_PRICE", label: "High Mix Price" },
+        { value: "QUANTITY_RATE", label: "Quantity Rate" },
         { value: "LOW_MIX_PRICE", label: "Low Mix Price" },
         { value: "AVERAGE", label: "Average" },
       ]},
