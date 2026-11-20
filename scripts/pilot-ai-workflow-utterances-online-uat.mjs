@@ -7,6 +7,7 @@ import {
   REPORT_FRESHNESS_MAX_AGE_MS,
 } from "./ai-eval/assistant-assertions.mjs";
 import { compareStockAnswer, parseStockAnswer } from "./ai-eval/stock-answer-assertions.mjs";
+import { aggregateSalesAcceptance, averageTicketAcceptance } from "./ai-eval/workflow-report-assertions.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const STORE_TIME_ZONE = "Australia/Melbourne";
@@ -19,10 +20,17 @@ const storeBusinessDate = (offsetDays = 0) => {
 };
 const yesterdayStore = storeBusinessDate(-1);
 const todayStore = storeBusinessDate();
-const currentWeekStartStore = (() => {
-  const weekday = new Date(`${todayStore}T12:00:00Z`).getUTCDay();
-  return storeBusinessDate(weekday === 0 ? -6 : 1 - weekday);
-})();
+const shiftBusinessDate = (isoDate, offsetDays) => {
+  const date = new Date(`${isoDate}T12:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + offsetDays);
+  return date.toISOString().slice(0, 10);
+};
+const daysSinceMonday = (new Date(`${todayStore}T12:00:00Z`).getUTCDay() + 6) % 7;
+const currentWeekStartStore = shiftBusinessDate(todayStore, -daysSinceMonday);
+const currentMonthStartStore = `${todayStore.slice(0, 7)}-01`;
+const previousWeekFromStore = shiftBusinessDate(currentWeekStartStore, -7);
+const previousWeekToStore = shiftBusinessDate(currentWeekStartStore, -1);
+const lastSevenDaysFromStore = shiftBusinessDate(todayStore, -6);
 const sourceCommit = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
 const expectedRuntimeCommit = process.env.PILOT_EXPECTED_RUNTIME_SHA || sourceCommit;
 if (!/^[\da-f]{40}$/i.test(expectedRuntimeCommit)) throw new Error("INVALID_PILOT_EXPECTED_RUNTIME_SHA");
@@ -198,6 +206,10 @@ const cases = [
   { id: "report-negative-pricing-history-zh", question: "昨天的定价报告", intent: "report_adhoc", noRoute: true },
   { id: "report-negative-price-history-week-zh", question: "上周价格历史", intent: "report_adhoc", noRoute: true },
   { id: "report-negative-price-history-zh", question: "昨天价格历史", intent: "report_adhoc", noRoute: true },
+  { id: "period-aov-this-week-zh", question: "本周客单价多少？", intent: "report_aov", noRoute: true, compareReport: true, averageTicketReport: true, reportStatus: ["available", "no_data"], reportSource: "orithos_ledger", reportFrom: currentWeekStartStore, reportTo: todayStore, reportTimeZone: STORE_TIME_ZONE },
+  { id: "period-sales-this-month-zh", question: "本月营业额多少？", intent: "report_sales", noRoute: true, compareReport: true, aggregateReport: true, reportStatus: ["available", "no_data"], reportSource: "orithos_ledger", reportFrom: currentMonthStartStore, reportTo: todayStore, reportTimeZone: STORE_TIME_ZONE },
+  { id: "period-sales-last-seven-days-en", question: "How much did we make in the last 7 days?", intent: "report_sales", noRoute: true, compareReport: true, aggregateReport: true, reportStatus: ["available", "no_data"], reportSource: "orithos_ledger", reportFrom: lastSevenDaysFromStore, reportTo: todayStore, reportTimeZone: STORE_TIME_ZONE },
+  { id: "period-aov-last-week-en", question: "What was average ticket last week?", intent: "report_aov", noRoute: true, compareReport: true, averageTicketReport: true, reportStatus: ["available", "no_data"], reportSource: "orithos_ledger", reportFrom: previousWeekFromStore, reportTo: previousWeekToStore, reportTimeZone: STORE_TIME_ZONE },
   { id: "report-negative-invoice-existence", question: "Do we have any invoices?", intent: "qa", route: "/purchases?tab=invoices", answerIncludes: ["only check invoice scans recorded in Orithos", "cannot confirm supplier email"] },
   { id: "report-negative-invoice-any", question: "Are there any invoices?", intent: "qa", route: "/purchases?tab=invoices", answerIncludes: ["only check invoice scans recorded in Orithos", "cannot confirm supplier email"] },
   { id: "report-negative-invoice-received", question: "Have we received any invoices?", intent: "qa", route: "/purchases?tab=invoices", answerIncludes: ["only check invoice scans recorded in Orithos", "cannot confirm supplier email"] },
@@ -746,21 +758,22 @@ try {
           const match = answer.match(new RegExp(`(?:Sales for ${escaped} were AUD |${escaped}营业额 AUD )([\\d.]+)`, "i"));
           return match ? Number(match[1]) : null;
         };
-        const responseAggregateSales = (from, to) => {
-          const escapedFrom = from.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-          const escapedTo = to.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-          const match = answer.match(new RegExp(`Sales for ${escapedFrom} to ${escapedTo} were AUD ([\\d.]+)`, "i"));
-          return match ? Number(match[1]) : null;
-        };
         const firstDate = item.reportFrom;
         const secondDate = item.reportTo;
         const noSales = Number(report.transactions) === 0;
         const singlePeriodReport = item.singlePeriodReport === true;
         const aggregateReport = item.aggregateReport === true;
-        const salesMatches = noSales
-          ? /no completed sales|(?:均)?没有已完成销售记录/i.test(answer)
-          : aggregateReport
-            ? responseAggregateSales(firstDate, secondDate) === Number(report.revenue)
+        const averageTicketReport = item.averageTicketReport === true;
+        const aggregateSalesCheck = aggregateReport
+          ? aggregateSalesAcceptance(answer, report, { from: firstDate, to: secondDate })
+          : null;
+        const averageTicketCheck = averageTicketReport
+          ? averageTicketAcceptance(answer, report, { from: firstDate, to: secondDate })
+          : null;
+        const salesMatches = aggregateReport
+          ? aggregateSalesCheck.passed
+          : noSales
+            ? /no completed sales|(?:均)?没有已完成销售记录/i.test(answer)
           : singlePeriodReport
             ? responseSinglePeriodSales(firstDate) === amount(firstDate, "revenue")
             : responseSales(firstDate) === amount(firstDate, "revenue")
@@ -769,9 +782,7 @@ try {
         const singlePeriodProfitMatch = answer.match(/gross profit was AUD ([\d.]+)|毛利 AUD ([\d.]+)/i);
         const singlePeriodProfit = Number(singlePeriodProfitMatch?.[1] ?? singlePeriodProfitMatch?.[2]);
         const profitMatches = aggregateReport
-          ? noSales || (report.costAvailable === true
-            ? singlePeriodProfit === Number(report.grossProfit)
-            : /gross profit is unavailable|毛利暂不可用/i.test(answer))
+          ? aggregateSalesCheck.passed
           : singlePeriodReport
           ? noSales || (report.costAvailable === true
             ? singlePeriodProfit === amount(firstDate, "grossProfit")
@@ -783,18 +794,24 @@ try {
             : noSales || /gross profit comparison is unavailable|毛利对比暂不可用/i.test(answer);
         authoritativeReportCheck = reportResponse.ok() && reportBody.code === 0
           && report.source === "orithos_ledger" && report.from === firstDate && report.to === secondDate
-          && salesMatches && profitMatches;
+          && (averageTicketReport ? averageTicketCheck.passed : salesMatches && profitMatches);
         authoritativeReportEvidence = {
           httpStatus: reportResponse.status(),
           source: report.source ?? null,
           from: report.from ?? null,
           to: report.to ?? null,
-          revenueByDate: [amount(firstDate, "revenue"), amount(secondDate, "revenue")],
-          grossProfitByDate: [amount(firstDate, "grossProfit"), amount(secondDate, "grossProfit")],
+          ...(aggregateReport || averageTicketReport ? {} : {
+            revenueByDate: [amount(firstDate, "revenue"), amount(secondDate, "revenue")],
+            grossProfitByDate: [amount(firstDate, "grossProfit"), amount(secondDate, "grossProfit")],
+          }),
+          reportRevenue: report.revenue ?? null,
+          reportAverageSale: report.averageSale ?? null,
           costAvailable: report.costAvailable ?? null,
           transactions: report.transactions ?? null,
-          salesMatches,
-          profitMatches,
+          salesMatches: averageTicketReport ? null : salesMatches,
+          profitMatches: averageTicketReport ? null : profitMatches,
+          ...(aggregateSalesCheck ? { aggregateSalesCheck: aggregateSalesCheck.evidence } : {}),
+          ...(averageTicketCheck ? { averageTicketCheck: averageTicketCheck.evidence } : {}),
         };
       } catch (error) {
         authoritativeReportCheck = false;
