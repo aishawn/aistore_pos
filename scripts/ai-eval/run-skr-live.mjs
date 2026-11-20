@@ -1,9 +1,12 @@
 import fs from "node:fs";
+import { createRequire } from "node:module";
 import path from "node:path";
 import process from "node:process";
-import { chromium } from "playwright";
+import { fileURLToPath } from "node:url";
 import { assistantUtteranceAcceptance, assistantUtteranceStatus } from "./assistant-assertions.mjs";
 
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
+const { chromium } = createRequire(path.join(root, "pos-ui", "package.json"))("playwright");
 const base = (process.env.SKR_BASE_URL || "https://skr.orithos.com.au").replace(/\/+$/, "");
 const username = process.env.SKR_USERNAME || "shawn";
 const password = process.env.SKR_PASSWORD;
