@@ -3,6 +3,7 @@ import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
+import { assistantRuntimePreflight } from "./ai-eval/stock-clarification-acceptance.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const envPath = path.join(root, ".env");
@@ -44,14 +45,15 @@ try {
   const version = await context.request.get(`${base}/api/public/version`, { timeout: 30000 });
   const versionBody = await version.json().catch(() => ({}));
   runtimeCommit = versionBody.backend?.commit ?? null;
-  const matchesSourceCommit = typeof runtimeCommit === "string" && runtimeCommit === sourceCommit && !workingTreeDirty;
+  const preflight = assistantRuntimePreflight(versionBody, sourceCommit);
+  const matchesSourceCommit = preflight.allowed && !workingTreeDirty;
   record("runtime-identity", matchesSourceCommit ? "PASS" : "BLOCKED", {
     httpStatus: version.status(),
-    runtimeCommit,
-    sourceCommit,
+    ...preflight,
     workingTreeDirty,
     matchesSourceCommit,
   });
+  if (!matchesSourceCommit) throw new Error("RUNTIME_SHA_MISMATCH; assistant cases were not sent");
 
   const login = await context.request.post(`${base}/api/auth/login`, {
     data: { username, password },
@@ -251,7 +253,8 @@ try {
     }
   }
 } catch (error) {
-  record("setup", "FAIL", error instanceof Error ? error.message : "Unexpected failure");
+  const message = error instanceof Error ? error.message : "Unexpected failure";
+  record("setup", /RUNTIME_SHA_MISMATCH/.test(message) ? "BLOCKED" : "FAIL", message);
 } finally {
   await context.request.post(`${base}/api/auth/logout`, { headers: { Origin: base } }).catch(() => null);
   await context.close();
@@ -274,8 +277,9 @@ const output = {
 };
 const outputPath = process.env.PILOT_UAT_OUTPUT_PATH
   ? path.resolve(root, process.env.PILOT_UAT_OUTPUT_PATH)
-  : path.join(root, "docs", "UAT_AI_FOLLOWUP_ONLINE.json");
+  : path.join(root, ".local", "ai-eval", "assistant-followup-online-current.json");
 fs.mkdirSync(path.dirname(outputPath), { recursive: true });
 fs.writeFileSync(outputPath, `${JSON.stringify(output, null, 2)}\n`);
 console.log(JSON.stringify({ outputPath, passed: output.passed, blocked: output.blocked, failed: output.failed }));
 if (output.failed) process.exitCode = 1;
+else if (output.blocked) process.exitCode = 2;
