@@ -38,9 +38,9 @@ class ParkedSalePolicyTest {
     }
 
     @Test
-    void utcCutoffIsAdelaideMidnightOfTheExpireDate() {
+    void utcCutoffIsMelbourneMidnightOfTheExpireDate() {
         LocalDateTime cutoff = ParkedSalePolicy.createdBeforeUtc(today);
-        assertEquals(LocalDateTime.of(2026, 9, 22, 14, 30), cutoff);
+        assertEquals(LocalDateTime.of(2026, 9, 22, 14, 0), cutoff);
         assertEquals(LocalDate.of(2026, 9, 23),
                 cutoff.atZone(ZoneOffset.UTC).withZoneSameInstant(com.orithos.common.AustraliaTime.ZONE).toLocalDate());
     }
