@@ -10,6 +10,8 @@ on:
       - "shopfront_crawler/**"
       - "forecast-service/**"
       - "scripts/ai-eval/**"
+      - "scripts/sommelier-recommendation-reconciliation*.mjs"
+      - "scripts/pilot-ai-sommelier-recommend-online-uat.mjs"
       - "scripts/pilot-ai-workflow-utterances-online-uat.mjs"
       - "scripts/ai_forecast*.py"
       - "scripts/testing/**"
@@ -24,6 +26,8 @@ on:
       - "shopfront_crawler/**"
       - "forecast-service/**"
       - "scripts/ai-eval/**"
+      - "scripts/sommelier-recommendation-reconciliation*.mjs"
+      - "scripts/pilot-ai-sommelier-recommend-online-uat.mjs"
       - "scripts/pilot-ai-workflow-utterances-online-uat.mjs"
       - "scripts/ai_forecast*.py"
       - "scripts/testing/**"
@@ -185,6 +189,9 @@ jobs:
       - name: Test AI evaluation harness
         id: assertions
         run: node --test --test-reporter=junit --test-reporter-destination=reports/test-runs/ai-eval.xml scripts/ai-eval/*.test.mjs
+      - name: Test Sommelier catalog reconciliation
+        id: sommelier
+        run: node --test --test-reporter=junit --test-reporter-destination=reports/test-runs/sommelier-reconciliation.xml scripts/sommelier-recommendation-reconciliation.test.mjs
       - name: Install forecast test dependencies
         id: install_forecast
         if: always()
@@ -196,7 +203,7 @@ jobs:
       - name: Write test manifest
         if: always()
         env:
-          SUITE_STATUS: ${{ steps.install_forecast.outcome != 'success' && 'BLOCKED' || (steps.assertions.outcome == 'success' && steps.forecast.outcome == 'success' && 'PASS' || 'FAIL') }}
+          SUITE_STATUS: ${{ steps.install_forecast.outcome != 'success' && 'BLOCKED' || (steps.assertions.outcome == 'success' && steps.sommelier.outcome == 'success' && steps.forecast.outcome == 'success' && 'PASS' || 'FAIL') }}
         run: python scripts/testing/report.py --suite offline-ai-and-forecast-eval --status "$SUITE_STATUS" --environment github-actions --duration-seconds "$(( $(date +%s) - ${{ steps.timer.outputs.started || 0 }} ))" --output reports/test-runs/offline-ai.json
       - name: Mark forecast quality as blocked without business history
         if: always()
