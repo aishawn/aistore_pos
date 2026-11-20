@@ -25,7 +25,7 @@ import java.util.Map;
 @Service
 public class SupplierService {
 
-    static final ZoneId STORE_ZONE = ZoneId.of("Australia/Adelaide");
+    static final ZoneId STORE_ZONE = ZoneId.of("Australia/Melbourne");
     static final int PERFORMANCE_DAYS = 30;
 
     private final SupplierMapper supplierMapper;

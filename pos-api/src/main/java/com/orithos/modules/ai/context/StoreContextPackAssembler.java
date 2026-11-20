@@ -26,7 +26,7 @@ public class StoreContextPackAssembler {
 
     private static final long META_CACHE_MILLIS = 10 * 60 * 1000L;
     /** Store business-day default when tenant timezone is unavailable. */
-    private static final ZoneId DEFAULT_BUSINESS_ZONE = ZoneId.of("Australia/Adelaide");
+    private static final ZoneId DEFAULT_BUSINESS_ZONE = ZoneId.of("Australia/Melbourne");
 
     private final VendorMapper vendorMapper;
     private final NativeAiReportQueryService reportQueryService;

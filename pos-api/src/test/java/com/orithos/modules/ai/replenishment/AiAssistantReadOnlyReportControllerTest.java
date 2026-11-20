@@ -37,7 +37,7 @@ class AiAssistantReadOnlyReportControllerTest {
                 "current_authenticated_store",
                 AustraliaTime.today().minusDays(6),
                 AustraliaTime.today(),
-                "Australia/Adelaide",
+                "Australia/Melbourne",
                 "incomplete",
                 dataAsOf.toString(),
                 new AssistantStoreOpportunitiesBriefResponse.OpportunitiesSalesSection(
@@ -81,7 +81,7 @@ class AiAssistantReadOnlyReportControllerTest {
         assertEquals("current_authenticated_store", response.data().storeScope());
         assertEquals(AustraliaTime.today().minusDays(56), response.data().reportPeriodFrom());
         assertEquals(AustraliaTime.today(), response.data().reportPeriodTo());
-        assertEquals("Australia/Adelaide", response.data().reportTimeZone());
+        assertEquals("Australia/Melbourne", response.data().reportTimeZone());
         assertEquals("incomplete", response.data().reportDataStatus());
         assertEquals(dataAsOf.toString(), response.data().dataAsOf());
         assertEquals(25, response.data().dataGapCount());

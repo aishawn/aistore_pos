@@ -28,7 +28,7 @@ public class NativePriceSuggestionService {
                     FROM sale s JOIN sale_item si ON si.sale_id = s.id AND si.outlet_id = s.outlet_id
                     WHERE s.outlet_id = ? AND s.status = 'COMPLETED' AND s.refund_reason IS NULL
                       AND COALESCE(s.business_date, s.local_sold_at::date)
-                          >= (CURRENT_TIMESTAMP AT TIME ZONE 'Australia/Adelaide')::date - 28
+                          >= (CURRENT_TIMESTAMP AT TIME ZONE 'Australia/Melbourne')::date - 28
                     GROUP BY si.product_id
                 )
                 SELECT p.id, p.name,

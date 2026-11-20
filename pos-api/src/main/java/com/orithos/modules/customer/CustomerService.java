@@ -28,7 +28,7 @@ public class CustomerService {
 
     public static final int DUPLICATE_CODE = 40904;
     public static final int DUPLICATE_EMAIL = 40905;
-    static final ZoneId STORE_ZONE = ZoneId.of("Australia/Adelaide");
+    static final ZoneId STORE_ZONE = ZoneId.of("Australia/Melbourne");
     static final int PERFORMANCE_DAYS = 30;
 
     private final CustomerMapper customerMapper;

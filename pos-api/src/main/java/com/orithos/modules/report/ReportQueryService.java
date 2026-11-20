@@ -135,7 +135,7 @@ public class ReportQueryService {
         // Shopfront imports and register sales land on the same civil day.
         List<Map<String, Object>> rows = jdbc.queryForList("""
                 SELECT COALESCE(s.business_date, DATE(s.local_sold_at),
-                                DATE(s.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Australia/Adelaide')) AS date,
+                                DATE(s.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Australia/Melbourne')) AS date,
                        COUNT(*) FILTER (WHERE COALESCE(s.total_price, 0) >= 0 AND s.refund_reason IS NULL) AS sales_transactions,
                        COUNT(*) FILTER (WHERE COALESCE(s.total_price, 0) < 0 OR s.refund_reason IS NOT NULL) AS refund_transactions,
                        COALESCE(SUM(CASE WHEN COALESCE(s.total_price, 0) >= 0 AND s.refund_reason IS NULL THEN s.total_price ELSE 0 END), 0) AS sales_amount,
@@ -158,9 +158,9 @@ public class ReportQueryService {
                 WHERE s.outlet_id = ?
                   AND """ + REPORTABLE_SALE_STATUS_SQL + """
                   AND COALESCE(s.business_date, DATE(s.local_sold_at),
-                               DATE(s.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Australia/Adelaide')) >= CAST(? AS DATE)
+                               DATE(s.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Australia/Melbourne')) >= CAST(? AS DATE)
                   AND COALESCE(s.business_date, DATE(s.local_sold_at),
-                               DATE(s.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Australia/Adelaide')) <= CAST(? AS DATE)
+                               DATE(s.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Australia/Melbourne')) <= CAST(? AS DATE)
                 GROUP BY 1
                 ORDER BY date DESC
                 """, outletId, sqlDate(from), sqlDate(to));
@@ -304,7 +304,7 @@ public class ReportQueryService {
         result.put("from", from.toString());
         result.put("to", to.toString());
         result.put("groupBy", normalizedGroup);
-        result.put("timezone", "Australia/Adelaide");
+        result.put("timezone", "Australia/Melbourne");
         result.put("inclusion", "ORDER status RECEIVED or PARTIALLY_RECEIVED by order_date");
         result.put("rows", rows);
         result.put("totals", totals);
@@ -373,9 +373,9 @@ public class ReportQueryService {
                 LEFT JOIN product p ON p.id = si.product_id AND p.outlet_id = s.outlet_id
                 WHERE s.outlet_id = ? AND """ + REPORTABLE_SALE_STATUS_SQL + """
                   AND COALESCE(s.business_date, DATE(s.local_sold_at),
-                               DATE(s.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Australia/Adelaide')) >= CAST(? AS DATE)
+                               DATE(s.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Australia/Melbourne')) >= CAST(? AS DATE)
                   AND COALESCE(s.business_date, DATE(s.local_sold_at),
-                               DATE(s.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Australia/Adelaide')) <= CAST(? AS DATE)
+                               DATE(s.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Australia/Melbourne')) <= CAST(? AS DATE)
                 GROUP BY COALESCE(p.id, 0), COALESCE(p.name, si.note, 'Unknown product')
                 ORDER BY revenue DESC LIMIT 10
                 """, outletId, sqlDate(from), sqlDate(to));
@@ -442,7 +442,7 @@ public class ReportQueryService {
     private List<Map<String, Object>> nativeSalesByDay(long outletId, LocalDate from, LocalDate to) {
         return jdbc.queryForList("""
                 SELECT COALESCE(s.business_date, DATE(s.local_sold_at),
-                                DATE(s.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Australia/Adelaide')) AS date,
+                                DATE(s.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Australia/Melbourne')) AS date,
                        COALESCE(SUM(s.total_price), 0) AS revenue,
                        COALESCE(SUM(CASE WHEN COALESCE(s.total_price, 0) >= 0 AND s.refund_reason IS NULL
                                          THEN s.total_price ELSE 0 END), 0) AS sales_amount,
@@ -478,9 +478,9 @@ public class ReportQueryService {
                 ) line ON TRUE
                 WHERE s.outlet_id = ? AND """ + REPORTABLE_SALE_STATUS_SQL + """
                   AND COALESCE(s.business_date, DATE(s.local_sold_at),
-                               DATE(s.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Australia/Adelaide')) >= CAST(? AS DATE)
+                               DATE(s.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Australia/Melbourne')) >= CAST(? AS DATE)
                   AND COALESCE(s.business_date, DATE(s.local_sold_at),
-                               DATE(s.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Australia/Adelaide')) <= CAST(? AS DATE)
+                               DATE(s.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Australia/Melbourne')) <= CAST(? AS DATE)
                 GROUP BY 1
                 ORDER BY date
                 """, outletId, sqlDate(from), sqlDate(to));

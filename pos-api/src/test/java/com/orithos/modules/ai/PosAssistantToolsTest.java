@@ -42,7 +42,7 @@ class PosAssistantToolsTest {
         TenantContext tenant = new TenantContext(9L, 8L, 7L, List.of(7L), Set.of("ROLE_ADMIN"));
         AssistantTenantContext.set(tenant);
         NativeAiReportQueryService query = mock(NativeAiReportQueryService.class);
-        when(query.businessTimezone(tenant)).thenReturn(ZoneId.of("Australia/Adelaide"));
+        when(query.businessTimezone(tenant)).thenReturn(ZoneId.of("Australia/Melbourne"));
         when(query.query(eq(tenant), eq("report_sales"), any(), any()))
                 .thenReturn(new NativeAiReportQueryService.Result(
                         List.of(Map.of("sales", "12.50", "day", "2026-10-20")), null));

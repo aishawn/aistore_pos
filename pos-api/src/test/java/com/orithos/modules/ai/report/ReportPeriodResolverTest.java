@@ -60,12 +60,12 @@ class ReportPeriodResolverTest {
         Clock clock = Clock.fixed(Instant.parse("2026-10-13T13:15:00Z"), ZoneOffset.UTC);
         ReportPeriodResolver boundaryResolver = new ReportPeriodResolver(clock);
 
-        ReportPeriodResolver.Window adelaide = boundaryResolver.resolve(
-                Map.of(), "today's sales", 1, ZoneId.of("Australia/Adelaide"));
+        ReportPeriodResolver.Window melbourne = boundaryResolver.resolve(
+                Map.of(), "today's sales", 1, ZoneId.of("Australia/Melbourne"));
         ReportPeriodResolver.Window sydney = boundaryResolver.resolve(
                 Map.of(), "today's sales", 1, ZoneId.of("Australia/Sydney"));
 
-        assertEquals(LocalDate.of(2026, 10, 13), adelaide.from().toLocalDate());
+        assertEquals(LocalDate.of(2026, 10, 14), melbourne.from().toLocalDate());
         assertEquals(LocalDate.of(2026, 10, 14), sydney.from().toLocalDate());
     }
 

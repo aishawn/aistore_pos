@@ -219,7 +219,7 @@ class AiChatHistoryServiceTest {
         service.appendTurn(tenant, "session-a", "Yesterday sales?", "report_sales", "$1,240", null,
                 Map.of("from", "2026-11-11", "to", "2026-11-11"), "deterministic",
                 "2026-11-12T01:00:00Z", "Orithos native sales ledger", "outlet:3",
-                "2026-11-11", "2026-11-11", "Australia/Adelaide", "AVAILABLE");
+                "2026-11-11", "2026-11-11", "Australia/Melbourne", "AVAILABLE");
 
         ArgumentCaptor<AiChatMessage> captor = ArgumentCaptor.forClass(AiChatMessage.class);
         verify(mapper, times(2)).insertMessage(captor.capture());
@@ -230,7 +230,7 @@ class AiChatHistoryServiceTest {
         assertEquals("outlet:3", persisted.getStoreScope());
         assertEquals("2026-11-11", persisted.getReportPeriodFrom());
         assertEquals("2026-11-11", persisted.getReportPeriodTo());
-        assertEquals("Australia/Adelaide", persisted.getReportTimeZone());
+        assertEquals("Australia/Melbourne", persisted.getReportTimeZone());
         assertEquals("AVAILABLE", persisted.getReportDataStatus());
 
         AiChatMessage user = message(1L, "user", "Yesterday sales?", null, null);
@@ -243,7 +243,7 @@ class AiChatHistoryServiceTest {
         assertEquals("2026-11-12T01:00:00Z", restored.get(1).get("dataAsOf"));
         assertEquals("2026-11-11", restored.get(1).get("reportPeriodFrom"));
         assertEquals("2026-11-11", restored.get(1).get("reportPeriodTo"));
-        assertEquals("Australia/Adelaide", restored.get(1).get("reportTimeZone"));
+        assertEquals("Australia/Melbourne", restored.get(1).get("reportTimeZone"));
         assertEquals("AVAILABLE", restored.get(1).get("reportDataStatus"));
     }
 

@@ -35,7 +35,7 @@
 
 - Enforce vendor and outlet scope in the backend. A shared database is not proof of tenant isolation.
 - Shelf prices include GST; at 10%, GST is inclusive price / 11 (`GstMath`). Use decimal arithmetic. Round cash to 5 cents; keep card amounts exact.
-- Use the store timezone for business dates (SKR/Demo currently use `Australia/Adelaide`); use UTC for transport/audit timestamps.
+- Use the store timezone for business dates (SKR/Demo currently use `Australia/Melbourne`); use UTC for transport/audit timestamps.
 - Business writes must use the Orithos API and an approved test environment unless the owner explicitly approves a production write. Do not use Odoo or Shopfront as a write target.
 - Keep `AI_ENABLED=false` in production until the provider and budget are explicitly configured.
 - Change Next.js pages under `pos-ui/app`; shared UI/API code is under `pos-ui/src`. The API client is `pos-ui/src/lib/api.ts`.

@@ -35,7 +35,7 @@ class StoreContextPackAssemblerTest {
         StoreContextPack pack = assembler.assemble(tenant, "7:11:thread", "Reports");
 
         assertEquals(7L, pack.vendorId());
-        assertEquals("Australia/Adelaide", pack.businessTimezone());
+        assertEquals("Australia/Melbourne", pack.businessTimezone());
         assertTrue(pack.canQueryReport());
         assertTrue(pack.canQueryCost());
         assertEquals("report_sales", pack.lastIntent());
@@ -54,6 +54,6 @@ class StoreContextPackAssemblerTest {
         StoreContextPack pack = new StoreContextPackAssembler(vendors, reports, memory)
                 .assemble(new TenantContext(8L, 12L, 4L, List.of(4L), Set.of()), "8:12:thread", "sell");
 
-        assertEquals(ZoneId.of("Australia/Adelaide").getId(), pack.businessTimezone());
+        assertEquals(ZoneId.of("Australia/Melbourne").getId(), pack.businessTimezone());
     }
 }

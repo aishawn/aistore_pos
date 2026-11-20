@@ -227,7 +227,7 @@ class NativeReportQueryNodeTest {
 
         assertEquals("unavailable", result.get("report_data_status"));
         assertEquals("2026-10-16", result.get("report_period_from"));
-        assertEquals("Australia/Adelaide", result.get("report_time_zone"));
+        assertEquals("Australia/Melbourne", result.get("report_time_zone"));
         verify(queryService, never()).query(any(), anyString(), any(), any());
     }
 
@@ -356,7 +356,7 @@ class NativeReportQueryNodeTest {
         assertEquals("current_authenticated_store", result.get("report_store_scope"));
         assertEquals("2026-11-19T06:15:00Z", result.get("report_data_as_of"));
         assertEquals("2026-10-16", result.get("report_period_from"));
-        assertEquals("Australia/Adelaide", result.get("report_time_zone"));
+        assertEquals("Australia/Melbourne", result.get("report_time_zone"));
         assertEquals("available", result.get("report_data_status"));
     }
 

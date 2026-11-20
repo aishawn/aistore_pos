@@ -36,7 +36,7 @@ class ShopfrontNativeSaleImporterTest {
     }
 
     @Test
-    void parsesAdelaideBusinessDateFromUtcInstant() {
+    void parsesMelbourneBusinessDateFromUtcInstant() {
         var soldAt = ShopfrontNativeSaleImporter.parseSoldAt("2026-11-09T14:30:00Z");
         assertNotNull(soldAt);
         assertEquals(LocalDate.of(2026, 11, 10), soldAt.businessDate());

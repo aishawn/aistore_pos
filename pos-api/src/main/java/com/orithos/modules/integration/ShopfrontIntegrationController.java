@@ -2678,7 +2678,7 @@ public class ShopfrontIntegrationController {
                   SELECT store_key, external_id,
                          CASE
                            WHEN NULLIF(created_at, '') ~* '([zZ]|[+-][0-9]{2}:?[0-9]{2})$'
-                             THEN (timezone('Australia/Adelaide', created_at::timestamptz))::date
+                             THEN (timezone('Australia/Melbourne', created_at::timestamptz))::date
                            WHEN NULLIF(TRIM(created_at), '') IS NOT NULL
                              THEN DATE(created_at::timestamp)
                            ELSE NULL

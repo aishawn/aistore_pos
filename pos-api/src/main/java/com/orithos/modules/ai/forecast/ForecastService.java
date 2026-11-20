@@ -64,7 +64,7 @@ public class ForecastService {
                 JOIN product p ON p.id = si.product_id AND p.outlet_id = s.outlet_id AND p.deleted_at IS NULL
                 WHERE s.outlet_id = ? AND s.status = 'COMPLETED' AND s.refund_reason IS NULL
                   AND COALESCE(s.business_date, s.local_sold_at::date)
-                      >= (CURRENT_TIMESTAMP AT TIME ZONE 'Australia/Adelaide')::date - ?
+                      >= (CURRENT_TIMESTAMP AT TIME ZONE 'Australia/Melbourne')::date - ?
                 GROUP BY si.product_id, COALESCE(s.business_date, s.local_sold_at::date)
                 ORDER BY si.product_id, business_date
                 """, (org.springframework.jdbc.core.RowCallbackHandler) rs -> grouped.computeIfAbsent(rs.getLong("product_id"), ignored -> new ArrayList<>())

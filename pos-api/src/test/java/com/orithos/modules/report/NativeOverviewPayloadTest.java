@@ -20,7 +20,7 @@ class NativeOverviewPayloadTest {
                 Map.of("data_as_of", OffsetDateTime.parse("2026-11-12T01:00:00Z")),
                 Map.of("data_as_of", OffsetDateTime.parse("2026-11-12T02:30:00Z")));
 
-        assertEquals("2026-11-12T13:00+10:30", ReportQueryService.nativeOverviewDataAsOf(daily));
+        assertEquals("2026-11-12T13:30+11:00", ReportQueryService.nativeOverviewDataAsOf(daily));
         assertNull(ReportQueryService.nativeOverviewDataAsOf(List.of()));
     }
 
@@ -115,7 +115,7 @@ class NativeOverviewPayloadTest {
         assertEquals("orithos_ledger", result.get("dataSource"));
         assertEquals("2026-11-12", result.get("reportPeriodFrom"));
         assertEquals("2026-11-12", result.get("reportPeriodTo"));
-        assertEquals("Australia/Adelaide", result.get("reportTimeZone"));
+        assertEquals("Australia/Melbourne", result.get("reportTimeZone"));
         assertEquals("available", result.get("reportDataStatus"));
         assertEquals(new BigDecimal("5178.94"), result.get("grossSales"));
         assertEquals(new BigDecimal("5.00"), result.get("refunds"));

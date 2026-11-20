@@ -124,7 +124,7 @@ public class PurchaseReportSnapshotService {
         result.put("from", from.toString());
         result.put("to", to.toString());
         result.put("groupBy", normalizedGroup);
-        result.put("timezone", "Australia/Adelaide");
+        result.put("timezone", "Australia/Melbourne");
         result.put("inclusion", "Shopfront purchase report snapshots imported into the Orithos ledger by business date");
         result.put("rows", resultRows);
         result.put("totals", totals);

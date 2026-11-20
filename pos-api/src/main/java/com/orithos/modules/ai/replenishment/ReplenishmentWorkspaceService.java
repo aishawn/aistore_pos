@@ -23,7 +23,7 @@ public class ReplenishmentWorkspaceService {
     private static final int RECENT_PERIOD_DAYS = 28;
     private static final int QUERY_TIMEOUT_SECONDS = 30;
     private static final long INVENTORY_FRESH_MILLIS = Duration.ofHours(26).toMillis();
-    private static final String STORE_ZONE = "Australia/Adelaide";
+    private static final String STORE_ZONE = "Australia/Melbourne";
     private static final String RULES_METHOD = "rules_v1_weighted_velocity";
 
     private final JdbcTemplate jdbc;
@@ -48,18 +48,18 @@ public class ReplenishmentWorkspaceService {
                 WITH sales AS (
                     SELECT si.product_id,
                            SUM(si.quantity) FILTER (WHERE COALESCE(s.business_date, s.local_sold_at::date)
-                               >= (CURRENT_TIMESTAMP AT TIME ZONE 'Australia/Adelaide')::date - 7) AS sold_7d,
+                               >= (CURRENT_TIMESTAMP AT TIME ZONE 'Australia/Melbourne')::date - 7) AS sold_7d,
                            SUM(si.quantity) FILTER (WHERE COALESCE(s.business_date, s.local_sold_at::date)
-                               >= (CURRENT_TIMESTAMP AT TIME ZONE 'Australia/Adelaide')::date - 28) AS recent_units,
+                               >= (CURRENT_TIMESTAMP AT TIME ZONE 'Australia/Melbourne')::date - 28) AS recent_units,
                            SUM(si.quantity) FILTER (WHERE COALESCE(s.business_date, s.local_sold_at::date)
-                               < (CURRENT_TIMESTAMP AT TIME ZONE 'Australia/Adelaide')::date - 28
+                               < (CURRENT_TIMESTAMP AT TIME ZONE 'Australia/Melbourne')::date - 28
                                AND COALESCE(s.business_date, s.local_sold_at::date)
-                                   >= (CURRENT_TIMESTAMP AT TIME ZONE 'Australia/Adelaide')::date - 56) AS previous_units
+                                   >= (CURRENT_TIMESTAMP AT TIME ZONE 'Australia/Melbourne')::date - 56) AS previous_units
                     FROM sale s
                     JOIN sale_item si ON si.sale_id = s.id AND si.outlet_id = s.outlet_id
                     WHERE s.outlet_id = ? AND s.status = 'COMPLETED' AND s.refund_reason IS NULL
                       AND COALESCE(s.business_date, s.local_sold_at::date)
-                          >= (CURRENT_TIMESTAMP AT TIME ZONE 'Australia/Adelaide')::date - 56
+                          >= (CURRENT_TIMESTAMP AT TIME ZONE 'Australia/Melbourne')::date - 56
                     GROUP BY si.product_id
                 ),
                 barcode AS (

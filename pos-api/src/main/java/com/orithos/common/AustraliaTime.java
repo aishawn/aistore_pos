@@ -12,7 +12,7 @@ import java.time.ZonedDateTime;
  */
 public final class AustraliaTime {
 
-    public static final ZoneId ZONE = ZoneId.of("Australia/Adelaide");
+    public static final ZoneId ZONE = ZoneId.of("Australia/Melbourne");
 
     private AustraliaTime() {
     }
@@ -32,7 +32,7 @@ public final class AustraliaTime {
 
     /**
      * {@code utcWall} is a DATETIME stored as UTC (JDBC {@code serverTimezone=UTC}).
-     * Returns the matching Australia/Adelaide civil date and wall time.
+     * Returns the matching Australia/Melbourne civil date and wall time.
      */
     public static ZonedDateTime fromUtcWall(LocalDateTime utcWall) {
         return utcWall.atZone(java.time.ZoneOffset.UTC).withZoneSameInstant(ZONE);

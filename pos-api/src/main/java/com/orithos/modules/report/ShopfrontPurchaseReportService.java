@@ -135,7 +135,7 @@ public class ShopfrontPurchaseReportService {
         result.put("from", from.toString());
         result.put("to", to.toString());
         result.put("groupBy", normalizedGroup);
-        result.put("timezone", "Australia/Adelaide");
+        result.put("timezone", "Australia/Melbourne");
         result.put("inclusion", "Shopfront Reporting API purchase orders for the selected date range");
         result.put("rows", rows);
         result.put("totals", totals);
