@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Eye, EyeOff, LogIn } from "lucide-react";
 import { OrithosLogo } from "@/components/OrithosLogo";
 import { useAuth } from "@/lib/auth";
+import { api } from "@/lib/api";
 import {
   brandSignupUrl,
   controlPlaneLandingPath,
@@ -17,6 +18,7 @@ import {
 import { SKIP_SESSION_RECOVER_KEY } from "@/lib/auth";
 
 const REMEMBERED_USERNAME_KEY = "orithos-remembered-username";
+type LoginStaffOption = { id: number; name: string; username: string };
 
 export default function LoginPage() {
   const { login, recoverSession } = useAuth();
@@ -29,6 +31,10 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [signingIn, setSigningIn] = useState(false);
   const [passwordResetNotice, setPasswordResetNotice] = useState(false);
+  const [staff, setStaff] = useState<LoginStaffOption[]>([]);
+  const [selectedUsername, setSelectedUsername] = useState("");
+  const [staffLoading, setStaffLoading] = useState(false);
+  const [requirePassword, setRequirePassword] = useState(true);
 
   useEffect(() => {
     const host = window.location.host;
@@ -48,6 +54,30 @@ export default function LoginPage() {
     }
     setPasswordResetNotice(new URLSearchParams(window.location.search).get("reset") === "1");
   }, []);
+
+  useEffect(() => {
+    if (!tenantSlug) return;
+    let active = true;
+    setStaffLoading(true);
+    void api.get<{ staff: LoginStaffOption[]; requirePassword: boolean }>("/api/auth/staff")
+      .then((config) => {
+        if (!active) return;
+        setError(null);
+        const options = Array.isArray(config.staff) ? config.staff : [];
+        setStaff(options);
+        setRequirePassword(config.requirePassword !== false);
+        let remembered = "";
+        try { remembered = localStorage.getItem(REMEMBERED_USERNAME_KEY) ?? ""; } catch { /* optional */ }
+        const selected = options.find((option) => option.username === remembered) ?? options[0];
+        setSelectedUsername(selected?.username ?? "");
+        setUsername(selected?.username ?? "");
+      })
+      .catch((err) => {
+        if (active) setError(err instanceof Error ? err.message : "Could not load store staff.");
+      })
+      .finally(() => { if (active) setStaffLoading(false); });
+    return () => { active = false; };
+  }, [tenantSlug]);
 
   useEffect(() => {
     if (isControlPlaneHost(window.location.host)) return;
@@ -157,21 +187,40 @@ export default function LoginPage() {
           </div>
 
           <div>
-            <label htmlFor="username" className="mb-1.5 block text-sm font-medium text-[var(--oh-text-secondary)]">Username</label>
-            <input
-              id="username"
-              name="username"
-              type="text"
-              value={username}
-              onChange={(event) => setUsername(event.target.value)}
-              autoComplete="username"
-              autoCapitalize="none"
-              spellCheck={false}
-              required
-              maxLength={120}
-              placeholder="Username"
-              className="h-11 w-full rounded-md border border-[var(--oh-border-strong)] bg-[var(--oh-surface-elevated)] px-3 text-base text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-placeholder)] focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/20"
-            />
+            <label htmlFor="username" className="mb-1.5 block text-sm font-medium text-[var(--oh-text-secondary)]">{tenantSlug ? "Select user" : "Username"}</label>
+            {tenantSlug ? (
+              <select
+                id="username"
+                name="username"
+                value={selectedUsername}
+                onChange={(event) => {
+                  setSelectedUsername(event.target.value);
+                  setUsername(event.target.value);
+                }}
+                required
+                disabled={staffLoading || staff.length === 0}
+                className="h-11 w-full rounded-md border border-[var(--oh-border-strong)] bg-[var(--oh-surface-elevated)] px-3 text-base text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/20 disabled:opacity-60"
+              >
+                {staffLoading && <option value="">Loading staff…</option>}
+                {!staffLoading && staff.length === 0 && <option value="">No staff available</option>}
+                {staff.map((person) => <option key={person.id} value={person.username}>{person.name || person.username}</option>)}
+              </select>
+            ) : (
+              <input
+                id="username"
+                name="username"
+                type="text"
+                value={username}
+                onChange={(event) => setUsername(event.target.value)}
+                autoComplete="username"
+                autoCapitalize="none"
+                spellCheck={false}
+                required
+                maxLength={120}
+                placeholder="Username"
+                className="h-11 w-full rounded-md border border-[var(--oh-border-strong)] bg-[var(--oh-surface-elevated)] px-3 text-base text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-placeholder)] focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/20"
+              />
+            )}
           </div>
 
           <div>
@@ -184,7 +233,7 @@ export default function LoginPage() {
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 autoComplete="current-password"
-                required
+                required={controlPlane || !tenantSlug || requirePassword}
                 maxLength={256}
                 placeholder="Password"
                 className="h-full min-w-0 flex-1 bg-transparent px-3 text-base text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-placeholder)]"
@@ -231,7 +280,7 @@ export default function LoginPage() {
 
           <button
             type="submit"
-            disabled={signingIn}
+            disabled={signingIn || (Boolean(tenantSlug) && (!selectedUsername || staffLoading))}
             className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-[var(--oh-primary)] text-base font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-wait disabled:opacity-70"
           >
             <LogIn size={18} aria-hidden="true" />

@@ -36,14 +36,24 @@ public class UserService {
     }
 
     public User authenticate(Long vendorId, String username, String rawPassword) {
+        return authenticate(vendorId, username, rawPassword, true);
+    }
+
+    public User authenticate(Long vendorId, String username, String rawPassword, boolean requirePassword) {
         if (vendorId == null) {
             throw new BusinessException(40101, "Invalid username or password");
         }
         User u = userMapper.findByVendorAndUsername(vendorId, username);
-        if (u == null || !encoder.matches(rawPassword, u.getPasswordHash())) {
+        if (u == null || (requirePassword
+                && (rawPassword == null || rawPassword.isBlank() || !encoder.matches(rawPassword, u.getPasswordHash())))) {
             throw new BusinessException(40101, "Invalid username or password");
         }
         return u;
+    }
+
+    public List<com.orithos.modules.user.mapper.LoginStaffOption> loginOptions(Long vendorId) {
+        if (vendorId == null) throw new BusinessException(40100, "Store tenant is required");
+        return userMapper.findLoginOptionsByVendor(vendorId);
     }
 
     public void changePassword(Long userId, String currentPassword, String newPassword) {

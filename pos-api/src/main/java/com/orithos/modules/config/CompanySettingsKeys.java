@@ -24,6 +24,7 @@ public final class CompanySettingsKeys {
     public static final String PRICE_ROUNDING = "company.general.price_rounding_mode";
     public static final String COST_METHOD = "company.general.cost_calculation_method";
     public static final String PROFITABILITY = "company.general.profitability_display";
+    public static final String LOGIN_REQUIRE_PASSWORD = "company.login.require_password";
     public static final String OWNED_PREFIX = "meta.owned.";
 
     /** Default values applied when a key is absent (AU bottle-shop pilot). */
@@ -48,7 +49,7 @@ public final class CompanySettingsKeys {
         // Login
         d.put("company.login.login_type", "USERNAME_PASSWORD");
         d.put("company.login.mask_username", "false");
-        d.put("company.login.require_password", "true");
+        d.put(LOGIN_REQUIRE_PASSWORD, "true");
         d.put("company.login.general_auto_logout_seconds", "7200");
         d.put("company.login.sell_auto_logout_seconds", "0");
         d.put("company.login.auto_logout_during_sale", "false");

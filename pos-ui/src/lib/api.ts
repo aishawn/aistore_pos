@@ -96,6 +96,7 @@ function clearSession() {
 
 function isAuthExemptPath(path: string): boolean {
   return path.startsWith("/api/auth/login")
+    || path.startsWith("/api/auth/staff")
     || path.startsWith("/api/auth/logout")
     || path.startsWith("/api/auth/refresh")
     || path.startsWith("/api/auth/change-password")

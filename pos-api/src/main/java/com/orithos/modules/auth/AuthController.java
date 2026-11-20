@@ -9,6 +9,8 @@ import com.orithos.modules.auth.dto.LoginRequest;
 import com.orithos.modules.auth.dto.ResetPasswordRequest;
 import com.orithos.modules.auth.dto.TokenResponse;
 import com.orithos.modules.auth.dto.WorkContextRequest;
+import com.orithos.modules.config.CompanySettingsService;
+import com.orithos.modules.config.CompanySettingsKeys;
 import com.orithos.modules.user.UserService;
 import com.orithos.modules.user.entity.User;
 import com.orithos.modules.vendor.Vendor;
@@ -53,6 +55,7 @@ public class AuthController {
     private final PermissionAccess permissionAccess;
     private final OutletAccessService outletAccess;
     private TenantShardRegistry tenantShardRegistry;
+    private CompanySettingsService companySettings;
 
     public AuthController(UserService userService, JwtService jwtService,
                           TokenStore tokenStore, JwtProperties props,
@@ -82,6 +85,11 @@ public class AuthController {
         this.tenantShardRegistry = tenantShardRegistry;
     }
 
+    @Autowired(required = false)
+    public void setCompanySettings(CompanySettingsService companySettings) {
+        this.companySettings = companySettings;
+    }
+
     @PostMapping("/login")
     public ApiResult<TokenResponse> login(@Valid @RequestBody LoginRequest req) {
         TenantHolder.ResolvedTenant requestTenant = TenantHolder.get();
@@ -91,7 +99,10 @@ public class AuthController {
             throw new BusinessException(40200, "This trial or store is no longer available");
         }
         routeToVendor(vendor);
-        User u = userService.authenticate(vendor.getId(), req.username(), req.password());
+        String requirePasswordValue = companySettings == null ? "true" : companySettings.getString(
+                CompanySettingsKeys.LOGIN_REQUIRE_PASSWORD, vendor.getId(), "true");
+        boolean requirePassword = onControlPlane || loginRequiresPassword(requirePasswordValue);
+        User u = userService.authenticate(vendor.getId(), req.username(), req.password(), requirePassword);
         if (u.getOutletId() == null) {
             throw new BusinessException(40104, "User is not bound to an outlet");
         }
@@ -115,6 +126,26 @@ public class AuthController {
         return ApiResult.ok(new TokenResponse(
                 tokens.accessToken(), tokens.refreshToken(), tokens.expiresIn(), tokens.user(),
                 redirectHost, null));
+    }
+
+    @GetMapping("/staff")
+    public ApiResult<LoginStaffResponse> loginStaff() {
+        TenantHolder.ResolvedTenant tenant = TenantHolder.get();
+        if (tenant == null || tenant.controlPlane() || tenant.vendor() == null) {
+            throw new BusinessException(40001, "Staff selection is available on a store login page");
+        }
+        routeToVendor(tenant.vendor());
+        String required = companySettings == null ? "true" : companySettings.getString(
+                CompanySettingsKeys.LOGIN_REQUIRE_PASSWORD, tenant.vendorId(), "true");
+        boolean requirePassword = loginRequiresPassword(required);
+        return ApiResult.ok(new LoginStaffResponse(userService.loginOptions(tenant.vendorId()), requirePassword));
+    }
+
+    public record LoginStaffResponse(List<com.orithos.modules.user.mapper.LoginStaffOption> staff,
+                                    boolean requirePassword) {}
+
+    private static boolean loginRequiresPassword(String value) {
+        return !("false".equalsIgnoreCase(value) || "0".equals(value) || "no".equalsIgnoreCase(value));
     }
 
     @PostMapping("/bootstrap")

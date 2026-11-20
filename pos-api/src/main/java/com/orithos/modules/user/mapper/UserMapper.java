@@ -17,6 +17,19 @@ public interface UserMapper {
             """)
     User findByVendorAndUsername(@Param("vendorId") Long vendorId, @Param("username") String username);
 
+    @Select("""
+            SELECT id, name, username FROM app_user
+            WHERE vendor_id = #{vendorId} AND deleted_at IS NULL
+              AND outlet_id IS NOT NULL AND COALESCE(is_api_user, 0) = 0
+            ORDER BY is_admin DESC, name ASC, id ASC
+            """)
+    @ConstructorArgs({
+            @Arg(column = "id", javaType = Long.class, id = true),
+            @Arg(column = "name", javaType = String.class),
+            @Arg(column = "username", javaType = String.class)
+    })
+    List<LoginStaffOption> findLoginOptionsByVendor(@Param("vendorId") Long vendorId);
+
     @Select("SELECT * FROM app_user WHERE email = #{email} AND deleted_at IS NULL LIMIT 1")
     User findByEmail(String email);
 
