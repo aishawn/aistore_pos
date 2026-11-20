@@ -17,3 +17,7 @@ Authenticated Playwright runs on Microsoft Edge completed the red-wine recommend
 ## Scope and limits
 
 Requests used the deterministic recommendation and catalog paths; no paid model call or POS business write was made. Authentication created a normal session and the browser/API checks logged out or closed the session afterward. This verifies metadata and disclosure rendering on the deployed SHA. It does not assess whether inferred tasting profiles are accurate; that still needs a labeled wine sample set and sommelier/store-staff ratings.
+
+## CI status
+
+`Backend Java 21 Verify` passed for commit `1129685f`. `Project fact library` failed at `python scripts/check-project-docs.py`. Local execution and all 12 `test_project_docs.py` unit tests pass, but a clean archive of the commit reproduces 86 missing required files/links: the root `.gitignore` rule `/docs/` leaves most of the local fact library out of Git. Treat the documentation workflow as blocked until the repository's tracked-docs policy is resolved; this does not invalidate the online recommendation checks.
