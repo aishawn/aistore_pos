@@ -3,6 +3,7 @@ import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
+import { assistantRuntimePreflight } from "./ai-eval/stock-clarification-acceptance.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const envPath = path.join(root, ".env");
@@ -19,9 +20,16 @@ const base = (process.env.PILOT_BASE_URL ?? "https://demo.orithos.com.au").repla
 const password = process.env.INITIAL_ADMIN_PASSWORD ?? env.INITIAL_ADMIN_PASSWORD;
 const username = process.env.PILOT_USERNAME ?? "admin";
 const sourceCommit = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
+const deployedSha = process.env.PILOT_DEPLOYMENT_SHA?.toLowerCase() ?? null;
+const runtimeResponse = await fetch(`${base}/api/public/version`, { signal: AbortSignal.timeout(15000) });
+const runtime = runtimeResponse.ok ? await runtimeResponse.json().catch(() => null) : null;
+const runtimePreflight = assistantRuntimePreflight(runtime, sourceCommit);
 const deploymentVerified = process.env.PILOT_DEPLOYMENT_VERIFIED === "true"
-  && /^[\da-f]{40}$/i.test(process.env.PILOT_DEPLOYMENT_SHA ?? "");
-const runtimeCommit = deploymentVerified ? process.env.PILOT_DEPLOYMENT_SHA.toLowerCase() : null;
+  && /^[\da-f]{40}$/i.test(deployedSha ?? "")
+  && deployedSha === sourceCommit
+  && runtimePreflight.allowed
+  && runtimePreflight.backendCommit === deployedSha;
+const runtimeCommit = runtimePreflight.backendCommit;
 if (!password) throw new Error("MISSING_ADMIN_PASSWORD");
 
 const evidence = {
@@ -29,12 +37,24 @@ const evidence = {
   sourceCommit,
   deploymentShaVerified: deploymentVerified,
   runtimeCommit,
+  runtimeIdentity: runtimePreflight,
   target: base,
   scope: "admin-only AI report metrics read-only regression; no business or configuration writes",
   checks: [],
   writes: [],
 };
 const record = (name, status, detail = "") => evidence.checks.push({ name, status, detail });
+const output = process.env.PILOT_UAT_OUTPUT_PATH
+  ? path.resolve(root, process.env.PILOT_UAT_OUTPUT_PATH)
+  : path.join(root, ".local", "ai-eval", `ai-metrics-online-${new Date().toISOString().replaceAll(/[:.]/g, "-")}.json`);
+if (!deploymentVerified) {
+  record("runtime identity", "BLOCKED", runtimePreflight.reason ?? "DEPLOYMENT_SHA_NOT_VERIFIED");
+  evidence.status = "BLOCKED";
+  fs.mkdirSync(path.dirname(output), { recursive: true });
+  fs.writeFileSync(output, `${JSON.stringify(evidence, null, 2)}\n`);
+  console.log(JSON.stringify({ output, status: evidence.status, runtimeCommit, sourceCommit }));
+  process.exit(2);
+}
 const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
 
@@ -116,9 +136,6 @@ try {
   await browser.close();
 }
 
-const output = process.env.PILOT_UAT_OUTPUT_PATH
-  ? path.resolve(root, process.env.PILOT_UAT_OUTPUT_PATH)
-  : path.join(root, "docs", `UAT_AI_METRICS_ONLINE_${new Date().toISOString().replaceAll(/[:.]/g, "-")}.json`);
 fs.mkdirSync(path.dirname(output), { recursive: true });
 fs.writeFileSync(output, `${JSON.stringify(evidence, null, 2)}\n`);
 console.log(JSON.stringify(evidence, null, 2));

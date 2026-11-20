@@ -100,3 +100,12 @@ test("provenance UI UAT validates runtime SHA before creating a browser session"
   assert.ok(guard < source.indexOf("const browser = await chromium.launch"));
   assert.ok(guard < source.indexOf("/api/auth/login"));
 });
+
+test("AI metrics UAT validates deployed SHA before login and assistant seed requests", () => {
+  const source = fs.readFileSync(path.join(repoRoot, "scripts", "pilot-ai-metrics-uat.mjs"), "utf8");
+  const guard = source.indexOf("if (!deploymentVerified)");
+
+  assert.notEqual(guard, -1);
+  assert.ok(guard < source.indexOf("const browser = await chromium.launch"));
+  assert.ok(guard < source.indexOf("/api/ai/assistant"));
+});
