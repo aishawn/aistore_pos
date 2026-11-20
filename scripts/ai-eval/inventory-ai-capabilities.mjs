@@ -17,7 +17,7 @@ const capabilitiesPath = path.join(root, "pos-api", "docs", "AI_QUESTION_CAPABIL
 
 const SEED_EXPECTED_INTENTS = [
   "report_sales", "report_qty", "report_aov", "report_stock", "report_dead_stock", "report_adhoc",
-  "report_stock_value", "product_count",
+  "report_stock_summary", "report_stock_value", "product_count",
   "search_product", "search_customer", "navigate", "guided_action", "entity_action", "sale_action", "qa", "unknown",
 ];
 /** Intents documented in AI_QUESTION_CAPABILITIES; all should appear in seed_ai_intent INSERT rows. */
