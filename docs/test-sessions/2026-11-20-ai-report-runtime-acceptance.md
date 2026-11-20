@@ -26,3 +26,7 @@ After the documentation-only release, source SHA and frontend/backend runtime SH
 ## Offline harness
 
 At source SHA `41e8b92e87f824edd7650f1485d647bf2b693379`, the offline AI evaluation tests passed 39/39 and forecast/report tooling tests passed 46/46 locally. These tests cover evaluator assertions and metric/report utilities; they do not measure online model quality or forecast accuracy. GitHub Java 21 verification passed for `41e8b92e`. Project fact library verification still fails in a clean checkout because its required documentation is ignored or untracked.
+
+## Latest deployed SHA
+
+At `e02799a91045d83a3138792e11128642b295c072`, Demo and SKR frontend/backend SHA matched the test source. Report/inventory acceptance passed 14/14 per store; complete-week sales acceptance passed 4/4 per store. All four reports recorded zero failures, zero blocked checks, and zero business writes. The complete-week period was Adelaide `2026-11-09` to `2026-11-15`. Raw outputs are in local `.local/ai-eval/`.
