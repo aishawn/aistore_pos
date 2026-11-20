@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.data.redis.RedisProperties;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.SetOperations;
 import org.springframework.data.redis.core.ValueOperations;
 
 import java.time.Clock;
@@ -35,6 +36,7 @@ class ShopfrontSyncWatermarkTest {
     private StringRedisTemplate redis;
     private VendorMapper vendorMapper;
     private ValueOperations<String, String> values;
+    private SetOperations<String, String> sets;
     private ShopfrontSyncWatermark watermark;
 
     @Test
@@ -52,7 +54,11 @@ class ShopfrontSyncWatermarkTest {
         redis = mock(StringRedisTemplate.class);
         vendorMapper = mock(VendorMapper.class);
         values = mock(ValueOperations.class);
+        sets = mock(SetOperations.class);
         when(redis.opsForValue()).thenReturn(values);
+        when(redis.opsForSet()).thenReturn(sets);
+        when(sets.members("orithos:reports:v1:sync-days:demo.orithos.com.au"))
+                .thenReturn(Set.of());
         TenantProperties tenantProperties = new TenantProperties();
         tenantProperties.setBaseDomain("orithos.com.au");
         watermark = new ShopfrontSyncWatermark(redis, vendorMapper, tenantProperties,
@@ -66,7 +72,6 @@ class ShopfrontSyncWatermarkTest {
         when(vendorMapper.findById(55L)).thenReturn(vendor);
         when(values.get("orithos:reports:v1:sync-stamp:demo.orithos.com.au"))
                 .thenReturn(Long.toString(NOW.minusSeconds(60).toEpochMilli()));
-
         Optional<ShopfrontSyncWatermark.Snapshot> result = watermark.read(tenant(55L));
 
         assertTrue(result.isPresent());
@@ -75,6 +80,30 @@ class ShopfrontSyncWatermarkTest {
         verify(vendorMapper).findById(55L);
         verify(values).get("orithos:reports:v1:sync-stamp:demo.orithos.com.au");
         verify(values, never()).get("orithos:reports:v1:sync-stamp:global");
+    }
+
+    @Test
+    void readsSuccessfulBusinessDayCoverageForRequestedReportWindow() {
+        Vendor vendor = new Vendor();
+        vendor.setSubdomain("demo");
+        when(vendorMapper.findById(55L)).thenReturn(vendor);
+        when(values.get("orithos:reports:v1:sync-stamp:demo.orithos.com.au"))
+                .thenReturn(Long.toString(NOW.minusSeconds(60).toEpochMilli()));
+        when(values.get("orithos:reports:v1:sync-through:demo.orithos.com.au"))
+                .thenReturn("2026-11-20");
+        when(sets.members("orithos:reports:v1:sync-days:demo.orithos.com.au"))
+                .thenReturn(Set.of("2026-11-19", "2026-11-20", "malformed"));
+
+        ShopfrontSyncWatermark.Snapshot result = watermark.read(tenant(55L),
+                java.time.LocalDate.parse("2026-11-19"), java.time.LocalDate.parse("2026-11-20"))
+                .orElseThrow();
+
+        assertTrue(result.fresh());
+        assertEquals(java.time.LocalDate.parse("2026-11-20"), result.latestThroughDay());
+        assertTrue(result.covers(java.time.LocalDate.parse("2026-11-19"),
+                java.time.LocalDate.parse("2026-11-20")));
+        assertFalse(result.covers(java.time.LocalDate.parse("2026-11-18"),
+                java.time.LocalDate.parse("2026-11-20")));
     }
 
     @Test

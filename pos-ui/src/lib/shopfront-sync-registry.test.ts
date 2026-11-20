@@ -5,7 +5,9 @@ import { recordShopfrontSyncForHost, shopfrontSyncStampForHost, shopfrontSyncSta
 test("sync stamps normalize host names and remain available in the current process", async () => {
   const host = "sync-stamp-fixture.orithos.com.au";
   const at = Date.now();
-  await recordShopfrontSyncForHost(` ${host.toUpperCase()} `, at);
+  await recordShopfrontSyncForHost(` ${host.toUpperCase()} `, at, [
+    { fromDay: "2026-11-19", toDay: "2026-11-20" },
+  ], "2026-11-20");
 
   assert.equal(await shopfrontSyncStampForHost(host), at);
   assert.equal(await shopfrontSyncStampForHost(host.toUpperCase()), at);

@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Set;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -69,11 +70,15 @@ class NativeReportQueryNodeTest {
                 .thenReturn(new NativeAiReportQueryService.Result(
                         List.of(Map.of("name", "Test wine")), null, null,
                         AiReportDataSourceRegistry.DATA_SOURCE_NAME));
-        when(syncWatermark.read(any(TenantContext.class)))
+        Set<LocalDate> fullWindow = LocalDate.parse("2026-10-20")
+                .datesUntil(LocalDate.parse("2026-11-19")).collect(java.util.stream.Collectors.toSet());
+        when(syncWatermark.read(any(TenantContext.class), any(LocalDate.class), any(LocalDate.class)))
                 .thenReturn(Optional.of(new ShopfrontSyncWatermark.Snapshot(
-                                Instant.parse("2026-11-20T01:30:00Z"), true)))
+                                Instant.parse("2026-11-20T01:30:00Z"), true, fullWindow,
+                                LocalDate.parse("2026-11-19"))))
                 .thenReturn(Optional.of(new ShopfrontSyncWatermark.Snapshot(
-                                Instant.parse("2026-11-20T00:00:00Z"), false)));
+                                Instant.parse("2026-11-20T00:00:00Z"), false, fullWindow,
+                                LocalDate.parse("2026-11-19"))));
 
         Map<String, Object> fresh = node.apply(state);
         Map<String, Object> stale = node.apply(state);
@@ -82,6 +87,67 @@ class NativeReportQueryNodeTest {
         assertEquals("2026-11-20T01:30:00Z", fresh.get("report_data_as_of"));
         assertEquals("incomplete", stale.get("report_data_status"));
         assertEquals("2026-11-20T00:00:00Z", stale.get("report_data_as_of"));
+    }
+
+    @Test
+    void recentTwoDaySyncDoesNotProveThirtyDayDeadStockCoverage() {
+        NativeAiReportQueryService queryService = mock(NativeAiReportQueryService.class);
+        ShopfrontSyncWatermark syncWatermark = mock(ShopfrontSyncWatermark.class);
+        NativeReportQueryNode node = new NativeReportQueryNode(queryService,
+                new ReportPeriodResolver(), mock(ReportQueryService.class), syncWatermark);
+        OverAllState state = mock(OverAllState.class);
+        when(state.value(anyString())).thenReturn(Optional.empty());
+        when(state.value("intent", String.class)).thenReturn(Optional.of("report_dead_stock"));
+        when(state.value("question", String.class)).thenReturn(Optional.of("dead stock last 30 days"));
+        when(state.value("report_from")).thenReturn(Optional.of(LocalDateTime.of(2026, 10, 20, 0, 0)));
+        when(state.value("report_to")).thenReturn(Optional.of(LocalDateTime.of(2026, 11, 19, 0, 0)));
+        when(state.value("vendor_id")).thenReturn(Optional.of(55L));
+        when(state.value("outlet_id")).thenReturn(Optional.of(87L));
+        when(state.value("can_report_query")).thenReturn(Optional.of(true));
+        when(state.value("slots")).thenReturn(Optional.of(Map.of("days", "30")));
+        when(queryService.query(any(TenantContext.class), eq("report_dead_stock"), any(), any()))
+                .thenReturn(new NativeAiReportQueryService.Result(List.of(Map.of("name", "Test wine")), null, null,
+                        AiReportDataSourceRegistry.DATA_SOURCE_NAME));
+        when(syncWatermark.read(any(TenantContext.class), any(LocalDate.class), any(LocalDate.class)))
+                .thenReturn(Optional.of(new ShopfrontSyncWatermark.Snapshot(
+                        Instant.parse("2026-11-20T01:30:00Z"), true,
+                        Set.of(LocalDate.parse("2026-11-18"), LocalDate.parse("2026-11-19")),
+                        LocalDate.parse("2026-11-19"))));
+
+        Map<String, Object> result = node.apply(state);
+
+        assertEquals("incomplete", result.get("report_data_status"));
+    }
+
+    @Test
+    void recentHistoricalBackfillDoesNotProveReportWindowEndIsCurrent() {
+        NativeAiReportQueryService queryService = mock(NativeAiReportQueryService.class);
+        ShopfrontSyncWatermark syncWatermark = mock(ShopfrontSyncWatermark.class);
+        NativeReportQueryNode node = new NativeReportQueryNode(queryService,
+                new ReportPeriodResolver(), mock(ReportQueryService.class), syncWatermark);
+        OverAllState state = mock(OverAllState.class);
+        when(state.value(anyString())).thenReturn(Optional.empty());
+        when(state.value("intent", String.class)).thenReturn(Optional.of("report_dead_stock"));
+        when(state.value("question", String.class)).thenReturn(Optional.of("dead stock last 30 days"));
+        when(state.value("report_from")).thenReturn(Optional.of(LocalDateTime.of(2026, 10, 20, 0, 0)));
+        when(state.value("report_to")).thenReturn(Optional.of(LocalDateTime.of(2026, 11, 19, 0, 0)));
+        when(state.value("vendor_id")).thenReturn(Optional.of(55L));
+        when(state.value("outlet_id")).thenReturn(Optional.of(87L));
+        when(state.value("can_report_query")).thenReturn(Optional.of(true));
+        when(state.value("slots")).thenReturn(Optional.of(Map.of("days", "30")));
+        when(queryService.query(any(TenantContext.class), eq("report_dead_stock"), any(), any()))
+                .thenReturn(new NativeAiReportQueryService.Result(List.of(Map.of("name", "Test wine")), null, null,
+                        AiReportDataSourceRegistry.DATA_SOURCE_NAME));
+        Set<LocalDate> fullWindow = LocalDate.parse("2026-10-20")
+                .datesUntil(LocalDate.parse("2026-11-19")).collect(java.util.stream.Collectors.toSet());
+        when(syncWatermark.read(any(TenantContext.class), any(LocalDate.class), any(LocalDate.class)))
+                .thenReturn(Optional.of(new ShopfrontSyncWatermark.Snapshot(
+                        Instant.parse("2026-11-20T01:30:00Z"), true, fullWindow,
+                        LocalDate.parse("2026-11-17"))));
+
+        Map<String, Object> result = node.apply(state);
+
+        assertEquals("incomplete", result.get("report_data_status"));
     }
 
     @Test

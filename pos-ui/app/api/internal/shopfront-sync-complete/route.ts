@@ -32,6 +32,18 @@ export async function POST(request: NextRequest) {
     || (body.syncRunId !== null && body.syncRunId !== undefined && !Number.isSafeInteger(body.syncRunId))) {
     return NextResponse.json({ message: "Invalid sync completion record" }, { status: 400 });
   }
+  const coverageStart = new Date(`${body.toDay}T00:00:00.000Z`);
+  coverageStart.setUTCDate(coverageStart.getUTCDate() - 179);
+  const earliestCoveredDay = coverageStart.toISOString().slice(0, 10);
+  const coverageRanges = body.coverageRanges ?? [{ fromDay: body.fromDay, toDay: body.toDay }];
+  if (!Array.isArray(coverageRanges) || coverageRanges.length > 512
+    || coverageRanges.some((range) => !range || typeof range !== "object"
+      || !day(range.fromDay) || !day(range.toDay)
+      || String(range.fromDay) > String(range.toDay)
+      || String(range.fromDay) < earliestCoveredDay
+      || String(range.toDay) > String(body.toDay))) {
+    return NextResponse.json({ message: "Invalid sync coverage ranges" }, { status: 400 });
+  }
 
   try {
     const knownHosts = STORE_TARGET_HOSTS[body.storeKey] || [];
@@ -40,6 +52,8 @@ export async function POST(request: NextRequest) {
       status: body.status as "completed" | "partial" | "failed",
       hosts: knownHosts,
       at: Date.now(),
+      coverageRanges: coverageRanges as Array<{ fromDay: string; toDay: string }>,
+      latestThroughDay: String(body.toDay),
       record: recordShopfrontSyncForHost,
       clear: clearReportingCache,
     });

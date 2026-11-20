@@ -335,13 +335,52 @@ def report_sync_notification_token() -> str:
             or settings.pos_api_token.strip())
 
 
-async def notify_report_refresh(store_key: str, start: date, end: date, run_id: int | None, status: str) -> None:
+def completed_sales_coverage_ranges(
+    db: Session, store_key: str, through_day: date, lookback_days: int = 180,
+) -> list[dict[str, str]]:
+    window_start = through_day - timedelta(days=max(1, lookback_days) - 1)
+    runs = db.scalars(select(SyncRun).where(
+        SyncRun.store_key == store_key,
+        SyncRun.status == "completed",
+        SyncRun.from_date.is_not(None),
+        SyncRun.to_date >= window_start.isoformat(),
+        SyncRun.from_date <= through_day.isoformat(),
+    )).all()
+    intervals: list[tuple[date, date]] = []
+    for run in runs:
+        counts = run.counts if isinstance(run.counts, dict) else {}
+        pos_import = counts.get("pos_import")
+        if not isinstance(pos_import, dict) or pos_import.get("status") != "completed":
+            continue
+        try:
+            start = max(date.fromisoformat(run.from_date), window_start)
+            end = min(date.fromisoformat(run.to_date), through_day)
+        except (TypeError, ValueError):
+            continue
+        if start <= end:
+            intervals.append((start, end))
+
+    merged: list[list[date]] = []
+    for start, end in sorted(intervals):
+        if merged and start <= merged[-1][1] + timedelta(days=1):
+            merged[-1][1] = max(merged[-1][1], end)
+        else:
+            merged.append([start, end])
+    return [{"fromDay": start.isoformat(), "toDay": end.isoformat()} for start, end in merged]
+
+
+async def notify_report_refresh(
+    store_key: str, start: date, end: date, run_id: int | None, status: str,
+    coverage_ranges: list[dict[str, str]] | None = None,
+) -> None:
     url = report_sync_notification_url()
     token = report_sync_notification_token()
     if not url or not token:
         return
     payload = {"storeKey": store_key, "fromDay": start.isoformat(), "toDay": end.isoformat(),
                "syncRunId": run_id, "status": status}
+    if coverage_ranges is not None:
+        payload["coverageRanges"] = coverage_ranges
     try:
         async with httpx.AsyncClient(timeout=15) as client:
             response = await client.post(url, json=payload, headers={"X-Shopfront-Integration-Token": token})
@@ -2625,7 +2664,10 @@ async def _sync_history_chunk(
             catalog_checkpoint.updated_at = datetime.now(timezone.utc)
         db.commit()
         if start is not None and end is not None:
-            await notify_report_refresh(store_key, start, end, run.id, "completed")
+            coverage_ranges = completed_sales_coverage_ranges(db, store_key, end)
+            await notify_report_refresh(
+                store_key, start, end, run.id, "completed", coverage_ranges,
+            )
         await stop_keepalive()
         return True
     except Exception as exc:

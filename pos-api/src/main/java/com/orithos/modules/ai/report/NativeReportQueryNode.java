@@ -142,14 +142,18 @@ public class NativeReportQueryNode implements NodeAction {
         });
         var syncSnapshot = "report_dead_stock".equals(intent) && syncWatermark != null
                 && tenant.canQueryReport() && tenant.requireOutletId() != null
-                ? syncWatermark.read(tenant) : java.util.Optional.<ShopfrontSyncWatermark.Snapshot>empty();
+                ? syncWatermark.read(tenant, window.from().toLocalDate(),
+                        window.toExclusive().minusNanos(1).toLocalDate())
+                : java.util.Optional.<ShopfrontSyncWatermark.Snapshot>empty();
         String dataAsOf = "report_dead_stock".equals(intent)
                 ? syncSnapshot.map(snapshot -> snapshot.syncedAt().toString()).orElse(null)
                 : result.dataAsOf() == null ? latestDataAsOf(result.rows()) : result.dataAsOf();
         String rowStatus = reportDataStatus(result.rows());
         String reportSource = dataSource(result.rows(), result.dataSource());
         boolean deadStockFreshnessUnverified = "report_dead_stock".equals(intent)
-                && syncSnapshot.map(snapshot -> !snapshot.fresh()).orElse(true);
+                && syncSnapshot.map(snapshot -> !snapshot.fresh()
+                        || !snapshot.covers(window.from().toLocalDate(),
+                        window.toExclusive().minusNanos(1).toLocalDate())).orElse(true);
         String dataStatus = result.error() != null ? "unavailable"
                 : "unavailable".equals(rowStatus) ? "unavailable"
                 : deadStockFreshnessUnverified ? "incomplete"

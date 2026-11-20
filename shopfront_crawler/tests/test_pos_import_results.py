@@ -256,6 +256,28 @@ def db_session():
     engine.dispose()
 
 
+def test_completed_sales_coverage_merges_only_successful_native_import_ranges(db_session):
+    db_session.add_all([
+        SyncRun(store_key="skr", status="completed", from_date="2026-10-01", to_date="2026-10-14",
+                counts={"pos_import": {"status": "completed"}}),
+        SyncRun(store_key="skr", status="completed", from_date="2026-10-15", to_date="2026-10-20",
+                counts={"pos_import": {"status": "completed"}}),
+        SyncRun(store_key="skr", status="failed", from_date="2026-10-21", to_date="2026-10-22",
+                counts={"pos_import": {"status": "completed"}}),
+        SyncRun(store_key="skr", status="completed", from_date="2026-10-21", to_date="2026-10-22",
+                counts={"type": "full_snapshot"}),
+        SyncRun(store_key="other", status="completed", from_date="2026-10-21", to_date="2026-10-22",
+                counts={"pos_import": {"status": "completed"}}),
+    ])
+    db_session.commit()
+
+    result = main.completed_sales_coverage_ranges(
+        db_session, "skr", date(2026, 10, 20), lookback_days=30,
+    )
+
+    assert result == [{"fromDay": "2026-10-01", "toDay": "2026-10-20"}]
+
+
 def seed_snapshot(db: Session) -> None:
     sale = Sale(
         store_key="skr",
