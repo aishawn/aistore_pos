@@ -63,3 +63,31 @@
 - 本地验证：`RetailRegisterControllerTest`（2）与 `RegisterSessionServiceTest`（5）PASS；`company-setting-options.test.ts`（4）PASS；`npm run typecheck` PASS；限定 ESLint 退出码 0、0 errors、13 warnings（既有 React hooks 规则与 `ODOO_QUOTE_TIMEOUT_MS` 未使用告警）。`git diff --check` PASS。
 - 验收边界：尚未部署，未做线上收银员登录或现金调整写入；Shopfront 只读、未复核理由列表设置值。因此只证明本地代码路径与租户作用域，不证明线上配置/页面已生效，也不构成 Settings 与 Shopfront 全面对齐结论。
 
+## 2026-11-21 定价 UAT 初次复核（线上 SHA 9bf25860）
+
+- Shopfront 官方 `Determine Product Prices` 文档确认价格点的 `price` 是数量档的整包总价；High Mix 官方示例为 1 件 `$3.50`、6 件 `$15` 时，7 件 `$18.50`，Quantity Rate 为 `$17.50`。Crawler 的 `product_price_points` 明确将 Shopfront 整包价按数量换算为 Orithos 单位价；POS 再将单位价乘档位数量还原整包总价。两处转换与官方示例一致，本轮没有发现重复乘数量问题。
+- 两店当前 frontend/backend 均为 `9bf25860b1436f5b3749fb29ccd9728d654c726b`。只读读回定价设置一致：`HIGH_MIX_PRICE / MATCH_PRICE_POINTS / REDISTRIBUTE`。
+- 两店 `-196 LEMON P/F 6% 330ML` 阶梯一致：`1→$8.99`、`4→$6.7475`、`10→$5.199`（Orithos 存储的单位价）。只读 `/api/sales/quote` 对数量 `1/3/4/7/10` 分别返回 `$8.99/$26.97/$26.99/$53.96/$51.99`，SKR/Demo 完全相同；未创建销售或改变设置。
+- Shopfront GraphQL `families(first:100)` 返回 0 条，SKR/Demo `GET /api/products/filter-options` 也都返回 0 个 family。因此 Family 算法暂无真实 family 样本可做端到端价格 UAT；不能据单测宣称线上 Family 对齐。
+- 本地 Java 21 定向测试 `TierPriceCalculatorTest` + `FamilyPriceCalculatorTest`：18 tests PASS。该结果验证当前已定义规则，不证明未覆盖的促销、价格表继承、客户价或跨 Family 规则与 Shopfront 完全等价。
+- 后续按稳定 Shopfront source ID 核验后，SKR 与 Demo 各有 11,508 个 source ID 映射，source ID 集合相同；每店 11,506 个可见映射商品。Demo 另有 37 条未映射商品，状态均为 `NOT_ACTIVE`。映射商品中有 21 条价格点不同、15 条名称不同、1 条状态不同；这 21 条商品在 Shopfront 均为 `ACTIVE`，POS 对应记录为 `NOT_ACTIVE`、`catalog_confirmed=false` 且没有 `shopfront_source_updated_at`。因此早先按名称推断的 14/51/45 差异和“价格点差异 0”均作废，不作为修复清单。
+- 已排队原有 crawler 全量商品目录同步 job `1256`（source `skr`，目标 SKR + Demo；`products_only=true`，不刷新库存/销售/设置）。截至 2026-11-20 21:44 UTC，状态 `running`、阶段 `products:fetched:1850`、心跳正常；待终态回执后再按 source ID 复核，不重复排队。
+- Shopfront 只用于只读登录及 GraphQL 查询；未选择 Shopfront Register。Orithos 报价使用已有会话要求的 quote 接口，仅生成报价，没有创建 sale 或 cash movement。
+
+## 2026-11-21 定价 UAT 终态复核
+
+- 上述运行中状态已由 crawler API 最新回执取代：job `1256`（11 月 20 日单日目录同步）与 `1257`（11 月 20–21 日，5 个 interval windows）均 `completed`，无错误。查询时没有 queued/running job。
+- 两个回执分别记录向 SKR、Demo 各 upsert 159 和 165 笔销售，0 skipped/rejected/unmatched。`imported` 是接口回执计数，不能区分新增与幂等更新；没有证据表明这些都是新销售。
+- 两个任务均早于 crawler `main` 修复提交 `bfb95cefcae09983fa49cc26cb0304f1160f4544` 启动。该修复显式关闭 `products_only` 任务的销售查询、重放及 POS 导入，已位于 GitHub `main`。生产 `/healthz` 的 `git_sha=unknown`，但运行 source fingerprint `c28be0e1c039d7b799aff216617d6d16aaee16c716cff154af23b100b67d1ec4` 与本地 main 完全相同。新版本尚未由下一次目录专用 job 在线验证销售 upsert 为 0。
+- 修复的定向回归 `test_products_only_job_disables_inventory_in_source_and_pos_paths` 与正常日常销售覆盖 `test_completed_daily_sales_import_advances_report_coverage`：2 passed。
+- 同步后只读 reconciliation：SKR 与 Demo 各有 11,506 条 POS 商品映射；Shopfront 最新完整目录 10,862 个 source ID 全部匹配，`crawler_missing_in_pos=0`。10,862 个商品仅有 102 个条码差异，全部为预期冲突；99 个重复条码涉及 188 个 Shopfront 商品，未解决/未解释差异均为 0。无自动写入或删除。
+- 额外 644 条历史映射被保留；462 条 POS-only 映射均有历史采购单引用。成本审计有 179 条历史成本候选尚未由当前目录确认，需独立复核，不自动改价。
+- 生产调度时区仍是 `Australia/Adelaide`，POS 两店及本地 crawler 配置为 `Australia/Melbourne`。所有 job 空闲后已满足变更条件；Dokploy browser URL 许可校验未通过，本轮没有改线上环境变量或重启服务。
+
+## 2026-11-21 定价 UAT 复验（当前线上 SHA 0e2290c6）
+
+- 2026-11-20 UTC 只读探测确认 SKR/Demo frontend/backend 均部署 `0e2290c6325860eacd64be2e0b2be21197a5fd28`，两店公司时区均为 `Australia/Melbourne`，定价键均为 `HIGH_MIX_PRICE / MATCH_PRICE_POINTS / REDISTRIBUTE`。
+- 使用已有 register session 调用不落销售的 `/api/sales/quote`；SKR 商品 ID `11129`、Demo 商品 ID `22114`，两边商品均为 `ACTIVE` 且 `shopfrontCatalogConfirmed=true`。价格档为 `1→$8.99、4→$6.7475、10→$5.199`；数量 1/3/4/7/10 两边总价均为 `$8.99/$26.97/$26.99/$53.96/$51.99`，对应 GST 为 `$0.82/$2.45/$2.45/$4.91/$4.73`。未创建 sale、未改变设置。
+- 生产 crawler `/api/sync/schedule` 当前报告 `Australia/Adelaide`，本地 crawler `.env` 为 `Australia/Melbourne`；与 SKR/Demo 当前 POS 时区不同。更改生产环境变量需等活动目录 job 和排队增量 job 完成，避免中断同步。
+- 商品目录 job `1256` 仍在进行：source `skr` 映射目标 `skr` + `demo`，`products_only=true`、`full_catalog_snapshot=true`；2026-11-20 22:13 UTC 阶段 `products:fetched:4550`、heartbeat 正常。常规 interval job `1257` queued（已合并 2 个 interval windows）。终态回执与同步后 source ID 差异待查。
+
