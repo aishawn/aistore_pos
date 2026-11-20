@@ -60,7 +60,8 @@ class ClassifyQueryNodeTest {
                 reports, null);
 
         for (String question : new String[]{
-                "有多少个产品？", "商品总数", "how many products do we have?", "catalogue size"
+                "有多少个产品？", "商品总数", "how many products do we have?", "catalogue size",
+                "How many sellable products are in the catalogue?"
         }) {
             OverAllState state = mock(OverAllState.class);
             when(state.value("question", String.class)).thenReturn(Optional.of(question));
@@ -75,7 +76,7 @@ class ClassifyQueryNodeTest {
             assertEquals("/products", result.get("ui_route"), question);
             assertFalse(Boolean.parseBoolean(String.valueOf(result.get("llm_fallback"))), question);
         }
-        org.mockito.Mockito.verify(reports, org.mockito.Mockito.times(4)).countSellableProducts(tenant);
+        org.mockito.Mockito.verify(reports, org.mockito.Mockito.times(5)).countSellableProducts(tenant);
         verifyNoInteractions(chatClient, config, sanitizer, properties);
     }
 

@@ -833,8 +833,8 @@ public class ClassifyQueryNode implements NodeAction {
         return q.matches(".*(?:有多少(?:个)?(?:产品|商品)|(?:产品|商品)(?:一共|总共|总数|数量)(?:有多少|是多少)?|(?:产品|商品)(?:现在)?(?:有多少(?:个|种)?|有几(?:个|种))|一共有多少(?:个)?(?:产品|商品)|(?:产品|商品)有几种|有几种(?:产品|商品)|(?:产品|商品)总共有多少|(?:店里|目录|商品目录)?(?:有多少种|一共有多少种|总共有多少种)(?:产品|商品)|(?:目录|商品目录)(?:里)?(?:有多少|共有多少)(?:个)?(?:商品|产品)?|(?:sku|商品)总数(?:是多少|有多少)?).*[?!.]?$")
                 || q.matches(".*(?:我们|店里|门店|本店)(?:店里)?(?:现在)?(?:一共|总共)?有多少(?:个|种)?(?:产品|商品).*[?!.]?$")
                 || q.matches(".*(?:how many|number of|what(?:'s| is) the number of|total number of) (?:our )?(?:products?|items?|skus?)(?: do we have(?: in (?:our |the )?(?:(?:product )?catalog(?:ue)?|store|shop))?| are there| do we stock| we stock| in (?:our |the )?(?:(?:product )?catalog(?:ue)?|store|shop)| (?:are|is) in (?:our |the )?(?:(?:product )?catalog(?:ue)?|store|shop))?[?!.]?$" )
-                || q.matches(".*how many (?:products?|items?|skus?) (?:are|is) (?:in|on) (?:the )?(?:product )?catalog(?:ue)?[?!.]?$")
-                || q.matches(".*how many (?:products?|items?|skus?) (?:in|on) (?:our |the )?(?:(?:product )?catalog(?:ue)?|store|shop)[?!.]?$")
+                || q.matches(".*how many (?:sellable )?(?:products?|items?|skus?) (?:are|is) (?:in|on) (?:the )?(?:product )?catalog(?:ue)?[?!.]?$")
+                || q.matches(".*how many (?:sellable )?(?:products?|items?|skus?) (?:in|on) (?:our |the )?(?:(?:product )?catalog(?:ue)?|store|shop)[?!.]?$")
                 || q.matches(".*(?:what(?:'s| is) (?:our )?product count|total products? count|total number of products?)[?!.]?$")
                 || q.contains("product count") || q.contains("total products")
                 || q.contains("catalogue size") || q.contains("catalog size");
