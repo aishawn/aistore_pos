@@ -10,6 +10,16 @@ export const DEFAULT_STORE_DATE_TIME: StoreDateTimeSettings = {
   timeFormat: "HH:mm",
 };
 
+export function storeDateTimeSettingsFromCompanyBundle(
+  bundle: Record<string, { value?: string | null } | undefined>,
+): StoreDateTimeSettings {
+  return {
+    timezone: bundle["company.timezone"]?.value || DEFAULT_STORE_DATE_TIME.timezone,
+    dateFormat: bundle["company.date_format"]?.value || DEFAULT_STORE_DATE_TIME.dateFormat,
+    timeFormat: bundle["company.time_format"]?.value || DEFAULT_STORE_DATE_TIME.timeFormat,
+  };
+}
+
 const DATE_FORMATS = new Set(["DD/MM/YYYY", "MM/DD/YYYY", "YYYY-MM-DD"]);
 const TIME_FORMATS = new Set(["HH:mm", "HH:mm:ss", "hh:mm a", "hh:mm:ss a"]);
 

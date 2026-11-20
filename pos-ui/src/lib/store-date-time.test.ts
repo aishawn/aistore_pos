@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { DEFAULT_STORE_DATE_TIME, formatStoreDate, formatStoreDateTime, type StoreDateTimeSettings } from "./store-date-time.ts";
+import {
+  DEFAULT_STORE_DATE_TIME,
+  formatStoreDate,
+  formatStoreDateTime,
+  storeDateTimeSettingsFromCompanyBundle,
+  type StoreDateTimeSettings,
+} from "./store-date-time.ts";
 
 const melbourne: StoreDateTimeSettings = {
   timezone: "Australia/Melbourne",
@@ -10,6 +16,20 @@ const melbourne: StoreDateTimeSettings = {
 
 test("uses Melbourne when store date-time settings are unavailable", () => {
   assert.equal(DEFAULT_STORE_DATE_TIME.timezone, "Australia/Melbourne");
+});
+
+test("reads store date-time values from the company settings bundle", () => {
+  const settings = storeDateTimeSettingsFromCompanyBundle({
+    "company.timezone": { value: "Australia/Melbourne" },
+    "company.date_format": { value: "YYYY-MM-DD" },
+    "company.time_format": { value: "HH:mm:ss" },
+  });
+
+  assert.deepEqual(settings, {
+    timezone: "Australia/Melbourne",
+    dateFormat: "YYYY-MM-DD",
+    timeFormat: "HH:mm:ss",
+  });
 });
 
 test("formats an instant in the configured store timezone and seconds format", () => {
