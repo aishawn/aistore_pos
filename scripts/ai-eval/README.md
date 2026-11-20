@@ -40,12 +40,17 @@ node scripts/ai-eval/run-local-eval.mjs --cases scripts/ai-eval/fixtures/utteran
 ```
 
 Without `AI_EVAL_ENDPOINT`, assistant assertions are `BLOCKED`; the runner only
-checks that fixture expectations agree with the synthetic snapshot. When an
-endpoint is configured, `PARTIAL` means intent, route, and write safety were
-checked but the report lists additional assistant assertions the runner does
-not verify yet. Neither result certifies full POS assistant behavior. Use the
-Java router tests for deterministic routing and the read-only live evaluator
-for deployed behavior and report reconciliation.
+checks that fixture expectations agree with the synthetic snapshot. With an
+endpoint configured, the runner applies the same answer, metric, language,
+slot, deterministic-route, and no-write assertions as the read-only live
+evaluator. Set both `AI_EVAL_SOURCE_SHA` and `AI_EVAL_RUNTIME_SHA` to the
+verified source and deployed runtime commits; mismatches or unknown commits
+are `BLOCKED`. Missing positive answer expectations for factual questions are
+also `BLOCKED` until the fixture is completed. A behavior mismatch is `FAIL`.
+The runner does not certify full POS behavior unless the response contract and
+fixed fixture assertions cover that behavior. Use Java router tests for
+deterministic routing and the read-only live evaluator for deployed behavior
+and report reconciliation.
 
 For forecast backtests, pass the generated native inventory history as the
 third argument. Complete date coverage replaces inferred `stock.move` flags;

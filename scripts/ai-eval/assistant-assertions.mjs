@@ -158,6 +158,9 @@ export function assistantUtteranceAcceptance(expected = {}, assistant = {}) {
       || (expected.answerLanguage === "zh"
         ? /\p{Script=Han}/u.test(answer)
         : !/\p{Script=Han}/u.test(answer)),
+    ...(expected.clarification === undefined
+      ? {}
+      : { clarification: assistant.clarificationRequired === expected.clarification }),
     ...safety,
   };
   return {

@@ -298,6 +298,22 @@ test("empty responses fail even when the expected intent and route match", () =>
   assert.equal(result.passed, false);
 });
 
+test("clarification expectations match the explicit assistant clarification flag", () => {
+  const expected = { intent: "qa", clarification: true };
+  const assistant = {
+    intent: "qa",
+    answer: "Which Shiraz did you mean?",
+    clarificationRequired: true,
+    source: "deterministic",
+    llmFallback: false,
+    writeRequests: [],
+  };
+
+  assert.equal(assistantUtteranceAcceptance(expected, assistant).clarification, true);
+  assert.equal(assistantUtteranceAcceptance(expected, { ...assistant, clarificationRequired: false }).clarification, false);
+  assert.equal(assistantUtteranceAcceptance(expected, { ...assistant, clarificationRequired: undefined }).clarification, false);
+});
+
 test("runner blocks missing answer contracts but keeps known behavior failures as failures", () => {
   const missingAnswerContract = assistantUtteranceAcceptance({ intent: "report_stock" }, {
     intent: "report_stock",
