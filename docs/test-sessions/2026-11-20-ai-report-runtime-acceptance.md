@@ -17,8 +17,12 @@ The sales suite covered Chinese and English questions for Adelaide business week
 
 ## Limits
 
-This is a selected read-only baseline, not the full assistant utterance catalog or a model-quality evaluation. Dead-stock freshness remains incomplete until the sales/inventory source exposes a trusted watermark. `Offline Test Gates` has `startup_failure` with no Actions jobs created for this commit; Java 21 verification passed. The separate Project fact library check remains blocked by ignored/untracked documentation in a clean checkout.
+This is a selected read-only baseline, not the full assistant utterance catalog or a model-quality evaluation. Dead-stock freshness remains incomplete until the sales/inventory source exposes a trusted watermark. `Offline Test Gates` last reported `startup_failure` without creating jobs at `e33b962e`. The separate Project fact library check remains blocked by ignored/untracked documentation in a clean checkout.
 
 ## Re-run after documentation release
 
 After the documentation-only release, source SHA and frontend/backend runtime SHA matched `6f7d9a9f1fde0eeb0336e47bf75b9e0da7272b65` on both stores. The report/inventory suite again passed 14/14 per store, and the previous complete business week suite passed 4/4 per store. All four runs had zero failures, zero blocked checks, and zero business writes. Raw reports were refreshed in local `.local/ai-eval/`.
+
+## Offline harness
+
+At source SHA `41e8b92e87f824edd7650f1485d647bf2b693379`, the offline AI evaluation tests passed 39/39 and forecast/report tooling tests passed 46/46 locally. These tests cover evaluator assertions and metric/report utilities; they do not measure online model quality or forecast accuracy. GitHub Java 21 verification passed for `41e8b92e`. Project fact library verification still fails in a clean checkout because its required documentation is ignored or untracked.
