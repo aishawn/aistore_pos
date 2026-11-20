@@ -122,9 +122,11 @@ export type LocalHardwareState = {
 };
 
 let activeLocalBridge: LocalBridgeKind = null;
+let lastHardwareConnectVersion: string | null = null;
 
 export function resetLocalBridgeStateForTests(): void {
   activeLocalBridge = null;
+  lastHardwareConnectVersion = null;
 }
 
 export type ReceiptPrinterBrand = "epson" | "star" | "generic";
@@ -139,6 +141,9 @@ export type HardwareSettings = {
   autoOpenDrawerOnCashSale: boolean;
   printDocketOnSale: boolean;
   docketPrinter: string;
+  docketTagRoutes: Record<string, string>;
+  shelfTemplateDirectory: string;
+  shelfExportDirectory: string;
   linklyTerminal: string;
   linklyAcquirer: string;
   linklyConnection: string;
@@ -156,6 +161,9 @@ const EMPTY_SETTINGS: HardwareSettings = {
   autoOpenDrawerOnCashSale: true,
   printDocketOnSale: false,
   docketPrinter: "",
+  docketTagRoutes: {},
+  shelfTemplateDirectory: "",
+  shelfExportDirectory: "",
   linklyTerminal: "",
   linklyAcquirer: "",
   linklyConnection: "",
@@ -254,6 +262,7 @@ export async function connectLocalHardware(): Promise<LocalHardwareState> {
   const hardwareConnect = await probeOrithosHardwareConnect();
   if (hardwareConnect.reachable) {
     activeLocalBridge = "orithos-hc";
+    lastHardwareConnectVersion = hardwareConnect.version;
     return finishLocalHardwareConnect({
       bridge: "orithos-hc",
       qzAvailable: false,
@@ -409,7 +418,7 @@ export type SaleReceiptPlainTextInput = {
   dateLabel: string;
   customerName: string;
   session: string;
-  lines: { name: string; quantity: number; total: number }[];
+  lines: { name: string; quantity: number; total: number; tags?: string[] }[];
   subtotal: number;
   gst: number;
   total: number;
@@ -556,7 +565,33 @@ export async function runPostSaleLocalHardwareActions(
     });
   }
 
-  if (settings.printDocketOnSale) {
+  const tagRoutes = settings.docketTagRoutes ?? {};
+  const taggedJobs = Object.entries(tagRoutes).filter(([, printer]) => printer.trim());
+  if (taggedJobs.length > 0) {
+    const anyFail: string[] = [];
+    for (const [tag, printer] of taggedJobs) {
+      const taggedLines = receipt.lines.filter((line) =>
+        (line.tags ?? []).some((value) => value.toLowerCase() === tag.toLowerCase()),
+      );
+      if (!taggedLines.length) continue;
+      const docketText = formatSaleDocketPlainText({ ...receipt, lines: taggedLines });
+      try {
+        if (!(await ensureLocalPrinterBridge())) {
+          anyFail.push(`Docket for ${tag}: bridge offline.`);
+          continue;
+        }
+        await printFormattedReceiptThroughLocalBridge(
+          { printer: printer.trim(), printerBrand: settings.printerBrand },
+          docketText,
+        );
+      } catch (cause) {
+        anyFail.push(cause instanceof Error ? cause.message : `Docket for ${tag} failed.`);
+      }
+    }
+    outcome.docket = anyFail.length
+      ? { channel: "bridge", ok: false, message: anyFail.join(" ") }
+      : { channel: "bridge", ok: true };
+  } else if (settings.printDocketOnSale) {
     const docketPrinter = settings.docketPrinter.trim() || settings.printer;
     if (docketPrinter) {
       const docketText = formatSaleDocketPlainText(receipt);
@@ -604,11 +639,29 @@ export function summarizePostSaleHardwareOutcome(outcome: PostSaleHardwareOutcom
 export type HardwareReadinessTone = "ok" | "warn" | "muted";
 
 export type HardwareReadinessItem = {
-  id: "printer" | "drawer" | "scanner" | "eftpos";
+  id: "agent" | "printer" | "drawer" | "eftpos";
   label: string;
   status: string;
   tone: HardwareReadinessTone;
 };
+
+function readEftposReadinessInline(): {
+  paymentsEnabled: boolean;
+  connectorHealth: string;
+} {
+  if (typeof window === "undefined") return { paymentsEnabled: false, connectorHealth: "unknown" };
+  try {
+    const raw = window.localStorage.getItem(EFTPOS_READINESS_KEY);
+    if (!raw) return { paymentsEnabled: false, connectorHealth: "unknown" };
+    const value = JSON.parse(raw) as { paymentsEnabled?: boolean; connectorHealth?: string };
+    return {
+      paymentsEnabled: value.paymentsEnabled === true,
+      connectorHealth: typeof value.connectorHealth === "string" ? value.connectorHealth : "unknown",
+    };
+  } catch {
+    return { paymentsEnabled: false, connectorHealth: "unknown" };
+  }
+}
 
 export function markBarcodeScannerTested(): void {
   if (typeof window === "undefined") return;
@@ -645,35 +698,46 @@ export function getHardwareReadinessSnapshot(): string {
 
 export function getHardwareReadinessItems(): HardwareReadinessItem[] {
   const settings = getLocalHardwareSettings();
-  const qzActive = isLocalPrinterBridgeActive();
-  const scannerTested = hasBarcodeScannerTested();
+  const bridgeActive = isLocalPrinterBridgeActive();
+  const eftposSnap = readEftposReadinessInline();
+
+  const agent = bridgeActive
+    ? ({
+        status: lastHardwareConnectVersion
+          ? `Hardware Connect ${lastHardwareConnectVersion}`
+          : "Hardware Connect running",
+        tone: "ok" as const,
+      })
+  : ({ status: "Install agent and connect bridge", tone: "warn" as const });
 
   const printer = !settings.printer
-    ? ({ status: "Not configured", tone: "warn" as const })
-    : qzActive
+    ? ({ status: "Choose a receipt printer", tone: "warn" as const })
+    : bridgeActive
       ? ({ status: `Ready · ${settings.printer}`, tone: "ok" as const })
-      : ({ status: "Configured; connect local bridge on Hardware", tone: "warn" as const });
+      : ({ status: "Saved; connect bridge on this page", tone: "warn" as const });
 
-  const drawer = settings.cashDrawer
-    ? ({ status: "Attached; register auto-open disabled", tone: "warn" as const })
-    : ({ status: "Not configured", tone: "muted" as const });
+  const drawer = !settings.cashDrawer
+    ? ({ status: "Optional · RJ12 via receipt printer", tone: "muted" as const })
+    : bridgeActive
+      ? ({
+          status: settings.autoOpenDrawerOnCashSale
+            ? "Ready · opens on cash sales"
+            : "Ready · use Test drawer",
+          tone: "ok" as const,
+        })
+      : ({ status: "Enabled; connect bridge to test", tone: "warn" as const });
 
-  const scanner = scannerTested
-    ? ({ status: "Tested on this page", tone: "ok" as const })
-    : ({ status: "USB keyboard wedge (ready on Sell)", tone: "ok" as const });
-
-  const eftposFields = Boolean(
-    settings.linklyTerminal.trim() || settings.linklyAcquirer.trim() || settings.linklyConnection.trim(),
-  );
-  const eftpos = eftposFields
-    ? ({ status: "Planning only; payments disabled", tone: "warn" as const })
-    : ({ status: "Not configured", tone: "muted" as const });
+  const eftpos = eftposSnap.paymentsEnabled && eftposSnap.connectorHealth === "reachable"
+    ? ({ status: "Ready on this PC · configure terminal below", tone: "ok" as const })
+    : eftposSnap.paymentsEnabled
+      ? ({ status: "Saved; start Hardware Connect EFTPOS bridge", tone: "warn" as const })
+      : ({ status: "Enable in Card payments section", tone: "muted" as const });
 
   return [
+    { id: "agent", label: "Local agent", ...agent },
     { id: "printer", label: "Receipt printer", ...printer },
     { id: "drawer", label: "Cash drawer", ...drawer },
-    { id: "scanner", label: "Barcode scanner", ...scanner },
-    { id: "eftpos", label: "EFTPOS terminal", ...eftpos },
+    { id: "eftpos", label: "Card payments", ...eftpos },
   ];
 }
 
@@ -702,6 +766,16 @@ export function parseLocalHardwareSettings(raw: string): HardwareSettings {
       autoOpenDrawerOnCashSale: value?.autoOpenDrawerOnCashSale !== false,
       printDocketOnSale: value?.printDocketOnSale === true,
       docketPrinter: typeof value?.docketPrinter === "string" ? value.docketPrinter : "",
+      docketTagRoutes:
+        value?.docketTagRoutes && typeof value.docketTagRoutes === "object" && !Array.isArray(value.docketTagRoutes)
+          ? Object.fromEntries(
+              Object.entries(value.docketTagRoutes as Record<string, unknown>)
+                .filter((entry): entry is [string, string] => typeof entry[1] === "string"),
+            )
+          : {},
+      shelfTemplateDirectory:
+        typeof value?.shelfTemplateDirectory === "string" ? value.shelfTemplateDirectory : "",
+      shelfExportDirectory: typeof value?.shelfExportDirectory === "string" ? value.shelfExportDirectory : "",
       linklyTerminal: typeof value?.linklyTerminal === "string" ? value.linklyTerminal : "",
       linklyAcquirer: typeof value?.linklyAcquirer === "string" ? value.linklyAcquirer : "",
       linklyConnection: typeof value?.linklyConnection === "string" ? value.linklyConnection : "",
@@ -720,15 +794,30 @@ export function getLocalHardwareSettingsSnapshot(): string {
   }
 }
 
+const EFTPOS_READINESS_KEY = "orithos.hardware.eftpos-readiness.v1";
+
+export function publishLocalHardwareSettingsChange(): void {
+  notifyLocalHardwareSubscribers();
+}
+
 export function subscribeLocalHardwareSettings(listener: () => void): () => void {
   localSettingsListeners.add(listener);
   const onStorage = (event: StorageEvent) => {
-    if (event.key === SETTINGS_KEY || event.key === BARCODE_SCANNER_TEST_KEY) listener();
+    if (
+      event.key === SETTINGS_KEY
+      || event.key === BARCODE_SCANNER_TEST_KEY
+      || event.key === EFTPOS_READINESS_KEY
+    ) {
+      listener();
+    }
   };
+  const onCustom = () => listener();
   window.addEventListener?.("storage", onStorage);
+  window.addEventListener?.("orithos-hardware-settings", onCustom);
   return () => {
     localSettingsListeners.delete(listener);
     window.removeEventListener?.("storage", onStorage);
+    window.removeEventListener?.("orithos-hardware-settings", onCustom);
   };
 }
 
@@ -736,4 +825,55 @@ export function saveLocalHardwareSettings(settings: HardwareSettings): void {
   if (typeof window === "undefined") throw new Error("Local preferences are only available in a browser.");
   window.localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
   localSettingsListeners.forEach((listener) => listener());
+}
+
+export type ShelfExportPaths = { templateDirectory: string; exportDirectory: string; defaultExportDirectory?: string };
+
+export async function fetchShelfExportPathsFromAgent(): Promise<ShelfExportPaths | null> {
+  if (typeof window === "undefined") return null;
+  try {
+    const response = await loopbackHardwareConnectFetch("/v1/shelf-export");
+    if (!response.ok) return null;
+    const body = (await response.json()) as ShelfExportPaths;
+    return {
+      templateDirectory: body.templateDirectory ?? "",
+      exportDirectory: body.exportDirectory ?? "",
+      defaultExportDirectory: body.defaultExportDirectory,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export async function saveShelfExportPathsToAgent(
+  templateDirectory: string,
+  exportDirectory: string,
+): Promise<void> {
+  const response = await loopbackHardwareConnectFetch("/v1/shelf-export", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ templateDirectory, exportDirectory }),
+  });
+  if (!response.ok) throw new Error(await hardwareConnectFailureMessage(response, "Shelf export paths"));
+}
+
+export const CUSTOMER_DISPLAY_OPEN_KEY = "orithos.hardware.customer-display-open.v1";
+
+export function markCustomerDisplayOpen(): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(CUSTOMER_DISPLAY_OPEN_KEY, new Date().toISOString());
+    publishLocalHardwareSettingsChange();
+  } catch {
+    /* ignore */
+  }
+}
+
+export function isCustomerDisplayMarkedOpen(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return Boolean(window.localStorage.getItem(CUSTOMER_DISPLAY_OPEN_KEY));
+  } catch {
+    return false;
+  }
 }

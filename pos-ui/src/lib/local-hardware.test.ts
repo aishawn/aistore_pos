@@ -270,6 +270,9 @@ test("loads Linkly planning fields from local register preferences", () => {
     autoOpenDrawerOnCashSale: true,
     printDocketOnSale: false,
     docketPrinter: "",
+    docketTagRoutes: {},
+    shelfTemplateDirectory: "",
+    shelfExportDirectory: "",
     linklyTerminal: "PAX model",
     linklyAcquirer: "Example Bank",
     linklyConnection: "ethernet",
@@ -516,7 +519,7 @@ test("summarises printer readiness from saved preferences and bridge state", () 
 
   const items = getHardwareReadinessItems();
   assert.equal(items.find((item) => item.id === "printer")?.status, "Ready · Kitchen");
-  assert.equal(items.find((item) => item.id === "drawer")?.status, "Attached; register auto-open disabled");
+  assert.equal(items.find((item) => item.id === "drawer")?.status, "Ready · opens on cash sales");
 });
 
 test("notifies readiness subscribers after a local hardware connect attempt", async () => {

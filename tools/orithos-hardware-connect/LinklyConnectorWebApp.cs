@@ -45,17 +45,25 @@ internal static class LinklyConnectorWebApp
 
         app.MapGet("/v1/health", () => Results.Json(new { ok = true }, json));
 
+        var linklyTcpBase = (Environment.GetEnvironmentVariable("ORITHOS_LINKLY_TCP_BASE") ?? "").Trim().TrimEnd('/');
+        var linklyMode = string.IsNullOrWhiteSpace(linklyTcpBase) ? "lab" : "tcp-proxy";
+
         app.MapGet("/v1/status", () =>
         {
             var hasToken = settings.HasConnectorToken();
             return Results.Json(new
             {
-                linklyClient = hasToken ? "simulated-ready" : "waiting-for-token",
-                terminal = "ready",
+                linklyClient = hasToken
+                    ? (linklyMode == "tcp-proxy" ? "tcp-proxy" : "simulated-ready")
+                    : "waiting-for-token",
+                terminal = linklyMode == "tcp-proxy" ? "linkly-tcp" : "ready",
                 tokenConfigured = hasToken,
-                detail = hasToken
-                    ? "Ready for Orithos test payments on this PC."
-                    : "Save EFTPOS in Hardware settings — token syncs automatically (Hardware Connect 1.1.1+).",
+                integrationMode = linklyMode,
+                detail = !hasToken
+                    ? "Save EFTPOS in Hardware settings — token syncs automatically (Hardware Connect 1.1.1+)."
+                    : linklyMode == "tcp-proxy"
+                        ? "Forwarding to Linkly TCP on this PC. Complete terminal pairing with your acquirer."
+                        : "Lab mode auto-approves test payments. Set ORITHOS_LINKLY_TCP_BASE for a real Linkly client.",
             }, json);
         });
 
@@ -80,6 +88,12 @@ internal static class LinklyConnectorWebApp
                 return Results.BadRequest(new { error = "attemptId and connectorChallenge are required" });
             }
 
+            if (!string.IsNullOrWhiteSpace(linklyTcpBase))
+            {
+                var forwarded = await TryForwardToLinklyTcpAsync(linklyTcpBase, "/v1/query", body!, json, cancellationToken);
+                if (forwarded is not null) return forwarded;
+            }
+
             var snap = settings.Snapshot();
             _ = Task.Run(async () =>
             {
@@ -91,7 +105,7 @@ internal static class LinklyConnectorWebApp
                 await PostCallbackAsync(
                     snap.ApiUrl,
                     snap.Token,
-                    body.AttemptId,
+                    body!.AttemptId,
                     body.ConnectorChallenge,
                     "APPROVED",
                     $"LAB-QUERY-{body.AttemptId}-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}",
@@ -107,6 +121,12 @@ internal static class LinklyConnectorWebApp
             if (body?.AttemptId is not > 0 || string.IsNullOrWhiteSpace(body.ConnectorChallenge))
             {
                 return Results.BadRequest(new { error = "attemptId and connectorChallenge are required" });
+            }
+
+            if (!string.IsNullOrWhiteSpace(linklyTcpBase))
+            {
+                var forwarded = await TryForwardToLinklyTcpAsync(linklyTcpBase, "/v1/purchase", body, json, cancellationToken);
+                if (forwarded is not null) return forwarded;
             }
 
             var snap = settings.Snapshot();
@@ -168,6 +188,28 @@ internal static class LinklyConnectorWebApp
         catch (Exception ex)
         {
             Console.Error.WriteLine($"Orithos callback error: {ex.Message}");
+        }
+    }
+
+    private static async Task<IResult?> TryForwardToLinklyTcpAsync(
+        string linklyTcpBase,
+        string path,
+        ConnectorTxnRequest body,
+        JsonSerializerOptions json,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Post, $"{linklyTcpBase}{path}");
+            request.Content = JsonContent.Create(body, options: json);
+            using var response = await CallbackClient.SendAsync(request, cancellationToken);
+            var text = await response.Content.ReadAsStringAsync(cancellationToken);
+            return Results.Content(text, "application/json", statusCode: (int)response.StatusCode);
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Linkly TCP forward failed: {ex.Message}");
+            return Results.Problem("Linkly TCP forward failed; falling back to lab mode.", statusCode: StatusCodes.Status502BadGateway);
         }
     }
 

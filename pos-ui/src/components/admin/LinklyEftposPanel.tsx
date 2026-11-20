@@ -22,6 +22,7 @@ import {
 } from "@/lib/linkly-connector";
 import { resolveLocalNetworkAccessState, type LocalNetworkAccessState } from "@/lib/local-network-access";
 import { useHardwareLoopbackReady } from "@/components/admin/hardware-loopback-context";
+import { saveEftposReadinessSnapshot } from "@/lib/hardware-eftpos-readiness";
 
 type Props = {
   canEdit: boolean;
@@ -103,7 +104,13 @@ export function LinklyEftposPanel({ canEdit }: Props) {
     } else {
       setConnectorStatus(null);
     }
-  }, []);
+    saveEftposReadinessSnapshot({
+      registerId: registerId ?? null,
+      enabled: draft.enabled,
+      paymentsEnabled: draft.paymentsEnabled,
+      connectorHealth: health,
+    });
+  }, [draft.enabled, draft.paymentsEnabled, registerId]);
 
   useEffect(() => {
     void listRetailRegisters()
@@ -189,6 +196,12 @@ export function LinklyEftposPanel({ canEdit }: Props) {
       } else {
         setNotice("EFTPOS saved for this register.");
       }
+      saveEftposReadinessSnapshot({
+        registerId,
+        enabled: saved.enabled,
+        paymentsEnabled: saved.paymentsEnabled,
+        connectorHealth,
+      });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Save failed");
     } finally {
@@ -295,7 +308,9 @@ export function LinklyEftposPanel({ canEdit }: Props) {
 
         {connectorHealth === "offline" && !draft.paymentsEnabled && (
           <p className="text-xs text-[var(--oh-muted)]">
-            Run Hardware Connect on this PC, then enable EFTPOS below and Save — the token syncs automatically (v1.1.1+).
+            Run Hardware Connect on this PC, then enable EFTPOS below and Save — the token syncs automatically (v1.1.1+). For a bank Linkly client, set Windows env{" "}
+            <span className="font-mono text-[11px]">ORITHOS_LINKLY_TCP_BASE</span> to its local URL; otherwise lab mode auto-approves test payments. For a bank Linkly client, set Windows env{" "}
+            <span className="font-mono text-[11px]">ORITHOS_LINKLY_TCP_BASE</span> to its local URL; otherwise lab mode auto-approves test payments.
           </p>
         )}
         {error && <p role="alert" className="text-sm text-red-800">{error}</p>}

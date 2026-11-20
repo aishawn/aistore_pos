@@ -3,7 +3,7 @@
 /** Classic register shell; data path is Orithos (`@/lib/retail-api`), not Odoo ERP. */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Banknote, Check, CircleAlert, DoorClosed, LoaderCircle, Printer, RefreshCw, X } from "lucide-react";
+import { Banknote, Check, CircleAlert, DoorClosed, LoaderCircle, Monitor, Printer, RefreshCw, X } from "lucide-react";
 import { SalesMenu } from "@/components/SalesMenu";
 import { useCloseRegisterUiOptional } from "@/components/CloseRegisterUiProvider";
 import { useSalesHistoryUiOptional } from "@/components/SalesHistoryUiProvider";
@@ -52,6 +52,9 @@ import {
   printReceiptDocument,
   runPostSaleLocalHardwareActions,
   summarizePostSaleHardwareOutcome,
+  hasBarcodeScannerTested,
+  isCustomerDisplayMarkedOpen,
+  markCustomerDisplayOpen,
 } from "@/lib/local-hardware";
 import { sellDraftNoticePresentation, type SellDraftNoticeKind } from "@/lib/sell-draft-notice";
 import {
@@ -242,6 +245,20 @@ export function OdooRegisterPage() {
   const [eftposPaymentsEnabled, setEftposPaymentsEnabled] = useState(false);
   const [eftposPaymentNotice, setEftposPaymentNotice] = useState<string | null>(null);
   const [receiptHardwareNotice, setReceiptHardwareNotice] = useState<string | null>(null);
+  const [customerDisplayOpen, setCustomerDisplayOpen] = useState(false);
+  const [scannerHintVisible, setScannerHintVisible] = useState(false);
+
+  const openCustomerDisplay = useCallback(() => {
+    const url = `${window.location.origin}/customer-display`;
+    window.open(url, "orithos-customer-display", "popup,width=960,height=720");
+    markCustomerDisplayOpen();
+    setCustomerDisplayOpen(true);
+  }, []);
+
+  useEffect(() => {
+    setCustomerDisplayOpen(isCustomerDisplayMarkedOpen());
+    setScannerHintVisible(!hasBarcodeScannerTested());
+  }, []);
 
   useEffect(() => {
     if (!draftNotice) return;
@@ -1046,13 +1063,26 @@ export function OdooRegisterPage() {
       };
       setReceipt(completed);
       setReceiptHardwareNotice(null);
+      const saleTagsByName = new Map(
+        lines.map((row) => [
+          row.product.name,
+          typeof row.product.shopfront_source_category === "string" && row.product.shopfront_source_category.trim()
+            ? [row.product.shopfront_source_category.trim()]
+            : [],
+        ]),
+      );
       void runPostSaleLocalHardwareActions({
         companyName: completed.companyName,
         reference: completed.reference,
         dateLabel: formatStoreDate(completed.date, completed.timezone),
         customerName: completed.customerName,
         session: completed.session,
-        lines: completed.lines.map((line) => ({ name: line.name, quantity: line.quantity, total: line.total })),
+        lines: completed.lines.map((line) => ({
+          name: line.name,
+          quantity: line.quantity,
+          total: line.total,
+          tags: saleTagsByName.get(line.name) ?? [],
+        })),
         subtotal: completed.subtotal,
         gst: completed.gst,
         total: completed.total,
@@ -1445,6 +1475,21 @@ export function OdooRegisterPage() {
             <button type="button" onClick={() => void loadPos()} disabled={refreshing} title="Refresh register data" aria-label="Refresh register data" className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface)] disabled:opacity-60">
               {refreshing ? <LoaderCircle size={15} className="animate-spin" /> : <RefreshCw size={15} />}
             </button>
+            <button
+              type="button"
+              onClick={openCustomerDisplay}
+              title="Open customer display"
+              aria-label="Open customer display"
+              className={cn(
+                "relative grid h-11 w-11 shrink-0 place-items-center rounded-full text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface)]",
+                !customerDisplayOpen && "text-red-700",
+              )}
+            >
+              {!customerDisplayOpen ? (
+                <span className="absolute right-2 top-2 h-2 w-2 animate-pulse rounded-full bg-red-600" aria-hidden="true" />
+              ) : null}
+              <Monitor size={17} />
+            </button>
             <SalesMenu config={selectedConfig} onHelp={() => setHelpOpen(true)} />
             <button type="button" onClick={requestCloseRegister} title="Close register" aria-label="Close register" className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface)]">
               <DoorClosed size={17} />
@@ -1452,6 +1497,13 @@ export function OdooRegisterPage() {
           </div>
         </div>
       </div>
+
+      {scannerHintVisible ? (
+        <p role="status" className="mb-3 rounded-lg border border-[var(--oh-border)] bg-white px-3 py-2 text-xs text-[var(--oh-muted)]">
+          USB scanner tip: scans should end with Enter so items add to the cart. Test once in Settings → Hardware.
+          <button type="button" className="ml-2 font-semibold text-[var(--oh-primary)]" onClick={() => setScannerHintVisible(false)}>Dismiss</button>
+        </p>
+      ) : null}
 
       {!selectedConfig?.session && (
         <div role="status" className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-950">

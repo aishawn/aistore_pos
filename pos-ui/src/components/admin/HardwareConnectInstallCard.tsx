@@ -26,8 +26,14 @@ function InstallSteps({ compact }: { compact?: boolean }) {
         <span className="font-medium">More info</span> → <span className="font-medium">Run anyway</span>.
       </li>
       <li>
-        Click <span className="font-medium">Yes</span> in the installer window. A tray icon near the clock means it is
-        running (allow <span className="font-medium">private</span> firewall if asked).
+        Click <span className="font-medium">Yes</span> in the installer window. Install .NET prerequisites if Windows prompts you.
+      </li>
+      <li>
+        Restart the PC if the installer asks, then return to this page.
+      </li>
+      <li>
+        When Windows Firewall appears, allow Hardware Connect on <span className="font-medium">Private</span> and{" "}
+        <span className="font-medium">Public</span> networks. A tray icon near the clock means it is running.
       </li>
     </ol>
   );

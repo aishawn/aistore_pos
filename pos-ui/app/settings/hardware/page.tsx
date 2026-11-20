@@ -4,7 +4,9 @@ import { useEffect, useState } from "react";
 import { StoreSettingsPage as AdminPageLayout } from "@/components/admin/StoreSettingsPage";
 import { DevicesSettingsTabs } from "@/components/admin/SetupHubTabs";
 import { HardwareSetupPanel } from "@/components/admin/HardwareSetupPanel";
+import { HardwareSetupSteps } from "@/components/admin/HardwareSetupSteps";
 import { LinklyEftposPanel } from "@/components/admin/LinklyEftposPanel";
+import { HardwareReadinessStrip } from "@/components/admin/HardwareReadinessStrip";
 import { LocalNetworkAccessGate } from "@/components/admin/LocalNetworkAccessGate";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -48,6 +50,8 @@ export default function HardwareSettingsPage() {
       {notice && <p className="mb-3 text-sm text-emerald-800">{notice}</p>}
       <LocalNetworkAccessGate>
         <div className="space-y-6">
+          <HardwareSetupSteps />
+          <HardwareReadinessStrip />
           <HardwareSetupPanel />
           <LinklyEftposPanel canEdit={canEdit} />
         </div>

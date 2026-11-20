@@ -108,6 +108,30 @@ internal static class HardwareConnectWebApp
             return Results.Json(new { kicked = true }, json);
         });
 
+        app.MapGet("/v1/shelf-export", () =>
+        {
+            var shelfSettings = ShelfExportSettings.Load();
+            return Results.Json(new
+            {
+                templateDirectory = shelfSettings.TemplateDirectory,
+                exportDirectory = shelfSettings.ExportDirectory,
+                defaultExportDirectory = ShelfExportSettings.DefaultExportDirectory,
+            }, json);
+        });
+
+        app.MapPost("/v1/shelf-export", async (HttpRequest request) =>
+        {
+            var shelfSettings = ShelfExportSettings.Load();
+            var payload = await JsonSerializer.DeserializeAsync<ShelfExportRequest>(request.Body, json);
+            shelfSettings.Apply(payload?.TemplateDirectory, payload?.ExportDirectory, persist: true);
+            return Results.Json(new
+            {
+                saved = true,
+                templateDirectory = shelfSettings.TemplateDirectory,
+                exportDirectory = shelfSettings.ExportDirectory,
+            }, json);
+        });
+
         await app.RunAsync(cancellationToken);
     }
 
@@ -119,4 +143,5 @@ internal static class HardwareConnectWebApp
     private sealed record PrintTextRequest(string Printer, string Text, string? Encoding);
     private sealed record PrintRawRequest(string Printer, int[] Bytes);
     private sealed record CashDrawerRequest(string Printer, int[] Bytes);
+    private sealed record ShelfExportRequest(string? TemplateDirectory, string? ExportDirectory);
 }

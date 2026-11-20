@@ -9,7 +9,8 @@ Recommended (one click):
 
 Tray icon: double-click opens Hardware settings.
 Local ports: printers 127.0.0.1:9170 · EFTPOS 127.0.0.1:9167 (same app).
-After saving EFTPOS in settings, set user env ORITHOS_CONNECTOR_TOKEN and ORITHOS_API_URL (your store API URL).
+After saving EFTPOS in Settings → Hardware, the connector token syncs to this PC automatically (v1.1.1+).
+For a real Linkly terminal, install Linkly on this PC and set user env ORITHOS_LINKLY_TCP_BASE to its local HTTP base URL.
 
 ZIP bundle (optional IT path): unzip, double-click Install-Orithos-Hardware-Connect.cmd.
 

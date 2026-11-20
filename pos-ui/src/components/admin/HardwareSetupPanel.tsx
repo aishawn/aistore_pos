@@ -6,11 +6,9 @@ import { ExternalLink, RefreshCw, Save } from "lucide-react";
 import {
   connectLocalHardware,
   formatCashDrawerKickCode,
-  getHardwareReadinessSnapshot,
   isQzTrayFallbackEnabled,
   getLocalHardwareSettingsSnapshot,
   parseLocalHardwareSettings,
-  type HardwareReadinessItem,
   printReceiptTestThroughLocalBridge,
   readSerialDiagnostic,
   saveLocalHardwareSettings,
@@ -21,6 +19,8 @@ import {
   type LocalHardwareState,
   supportsBarcodeDetection,
   markBarcodeScannerTested,
+  fetchShelfExportPathsFromAgent,
+  saveShelfExportPathsToAgent,
 } from "@/lib/local-hardware";
 import { HardwareConnectInstallCard } from "@/components/admin/HardwareConnectInstallCard";
 import { useHardwareLoopbackReady } from "@/components/admin/hardware-loopback-context";
@@ -35,6 +35,9 @@ const emptySettings: HardwareSettings = {
   autoOpenDrawerOnCashSale: true,
   printDocketOnSale: false,
   docketPrinter: "",
+  docketTagRoutes: {},
+  shelfTemplateDirectory: "",
+  shelfExportDirectory: "",
   linklyTerminal: "",
   linklyAcquirer: "",
   linklyConnection: "",
@@ -42,11 +45,7 @@ const emptySettings: HardwareSettings = {
 
 export function HardwareSetupPanel() {
   const settingsSnapshot = useSyncExternalStore(subscribeLocalHardwareSettings, getLocalHardwareSettingsSnapshot, () => "");
-  const readinessSnapshot = useSyncExternalStore(subscribeLocalHardwareSettings, getHardwareReadinessSnapshot, () => "");
   const savedSettings = settingsSnapshot ? parseLocalHardwareSettings(settingsSnapshot) : emptySettings;
-  const readiness: HardwareReadinessItem[] = readinessSnapshot
-    ? (JSON.parse(readinessSnapshot) as HardwareReadinessItem[])
-    : [];
   const [draft, setDraft] = useState<HardwareSettings>(savedSettings);
   const [state, setState] = useState<LocalHardwareState>({
     bridge: null,
@@ -90,6 +89,18 @@ export function HardwareSetupPanel() {
     autoConnectAttempted.current = true;
     void connect().catch(() => undefined);
   }, [loopbackReady]);
+
+  useEffect(() => {
+    if (!state.connected || state.bridge !== "orithos-hc") return;
+    void fetchShelfExportPathsFromAgent().then((paths) => {
+      if (!paths) return;
+      setDraft((current) => ({
+        ...current,
+        shelfTemplateDirectory: current.shelfTemplateDirectory || paths.templateDirectory,
+        shelfExportDirectory: current.shelfExportDirectory || paths.exportDirectory || paths.defaultExportDirectory || "",
+      }));
+    });
+  }, [state.connected, state.bridge]);
 
   const dirty = JSON.stringify(draft) !== JSON.stringify(savedSettings);
 
@@ -195,9 +206,6 @@ export function HardwareSetupPanel() {
 
   const activePrinter = dirty ? draft.printer : savedSettings.printer;
   const printerNames = [...new Set([...state.printers, ...(activePrinter ? [activePrinter] : [])])];
-  const readinessToneClass = (tone: HardwareReadinessItem["tone"]) =>
-    tone === "ok" ? "bg-emerald-50 text-emerald-900" : tone === "warn" ? "bg-amber-50 text-amber-950" : "bg-slate-100 text-slate-700";
-
   const bridgeLabel =
     state.bridge === "orithos-hc"
       ? `Hardware Connect ${state.hardwareConnectVersion ?? ""}`.trim()
@@ -235,17 +243,6 @@ export function HardwareSetupPanel() {
           </button>
         </div>
 
-        {!state.connected && readiness.length > 0 ? (
-          <ul className="mt-4 flex flex-wrap gap-2">
-            {readiness
-              .filter((item) => item.id !== "eftpos")
-              .map((item) => (
-                <li key={item.id} className={`rounded-full px-3 py-1 text-xs font-medium ${readinessToneClass(item.tone)}`}>
-                  {item.label}: {item.status}
-                </li>
-              ))}
-          </ul>
-        ) : null}
         {state.bridge !== "orithos-hc" && (
           <div
             role="status"
@@ -363,6 +360,16 @@ export function HardwareSetupPanel() {
             </button>
           </div>
 
+          <details className="rounded-md border border-[var(--oh-border)] px-3 py-2 text-sm">
+            <summary className="cursor-pointer font-medium text-[var(--oh-text)]">Cash drawer not opening?</summary>
+            <ol className="mt-2 list-decimal space-y-1 pl-4 text-xs text-[var(--oh-muted)]">
+              <li>Run <span className="font-medium text-[var(--oh-text)]">Test receipt</span> first — the drawer pulse uses the receipt printer.</li>
+              <li>Confirm paper, USB/power, and the RJ12 cable from printer to drawer.</li>
+              <li>Clear the Windows print queue for this printer, then test again.</li>
+              <li>Restart the printer and Hardware Connect (tray icon), then reconnect on this page.</li>
+            </ol>
+          </details>
+
           <details className="rounded-md border border-[var(--oh-border)] px-3 py-2">
             <summary className="cursor-pointer text-sm font-medium text-[var(--oh-text)]">More · brand, drawer pin, docket</summary>
             <div className="mt-3 grid gap-3 pb-1 sm:grid-cols-2">
@@ -440,14 +447,119 @@ export function HardwareSetupPanel() {
                   </select>
                 </label>
               ) : null}
+              <div className="sm:col-span-2">
+                <p className="text-xs font-medium text-[var(--oh-text)]">Docket by product tag</p>
+                <p className="mt-1 text-xs text-[var(--oh-muted)]">
+                  Match Shopfront tag names (e.g. Coffee). Uses product Shopfront category when present.
+                </p>
+                {Object.entries(draft.docketTagRoutes).map(([tag, printer]) => (
+                  <div key={tag} className="mt-2 flex flex-wrap gap-2">
+                    <input
+                      value={tag}
+                      readOnly
+                      className="h-9 min-w-[6rem] rounded-md border border-[var(--oh-border)] px-2 text-sm"
+                    />
+                    <select
+                      value={printer}
+                      onChange={(event) =>
+                        setDraft((current) => ({
+                          ...current,
+                          docketTagRoutes: { ...current.docketTagRoutes, [tag]: event.target.value },
+                        }))
+                      }
+                      className="h-9 min-w-[10rem] flex-1 rounded-md border border-[var(--oh-border)] px-2 text-sm"
+                    >
+                      {printerNames.map((name) => (
+                        <option key={`${tag}-${name}`} value={name}>
+                          {name}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      className="text-xs font-medium text-red-700"
+                      onClick={() =>
+                        setDraft((current) => {
+                          const next = { ...current.docketTagRoutes };
+                          delete next[tag];
+                          return { ...current, docketTagRoutes: next };
+                        })
+                      }
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  className="mt-2 text-xs font-semibold text-[var(--oh-primary)]"
+                  onClick={() => {
+                    const label = window.prompt("Product tag name");
+                    if (!label?.trim()) return;
+                    const printer = draft.docketPrinter || draft.printer || printerNames[0] || "";
+                    setDraft((current) => ({
+                      ...current,
+                      docketTagRoutes: { ...current.docketTagRoutes, [label.trim()]: printer },
+                    }));
+                  }}
+                >
+                  Add tag route
+                </button>
+              </div>
             </div>
+          </details>
+
+          <details className="rounded-md border border-[var(--oh-border)] px-3 py-2">
+            <summary className="cursor-pointer text-sm font-medium text-[var(--oh-text)]">Shelf ticket export (Hardware Connect)</summary>
+            <p className="mt-2 text-xs text-[var(--oh-muted)]">
+              Ticket printing in Orithos uses the browser. Export folder is for IT shelf workflows (Shopfront-style).
+            </p>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <label className="grid gap-1 text-sm font-medium">
+                Template folder (read-only on PC)
+                <input
+                  value={draft.shelfTemplateDirectory}
+                  onChange={(event) => setDraft((current) => ({ ...current, shelfTemplateDirectory: event.target.value }))}
+                  className="h-10 rounded-md border border-[var(--oh-border)] px-3 font-normal"
+                  placeholder="C:\ShelfTickets\templates"
+                />
+              </label>
+              <label className="grid gap-1 text-sm font-medium">
+                Export folder
+                <input
+                  value={draft.shelfExportDirectory}
+                  onChange={(event) => setDraft((current) => ({ ...current, shelfExportDirectory: event.target.value }))}
+                  className="h-10 rounded-md border border-[var(--oh-border)] px-3 font-normal"
+                  placeholder="%LocalAppData%\Orithos\HardwareConnect\shelf-export"
+                />
+              </label>
+            </div>
+            <button
+              type="button"
+              disabled={!state.connected || actionBusy}
+              onClick={() =>
+                void saveShelfExportPathsToAgent(draft.shelfTemplateDirectory, draft.shelfExportDirectory)
+                  .then(() => setNotice("Shelf export paths saved on this PC."))
+                  .catch((cause) => setNotice(cause instanceof Error ? cause.message : "Could not save shelf paths."))
+              }
+              className="mt-3 min-h-9 rounded-md border border-[var(--oh-border)] px-3 text-sm font-semibold disabled:opacity-50"
+            >
+              Save paths to local agent
+            </button>
           </details>
         </div>
       </section>
 
       <details id="hardware-optional-tests" className="rounded-lg border border-dashed border-[var(--oh-border)] bg-white px-4 py-3 sm:px-5">
         <summary className="cursor-pointer text-sm font-medium text-[var(--oh-muted)]">Scanner & scale tests</summary>
-        <p className="mt-2 text-xs text-[var(--oh-muted)]">USB scanners type into Sell like a keyboard — no setup needed here.</p>
+        <details className="mt-2 rounded-md border border-[var(--oh-border)] px-3 py-2 text-xs text-[var(--oh-muted)]">
+          <summary className="cursor-pointer font-medium text-[var(--oh-text)]">Scanner setup (USB keyboard mode)</summary>
+          <ul className="mt-2 list-disc space-y-1 pl-4">
+            <li>Use HID keyboard mode with an Enter suffix after each scan (Zebra: scan the CR barcodes in the quick-start guide).</li>
+            <li>If scans stay in the search bar, the suffix is missing — rescan the Enter setup barcodes.</li>
+            <li>Leading zeros on barcodes must be preserved; test with a known product.</li>
+          </ul>
+        </details>
         <label className="mt-4 grid max-w-lg gap-1 text-sm font-medium">
           Barcode input check
           <input
