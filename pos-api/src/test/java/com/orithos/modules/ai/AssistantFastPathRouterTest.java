@@ -20,6 +20,8 @@ class AssistantFastPathRouterTest {
         assertEquals("report_sales", AssistantFastPathRouter.maybeMatch("How much did we take in the last week?").intent());
         assertEquals("report_sales", AssistantFastPathRouter.maybeMatch("sales for the last week").intent());
         assertEquals("report_sales", AssistantFastPathRouter.maybeMatch("sales last week").intent());
+        assertEquals("report_sales", AssistantFastPathRouter.maybeMatch("How much was our revenue last week?").intent());
+        assertEquals("report_sales", AssistantFastPathRouter.maybeMatch("上周营业额是多少？").intent());
         assertEquals("report_sales", AssistantFastPathRouter.maybeMatch("昨天销售额").intent());
         assertEquals("report_qty", AssistantFastPathRouter.maybeMatch("units sold past 30 days").intent());
         assertEquals("report_qty", AssistantFastPathRouter.maybeMatch("最近7天销量").intent());

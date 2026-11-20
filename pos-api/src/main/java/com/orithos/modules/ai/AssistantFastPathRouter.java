@@ -49,9 +49,11 @@ public final class AssistantFastPathRouter {
     private static final Pattern LAST_WEEK_SALES = Pattern.compile(
             "^(?:(?:sales|revenue|takings|turnover)\\s+(?:for\\s+)?(?:the\\s+)?(?:last|previous)\\s+week|"
                     + "how much did we (?:make|take|sell)\\s+(?:in\\s+)?(?:the\\s+)?last\\s+week|"
+                    + "how much (?:was|were) (?:(?:our|the) )?(?:sales|revenue|takings|turnover)\\s+(?:for\\s+)?(?:the\\s+)?(?:last|previous)\\s+week|"
                     + "what did we (?:make|take|sell)\\s+(?:in\\s+)?(?:the\\s+)?last\\s+week|"
                     + "what were (?:our )?(?:sales|takings|revenue|turnover)\\s+(?:for\\s+(?:the\\s+)?last|last)\\s+week|"
-                    + "上周(?:销售额?|营业额|流水|收入)(?:多少|怎么样|如何)?|上星期(?:销售额?|营业额|流水)(?:多少)?)[?.!。！？]*$",
+                    + "上周(?:的)?(?:销售额?|营业额|流水|收入)(?:(?:是|有)?多少|怎么样|如何)?|"
+                    + "上星期(?:的)?(?:销售额?|营业额|流水)(?:(?:是|有)?多少|怎么样|如何)?)[?.!。！？]*$",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern THIS_WEEK_SALES = Pattern.compile(
             "^(?:(?:what were|how (?:were|was)|show(?:\\s+me)?)\\s+(?:(?:our|the) )?(?:sales|revenue|takings|turnover)\\s+(?:for\\s+)?this\\s+week|"
