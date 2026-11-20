@@ -16,6 +16,13 @@ test("keeps the base price preview until a matching quote is available", () => {
   });
 });
 
+test("applies the line discount to the unquoted preview total", () => {
+  assert.deepEqual(resolveCartDisplayAmounts(2, 8.99, undefined, 10), {
+    unitPrice: 8.99,
+    lineTotal: 16.18,
+  });
+});
+
 test("shows enough unit price precision to explain rounded tier totals", () => {
   assert.equal(formatCartUnitPrice(26.99 / 4), "$6.7475");
   assert.equal(formatCartUnitPrice(8.99), "$8.99");

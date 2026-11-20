@@ -6,6 +6,7 @@ import { CartIcon, PlusIcon } from "@/components/icons";
 import type { RetailCheckoutQuote, RetailCustomerRecord } from "@/lib/retail-api";
 import { friendlyProductName } from "@/lib/product-display-name";
 import { splitMoney } from "@/lib/sell-screen";
+import { formatCartUnitPrice, resolveCartDisplayAmounts } from "@/lib/register-cart-pricing";
 import { cn } from "@/lib/utils";
 import { RegisterSellFinaliseButton } from "./RegisterSellFinaliseButton";
 import { CASE_PACK_OPTIONS, money, provisionalLineUnit, type CartLine } from "./shared";
@@ -231,8 +232,10 @@ export function RegisterSellCartAside({
                 ? quote?.lines.find((line) => line.productId === product.id && line.uomFactor === factor)
                 : undefined;
               const provisionalUnit = provisionalLineUnit(product, factor);
-              const lineTotal = splitMoney(quotedLine?.total ?? provisionalUnit * qty * (1 - discountPercent / 100));
-              const unitPrice = quotedLine ? quotedLine.total / qty : provisionalUnit;
+              const amounts = resolveCartDisplayAmounts(qty, provisionalUnit,
+                quotedLine ? { quantity: qty, total: quotedLine.total } : undefined, discountPercent);
+              const lineTotal = splitMoney(amounts.lineTotal);
+              const unitPrice = amounts.unitPrice;
               const fullName = product.display_name || product.name;
               const label = friendlyProductName(fullName);
               const selected = selectedLineKey === key;
@@ -255,7 +258,7 @@ export function RegisterSellCartAside({
                         {label}
                       </p>
                       <p className="text-[13px] text-[var(--oh-muted)]">
-                        {factor > 1 ? `${money(unitPrice)} / case · ${factor}` : `${money(unitPrice)} each`}
+                        {factor > 1 ? `${formatCartUnitPrice(unitPrice)} / case · ${factor}` : `${formatCartUnitPrice(unitPrice)} each`}
                         {discountPercent > 0 ? ` · ${discountPercent}% off` : ""}
                       </p>
                     </div>

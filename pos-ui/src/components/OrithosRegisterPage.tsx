@@ -25,7 +25,6 @@ import { useAuth } from "@/lib/auth";
 import { readContextOutletId, readRegisterId, WORK_CONTEXT_EVENT, writeRegisterContext, writeWorkActivity } from "@/lib/work-context";
 import { clearPendingRegisterOpen, readPendingRegisterOpen, savePendingRegisterOpen } from "@/lib/register-open-attempt";
 import { isRegisterSwitchDisabled } from "@/lib/register-switch";
-import { formatCartUnitPrice, resolveCartDisplayAmounts } from "@/lib/register-cart-pricing";
 
 type CartLine = { product: ProductBrowseItem; quantity: number };
 type Receipt = { reference: string; total: number; gst: number; change: number; lines: CartLine[] };
@@ -590,11 +589,7 @@ function NativeOrithosRegisterPage() {
           <div className="flex items-center justify-between border-b border-[var(--oh-border)] px-4 py-3"><h2 className="font-semibold">Current sale</h2><span className="text-sm text-[var(--oh-muted)]">{quantity} items</span></div>
           <div className="flex-1 divide-y divide-[var(--oh-border)] overflow-auto">
             {cart.length === 0 ? <div className="grid min-h-40 place-items-center text-sm text-[var(--oh-muted)]"><span className="flex items-center gap-2"><ShoppingBasket size={18} />Cart is empty</span></div>
-              : cart.map(({ product, quantity: count }) => {
-                const amounts = resolveCartDisplayAmounts(count, product.price,
-                  currentQuote?.lines.find((line) => String(line.productId) === product.id));
-                return <div key={product.id} className="flex items-center gap-3 px-4 py-3"><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{product.name}</p><p className="mt-1 text-xs text-[var(--oh-muted)]">{formatCartUnitPrice(amounts.unitPrice)} each</p></div><div className="flex items-center gap-2"><button type="button" aria-label={`Remove one ${product.name}`} onClick={() => changeQuantity(product.id, -1)} disabled={checkoutRecovery} className="grid size-8 place-items-center rounded border border-[var(--oh-border)] disabled:opacity-50">−</button><span className="w-5 text-center text-sm">{count}</span><button type="button" aria-label={`Add one ${product.name}`} onClick={() => changeQuantity(product.id, 1)} disabled={checkoutRecovery} className="grid size-8 place-items-center rounded border border-[var(--oh-border)] disabled:opacity-50">+</button></div><strong className="w-20 text-right text-sm">{money(amounts.lineTotal)}</strong></div>;
-              })}
+              : cart.map(({ product, quantity: count }) => <div key={product.id} className="flex items-center gap-3 px-4 py-3"><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{product.name}</p><p className="mt-1 text-xs text-[var(--oh-muted)]">{money(product.price)} each</p></div><div className="flex items-center gap-2"><button type="button" aria-label={`Remove one ${product.name}`} onClick={() => changeQuantity(product.id, -1)} disabled={checkoutRecovery} className="grid size-8 place-items-center rounded border border-[var(--oh-border)] disabled:opacity-50">−</button><span className="w-5 text-center text-sm">{count}</span><button type="button" aria-label={`Add one ${product.name}`} onClick={() => changeQuantity(product.id, 1)} disabled={checkoutRecovery} className="grid size-8 place-items-center rounded border border-[var(--oh-border)] disabled:opacity-50">+</button></div><strong className="w-20 text-right text-sm">{money(product.price * count)}</strong></div>)}
           </div>
           <div className="border-t border-[var(--oh-border)] p-4">
             <div className="mb-2 flex justify-between text-sm text-[var(--oh-muted)]"><span>Subtotal ex GST</span><span>{money(currentQuote?.subtotalExGst ?? 0)}</span></div>
