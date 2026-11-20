@@ -70,7 +70,8 @@ for (const testCase of cases) {
     caseId: testCase.id,
     category: testCase.category,
     status,
-    blockReason: blocked ? "SERVICE_UNAVAILABLE" : decision.blockReason,
+    blockReason: !remote ? "ENDPOINT_NOT_CONFIGURED"
+      : blocked ? "SERVICE_UNAVAILABLE" : decision.blockReason,
     assistantStatus: !remote ? "NOT_CONFIGURED" : blocked ? "UNAVAILABLE" : "CHECKED",
     syntheticSnapshotCheck: local,
     acceptance,

@@ -29,4 +29,5 @@ test("offline fixture checks are blocked as assistant acceptance and return exit
   });
   assert.ok(report.results.every((result) => result.status === "BLOCKED"));
   assert.ok(report.results.every((result) => result.assistantStatus === "NOT_CONFIGURED"));
+  assert.ok(report.results.every((result) => result.blockReason === "ENDPOINT_NOT_CONFIGURED"));
 });
