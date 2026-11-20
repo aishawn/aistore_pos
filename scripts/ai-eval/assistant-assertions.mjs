@@ -126,6 +126,9 @@ export function assistantUtteranceAcceptance(expected = {}, assistant = {}) {
     ? expected.answerIncludes.filter((text) => typeof text === "string" && text.trim().length > 0)
     : [];
   const answerExcludes = Array.isArray(expected.answerExcludes) ? expected.answerExcludes : [];
+  const unsupportedNegativeAssertions = Array.isArray(expected.negative)
+    ? expected.negative.filter((assertion) => assertion !== "writeRequests empty")
+    : expected.negative === undefined ? [] : ["expected.negative must be an array"];
   const answerContentAssertionRequired = requiresAnswerContent(expectedIntent);
   const answerAssertionsPresent = !answerContentAssertionRequired
     || answerIncludes.length > 0
@@ -158,6 +161,8 @@ export function assistantUtteranceAcceptance(expected = {}, assistant = {}) {
       || (expected.answerLanguage === "zh"
         ? /\p{Script=Han}/u.test(answer)
         : !/\p{Script=Han}/u.test(answer)),
+    negativeAssertionsPresent: unsupportedNegativeAssertions.length === 0,
+    unsupportedNegativeAssertions,
     ...(expected.clarification === undefined
       ? {}
       : { clarification: assistant.clarificationRequired === expected.clarification }),
@@ -173,16 +178,18 @@ export function assistantUtteranceAcceptance(expected = {}, assistant = {}) {
 
 export function assistantUtteranceStatus(acceptance, { sourceRuntimeMatch, unavailable, noWrites }) {
   const missingAnswerAssertions = !acceptance.answerAssertionsPresent;
+  const missingNegativeAssertions = acceptance.negativeAssertionsPresent === false;
   const behaviorPassed = Object.entries(acceptance)
     .filter(([key, value]) => typeof value === "boolean"
-      && !["passed", "answerContentAssertionRequired", "answerAssertionsPresent"].includes(key))
+      && !["passed", "answerContentAssertionRequired", "answerAssertionsPresent", "negativeAssertionsPresent"].includes(key))
     .every(([, passed]) => passed === true);
   const status = !sourceRuntimeMatch || unavailable ? "BLOCKED"
     : !behaviorPassed || !noWrites ? "FAIL"
-      : missingAnswerAssertions ? "BLOCKED" : "PASS";
+      : missingAnswerAssertions || missingNegativeAssertions ? "BLOCKED" : "PASS";
   const blockReason = status !== "BLOCKED" ? null
     : !sourceRuntimeMatch ? "SOURCE_RUNTIME_MISMATCH"
-      : unavailable ? "SERVICE_UNAVAILABLE" : "ANSWER_ASSERTIONS_MISSING";
+      : unavailable ? "SERVICE_UNAVAILABLE"
+        : missingNegativeAssertions ? "NEGATIVE_ASSERTIONS_UNSUPPORTED" : "ANSWER_ASSERTIONS_MISSING";
   return { status, blockReason };
 }
 

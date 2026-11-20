@@ -47,6 +47,9 @@ evaluator. Set both `AI_EVAL_SOURCE_SHA` and `AI_EVAL_RUNTIME_SHA` to the
 verified source and deployed runtime commits; mismatches or unknown commits
 are `BLOCKED`. Missing positive answer expectations for factual questions are
 also `BLOCKED` until the fixture is completed. A behavior mismatch is `FAIL`.
+Natural-language entries under `expected.negative` are not executed as tests;
+unless they have been replaced with a supported structured assertion, the case
+is `BLOCKED` and the report lists each unsupported entry.
 The runner does not certify full POS behavior unless the response contract and
 fixed fixture assertions cover that behavior. Use Java router tests for
 deterministic routing and the read-only live evaluator for deployed behavior
@@ -82,6 +85,24 @@ route and product query match, the route is deterministic with no model
 fallback, and `writeRequests` is explicitly empty. Transient 502/503/504
 responses receive bounded exponential retries; an SHA mismatch or unavailable
 runtime is `BLOCKED`, never a pass.
+
+Run the small read-only smoke set against Demo after its version endpoint
+reports the expected deployed backend commit. The two cases cover pricing-page
+navigation and the invoice-record boundary; both are deterministic paths and
+do not perform business writes:
+
+```powershell
+$env:SKR_BASE_URL = "https://demo.orithos.com.au"
+$env:SKR_USERNAME = "admin"
+$env:SKR_PASSWORD = $env:INITIAL_ADMIN_PASSWORD
+$env:SKR_SOURCE_COMMIT = "<verified-backend-commit>"
+$env:SKR_CASES = "scripts/ai-eval/fixtures/readonly-smoke.jsonl"
+$env:SKR_EVAL_OUTPUT = ".local/ai-eval/demo-readonly-smoke.json"
+node scripts/ai-eval/run-skr-live.mjs
+```
+
+Keep `SKR_PASSWORD` in the local process environment; do not place it in the
+fixture or report. The output is a read-only assistant response report.
 
 ## SKR forecast history (read-only)
 
