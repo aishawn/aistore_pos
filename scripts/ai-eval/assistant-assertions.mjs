@@ -191,7 +191,9 @@ export function assistantUtteranceAcceptance(expected = {}, assistant = {}) {
     ...result,
     entitySlotChecks,
     expectedDataChecks,
-    passed: Object.values(result).every(Boolean),
+    passed: Object.entries(result)
+      .filter(([key, value]) => typeof value === "boolean" && key !== "answerContentAssertionRequired")
+      .every(([, value]) => value),
   };
 }
 

@@ -302,6 +302,21 @@ test("empty responses fail even when the expected intent and route match", () =>
   assert.equal(result.passed, false);
 });
 
+test("navigation answers pass without factual answer-content expectations", () => {
+  const result = assistantUtteranceAcceptance({ intent: "navigate", route: "/products" }, {
+    intent: "navigate",
+    route: "/products",
+    answer: "Opening the products page.",
+    source: "deterministic",
+    llmFallback: false,
+    writeRequests: [],
+  });
+
+  assert.equal(result.answerContentAssertionRequired, false);
+  assert.equal(result.answerAssertionsPresent, true);
+  assert.equal(result.passed, true);
+});
+
 test("clarification expectations match the explicit assistant clarification flag", () => {
   const expected = { intent: "qa", clarification: true };
   const assistant = {
