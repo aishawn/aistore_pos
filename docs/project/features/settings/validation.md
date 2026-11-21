@@ -14,9 +14,9 @@
 | SKR / Demo Company bundle 键和值 | 线上 API 只读 | PASS | 两店各 66 键；键集合相同，值差异 0 |
 | 停放备注策略与设置一致 | SKR + Demo API 只读 | PASS | `company.sell.require_note_on_parked_sale=false`；`sale-policy.requireNoteOnParkedSale=false` |
 | Settings UI 页面/字段状态 | SKR + Demo，1440px | PASS | 每店 17 个页面组合；22 项运行时支持 / 38 项仅保存；无页面错误或尝试的业务写请求。报告：`../temp/settings-audit-current-20261121/after-note-86b73a45.json` |
-| Shopfront `/settings` 页面字段和值 | Shopfront 只读 | NOT RUN | 页面停在 Location Selector；没有选 outlet 或进入 Register |
-| Shopfront outlet override 子集 | Shopfront GraphQL 只读 | PARTIAL | 33 个 outlet setting rows；读取了成本、调拨、低于成本折扣、sale key 位置等已存 override；不能代替完整有效 settings 页面 |
-| Shopfront Require Note on Parked Sale 源值 | Shopfront 只读 | NOT RUN | GraphQL outlet overrides 中无此字段；未进入 Settings 上下文确认其默认值/有效值 |
+| Shopfront `/settings` 页面逐字段 UI | Shopfront 只读 | NOT RUN | 页面停在 Location Selector；没有选 outlet 或进入 Register |
+| Shopfront 全局/门店设置 API 读取 | Shopfront GraphQL 只读 | PASS（原始行读取） | crawler 只读 endpoint 返回 `Vendor.settings` 69 项、SKR outlet overrides 33 项；6 个凭据字符串值已脱敏。空白值代表设置行没有显式值，不能直接当作 effective false |
+| Shopfront Note on Held Sale 源行 | Shopfront GraphQL 只读 | PARTIAL | Vendor `note_on_held_sale` 存在但值为空；与 Orithos `require_note_on_parked_sale=false` 的有效行为等价仍待确认 |
 
 限制：设置矩阵/API 证明 Orithos 两店在当前版本上一致，不能证明与 Shopfront 完整 1:1。Shopfront `sale_keys_position=default` 与 Orithos `RIGHT` 的语义映射待确认；`use_global_cost`、average/last cost transfer flags、`discount_below_cost_behaviour` 尚无 Orithos Company catalog 的直接同名对应项。Shopfront 页面有效值和停放备注 true/false 页面流程仍未验收。
 
@@ -35,7 +35,23 @@
 
 Shopfront Developer Documentation 的 `Determine Product Prices` 将标准数量定价描述为 High Mix Price 与 Quantity Rate；Orithos 还提供 Low Mix Price、Average 两个扩展算法，这两项没有 Shopfront 等价证明。Shopfront 文档要求 Family 内商品价格点一致，但没有定义 Orithos `MATCH_PRICE_POINTS` / `PROPORTIONAL` 的分配行为；后者应视为 Orithos 扩展，直到取得源端行为样本。当前可据官方示例与线上样本确认 High Mix，Quantity Rate 有本地官方示例单测，但没有线上切换设置的 UAT。
 
-本轮 Shopfront 源设置刷新遇到认证/基础设施限制：员工网页登录成功，但该会话对 GraphQL introspection 返回 401；crawler 数据库连接在查询只读 OAuth token 时由数据库端提前断开。crawler 的只读 schema 缓存确认 `Outlet.settings` 字段包含 `name/value/datatype`，但历史 `outlets` 全量扫描 job `111` 以 Shopfront `429` 结束；不要重跑宽查询。现有 33 项 outlet override 仍是部分快照，不能据此推断完整有效设置值；本轮没有尝试刷新 token 或修改源站数据。
+较早的 Shopfront 源设置读取曾遇到认证/基础设施限制：员工网页登录成功，但该会话对 GraphQL introspection 返回 401；crawler 数据库连接在查询只读 OAuth token 时由数据库端提前断开。历史 `outlets` 全量扫描 job `111` 以 Shopfront `429` 结束。以上限制已由下方 crawler 窄范围只读 API 绕过；不要重跑宽查询，也不要把早期“未刷新”记录当作当前状态。
+
+## 2026-11-21 Shopfront 设置 API 值比对（SKR）
+
+| Shopfront 源值 | Orithos SKR 当前值 | 结果/影响 |
+|----------------|---------------------|-----------|
+| `family_distribution=match_price_points`、`rounding_mode=redistribute` | `MATCH_PRICE_POINTS`、`REDISTRIBUTE` | 值一致；High Mix 及三个普通数量阶梯商品已在线上报价验收 |
+| `timezone=Australia/Melbourne`、`date_format=DD/MM/YYYY`、`time_format=HH:mm:ss`、`start_of_week=monday` | Melbourne、相同日期/时间格式、`MONDAY` | 值一致；周起始大小写已规范化 |
+| `round_to=0.05`、`sign_in_require_password=1`、`require_refund_reason=1` | `0.05`、`true`、`true` | 值一致 |
+| `cost_calculation_method=last` | `LAST_COST` | 存储值映射一致，但该 Orithos 字段没有运行时消费者，改值不会切换实际成本行为 |
+| `sale_keys_position=left` | `company.misc.sale_keys_position=RIGHT` | 明确值不一致；Orithos 此字段当前仅保存，收银台不消费该配置 |
+| `default_sale_keys=<Shopfront set id>` | `company.misc.default_sale_keys=""`，`GET /api/sale-keys` 返回 0 组 | 明确配置缺口；Orithos Sell 使用内建分类快捷键回退，没有导入 Shopfront 默认 sale-key 布局 |
+| `use_average_cost=1`；门店 `use_global_cost=1`、调拨平均/最新成本开关均为 `1` | 无直接等价的 Orithos 公司设置/成本选择运行路径 | 成本来源及转库存成本行为未对齐；不能只把 `LAST_COST` 字段值相同视作已实现 |
+| 门店 `discount_below_cost_behaviour=ignore` | 无直接对应字段 | 低于成本折扣的规则缺失 |
+| `use_quantity_rate`、`discount_require_reason`、`allow_cashout_without_sale`、`note_on_held_sale` 等全局 boolean 行值为空 | Orithos 对应值分别为 High Mix、false、false、false | PARTIAL；空白不是可直接证明的 false。Quantity Rate、折扣理由、cash-out 与停放备注仍需确认 Shopfront 默认/有效值 |
+
+只读读取 endpoint 由 crawler `main` 的 `8204c43`、`2266347`、`f434c4d` 加入/加固，生产 source fingerprint 已与当前 crawler 源码一致；查询同时读 Vendor 全局设置与映射 outlet 覆盖，绝不调用 settings import/promote。Shopfront 全量 `saleKeys` API 需要 sale 上下文，因此本轮没有进入 Register，也没有尝试复制该布局。
 
 ## 2026-11-21 Allow cash out without sale（线上 SHA f6ce8b23）
 
