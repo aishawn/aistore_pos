@@ -96,5 +96,5 @@
 - 根因：设置 `company.sell.allow_cash_out_without_sale` 已可编辑且默认 `false`，但收银服务从未读取该值，`CASH_OUT` 仍会创建现金流水；收银条也无条件显示入口。
 - 修复：后端对新的 `CASH_OUT` 写入执行 vendor 级设置门禁（默认拒绝），`CASH_IN` 不受影响；已成功流水的同键精确重放仍可恢复。`/api/retail/registers/sale-policy` 返回 `allowCashOutWithoutSale`，收银条仅在值为 true 时显示 Cash Out，读取失败时保持隐藏。
 - 本地验证：`RegisterSessionServiceTest` + `RetailRegisterControllerTest` 13 tests PASS；`npm run typecheck` PASS；`git diff --check` PASS。
-- 线上状态：尚未部署；SKR/Demo 设置未更改，也没有创建现金流水。部署后仅做版本、策略 API 和页面只读核验；Shopfront 对应设置值未复核，因此不宣称此项已与 Shopfront 值对齐。
+- 线上验收：SKR + Demo 前后端均为 `f6ce8b23abe170d16d62dc1f51d05fb6eaf845a4`。1440px 只读审计两店均通过：17 个 Settings 路由可达、21 项运行时支持 / 39 项仅保存分类正确，字段可编辑性正确；策略 API 与公司设置均为 `false`，Sell 页 Cash Out 按钮隐藏；无浏览器错误或业务写入。审计报告在本地 `temp/settings-cashout-readonly.json`（不提交）。Shopfront 对应设置值未复核，因此不宣称此项已与 Shopfront 值对齐。
 

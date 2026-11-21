@@ -47,6 +47,15 @@ async function main() {
       page.setDefaultNavigationTimeout(60000);
       const pageErrors = [];
       page.on('pageerror', e => pageErrors.push(e.message));
+      const salePolicyResponse = await context.request.get(base + '/api/retail/registers/sale-policy');
+      assert.equal(salePolicyResponse.status(), 200, `${host} register sale policy`);
+      const salePolicy = (await salePolicyResponse.json()).data;
+      const allowCashOutWithoutSale = String(companySettings?.['company.sell.allow_cash_out_without_sale']?.value).toLowerCase() === 'true';
+      assert.equal(salePolicy.allowCashOutWithoutSale, allowCashOutWithoutSale, `${host} cash out policy must match company settings`);
+      await page.goto(base + '/sell', { waitUntil: 'domcontentloaded' });
+      const cashOutButtonCount = await page.getByRole('button', { name: 'Cash Out', exact: true }).count();
+      assert.equal(cashOutButtonCount, allowCashOutWithoutSale ? 1 : 0, `${host} Cash Out visibility must follow company setting`);
+      checks.push({ host, check: 'Cash out policy API and Sell button follow the company setting', allowCashOutWithoutSale, result: 'PASS' });
       for (const width of (env.SETTINGS_UAT_WIDTHS ? env.SETTINGS_UAT_WIDTHS.split(',').map(Number) : [390, 768, 1440])) {
         await page.setViewportSize({ width, height: 900 });
         for (const [label, route] of [['Company','/settings/company/general'],['Company','/settings/company/date-time'],['Staff & access','/settings/staff'],['Store','/settings/registers-outlets'],['Store','/settings/payment'],['Store','/settings/tax'],['Store','/settings/hardware'],['Store','/settings/customerdisplay'],['Store','/settings/receipts'],['Store','/settings/keys'],['Store','/settings/rules'],['Store','/settings/loyalty'],['Store','/settings/surcharging'],['Store','/settings/push'],['Data','/settings/data'],['Account','/settings/account?tab=connection'],['Account','/settings/account?tab=unknown']]) {

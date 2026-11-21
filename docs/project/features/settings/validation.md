@@ -1,6 +1,6 @@
 # Settings 1:1 — validation
 
-## 2026-11-21 Allow cash out without sale（本地候选）
+## 2026-11-21 Allow cash out without sale（线上 SHA f6ce8b23）
 
 | 检查 | 环境 | 结果 | 证据/范围 |
 |------|------|------|-----------|
@@ -10,9 +10,11 @@
 | 收银条仅在策略为 true 时显示 Cash Out | 本地静态路径 + TypeScript | PASS | `OdooRegisterPage` → `RegisterSellPaymentBar`；默认 false 时隐藏 |
 | 后端聚焦测试 | 本地 Java 21 | PASS | 13 tests，0 failures/errors |
 | POS UI typecheck | 本地 | PASS | `npm run typecheck` |
-| SKR / Demo 策略与页面只读验收 | 线上 | NOT RUN | 候选尚未部署；门店设置未修改；部署后核验运行 SHA、`sale-policy` 和按钮状态 |
+| SKR / Demo 策略与 Sell 页面只读验收 | SKR + Demo，`f6ce8b23` | PASS | `settings-audit-readonly.cjs`；策略 API 与设置读回均为 false，按钮隐藏；无业务写入 |
+| Settings 路由与字段分类 | SKR + Demo，1440px | PASS | 每店 17 个路由；60 个公司字段中 21 项支持、39 项仅保存；控件状态正确 |
+| 浏览器错误及写入拦截 | SKR + Demo | PASS | 每店 0 页面错误、0 被阻止/尝试的业务写请求；报告 `temp/settings-cashout-readonly.json`（本地） |
 
-限制：本地 mock/静态界面验证不能证明 Dokploy 运行版本或线上租户配置；Shopfront 对应设置值未复核。本次无线上写入、无 Shopfront 操作。
+限制：线上页面矩阵本次仅覆盖 1440px，没有重跑 390/768px；Cash Out 只验证当前 false 分支，true 分支由本地服务测试和 TypeScript 路径覆盖。Shopfront 对应设置值未复核。本次无线上写入、无 Shopfront 操作。
 
 | 检查 | 环境 | 结果 | 证据 |
 |------|------|------|------|
