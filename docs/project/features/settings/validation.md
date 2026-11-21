@@ -131,4 +131,17 @@
 - 源码逐字段核查了 Settings 的 60 个公司字段：18 个有明确运行时代码消费者，另外 42 个此前只被保存/读回，没有改变 Orithos 行为。这是配置 UI 与运行能力之间的根本差距。
 - Settings 现在保留这些 Shopfront 对照项及其当前值，但对尚未实现的 42 个字段禁用编辑并标注“仅保存、不影响 Orithos 行为”；避免店铺人员误以为改值已改变 POS 行为。已有运行路径的 18 个字段仍可编辑。
 - 聚焦验证：`company-settings-form.test.ts` 6/6 PASS；POS UI `npm run typecheck` PASS；`git diff --check` PASS。
-- 部署与 SKR/Demo 页面级禁用态验收待本候选推送部署后确认。此项修复不会让 42 个未实现字段获得 Shopfront 功能等价；它阻止无效配置继续被当作已完成能力。
+- 页面级禁用态验收已在后续线上版本完成，见下方 2026-11-21 页面验收记录。此项修复不会让 42 个未实现字段获得 Shopfront 功能等价；它阻止无效配置继续被当作已完成能力。
+
+## 2026-11-21 公司设置字段线上页面验收
+
+| 检查 | 环境/版本 | 结果 | 证据/范围 |
+|------|-----------|------|-----------|
+| Runtime identity | SKR + Demo，`f9b92a7758c3e9604861bd7abc57411643bbc054` | PASS | 两店 frontend/backend SHA 相同；运行版本是 Settings 修复 `6c008620` 的直接子提交。当前 GitHub `main` 后续已前进至 `21898ec6`；该 SHA 与线上运行版本不同，Settings 页面组件和字段目录在二者间无差异 |
+| Settings 页面矩阵 | SKR + Demo，1440px 桌面视口 | PASS | 每店 17 个设置路由；导航、主题切换、无横向溢出、权限只读弹窗、旧路由、区域接口故障重试均通过；无浏览器异常、无非认证写请求 |
+| 公司设置字段可用性 | SKR + Demo，10 个 Company 分区 | PASS | 每店实测 60 个表单字段：18 个运行时支持项均可编辑且无“Stored only”提示；42 个尚无运行时消费者的字段均禁用且有明确提示 |
+| 页面验收稳定性 | SKR + Demo | PASS | UAT 前后各自 `/api/public/version` frontend/backend SHA 未变化；脚本阻断全部非认证 API 写入。详细临时报告 `temp/settings-audit-current-20261121/field-runtime-report.json` 不纳入版本库 |
+| 设置保存行为 | SKR + Demo | NOT_RUN | 本轮没有改动或保存线上设置，也没有创建销售/现金交易 |
+| Shopfront 全字段页面复核 | Shopfront | NOT_RUN | 本轮只验收 Orithos Settings UI。已有定价字段值和只读报价记录不代表 Shopfront 全部设置逐字段一致 |
+
+本轮把 60 项字段可用性断言加入 `scripts/settings-audit-readonly.cjs`，避免未来只验证页面可达而漏掉受支持与仅保存字段的真实交互状态。本轮是桌面视口验收；不代替移动视口复验、设置保存/刷新 UAT，也不证明被禁用的 42 项已经实现 Shopfront 行为。

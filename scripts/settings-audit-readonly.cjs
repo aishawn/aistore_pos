@@ -83,6 +83,41 @@ async function main() {
           checks.push({ host, width, route, themes: ['light','dark'], check: 'Unified navigation and no document overflow', result: 'PASS' });
         }
       }
+      const runtimeSupportedLabels = new Set([
+        'Quantity Pricing Method', 'Family Price Distribution Method', 'Price Rounding Mode',
+        'Legal company name', 'ABN', 'Street address', 'City', 'Postcode', 'Phone', 'Email',
+        'Require Password', 'Cash In Reasons', 'Cash Out Reasons', 'Timezone', 'Date Format',
+        'Time Format', 'Start of the Week', 'Round To',
+      ]);
+      const companyRoutes = [
+        '/settings/company/general', '/settings/company/general-display', '/settings/company/login-after-sale',
+        '/settings/company/sell-screen', '/settings/company/outlets', '/settings/company/date-time',
+        '/settings/company/currency', '/settings/company/search', '/settings/company/integrations',
+        '/settings/company/miscellaneous',
+      ];
+      const companyFields = [];
+      for (const route of companyRoutes) {
+        await page.goto(base + route, { waitUntil: 'domcontentloaded' });
+        await page.locator('main form label').first().waitFor();
+        const rows = await page.locator('main form label').evaluateAll(labels => labels.map(label => {
+          const row = label.parentElement;
+          const control = label.querySelector('input,select,textarea,button');
+          return {
+            label: label.childNodes[0]?.textContent?.trim() ?? '',
+            disabled: control?.disabled ?? true,
+            storedOnly: row?.querySelector('p')?.textContent?.includes('Stored only; this setting does not affect Orithos behavior yet.') ?? false,
+          };
+        }));
+        companyFields.push(...rows);
+      }
+      const supportedFields = companyFields.filter(field => runtimeSupportedLabels.has(field.label));
+      const inertFields = companyFields.filter(field => !runtimeSupportedLabels.has(field.label));
+      assert.equal(companyFields.length, 60, `${host} company field catalogue size`);
+      assert.equal(supportedFields.length, 18, `${host} runtime-supported company fields`);
+      assert.equal(inertFields.length, 42, `${host} stored-only company fields`);
+      assert.ok(supportedFields.every(field => !field.disabled && !field.storedOnly), `${host} supported fields must remain editable`);
+      assert.ok(inertFields.every(field => field.disabled && field.storedOnly), `${host} stored-only fields must be disabled and labelled`);
+      checks.push({ host, check: 'All company fields reflect runtime support in the UI', supported: supportedFields.length, storedOnly: inertFields.length, result: 'PASS' });
       await page.goto(base + '/settings/staff');
       const add = page.getByRole('button', { name: 'Add staff', exact: true });
       if (host === 'demo') await page.waitForFunction(() => [...document.querySelectorAll('button')].some(button => button.textContent.trim() === 'Add staff' && !button.disabled));
