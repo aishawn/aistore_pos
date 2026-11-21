@@ -161,4 +161,5 @@
 - 退款原因不再充当退款身份标记。原生退款始终有 `linked_sale_id`，所以 refundable 数量/金额/GST、销售/退款报表、AI 预测、补货、客户/供应商销售汇总均改用关联关系、退款金额，并兼容历史 `refund_reason` 数据。
 - Settings 字段审计计数更新为 20 项运行时支持 / 40 项仅保存字段。
 - 聚焦验证：`RefundServiceTest`、`RetailRegisterControllerTest` 和 POS UI `npm run typecheck` 通过；`git diff --check` 通过。UI 单测仍受本地缺少 `tsx` 限制，未安装依赖。
-- 尚未做线上退款写入 UAT，也未修改 SKR/Demo 策略值。部署后可只读核对两店策略值与字段可用状态；策略启用/关闭两条分支由服务测试覆盖。线上退款账本不使用真实交易验证。
+- 部署后只读验收（SKR + Demo，runtime `dc708c3e767d84792e97bcbe7837a13f79437969`）：`/api/retail/registers/sale-policy` 两店均返回 `discountsRequireReason=false`、`refundsRequireReason=true`；每店 18 个 Settings 路由通过，60 个公司字段中 20 个可编辑、40 个禁用并标注仅保存；无页面错误、无非认证业务写请求，UAT 前后 runtime SHA 未变化。报告位于本机临时文件 `temp/settings-audit-current-20261121/refund-reason-deploy-audit.json`，不纳入仓库。
+- 尚未做线上退款写入 UAT，也未修改 SKR/Demo 策略值。策略启用/关闭两条分支由服务测试覆盖；Shopfront 的对应 Refunds Require Reason 值尚未读取，因此本次只证明 Orithos 两店一致，不证明该设置与 Shopfront 相同。线上退款账本不使用真实交易验证。
