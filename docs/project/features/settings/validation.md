@@ -10,12 +10,15 @@
 | 策略接口按公司设置返回值 | 本地 Java 21 | PASS | `RetailRegisterControllerTest` |
 | 本地草稿备注必填判定与清理 | 本地 Node 22 | PASS | `parked-sale-note.test.ts`，2 tests |
 | Sell 页面类型检查 | 本地 | PASS | `npm run typecheck` |
-| SKR / Demo frontend/backend 运行 SHA | 线上 | PASS | `/api/public/version` 两店均稳定为 `86b73a4512acd7918fb0295055866ad6fcdc6932` |
-| SKR / Demo 线上策略、公司设置读回 | 线上 | NOT RUN | 登录引导返回控制台 bootstrap 数据而非门店 access token；未能安全完成租户 API 读回 |
-| SKR / Demo 线上 UI 流程 | 线上 | NOT RUN | 浏览器 URL 许可校验阻止自动化；Register 初始化可能开会话，故未进入真实收银流程 |
-| Shopfront 对应设置值 | Shopfront 只读 | NOT RUN | 本轮未能打开获准的 Shopfront 浏览器页面，也未验证该设置的源值 |
+| SKR / Demo frontend/backend 运行 SHA | 线上 | PASS | 设置矩阵验收前后，两店 frontend/backend 均为 `eed54213c9a381f444d66f244812d0a3cbbc65a3` |
+| SKR / Demo Company bundle 键和值 | 线上 API 只读 | PASS | 两店各 66 键；键集合相同，值差异 0 |
+| 停放备注策略与设置一致 | SKR + Demo API 只读 | PASS | `company.sell.require_note_on_parked_sale=false`；`sale-policy.requireNoteOnParkedSale=false` |
+| Settings UI 页面/字段状态 | SKR + Demo，1440px | PASS | 每店 17 个页面组合；22 项运行时支持 / 38 项仅保存；无页面错误或尝试的业务写请求。报告：`../temp/settings-audit-current-20261121/after-note-86b73a45.json` |
+| Shopfront `/settings` 页面字段和值 | Shopfront 只读 | NOT RUN | 页面停在 Location Selector；没有选 outlet 或进入 Register |
+| Shopfront outlet override 子集 | Shopfront GraphQL 只读 | PARTIAL | 33 个 outlet setting rows；读取了成本、调拨、低于成本折扣、sale key 位置等已存 override；不能代替完整有效 settings 页面 |
+| Shopfront Require Note on Parked Sale 源值 | Shopfront 只读 | NOT RUN | GraphQL outlet overrides 中无此字段；未进入 Settings 上下文确认其默认值/有效值 |
 
-限制：部署 SHA 已验证，但不证明线上策略设置值或 Shopfront 行为一致。线上 UI、两店设置值、Shopfront 源值及 localStorage true/false 分支仍待验证；本轮没有线上业务写入。
+限制：设置矩阵/API 证明 Orithos 两店在当前版本上一致，不能证明与 Shopfront 完整 1:1。Shopfront `sale_keys_position=default` 与 Orithos `RIGHT` 的语义映射待确认；`use_global_cost`、average/last cost transfer flags、`discount_below_cost_behaviour` 尚无 Orithos Company catalog 的直接同名对应项。Shopfront 页面有效值和停放备注 true/false 页面流程仍未验收。
 
 ## 2026-11-21 Allow cash out without sale（线上 SHA f6ce8b23）
 

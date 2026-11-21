@@ -104,6 +104,7 @@
 - 修复候选：公司策略 API 返回 `requireNoteOnParkedSale`；服务端在任何商品读取/销售写入前验证必填备注并保存 trim 后的值；本地停放流程在启用时要求输入，停放清单显示备注，收银机切换复用同一确认；策略接口缺失/失败时阻止停放。
 - 本地验证：`SellServiceParkedSaleNoteTest` + `RetailRegisterControllerTest` + `SellServiceParkedSaleReadTest` 11 tests PASS；前端备注规则 2 tests PASS（Node 22 type stripping）；`npm run typecheck` PASS；`git diff --check` PASS。
 - 发布：提交 `86b73a4512acd7918fb0295055866ad6fcdc6932` 已推送 `main`；SKR 和 Demo 的 frontend/backend `/api/public/version` 均稳定返回该 SHA。
-- 线上只读验收状态：浏览器工具因 URL 许可校验停止；直接 API 登录经控制台返回 bootstrap 响应，未取得门店访问令牌，因此设置值和 `sale-policy` 无法读回。未打开 Register、未写设置、未创建业务记录。
-- 剩余：需要修复或使用有效的门店认证代理路径后，读回 SKR/Demo 的设置及策略；在不打开真实 Register 的隔离环境验证 localStorage 草稿备注 true/false 分支；Shopfront 对应设置仍未核对。
+- 线上只读验收：审计脚本在 1440px 下对 SKR/Demo 各检查 17 个 Settings 页面组合；每店 60 个 Company 字段中 22 项运行时支持、38 项明确仅保存；无页面错误或尝试的业务写请求。两店 `/api/settings/company` 均为 66 个键，键集合相同、值差异 0；`sale-policy` 四项值相同，`requireNoteOnParkedSale=false`，与公司设置一致。UAT 时前后端稳定 SHA 为 `eed54213c9a381f444d66f244812d0a3cbbc65a3`。报告：`../temp/settings-audit-current-20261121/after-note-86b73a45.json`。
+- Sell 页面 true/false localStorage 草稿流程仍未做线上 UI UAT；虽然只读脚本已断言无业务写请求，但本轮没有为了 UAT 添加停放草稿或切换 Register。
+- Shopfront 只读核对：员工会话打开 `/settings` 返回 SPA 应用壳，但页面停在 Location Selector；未选择 outlet、未进入 Shopfront Register。GraphQL introspection/read-only outlet query 返回 SKR outlet `Cellarbrations at St Kilda Road` 的 33 项 outlet overrides。已读到 `use_global_cost=1`、`update_last_cost_from_transfer=1`、`update_average_cost_from_transfer=1`、`send_transfers_using_average_cost=1`、`discount_below_cost_behaviour=ignore`、`sale_keys_position=default`。这组 outlet overrides 不能代替完整 Settings 页的有效值；`Require Note on Parked Sale` 对应源值仍未取得。多项成本/调拨键在 Orithos Company catalog/backend 中没有直接同名键；`sale_keys_position` 的 `default` 与 Orithos `RIGHT` 语义是否等价待核实。
 
