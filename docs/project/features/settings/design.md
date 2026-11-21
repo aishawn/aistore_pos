@@ -17,7 +17,7 @@
 ## Engine wiring
 
 - `CompanySettingsService.cashRoundTo()` → `CashRounding.roundTo` in `CheckoutService`.
-- Checkout quote/checkout reads the company quantity-pricing, family-distribution, and price-rounding settings. Pricing UAT currently covers one tiered product and quote quantities 1, 3, 4, 7, and 10 on SKR and Demo; this does not establish parity for every product or price-list/promotion rule.
+- Checkout quote/checkout reads the company quantity-pricing, family-distribution, and price-rounding settings. Current online UAT covers three ordinary tiered products on SKR and Demo; Shopfront documents High Mix and Quantity Rate, while Orithos Low Mix/Average and family distribution modes are extensions without full source parity evidence. See `validation.md` for the tested matrix and limits.
 - `company.login.require_password` is read by the store staff endpoint and login endpoint. The store login page selects a staff account and makes the password field required according to that response; control-plane login always requires a password.
 - Business timezone is consumed by server business-date logic. Date/time display settings are consumed by the POS UI, and `company.start_of_week` is consumed by report query logic. A source search found no runtime consumer for cost calculation method or profitability display; these remain persistence-only until their consuming workflows are identified and verified.
 - Other company KV values remain persistable, but persistence alone is not evidence of an operational consumer. See the current audit boundary in `progress.md`.

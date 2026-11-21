@@ -33,6 +33,10 @@
 
 本机详细报告：`temp/settings-audit-current-20261121/pricing-current-skr-retry.json`、`temp/settings-audit-current-20261121/pricing-current-demo.json`（临时 UAT 输出，不纳入版本库）。当前证据覆盖三个普通数量阶梯商品；不覆盖 Family、促销、客户价、价表继承或 Shopfront Register 交易对照。Family 当前没有可用 Shopfront 样本，不能据单测宣称线上等价。
 
+Shopfront Developer Documentation 的 `Determine Product Prices` 将标准数量定价描述为 High Mix Price 与 Quantity Rate；Orithos 还提供 Low Mix Price、Average 两个扩展算法，这两项没有 Shopfront 等价证明。Shopfront 文档要求 Family 内商品价格点一致，但没有定义 Orithos `MATCH_PRICE_POINTS` / `PROPORTIONAL` 的分配行为；后者应视为 Orithos 扩展，直到取得源端行为样本。当前可据官方示例与线上样本确认 High Mix，Quantity Rate 有本地官方示例单测，但没有线上切换设置的 UAT。
+
+本轮 Shopfront 源设置刷新遇到认证/基础设施限制：员工网页登录成功，但该会话对 GraphQL introspection 返回 401；crawler 数据库连接在查询只读 OAuth token 时由数据库端提前断开。crawler 的只读 schema 缓存确认 `Outlet.settings` 字段包含 `name/value/datatype`，但历史 `outlets` 全量扫描 job `111` 以 Shopfront `429` 结束；不要重跑宽查询。现有 33 项 outlet override 仍是部分快照，不能据此推断完整有效设置值；本轮没有尝试刷新 token 或修改源站数据。
+
 ## 2026-11-21 Allow cash out without sale（线上 SHA f6ce8b23）
 
 | 检查 | 环境 | 结果 | 证据/范围 |
