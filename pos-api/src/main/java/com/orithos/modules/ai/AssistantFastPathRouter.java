@@ -85,6 +85,9 @@ public final class AssistantFastPathRouter {
                     + "\\bwhat were (?:our|the store'?s) takings\\b|"
                     + "卖了多少(?:钱|金额)?(?:[?？]|$)|收入多少|营业额多少|流水多少",
             Pattern.CASE_INSENSITIVE);
+    private static final Pattern AVERAGE_TICKET_MARKER = Pattern.compile(
+            "\\b(?:average\\s+(?:sale|ticket|transaction\\s+value)|average\\s+order\\s+value)\\b|客单价",
+            Pattern.CASE_INSENSITIVE);
     private static final Pattern QUANTITY_RANGE = Pattern.compile(
             "^(?:(?:units|quantity)\\s+sold\\s+(?:(?:last|past|previous)\\s+\\d+\\s+days?|this\\s+week)|(?:近|最近|过去)\\s*\\d+\\s*天\\s*(?:销量|销售数量)|这周(?:卖了多少件?|销量(?:是多少)?)|本周(?:卖了多少件?|销量(?:是多少)?))$",
             Pattern.CASE_INSENSITIVE);
@@ -412,6 +415,16 @@ public final class AssistantFastPathRouter {
             return new Match(
                     "report_sales",
                     "This month's sales",
+                    Map.of(),
+                    "",
+                    "",
+                    "",
+                    "");
+        }
+        if (AVERAGE_TICKET_MARKER.matcher(normalized).find() && DATE_TOKEN.matcher(normalized).find()) {
+            return new Match(
+                    "report_aov",
+                    "Average ticket report",
                     Map.of(),
                     "",
                     "",

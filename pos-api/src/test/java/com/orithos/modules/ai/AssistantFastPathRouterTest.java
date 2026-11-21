@@ -218,6 +218,20 @@ class AssistantFastPathRouterTest {
     }
 
     @Test
+    void routesExplicitAverageTicketDateRangesWithoutTheClassifier() {
+        for (String question : new String[]{
+                "What was the average ticket from 1 January 2000 to 7 January 2000?",
+                "平均客单价从2000年1月1日到2000年1月7日多少？",
+                "从2000年1月1日到2000年1月7日平均客单价多少？"
+        }) {
+            AssistantFastPathRouter.Match match = AssistantFastPathRouter.maybeMatch(question);
+            assertNotNull(match, question);
+            assertEquals("report_aov", match.intent(), question);
+        }
+        assertNull(AssistantFastPathRouter.maybeMatch("What was the stock level from 1 January 2000 to 7 January 2000?"));
+    }
+
+    @Test
     void routesNamedProductSearchAndStockQuestionsWithoutTheClassifier() {
         AssistantFastPathRouter.Match product = AssistantFastPathRouter.maybeMatch("look up product DEMO");
         assertEquals("search_product", product.intent());

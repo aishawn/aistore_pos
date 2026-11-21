@@ -160,6 +160,8 @@ def check_registry(root, data):
 
 def validate(root):
     library = root / "docs/project"
+    if not library.is_dir():
+        return [], 0
     required = ["README.md", "overview.md", "baseline.md", "maintenance.md", "tools.md",
                 "evidence.md", "evidence.json", "features/README.md", "features/ai/README.md",
                 "features/ai/architecture.md", "decisions/README.md", "templates/README.md",
@@ -194,6 +196,9 @@ def main():
     parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parents[1])
     args = parser.parse_args()
     errors, count = validate(args.root.resolve())
+    if not (args.root.resolve() / "docs/project").is_dir():
+        print("SKIP: optional docs/project fact library is not present in this checkout")
+        return 0
     if errors:
         print("\n".join(errors))
         print(f"FAIL: {len(errors)} documentation errors")

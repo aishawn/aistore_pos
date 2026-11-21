@@ -31,6 +31,16 @@ class ProjectDocsChecks(unittest.TestCase):
     def registry_errors(self, entries):
         return docs.check_registry(self.root, {"schemaVersion": 1, "entries": entries})
 
+    def test_missing_optional_fact_library_is_skipped(self):
+        errors, count = docs.validate(self.root)
+        self.assertEqual(errors, [])
+        self.assertEqual(count, 0)
+
+    def test_present_fact_library_still_requires_its_entrypoint(self):
+        (self.root / "docs" / "project").mkdir(parents=True)
+        errors, _ = docs.validate(self.root)
+        self.assertTrue(any("docs/project/README.md" in error for error in errors))
+
     def test_local_file_unicode_heading_and_external_url(self):
         (self.root / "设计.md").write_text("# 验证与效果\n", encoding="utf-8")
         self.source.write_text("[设计](设计.md#验证与效果) [tool](https://example.com)", encoding="utf-8")
