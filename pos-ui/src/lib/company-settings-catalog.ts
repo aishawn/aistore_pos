@@ -71,7 +71,7 @@ export const COMPANY_SECTIONS: CompanySection[] = [
       { key: "company.general.cost_calculation_method", label: "Cost Calculation Method", type: "select", options: [
         { value: "LAST_COST", label: "Last Cost" },
         { value: "AVERAGE_COST", label: "Average Cost" },
-        { value: "FIFO", label: "FIFO" },
+        { value: "MIXED_MODE", label: "Mixed Mode" },
       ]},
       { key: "company.general.profitability_display", label: "Profitability Display", type: "select", options: [
         { value: "GROSS_PROFIT_MARGIN", label: "Gross Profit Margin" },

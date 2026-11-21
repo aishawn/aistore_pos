@@ -23,6 +23,14 @@ test("login settings do not offer the unimplemented PIN flow", () => {
   assert.equal(normalizeCompanySetting(loginType, "USERNAME_PASSWORD"), "USERNAME_PASSWORD");
 });
 
+test("cost calculation options match Shopfront methods without claiming runtime support", () => {
+  const section = COMPANY_SECTIONS.find((item) => item.id === "general");
+  const costMethod = section?.fields.find((field) => field.key === "company.general.cost_calculation_method");
+  assert.ok(costMethod);
+  assert.deepEqual(costMethod.options?.map((option) => option.value), ["LAST_COST", "AVERAGE_COST", "MIXED_MODE"]);
+  assert.equal(isCompanySettingRuntimeSupported(costMethod.key), false);
+});
+
 test("only company settings wired to Orithos behavior remain editable", () => {
   assert.equal(isCompanySettingRuntimeSupported("company.general.use_quantity_rate"), true);
   assert.equal(isCompanySettingRuntimeSupported("company.login.require_password"), true);
