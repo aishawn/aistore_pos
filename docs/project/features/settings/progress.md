@@ -136,6 +136,12 @@
 ## 2026-11-21 Sale Keys API 租户隔离
 
 - 修复 `sale_keys` API 过去未按已有 `outlet_id` 过滤的跨门店读写风险；列表/ID 操作和 CRUD SQL 现在使用认证用户当前 outlet，创建与复制强制设置 outlet，缺失租户上下文拒绝请求。
-- 新增 Sale Keys Controller/Mapper 范围测试；POS API 全量测试 1,044 项通过。修复仍未部署。
+- 新增 Sale Keys Controller/Mapper 范围测试；POS API 全量测试 1,044 项通过。提交 `a744747bd94c145fa535d7cbce43459183a00d0f` 已推送 `main`；SKR/Demo 前后端 `/api/public/version` 均确认运行该 SHA，GitHub Java 21 Verify 与 Offline Test Gates 均通过。
 - 复核真实 `/sell` 路由后发现默认 Sale Keys 仍未接入实际收银台：当前路由使用固定快捷分类，旧 hook/面板未挂载。Shopfront 布局读取受现有 403 限制；不能宣称默认 Sale Keys 已对齐。
+
+## 2026-11-21 Sale Keys API 部署后只读检查
+
+- 用现有 SKR 与 Demo 凭据分别登录线上 store API，仅执行 `GET /api/sale-keys`；两店均 HTTP 200、响应成功，返回组数均为 0。没有执行任何设置写入。
+- 结果确认列表端点在部署后可读且返回当前门店数据；空列表说明两店都没有可用于收银台的自定义快捷键组。它不改变默认 `default_sale_keys` 尚未接入真实 `/sell` 的结论，也不提供 Shopfront 目标布局。
+- 跨门店拒绝行为由 API/Mapper 回归测试覆盖；本次在线验收没有跨 outlet 探测，因为当前登录账号没有另一个 outlet 的受控测试身份。
 
