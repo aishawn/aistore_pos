@@ -164,6 +164,35 @@ class CheckoutServiceFlowTest {
     }
 
     @Test
+    void configuredDiscountReasonRequirementRejectsDiscountWithoutReason() {
+        when(companySettings.getBoolean("company.sell.discounts_require_reason", false)).thenReturn(true);
+        CheckoutRequest request = cashRequest("10.05");
+        request.getItems().get(0).setDiscountPercent(new BigDecimal("5"));
+
+        BusinessException error = assertThrows(BusinessException.class,
+                () -> service.prepareSellItems(request, 3L, 12L));
+
+        assertTrue(error.getMessage().contains("discount reason"));
+        verify(sales, never()).insert(any(Sale.class));
+    }
+
+    @Test
+    void configuredDiscountReasonIsStoredOnTheSaleLine() {
+        when(companySettings.getBoolean("company.sell.discounts_require_reason", false)).thenReturn(true);
+        CheckoutRequest request = cashRequest("9.55");
+        request.setExpectedTotal(new BigDecimal("9.52"));
+        request.setExpectedGst(new BigDecimal("0.87"));
+        request.getItems().get(0).setDiscountPercent(new BigDecimal("5"));
+        request.getItems().get(0).setDiscountReason("Manager approval");
+
+        service.checkout(request, "cash-discount-reason");
+
+        org.mockito.ArgumentCaptor<SaleItem> line = org.mockito.ArgumentCaptor.forClass(SaleItem.class);
+        verify(sales).insertItem(line.capture());
+        assertEquals("Manager approval", line.getValue().getDiscountReason());
+    }
+
+    @Test
     void customerWithAssignedPriceListCannotBeQuotedAtBasePrice() {
         CheckoutRequest request = new CheckoutRequest();
         request.setCustomerId(77L);

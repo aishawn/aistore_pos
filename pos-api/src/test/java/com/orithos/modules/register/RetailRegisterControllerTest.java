@@ -80,4 +80,22 @@ class RetailRegisterControllerTest {
         assertThrows(BusinessException.class, controller::storeDateTimeOptions);
         verifyNoInteractions(companySettings);
     }
+
+    @Test
+    void salePolicyIsAvailableToCashiersAndUsesTheirCompanySetting() {
+        SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
+                new AuthUser(7L, "cashier", false, 12L, 3L), null));
+        when(companySettings.getBoolean(CompanySettingsKeys.DISCOUNTS_REQUIRE_REASON, false)).thenReturn(true);
+
+        var response = controller.salePolicy();
+
+        assertEquals(true, response.data().discountsRequireReason());
+        verify(companySettings).getBoolean(CompanySettingsKeys.DISCOUNTS_REQUIRE_REASON, false);
+    }
+
+    @Test
+    void salePolicyRequiresAnAuthenticatedTenant() {
+        assertThrows(BusinessException.class, controller::salePolicy);
+        verifyNoInteractions(companySettings);
+    }
 }

@@ -10,6 +10,8 @@ export type CartLine = {
   packFactor: number;
   /** Line discount as a percentage from 0 to 100. */
   discountPercent?: number;
+  /** Explanation required by the company discount policy. */
+  discountReason?: string;
 };
 
 export type ParkedSale = {

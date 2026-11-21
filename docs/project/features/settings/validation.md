@@ -145,3 +145,11 @@
 | Shopfront 全字段页面复核 | Shopfront | NOT_RUN | 本轮只验收 Orithos Settings UI。已有定价字段值和只读报价记录不代表 Shopfront 全部设置逐字段一致 |
 
 本轮把 60 项字段可用性断言加入 `scripts/settings-audit-readonly.cjs`，避免未来只验证页面可达而漏掉受支持与仅保存字段的真实交互状态。本轮是桌面视口验收；不代替移动视口复验、设置保存/刷新 UAT，也不证明被禁用的 42 项已经实现 Shopfront 行为。
+
+## Discounts Require Reason 运行时接线
+
+- 将 `company.sell.discounts_require_reason` 从仅保存字段改为运行时支持字段。收银台启动后读取当前租户销售策略；策略开启时折扣操作必须填写 1–255 字符理由，取消输入会取消折扣操作。
+- 后端结账再次按租户设置强制校验，拒绝缺少理由或超长理由的折扣；折扣理由进入幂等请求身份并写入 `sale_item.discount_reason`。策略默认关闭，现有线上行为不变，门店策略值未被更改。
+- `scripts/settings-audit-readonly.cjs` 将公司字段可编辑断言更新为 19 项支持 / 41 项仅保存字段。
+- 聚焦验证：`CheckoutServiceFlowTest` 与 `RetailRegisterControllerTest` 通过；POS UI `npm run typecheck` 通过；`git diff --check` 通过。UI 单测未能启动：当前 checkout 缺少 `tsx`，`npm run test:unit` 因命令不可用退出；没有安装依赖或改动锁文件。
+- 尚未做线上销售写入 UAT，也未更改 SKR/Demo 策略值。服务端开启策略时的拒绝/保存行为由单测覆盖；线上只读页面与策略读回需要部署后复验，不能据此宣称全站 Settings 与 Shopfront 完全一致。

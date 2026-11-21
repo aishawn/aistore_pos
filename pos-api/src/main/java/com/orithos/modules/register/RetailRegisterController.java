@@ -52,6 +52,12 @@ public class RetailRegisterController {
                 companySettings.getString(CompanySettingsKeys.TIME_FORMAT, vendorId, "HH:mm")));
     }
 
+    @GetMapping("/sale-policy")
+    public ApiResult<SalePolicy> salePolicy() {
+        if (CurrentUser.vendorId() == null) throw new BusinessException(40100, "Authenticated tenant is required.");
+        return ApiResult.ok(new SalePolicy(companySettings.getBoolean(CompanySettingsKeys.DISCOUNTS_REQUIRE_REASON, false)));
+    }
+
     private List<String> parseOptions(String raw) {
         try {
             JsonNode parsed = objectMapper.readTree(raw);
@@ -110,4 +116,5 @@ public class RetailRegisterController {
     public record CloseRequest(BigDecimal countedCash, Map<Long, BigDecimal> countedTenders, String note) {}
     public record CashReasonOptions(List<String> cashInReasons, List<String> cashOutReasons) {}
     public record StoreDateTimeOptions(String timezone, String dateFormat, String timeFormat) {}
+    public record SalePolicy(boolean discountsRequireReason) {}
 }

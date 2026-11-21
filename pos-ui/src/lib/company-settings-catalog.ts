@@ -22,6 +22,7 @@ const runtimeSettings = new Set([
   "company.phone",
   "company.email",
   "company.login.require_password",
+  "company.sell.discounts_require_reason",
   "company.sell.cash_in_reasons",
   "company.sell.cash_out_reasons",
   "company.timezone",

@@ -332,6 +332,7 @@ public class CheckoutService {
                     BigDecimal discount = item.getDiscountPercent() == null
                             ? BigDecimal.ZERO : item.getDiscountPercent();
                     putDecimal(line, "discountPercent", discount);
+                    line.put("discountReason", item.getDiscountReason());
                     putDecimal(line, "expectedTaxRate", item.getExpectedTaxRate());
                 }
             }
@@ -418,6 +419,7 @@ public class CheckoutService {
             si.setBasePrice(unit);
             si.setTotalPrice(lineTotal);
             si.setSavings(gross.subtract(lineTotal).setScale(2, RoundingMode.HALF_UP));
+            si.setDiscountReason(item.getDiscountReason());
             Long productId = item.getProductId();
             Product product = productMapper.findSellableForOutlet(productId, CurrentUser.vendorId(),
                     CurrentUser.outletId(), qty);
@@ -453,6 +455,7 @@ public class CheckoutService {
             throw new BusinessException(40900,
                     "This customer has an assigned price list. Customer-specific pricing is not yet supported; remove the customer or use a supported price before selling.");
         }
+        boolean discountReasonRequired = companySettings.getBoolean(CompanySettingsKeys.DISCOUNTS_REQUIRE_REASON, false);
         Map<Long, Product> products = new LinkedHashMap<>();
         Map<Long, List<TierPriceCalculator.Tier>> productTiers = new LinkedHashMap<>();
         for (CheckoutRequest.Item item : req.getItems()) {
@@ -465,6 +468,11 @@ public class CheckoutService {
             if (discount.signum() < 0 || discount.compareTo(new BigDecimal("100")) > 0) {
                 throw new BusinessException(40000, "Line discount must be between 0 and 100 percent.");
             }
+            String discountReason = item.getDiscountReason() == null ? "" : item.getDiscountReason().trim();
+            if (discount.signum() > 0 && discountReasonRequired && discountReason.isEmpty()) {
+                throw new BusinessException(40000, "A discount reason is required.");
+            }
+            if (discountReason.length() > 255) throw new BusinessException(40000, "Discount reason must be 255 characters or fewer.");
             Product product = productMapper.findSellableForOutlet(item.getProductId(), vendorId, outletId, quantity);
             if (product == null) throw new BusinessException("Product is not available at this outlet.");
             if (discount.signum() > 0 && Boolean.TRUE.equals(product.getPreventManualDiscounts())) {
@@ -497,6 +505,8 @@ public class CheckoutService {
             item.setQuantity(quantity);
             item.setUnitPrice(baseUnitPrice);
             item.setDiscountPercent(discount);
+            item.setDiscountReason(discount.signum() > 0 && item.getDiscountReason() != null
+                    && !item.getDiscountReason().trim().isEmpty() ? item.getDiscountReason().trim() : null);
             item.setLineTotal(quantity.multiply(baseUnitPrice).multiply(BigDecimal.ONE.subtract(discount.movePointLeft(2)))
                     .setScale(2, RoundingMode.HALF_UP));
             item.setExpectedTaxRate(taxPercent);

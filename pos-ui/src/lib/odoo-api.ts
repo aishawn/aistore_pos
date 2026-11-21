@@ -427,7 +427,7 @@ export interface OdooCheckoutRequest {
   tendered: number;
   /** When set, marks this checkout as a refund of a completed Odoo sale. */
   refundOfOrderId?: number | null;
-  lines: { productId: number; quantity: number; /** Pack/case size multiplier (bottle→case). */ uomFactor?: number; discountPercent?: number; refundedOrderLineId?: number }[];
+  lines: { productId: number; quantity: number; /** Pack/case size multiplier (bottle→case). */ uomFactor?: number; discountPercent?: number; discountReason?: string; refundedOrderLineId?: number }[];
 }
 
 export interface OdooCheckoutResult {
@@ -585,7 +585,7 @@ type RetailPaymentMethodAssignment = {
 type NativeQuoteSignature = {
   expectedTotal: number;
   expectedGst: number;
-  lines: Array<{ productId: number; quantity: number; unitPrice: number; discountPercent: number; lineTotal: number; expectedTaxRate: number; name: string }>;
+  lines: Array<{ productId: number; quantity: number; unitPrice: number; discountPercent: number; discountReason?: string; lineTotal: number; expectedTaxRate: number; name: string }>;
 };
 
 function encodeQuoteSignature(quote: NativeQuoteSignature): string {
@@ -782,6 +782,7 @@ async function postOdooPosOrder(order: OdooCheckoutRequest): Promise<OdooCheckou
         lineTotal: line.lineTotal,
         expectedTaxRate: line.expectedTaxRate,
         discountPercent: line.discountPercent,
+        discountReason: line.discountReason,
       })),
     });
     const saleId = Number(result.saleId);
@@ -835,9 +836,19 @@ export async function quoteOdooPosOrder(input: Pick<OdooCheckoutRequest, "config
         unitPrice: 0,
         lineTotal: 0,
         discountPercent: line.discountPercent || 0,
+        discountReason: line.discountReason,
       })),
     });
-    return mapCheckoutQuote(native);
+    const quote = mapCheckoutQuote(native);
+    const signed = decodeQuoteSignature(quote.signature);
+    if (!signed) return quote;
+    return {
+      ...quote,
+      signature: encodeQuoteSignature({
+        ...signed,
+        lines: signed.lines.map((line, index) => ({ ...line, discountReason: input.lines[index]?.discountReason?.trim() || undefined })),
+      }),
+    };
   } catch (error) {
     const timeoutMessage = getOdooQuoteTimeoutMessage(error);
     if (timeoutMessage) throw new OdooApiError(timeoutMessage, 504);
@@ -1957,4 +1968,12 @@ export interface OdooCashReasonOptions {
 
 export function getOdooCashReasonOptions(): Promise<OdooCashReasonOptions> {
   return api.get<OdooCashReasonOptions>("/api/retail/registers/cash-reason-options");
+}
+
+export interface OdooSalePolicy {
+  discountsRequireReason: boolean;
+}
+
+export function getOdooSalePolicy(): Promise<OdooSalePolicy> {
+  return api.get<OdooSalePolicy>("/api/retail/registers/sale-policy");
 }

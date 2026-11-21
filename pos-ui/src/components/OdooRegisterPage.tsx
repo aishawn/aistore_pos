@@ -25,6 +25,7 @@ import {
 import {
   getRetailPosBootstrap,
   getRetailCashReasonOptions,
+  getRetailSalePolicy,
   openRetailPosSession,
   getRetailSession,
   quoteRetailOrder,
@@ -211,6 +212,7 @@ export function OdooRegisterPage() {
   const [cashOutReason, setCashOutReason] = useState("");
   const [cashOutReasonIsCustom, setCashOutReasonIsCustom] = useState(false);
   const [cashOutReasons, setCashOutReasons] = useState<string[]>([]);
+  const [discountReasonRequired, setDiscountReasonRequired] = useState<boolean | null>(null);
   const [cashOutBusy, setCashOutBusy] = useState(false);
   const [parkedSales, setParkedSales] = useState<ParkedSale[]>([]);
   const [parkedLoaded, setParkedLoaded] = useState(false);
@@ -271,6 +273,14 @@ export function OdooRegisterPage() {
         if (active) setCashOutReasons(companySettingOptions(settings.cashOutReasons));
       })
       .catch(() => undefined);
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    void getRetailSalePolicy()
+      .then((policy) => { if (active) setDiscountReasonRequired(policy.discountsRequireReason); })
+      .catch(() => { if (active) setDiscountReasonRequired(null); });
     return () => { active = false; };
   }, []);
 
@@ -638,7 +648,7 @@ export function OdooRegisterPage() {
     configId,
     paymentMethodId,
     customerId: customer?.id ?? null,
-    lines: lines.map((line) => [line.product.id, line.quantity, line.packFactor || 1, line.discountPercent || 0]),
+    lines: lines.map((line) => [line.product.id, line.quantity, line.packFactor || 1, line.discountPercent || 0, line.discountReason || ""]),
   });
   const paymentMethods = selectedConfig?.paymentMethods ?? [];
   const selectedCompanyId = Array.isArray(selectedConfig?.company) ? selectedConfig.company[0] : null;
@@ -690,7 +700,7 @@ export function OdooRegisterPage() {
         configId: selectedConfig.id,
         paymentMethodId,
         customerId: customer?.id ?? null,
-        lines: lines.map((line) => ({ productId: line.product.id, quantity: line.quantity, uomFactor: line.packFactor || 1, discountPercent: line.discountPercent || 0 })),
+        lines: lines.map((line) => ({ productId: line.product.id, quantity: line.quantity, uomFactor: line.packFactor || 1, discountPercent: line.discountPercent || 0, discountReason: line.discountReason })),
       }).then((result) => {
         if (revision === quoteRevision.current) {
           setQuote(result);
@@ -1022,7 +1032,7 @@ export function OdooRegisterPage() {
         paymentMethodId,
         tendered: tenderedAmount,
         customerId: customer?.id ?? null,
-        lines: lines.map((line) => [line.product.id, line.quantity, line.packFactor || 1, line.discountPercent || 0]),
+        lines: lines.map((line) => [line.product.id, line.quantity, line.packFactor || 1, line.discountPercent || 0, line.discountReason || ""]),
       });
       if (!activeRequest) {
         if (!orderUuid.current || checkoutFingerprint.current !== fingerprint) {
@@ -1039,7 +1049,7 @@ export function OdooRegisterPage() {
         customerId: customer?.id ?? null,
         tendered: tenderedAmount,
         expectedQuote: quote?.signature,
-        lines: lines.map((line) => ({ productId: line.product.id, quantity: line.quantity, uomFactor: line.packFactor || 1, discountPercent: line.discountPercent || 0 })),
+        lines: lines.map((line) => ({ productId: line.product.id, quantity: line.quantity, uomFactor: line.packFactor || 1, discountPercent: line.discountPercent || 0, discountReason: line.discountReason })),
       };
       if (!activeRequest) {
         persistPendingOrder(request);
@@ -1379,9 +1389,27 @@ export function OdooRegisterPage() {
       return;
     }
     const rounded = Math.round(value * 100) / 100;
+    let discountReason: string | undefined;
+    if (rounded > 0 && discountReasonRequired === null) {
+      setError("Discount policy is unavailable. Refresh the register before applying a discount.");
+      return;
+    }
+    if (rounded > 0 && discountReasonRequired) {
+      const reasonInput = window.prompt("Discount reason");
+      if (reasonInput === null) return;
+      discountReason = reasonInput.trim();
+      if (!discountReason) {
+        setError("A discount reason is required.");
+        return;
+      }
+      if (discountReason.length > 255) {
+        setError("Discount reason must be 255 characters or fewer.");
+        return;
+      }
+    }
     setLines((current) => current.map((item) =>
       item.product.id === line.product.id && (item.packFactor || 1) === (line.packFactor || 1)
-        ? { ...item, discountPercent: rounded || undefined }
+        ? { ...item, discountPercent: rounded || undefined, discountReason: rounded ? discountReason : undefined }
         : item,
     ));
     setError(null);
