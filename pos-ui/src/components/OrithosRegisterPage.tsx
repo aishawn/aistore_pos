@@ -21,6 +21,7 @@ import {
   type SaleRefundResponse,
 } from "@/lib/api";
 import { ApiError } from "@/lib/api";
+import { getRetailSalePolicy } from "@/lib/retail-api";
 import { useAuth } from "@/lib/auth";
 import { readContextOutletId, readRegisterId, WORK_CONTEXT_EVENT, writeRegisterContext, writeWorkActivity } from "@/lib/work-context";
 import { clearPendingRegisterOpen, readPendingRegisterOpen, savePendingRegisterOpen } from "@/lib/register-open-attempt";
@@ -61,6 +62,7 @@ function NativeOrithosRegisterPage() {
   const [selectedRefundSale, setSelectedRefundSale] = useState<SaleForRefund | null>(null);
   const [refundQuantities, setRefundQuantities] = useState<Record<number, string>>({});
   const [refundReason, setRefundReason] = useState("");
+  const [refundReasonRequired, setRefundReasonRequired] = useState<boolean | null>(null);
   const [refundError, setRefundError] = useState<string | null>(null);
   const [refundResult, setRefundResult] = useState<SaleRefundResponse | null>(null);
   const [refundBusy, setRefundBusy] = useState(false);
@@ -96,6 +98,14 @@ function NativeOrithosRegisterPage() {
     const timer = window.setTimeout(() => { void load(); }, 0);
     return () => window.clearTimeout(timer);
   }, [load]);
+
+  useEffect(() => {
+    let active = true;
+    void getRetailSalePolicy()
+      .then((policy) => { if (active) setRefundReasonRequired(policy.refundsRequireReason); })
+      .catch(() => { if (active) setRefundReasonRequired(null); });
+    return () => { active = false; };
+  }, []);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -463,7 +473,11 @@ function NativeOrithosRegisterPage() {
       });
     const reason = refundRecovery && pending ? pending.payload.reason : refundReason.trim();
     if (!lines.length) { setRefundError("Enter a refund quantity for at least one line."); return; }
-    if (!reason) { setRefundError("Enter a refund reason."); return; }
+    if (!refundRecovery && refundReasonRequired === null && !reason) {
+      setRefundError("Refund policy is unavailable. Refresh the register before continuing.");
+      return;
+    }
+    if (!reason && refundReasonRequired !== false) { setRefundError("Enter a refund reason."); return; }
     const payload = refundRecovery && pending ? pending.payload : { registerId: registerId!, reason, lines };
     const fingerprint = JSON.stringify([selectedRefundSale.id, payload]);
     const retryingSameRequest = Boolean(refundRecovery && pending && pending.fingerprint === fingerprint);
@@ -555,7 +569,7 @@ function NativeOrithosRegisterPage() {
             {refundSalesLoading && <p role="status" className="text-sm text-[var(--oh-muted)]">Loading completed sales…</p>}
             {selectedRefundSale && <>
               <div className="overflow-x-auto rounded border border-[var(--oh-border)]"><table className="w-full min-w-[560px] text-left text-sm"><thead className="bg-[var(--oh-surface)] text-xs text-[var(--oh-muted)]"><tr><th className="px-3 py-2">Item</th><th className="px-3 py-2 text-right">Sold</th><th className="px-3 py-2 text-right">Available</th><th className="px-3 py-2 text-right">Original line</th><th className="px-3 py-2">Refund qty</th></tr></thead><tbody className="divide-y divide-[var(--oh-border)]">{(selectedRefundSale.items ?? []).map((line) => <tr key={line.id}><td className="px-3 py-2">{line.note || `Product ${line.productId ?? ""}`}</td><td className="px-3 py-2 text-right tabular-nums">{line.quantity}</td><td className="px-3 py-2 text-right tabular-nums">{line.refundableQuantity}</td><td className="px-3 py-2 text-right tabular-nums">{money(Number(line.totalPrice ?? 0))}</td><td className="px-3 py-2"><input aria-label={`Refund quantity for ${line.note || line.id}`} type="number" min="0" max={line.refundableQuantity} step="0.0001" disabled={!line.refundableQuantity || refundBusy || refundRecovery} value={refundQuantities[line.id] ?? ""} onChange={(event) => setRefundQuantities((current) => ({ ...current, [line.id]: event.target.value }))} className="h-9 w-28 rounded border border-[var(--oh-border)] px-2 text-right tabular-nums" /></td></tr>)}</tbody></table></div>
-              <label className="grid gap-1 text-sm font-medium">Reason<input value={refundReason} maxLength={255} disabled={refundRecovery} onChange={(event) => setRefundReason(event.target.value)} placeholder="Customer return" className="h-11 rounded border border-[var(--oh-border)] px-3 disabled:bg-[var(--oh-surface)]" /></label>
+              <label className="grid gap-1 text-sm font-medium">Reason{refundReasonRequired === false ? " (optional)" : ""}<input value={refundReason} maxLength={255} required={refundReasonRequired !== false} disabled={refundRecovery} onChange={(event) => setRefundReason(event.target.value)} placeholder="Customer return" className="h-11 rounded border border-[var(--oh-border)] px-3 disabled:bg-[var(--oh-surface)]" /></label>
               {refundPreview && <dl className="grid grid-cols-3 gap-3 border-t border-[var(--oh-border)] pt-3 text-sm"><div><dt className="text-[var(--oh-muted)]">Refund total</dt><dd className="mt-1 font-semibold tabular-nums">{money(refundPreview.amount)}</dd></div><div><dt className="text-[var(--oh-muted)]">GST reversed</dt><dd className="mt-1 font-semibold tabular-nums">{money(refundPreview.gst)}</dd></div><div><dt className="text-[var(--oh-muted)]">Cash paid</dt><dd className="mt-1 font-semibold tabular-nums">{money(refundPreview.cashPaid)}</dd></div></dl>}
             </>}
           </div>

@@ -134,6 +134,7 @@ public class NativeReplenishmentService {
                     JOIN sale_item si ON si.sale_id = s.id AND si.outlet_id = s.outlet_id
                     CROSS JOIN period
                     WHERE s.outlet_id = ? AND s.status = 'COMPLETED' AND s.refund_reason IS NULL
+                      AND s.linked_sale_id IS NULL AND COALESCE(s.total_price, 0) >= 0
                       AND (
                           (s.business_date >= period.today - 55 AND s.business_date <= period.today)
                           OR (s.business_date IS NULL AND s.local_sold_at::date

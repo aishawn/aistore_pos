@@ -92,7 +92,7 @@ public interface SupplierMapper {
         INNER JOIN sale_item si ON si.product_id = l.product_id
         INNER JOIN sale s ON s.id = si.sale_id
         WHERE s.status = 'COMPLETED'
-          AND s.refund_reason IS NULL
+          AND s.refund_reason IS NULL AND s.linked_sale_id IS NULL AND COALESCE(s.total_price, 0) >= 0
           AND l.supplier_id IN
           <foreach collection="supplierIds" item="id" open="(" separator="," close=")">#{id}</foreach>
           AND COALESCE(s.business_date, CAST(s.local_sold_at AS date), CAST(s.created_at AS date)) &gt;= CAST(#{from} AS date)

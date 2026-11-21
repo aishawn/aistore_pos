@@ -7,6 +7,8 @@ import com.orithos.common.CashRounding;
 import com.orithos.common.Ids;
 import com.orithos.modules.payment.PaymentMethod;
 import com.orithos.modules.payment.PaymentMethodMapper;
+import com.orithos.modules.config.CompanySettingsKeys;
+import com.orithos.modules.config.CompanySettingsService;
 import com.orithos.modules.product.Product;
 import com.orithos.modules.product.mapper.ProductMapper;
 import com.orithos.modules.register.Register;
@@ -34,10 +36,12 @@ public class RefundService {
     private final ProductMapper products;
     private final RegisterMapper registers;
     private final RegisterSessionMapper sessions;
+    private final CompanySettingsService companySettings;
     private final ObjectMapper json;
 
     public RefundService(SaleMapper sales, SalePaymentMapper payments, PaymentMethodMapper paymentMethods,
                         ProductMapper products, RegisterMapper registers, RegisterSessionMapper sessions,
+                        CompanySettingsService companySettings,
                         ObjectMapper json) {
         this.sales = sales;
         this.payments = payments;
@@ -45,6 +49,7 @@ public class RefundService {
         this.products = products;
         this.registers = registers;
         this.sessions = sessions;
+        this.companySettings = companySettings;
         this.json = json;
     }
 
@@ -57,7 +62,11 @@ public class RefundService {
         if (idempotencyKey == null || idempotencyKey.isBlank() || idempotencyKey.length() > 190) throw bad("Idempotency-Key is required.");
         if (request == null || request.registerId() == null || request.lines() == null || request.lines().isEmpty() || request.lines().size() > 200) throw bad("Choose at least one sale line to refund.");
         String reason = request.reason() == null ? "" : request.reason().trim();
-        if (reason.isEmpty() || reason.length() > 255) throw bad("A refund reason of 1 to 255 characters is required.");
+        boolean refundReasonRequired = companySettings.getBoolean(CompanySettingsKeys.REFUNDS_REQUIRE_REASON, true);
+        if ((refundReasonRequired && reason.isEmpty()) || reason.length() > 255) {
+            throw bad(refundReasonRequired ? "A refund reason of 1 to 255 characters is required."
+                    : "A refund reason must be 255 characters or fewer.");
+        }
 
         String key = "refund:" + idempotencyKey;
         String hash = requestHash(originalSaleId, request, reason);
@@ -96,7 +105,7 @@ public class RefundService {
         }
         Sale refund = new Sale();
         refund.setLinkedSaleId(originalSaleId);
-        refund.setRefundReason(reason);
+        refund.setRefundReason(reason.isEmpty() ? null : reason);
         refund.setRegisterId(request.registerId());
         refund.setUserId(userId);
         refund.setCustomerId(original.getCustomerId());

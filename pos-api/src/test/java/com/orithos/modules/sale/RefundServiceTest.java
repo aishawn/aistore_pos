@@ -5,6 +5,8 @@ import com.orithos.modules.payment.PaymentMethod;
 import com.orithos.modules.payment.PaymentMethodMapper;
 import com.orithos.modules.product.Product;
 import com.orithos.modules.product.mapper.ProductMapper;
+import com.orithos.modules.config.CompanySettingsKeys;
+import com.orithos.modules.config.CompanySettingsService;
 import com.orithos.modules.register.Register;
 import com.orithos.modules.register.RegisterMapper;
 import com.orithos.modules.register.RegisterSession;
@@ -32,8 +34,9 @@ class RefundServiceTest {
     private final ProductMapper products = mock(ProductMapper.class);
     private final RegisterMapper registers = mock(RegisterMapper.class);
     private final RegisterSessionMapper sessions = mock(RegisterSessionMapper.class);
+    private final CompanySettingsService companySettings = mock(CompanySettingsService.class);
     private final RefundService service = new RefundService(sales, payments, paymentMethods,
-            products, registers, sessions, new ObjectMapper());
+            products, registers, sessions, companySettings, new ObjectMapper());
 
     @BeforeEach
     void authenticate() {
@@ -122,6 +125,48 @@ class RefundServiceTest {
         assertThrows(RuntimeException.class, () -> service.refund(81L, "refund-one", request));
         verify(sales, never()).insertRefund(any(Sale.class));
         verify(payments, never()).insert(any(SalePayment.class));
+    }
+
+    @Test
+    void refundReasonMayBeBlankWhenCompanyPolicyDoesNotRequireIt() {
+        when(companySettings.getBoolean(CompanySettingsKeys.REFUNDS_REQUIRE_REASON, true)).thenReturn(false);
+        RefundRequest request = new RefundRequest(44L, "  ", List.of(
+                new RefundRequest.Line(91L, BigDecimal.ONE)));
+        prepareSingleRefund();
+
+        service.refund(81L, "refund-no-reason", request);
+
+        ArgumentCaptor<Sale> refund = ArgumentCaptor.forClass(Sale.class);
+        verify(sales).insertRefund(refund.capture());
+        assertEquals(81L, refund.getValue().getLinkedSaleId());
+        assertNull(refund.getValue().getRefundReason());
+    }
+
+    @Test
+    void refundReasonRemainsRequiredWhenCompanyPolicyRequiresIt() {
+        when(companySettings.getBoolean(CompanySettingsKeys.REFUNDS_REQUIRE_REASON, true)).thenReturn(true);
+        RefundRequest request = new RefundRequest(44L, "  ", List.of(
+                new RefundRequest.Line(91L, BigDecimal.ONE)));
+
+        assertThrows(RuntimeException.class, () -> service.refund(81L, "refund-reason-required", request));
+        verify(sales, never()).insertRefund(any(Sale.class));
+    }
+
+    private void prepareSingleRefund() {
+        when(sales.findCheckoutRequestHash(3L, "refund:refund-no-reason")).thenReturn(null);
+        when(sales.lockForRefund(81L, 3L, 12L)).thenReturn(originalSale());
+        when(sales.findItemsBySaleId(81L)).thenReturn(List.of(originalLine()));
+        when(sales.refundedQuantity(81L, 91L)).thenReturn(BigDecimal.ZERO);
+        when(sales.refundedLineAmount(81L, 91L)).thenReturn(BigDecimal.ZERO);
+        when(sales.refundedLineTax(81L, 91L)).thenReturn(BigDecimal.ZERO);
+        when(registers.findById(44L)).thenReturn(register());
+        when(sessions.lockActiveSession(44L, 3L, 12L)).thenReturn(new RegisterSession());
+        when(paymentMethods.findForRegisterByType(44L, 12L, "CASH")).thenReturn(cashMethod());
+        when(products.findByIdAndOutlet(17L, 3L, 12L)).thenReturn(product());
+        doAnswer(invocation -> { ((Sale) invocation.getArgument(0)).setId(501L); return 1; })
+                .when(sales).insertRefund(any(Sale.class));
+        doAnswer(invocation -> { ((SaleItem) invocation.getArgument(0)).setId(601L); return 1; })
+                .when(sales).insertItem(any(SaleItem.class));
     }
 
     private String requestHashFor(RefundRequest request) {

@@ -154,3 +154,11 @@
 - 聚焦验证：`CheckoutServiceFlowTest` 与 `RetailRegisterControllerTest` 通过；POS UI `npm run typecheck` 通过；`git diff --check` 通过。UI 单测未能启动：当前 checkout 缺少 `tsx`，`npm run test:unit` 因命令不可用退出；没有安装依赖或改动锁文件。
 - 部署后线上只读验收（SKR + Demo，`da7265b7d1bccc0dd917f1990985f86358843fb2`）：`/api/retail/registers/sale-policy` 均返回 `discountsRequireReason=false`，与当前门店配置一致；Settings 审计每店检查 18 个路由，60 个公司字段中 19 个可编辑、41 个禁用并标注仅保存；无页面异常、无非认证业务写请求。UAT 脚本报告保存在本机临时目录 `temp/settings-audit-current-20261121/discount-reason-deploy-audit.json`，不纳入仓库。
 - 尚未做任何销售写入 UAT，也未更改 SKR/Demo 策略值。服务端开启策略时的拒绝/保存行为由单测覆盖；线上复验仅确认当前关闭策略读回和 Settings UI 字段状态。视口为 1440px 桌面，不代表移动视口或全站 Settings 与 Shopfront 完全一致。
+
+## Refunds Require Reason 运行时接线
+
+- `company.sell.refunds_require_reason` 现由服务端退款事务按租户配置执行，默认值仍为 `true`；开启时拒绝空白原因，关闭时接受空原因但仍限制最多 255 字符。收银台会读同一销售策略，显示可选标记；策略请求失败时，有填写原因的退款仍可继续，由服务端最终校验。
+- 退款原因不再充当退款身份标记。原生退款始终有 `linked_sale_id`，所以 refundable 数量/金额/GST、销售/退款报表、AI 预测、补货、客户/供应商销售汇总均改用关联关系、退款金额，并兼容历史 `refund_reason` 数据。
+- Settings 字段审计计数更新为 20 项运行时支持 / 40 项仅保存字段。
+- 聚焦验证：`RefundServiceTest`、`RetailRegisterControllerTest` 和 POS UI `npm run typecheck` 通过；`git diff --check` 通过。UI 单测仍受本地缺少 `tsx` 限制，未安装依赖。
+- 尚未做线上退款写入 UAT，也未修改 SKR/Demo 策略值。部署后可只读核对两店策略值与字段可用状态；策略启用/关闭两条分支由服务测试覆盖。线上退款账本不使用真实交易验证。

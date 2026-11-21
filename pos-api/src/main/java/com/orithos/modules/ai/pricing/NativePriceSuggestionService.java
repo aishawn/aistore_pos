@@ -32,6 +32,7 @@ public class NativePriceSuggestionService {
                     SELECT si.product_id, SUM(si.quantity) AS units
                     FROM sale s JOIN sale_item si ON si.sale_id = s.id AND si.outlet_id = s.outlet_id
                     WHERE s.outlet_id = ? AND s.status = 'COMPLETED' AND s.refund_reason IS NULL
+                      AND s.linked_sale_id IS NULL AND COALESCE(s.total_price, 0) >= 0
                       AND COALESCE(s.business_date, s.local_sold_at::date)
                           >= (CURRENT_TIMESTAMP AT TIME ZONE ?)::date - 28
                     GROUP BY si.product_id

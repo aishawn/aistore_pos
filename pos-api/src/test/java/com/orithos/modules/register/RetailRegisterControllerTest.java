@@ -86,11 +86,14 @@ class RetailRegisterControllerTest {
         SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
                 new AuthUser(7L, "cashier", false, 12L, 3L), null));
         when(companySettings.getBoolean(CompanySettingsKeys.DISCOUNTS_REQUIRE_REASON, false)).thenReturn(true);
+        when(companySettings.getBoolean(CompanySettingsKeys.REFUNDS_REQUIRE_REASON, true)).thenReturn(false);
 
         var response = controller.salePolicy();
 
         assertEquals(true, response.data().discountsRequireReason());
+        assertEquals(false, response.data().refundsRequireReason());
         verify(companySettings).getBoolean(CompanySettingsKeys.DISCOUNTS_REQUIRE_REASON, false);
+        verify(companySettings).getBoolean(CompanySettingsKeys.REFUNDS_REQUIRE_REASON, true);
     }
 
     @Test

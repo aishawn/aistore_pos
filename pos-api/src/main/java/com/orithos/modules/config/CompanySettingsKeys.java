@@ -26,6 +26,7 @@ public final class CompanySettingsKeys {
     public static final String PROFITABILITY = "company.general.profitability_display";
     public static final String LOGIN_REQUIRE_PASSWORD = "company.login.require_password";
     public static final String DISCOUNTS_REQUIRE_REASON = "company.sell.discounts_require_reason";
+    public static final String REFUNDS_REQUIRE_REASON = "company.sell.refunds_require_reason";
     public static final String OWNED_PREFIX = "meta.owned.";
 
     /** Default values applied when a key is absent (AU bottle-shop pilot). */
@@ -61,7 +62,7 @@ public final class CompanySettingsKeys {
         d.put("company.sell.keep_select_product_open", "true");
         d.put("company.sell.select_product_paginated", "false");
         d.put(DISCOUNTS_REQUIRE_REASON, "false");
-        d.put("company.sell.refunds_require_reason", "true");
+        d.put(REFUNDS_REQUIRE_REASON, "true");
         d.put("company.sell.cash_drawer_require_reason", "false");
         d.put("company.sell.cash_out_reasons", "[]");
         d.put("company.sell.cash_in_reasons", "[]");

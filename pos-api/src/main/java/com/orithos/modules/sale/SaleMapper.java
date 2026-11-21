@@ -55,21 +55,21 @@ public interface SaleMapper {
                GREATEST(si.quantity - COALESCE((
                    SELECT SUM(-ri.quantity) FROM sale_item ri
                    JOIN sale rs ON rs.id=ri.sale_id
-                   WHERE rs.linked_sale_id=si.sale_id AND rs.refund_reason IS NOT NULL
+                   WHERE rs.linked_sale_id=si.sale_id
                      AND rs.status='COMPLETED' AND rs.outlet_id=si.outlet_id
                      AND ri.refund_of_sale_item_id=si.id
                ), 0), 0) AS refundable_quantity,
                GREATEST(COALESCE(si.total_price,0) - COALESCE((
                    SELECT SUM(-ri.total_price) FROM sale_item ri
                    JOIN sale rs ON rs.id=ri.sale_id
-                   WHERE rs.linked_sale_id=si.sale_id AND rs.refund_reason IS NOT NULL
+                   WHERE rs.linked_sale_id=si.sale_id
                      AND rs.status='COMPLETED' AND rs.outlet_id=si.outlet_id
                      AND ri.refund_of_sale_item_id=si.id
                ), 0), 0) AS refundable_amount,
                GREATEST(COALESCE(si.tax,0) - COALESCE((
                    SELECT SUM(-ri.tax) FROM sale_item ri
                    JOIN sale rs ON rs.id=ri.sale_id
-                   WHERE rs.linked_sale_id=si.sale_id AND rs.refund_reason IS NOT NULL
+                   WHERE rs.linked_sale_id=si.sale_id
                      AND rs.status='COMPLETED' AND rs.outlet_id=si.outlet_id
                      AND ri.refund_of_sale_item_id=si.id
                ), 0), 0) AS refundable_tax
@@ -79,13 +79,13 @@ public interface SaleMapper {
         """)
     List<SaleItem> findItemsBySaleId(Long saleId);
 
-    @Select("SELECT COALESCE(SUM(-ri.quantity),0) FROM sale_item ri JOIN sale rs ON rs.id=ri.sale_id WHERE rs.linked_sale_id=#{saleId} AND rs.refund_reason IS NOT NULL AND rs.status='COMPLETED' AND rs.outlet_id=(SELECT s.outlet_id FROM sale s WHERE s.id=#{saleId}) AND ri.refund_of_sale_item_id=#{saleItemId}")
+    @Select("SELECT COALESCE(SUM(-ri.quantity),0) FROM sale_item ri JOIN sale rs ON rs.id=ri.sale_id WHERE rs.linked_sale_id=#{saleId} AND rs.status='COMPLETED' AND rs.outlet_id=(SELECT s.outlet_id FROM sale s WHERE s.id=#{saleId}) AND ri.refund_of_sale_item_id=#{saleItemId}")
     java.math.BigDecimal refundedQuantity(@Param("saleId") Long saleId, @Param("saleItemId") Long saleItemId);
 
-    @Select("SELECT COALESCE(SUM(-ri.total_price),0) FROM sale_item ri JOIN sale rs ON rs.id=ri.sale_id WHERE rs.linked_sale_id=#{saleId} AND rs.refund_reason IS NOT NULL AND rs.status='COMPLETED' AND rs.outlet_id=(SELECT s.outlet_id FROM sale s WHERE s.id=#{saleId}) AND ri.refund_of_sale_item_id=#{saleItemId}")
+    @Select("SELECT COALESCE(SUM(-ri.total_price),0) FROM sale_item ri JOIN sale rs ON rs.id=ri.sale_id WHERE rs.linked_sale_id=#{saleId} AND rs.status='COMPLETED' AND rs.outlet_id=(SELECT s.outlet_id FROM sale s WHERE s.id=#{saleId}) AND ri.refund_of_sale_item_id=#{saleItemId}")
     java.math.BigDecimal refundedLineAmount(@Param("saleId") Long saleId, @Param("saleItemId") Long saleItemId);
 
-    @Select("SELECT COALESCE(SUM(-ri.tax),0) FROM sale_item ri JOIN sale rs ON rs.id=ri.sale_id WHERE rs.linked_sale_id=#{saleId} AND rs.refund_reason IS NOT NULL AND rs.status='COMPLETED' AND rs.outlet_id=(SELECT s.outlet_id FROM sale s WHERE s.id=#{saleId}) AND ri.refund_of_sale_item_id=#{saleItemId}")
+    @Select("SELECT COALESCE(SUM(-ri.tax),0) FROM sale_item ri JOIN sale rs ON rs.id=ri.sale_id WHERE rs.linked_sale_id=#{saleId} AND rs.status='COMPLETED' AND rs.outlet_id=(SELECT s.outlet_id FROM sale s WHERE s.id=#{saleId}) AND ri.refund_of_sale_item_id=#{saleItemId}")
     java.math.BigDecimal refundedLineTax(@Param("saleId") Long saleId, @Param("saleItemId") Long saleItemId);
 
     @Options(useGeneratedKeys = true, keyProperty = "id")

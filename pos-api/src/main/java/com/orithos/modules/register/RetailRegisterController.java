@@ -55,7 +55,9 @@ public class RetailRegisterController {
     @GetMapping("/sale-policy")
     public ApiResult<SalePolicy> salePolicy() {
         if (CurrentUser.vendorId() == null) throw new BusinessException(40100, "Authenticated tenant is required.");
-        return ApiResult.ok(new SalePolicy(companySettings.getBoolean(CompanySettingsKeys.DISCOUNTS_REQUIRE_REASON, false)));
+        return ApiResult.ok(new SalePolicy(
+                companySettings.getBoolean(CompanySettingsKeys.DISCOUNTS_REQUIRE_REASON, false),
+                companySettings.getBoolean(CompanySettingsKeys.REFUNDS_REQUIRE_REASON, true)));
     }
 
     private List<String> parseOptions(String raw) {
@@ -116,5 +118,5 @@ public class RetailRegisterController {
     public record CloseRequest(BigDecimal countedCash, Map<Long, BigDecimal> countedTenders, String note) {}
     public record CashReasonOptions(List<String> cashInReasons, List<String> cashOutReasons) {}
     public record StoreDateTimeOptions(String timezone, String dateFormat, String timeFormat) {}
-    public record SalePolicy(boolean discountsRequireReason) {}
+    public record SalePolicy(boolean discountsRequireReason, boolean refundsRequireReason) {}
 }

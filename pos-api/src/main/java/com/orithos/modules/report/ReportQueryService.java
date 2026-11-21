@@ -165,10 +165,10 @@ public class ReportQueryService {
         List<Map<String, Object>> rows = jdbc.queryForList("""
                 SELECT COALESCE(s.business_date, DATE(s.local_sold_at),
                                 DATE(s.created_at AT TIME ZONE 'UTC' AT TIME ZONE ?)) AS date,
-                       COUNT(*) FILTER (WHERE COALESCE(s.total_price, 0) >= 0 AND s.refund_reason IS NULL) AS sales_transactions,
-                       COUNT(*) FILTER (WHERE COALESCE(s.total_price, 0) < 0 OR s.refund_reason IS NOT NULL) AS refund_transactions,
-                       COALESCE(SUM(CASE WHEN COALESCE(s.total_price, 0) >= 0 AND s.refund_reason IS NULL THEN s.total_price ELSE 0 END), 0) AS sales_amount,
-                       COALESCE(SUM(CASE WHEN COALESCE(s.total_price, 0) < 0 OR s.refund_reason IS NOT NULL THEN ABS(s.total_price) ELSE 0 END), 0) AS refund_amount,
+                       COUNT(*) FILTER (WHERE COALESCE(s.total_price, 0) >= 0 AND s.refund_reason IS NULL AND s.linked_sale_id IS NULL) AS sales_transactions,
+                       COUNT(*) FILTER (WHERE COALESCE(s.total_price, 0) < 0 OR s.refund_reason IS NOT NULL OR s.linked_sale_id IS NOT NULL) AS refund_transactions,
+                       COALESCE(SUM(CASE WHEN COALESCE(s.total_price, 0) >= 0 AND s.refund_reason IS NULL AND s.linked_sale_id IS NULL THEN s.total_price ELSE 0 END), 0) AS sales_amount,
+                       COALESCE(SUM(CASE WHEN COALESCE(s.total_price, 0) < 0 OR s.refund_reason IS NOT NULL OR s.linked_sale_id IS NOT NULL THEN ABS(s.total_price) ELSE 0 END), 0) AS refund_amount,
                        COALESCE(SUM(s.total_price), 0) AS net_sales,
                        COALESCE(SUM(COALESCE(CASE WHEN s.source_system = 'shopfront'
                                                        AND line.item_count > 0 AND line.tax_missing_count = 0
@@ -479,17 +479,17 @@ public class ReportQueryService {
                 SELECT COALESCE(s.business_date, DATE(s.local_sold_at),
                                 DATE(s.created_at AT TIME ZONE 'UTC' AT TIME ZONE ?)) AS date,
                        COALESCE(SUM(s.total_price), 0) AS revenue,
-                       COALESCE(SUM(CASE WHEN COALESCE(s.total_price, 0) >= 0 AND s.refund_reason IS NULL
+                       COALESCE(SUM(CASE WHEN COALESCE(s.total_price, 0) >= 0 AND s.refund_reason IS NULL AND s.linked_sale_id IS NULL
                                          THEN s.total_price ELSE 0 END), 0) AS sales_amount,
-                       COALESCE(SUM(CASE WHEN COALESCE(s.total_price, 0) < 0 OR s.refund_reason IS NOT NULL
+                       COALESCE(SUM(CASE WHEN COALESCE(s.total_price, 0) < 0 OR s.refund_reason IS NOT NULL OR s.linked_sale_id IS NOT NULL
                                          THEN ABS(s.total_price) ELSE 0 END), 0) AS refund_amount,
                        COALESCE(SUM(COALESCE(CASE WHEN s.source_system = 'shopfront'
                                                        AND line.line_count > 0 AND line.missing_tax_count = 0
                                                   THEN line.tax END, s.total_tax)), 0) AS tax,
                        COALESCE(SUM(COALESCE(s.total_discount, 0)), 0) AS discount,
-                       COUNT(*) FILTER (WHERE COALESCE(s.total_price, 0) >= 0 AND s.refund_reason IS NULL)
+                       COUNT(*) FILTER (WHERE COALESCE(s.total_price, 0) >= 0 AND s.refund_reason IS NULL AND s.linked_sale_id IS NULL)
                            AS transaction_count,
-                       COUNT(*) FILTER (WHERE COALESCE(s.total_price, 0) < 0 OR s.refund_reason IS NOT NULL)
+                       COUNT(*) FILTER (WHERE COALESCE(s.total_price, 0) < 0 OR s.refund_reason IS NOT NULL OR s.linked_sale_id IS NOT NULL)
                            AS refund_transaction_count,
                        COUNT(*) FILTER (WHERE s.total_tax IS NULL AND
                          (line.line_count = 0 OR line.missing_tax_count > 0)) AS tax_missing_count,

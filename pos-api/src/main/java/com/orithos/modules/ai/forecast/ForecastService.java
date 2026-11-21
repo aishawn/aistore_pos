@@ -67,6 +67,7 @@ public class ForecastService {
                 JOIN outlet o ON o.id = s.outlet_id AND o.vendor_id = ? AND o.deleted_at IS NULL
                 JOIN product p ON p.id = si.product_id AND p.outlet_id = s.outlet_id AND p.deleted_at IS NULL
                 WHERE s.outlet_id = ? AND s.status = 'COMPLETED' AND s.refund_reason IS NULL
+                  AND s.linked_sale_id IS NULL AND COALESCE(s.total_price, 0) >= 0
                   AND COALESCE(s.business_date, s.local_sold_at::date)
                       >= (CURRENT_TIMESTAMP AT TIME ZONE ?)::date - ?
                 GROUP BY si.product_id, COALESCE(s.business_date, s.local_sold_at::date)
@@ -99,6 +100,7 @@ public class ForecastService {
                 SELECT MAX(s.updated_at)::text FROM sale s
                 JOIN outlet o ON o.id = s.outlet_id AND o.vendor_id = ? AND o.deleted_at IS NULL
                 WHERE s.outlet_id = ? AND s.status = 'COMPLETED' AND s.refund_reason IS NULL
+                  AND s.linked_sale_id IS NULL AND COALESCE(s.total_price, 0) >= 0
                 """, rs -> {
                     if (!rs.next()) return "unknown";
                     String updatedAt = rs.getString(1);
