@@ -17,6 +17,7 @@ export function aggregateSalesAcceptance(answer, report, { from, to }) {
     `Sales for ${from} to ${to} were`,
     ...(from === to ? [`Sales for ${from} were`] : []),
     `${from} to ${to}营业额`,
+    `${from} 至 ${to}营业额`,
     ...(from === to ? [`${from}营业额`] : []),
     "net sales of",
     "净营业额",
@@ -84,6 +85,7 @@ export function averageTicketAcceptance(answer, report, { from, to }) {
   const labels = [
     `Average Ticket for ${from} to ${to} is`,
     `${from} to ${to}平均客单价`,
+    `${from} 至 ${to}平均客单价`,
   ];
   const answeredAverage = answerMoney(answer, labels);
   const ticketMatch = String(answer ?? "").match(/(?:across\s+|基于\s*)([\d,]+(?:\.\d+)?)\s*(?:sales? transactions?|笔销售交易)/i);

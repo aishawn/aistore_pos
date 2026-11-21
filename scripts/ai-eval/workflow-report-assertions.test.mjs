@@ -8,6 +8,10 @@ test("aggregate sales reconciles Chinese revenue and requires cost gap disclosur
   const answer = "2026-11-01 to 2026-11-21营业额 AUD 3,965.54；毛利暂不可用，销售成本数据不完整。";
   const report = { revenue: 3965.54, transactions: 3152, costAvailable: false };
   assert.equal(aggregateSalesAcceptance(answer, report, period).passed, true);
+  assert.equal(aggregateSalesAcceptance(
+    "2026-11-01 至 2026-11-21营业额 AUD 3,965.54；毛利暂不可用，销售成本数据不完整。",
+    report, period,
+  ).passed, true);
   assert.equal(aggregateSalesAcceptance("营业额 AUD 3,965.54", report, period).passed, false);
   assert.equal(aggregateSalesAcceptance("营业额 AUD 3,965.54；毛利暂不可用", { ...report, revenue: 3965.55 }, period).passed, false);
 });
@@ -27,6 +31,10 @@ test("average ticket reconciles amount and transaction count in English and Chin
   ).passed, true);
   assert.equal(averageTicketAcceptance(
     "2026-11-16 to 2026-11-21平均客单价 AUD 28.47，基于 778 笔销售交易。",
+    report, { from: "2026-11-16", to: "2026-11-21" },
+  ).passed, true);
+  assert.equal(averageTicketAcceptance(
+    "2026-11-16 至 2026-11-21平均客单价 AUD 28.47，基于 778 笔销售交易。",
     report, { from: "2026-11-16", to: "2026-11-21" },
   ).passed, true);
   assert.equal(averageTicketAcceptance(
