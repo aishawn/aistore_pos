@@ -1,6 +1,8 @@
 package com.orithos.modules.register;
 
 import com.orithos.common.BusinessException;
+import com.orithos.modules.config.CompanySettingsKeys;
+import com.orithos.modules.config.CompanySettingsService;
 import com.orithos.security.AuthUser;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -20,7 +22,8 @@ import static org.mockito.Mockito.*;
 class RegisterSessionServiceTest {
     private final RegisterSessionMapper sessions = mock(RegisterSessionMapper.class);
     private final RegisterClosureMapper closures = mock(RegisterClosureMapper.class);
-    private final RegisterSessionService service = new RegisterSessionService(sessions, closures);
+    private final CompanySettingsService companySettings = mock(CompanySettingsService.class);
+    private final RegisterSessionService service = new RegisterSessionService(sessions, closures, companySettings);
 
     @BeforeEach
     void authenticate() {
@@ -57,6 +60,40 @@ class RegisterSessionServiceTest {
         assertThrows(BusinessException.class,
                 () -> service.open(99L, "open-other", BigDecimal.ZERO));
         verify(sessions, never()).insertSession(any());
+    }
+
+    @Test
+    void cashOutWithoutSaleIsRejectedWhenCompanySettingIsDisabled() {
+        RegisterSession session = openSession();
+        when(sessions.lockSession(41L, 3L, 12L)).thenReturn(session);
+        when(sessions.findMovementReplay(41L, 3L, 12L, "cashout-1")).thenReturn(null);
+        when(companySettings.getBoolean(CompanySettingsKeys.CASH_OUT_WITHOUT_SALE, false)).thenReturn(false);
+
+        assertThrows(BusinessException.class, () -> service.moveCash(
+                41L, "cashout-1", "CASH_OUT", new BigDecimal("5.00"), "Petty cash"));
+
+        verify(sessions, never()).insertMovement(any(RegisterCashMovement.class));
+    }
+
+    @Test
+    void cashOutWithoutSaleIsRecordedWhenCompanySettingIsEnabled() {
+        RegisterSession session = openSession();
+        when(sessions.lockSession(41L, 3L, 12L)).thenReturn(session);
+        when(sessions.findMovementReplay(41L, 3L, 12L, "cashout-2")).thenReturn(null);
+        when(companySettings.getBoolean(CompanySettingsKeys.CASH_OUT_WITHOUT_SALE, false)).thenReturn(true);
+
+        RegisterCashMovement movement = service.moveCash(
+                41L, "cashout-2", "CASH_OUT", new BigDecimal("5.00"), "Petty cash");
+
+        assertEquals("CASH_OUT", movement.getMovementType());
+        assertEquals(new BigDecimal("5.00"), movement.getAmount());
+        verify(sessions).insertMovement(movement);
+    }
+
+    private static RegisterSession openSession() {
+        RegisterSession session = new RegisterSession();
+        session.setId(41L); session.setOutletId(12L); session.setRegisterId(11L);
+        return session;
     }
 
     @Test

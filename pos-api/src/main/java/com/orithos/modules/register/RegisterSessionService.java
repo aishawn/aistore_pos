@@ -2,6 +2,8 @@ package com.orithos.modules.register;
 
 import com.orithos.common.BusinessException;
 import com.orithos.common.AustraliaTime;
+import com.orithos.modules.config.CompanySettingsKeys;
+import com.orithos.modules.config.CompanySettingsService;
 import com.orithos.security.CurrentUser;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,10 +21,13 @@ import java.util.TreeMap;
 public class RegisterSessionService {
     private final RegisterSessionMapper sessions;
     private final RegisterClosureMapper closures;
+    private final CompanySettingsService companySettings;
 
-    public RegisterSessionService(RegisterSessionMapper sessions, RegisterClosureMapper closures) {
+    public RegisterSessionService(RegisterSessionMapper sessions, RegisterClosureMapper closures,
+                                  CompanySettingsService companySettings) {
         this.sessions = sessions;
         this.closures = closures;
+        this.companySettings = companySettings;
     }
 
     public List<Register> list() {
@@ -100,6 +105,10 @@ public class RegisterSessionService {
             if (!normalizedType.equals(prior.getMovementType()) || amount.compareTo(prior.getAmount()) != 0
                     || !reason.trim().equals(prior.getReason())) throw conflict("Movement key was reused with different data.");
             return prior;
+        }
+        if ("CASH_OUT".equals(normalizedType)
+                && !companySettings.getBoolean(CompanySettingsKeys.CASH_OUT_WITHOUT_SALE, false)) {
+            throw conflict("Cash out without a sale is disabled for this company.");
         }
         if (session.getClosedAt() != null) throw conflict("Open register session not found.");
         RegisterCashMovement movement = new RegisterCashMovement();

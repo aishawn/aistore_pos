@@ -249,6 +249,7 @@ export function OdooRegisterPage() {
   const selectedPaymentMethodIdRef = useRef<number | null>(null);
   const [hydratedDraftKey, setHydratedDraftKey] = useState<string | null>(null);
   const [eftposPaymentsEnabled, setEftposPaymentsEnabled] = useState(false);
+  const [cashOutWithoutSaleAllowed, setCashOutWithoutSaleAllowed] = useState(false);
   const [eftposPaymentNotice, setEftposPaymentNotice] = useState<string | null>(null);
   const [receiptHardwareNotice, setReceiptHardwareNotice] = useState<string | null>(null);
   const [customerDisplayOpen, setCustomerDisplayOpen] = useState(false);
@@ -279,7 +280,11 @@ export function OdooRegisterPage() {
   useEffect(() => {
     let active = true;
     void getRetailSalePolicy()
-      .then((policy) => { if (active) setDiscountReasonRequired(policy.discountsRequireReason); })
+      .then((policy) => {
+        if (!active) return;
+        setDiscountReasonRequired(policy.discountsRequireReason);
+        setCashOutWithoutSaleAllowed(policy.allowCashOutWithoutSale);
+      })
       .catch(() => { if (active) setDiscountReasonRequired(null); });
     return () => { active = false; };
   }, []);
@@ -1724,6 +1729,7 @@ export function OdooRegisterPage() {
           cashMethod={cashMethod}
           selectedPayment={selectedPayment ?? null}
           hasConfig={Boolean(selectedConfig)}
+          allowCashOutWithoutSale={cashOutWithoutSaleAllowed}
           eftposAvailable={eftposPaymentsEnabled}
           busy={busy}
           isCashPayment={isCashPayment}

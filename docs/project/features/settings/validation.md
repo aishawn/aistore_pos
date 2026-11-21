@@ -1,5 +1,19 @@
 # Settings 1:1 — validation
 
+## 2026-11-21 Allow cash out without sale（本地候选）
+
+| 检查 | 环境 | 结果 | 证据/范围 |
+|------|------|------|-----------|
+| 新现金支出在设置关闭时被拒绝，且不写流水 | 本地 Java 21 | PASS | `RegisterSessionServiceTest` |
+| 设置开启时允许新现金支出 | 本地 Java 21 | PASS | `RegisterSessionServiceTest`；mock 服务验证，不代表线上写入 |
+| 销售策略 API 返回租户设置 | 本地 Java 21 | PASS | `RetailRegisterControllerTest` |
+| 收银条仅在策略为 true 时显示 Cash Out | 本地静态路径 + TypeScript | PASS | `OdooRegisterPage` → `RegisterSellPaymentBar`；默认 false 时隐藏 |
+| 后端聚焦测试 | 本地 Java 21 | PASS | 13 tests，0 failures/errors |
+| POS UI typecheck | 本地 | PASS | `npm run typecheck` |
+| SKR / Demo 策略与页面只读验收 | 线上 | NOT RUN | 候选尚未部署；门店设置未修改；部署后核验运行 SHA、`sale-policy` 和按钮状态 |
+
+限制：本地 mock/静态界面验证不能证明 Dokploy 运行版本或线上租户配置；Shopfront 对应设置值未复核。本次无线上写入、无 Shopfront 操作。
+
 | 检查 | 环境 | 结果 | 证据 |
 |------|------|------|------|
 | CompanySettingsService ownership unit tests | 本地 | PASS | `CompanySettingsServiceTest` |

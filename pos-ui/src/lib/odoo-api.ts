@@ -1973,6 +1973,7 @@ export function getOdooCashReasonOptions(): Promise<OdooCashReasonOptions> {
 export interface OdooSalePolicy {
   discountsRequireReason: boolean;
   refundsRequireReason: boolean;
+  allowCashOutWithoutSale: boolean;
 }
 
 export function getOdooSalePolicy(): Promise<OdooSalePolicy> {

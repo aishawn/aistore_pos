@@ -14,6 +14,7 @@ type RegisterSellPaymentBarProps = {
   cashMethod: PaymentMethodLike | null;
   selectedPayment: PaymentMethodLike | null;
   hasConfig: boolean;
+  allowCashOutWithoutSale: boolean;
   eftposAvailable: boolean;
   busy: boolean;
   isCashPayment: boolean;
@@ -38,6 +39,7 @@ export function RegisterSellPaymentBar({
   cashMethod,
   selectedPayment,
   hasConfig,
+  allowCashOutWithoutSale,
   eftposAvailable,
   busy,
   isCashPayment,
@@ -84,14 +86,14 @@ export function RegisterSellPaymentBar({
             Exact Cash
           </AdminSecondaryButton>
         )}
-        <AdminSecondaryButton
+        {allowCashOutWithoutSale && <AdminSecondaryButton
           className={cn("min-h-11", (!hasConfig || busy) && "opacity-45")}
           onClick={onCashOut}
           disabled={!hasConfig || busy}
           title={!hasConfig ? "Open a register session before recording cash out" : "Record cash taken from the register"}
         >
           Cash Out
-        </AdminSecondaryButton>
+        </AdminSecondaryButton>}
         <AdminSecondaryButton
           className={cn(
             "min-h-11",

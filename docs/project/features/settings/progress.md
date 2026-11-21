@@ -1,6 +1,6 @@
 # Settings 1:1 — progress
 
-更新日期：2026-11-11。
+更新日期：2026-11-21。
 
 ## 本轮候选
 
@@ -90,4 +90,11 @@
 - 使用已有 register session 调用不落销售的 `/api/sales/quote`；SKR 商品 ID `11129`、Demo 商品 ID `22114`，两边商品均为 `ACTIVE` 且 `shopfrontCatalogConfirmed=true`。价格档为 `1→$8.99、4→$6.7475、10→$5.199`；数量 1/3/4/7/10 两边总价均为 `$8.99/$26.97/$26.99/$53.96/$51.99`，对应 GST 为 `$0.82/$2.45/$2.45/$4.91/$4.73`。未创建 sale、未改变设置。
 - 生产 crawler `/api/sync/schedule` 当前报告 `Australia/Adelaide`，本地 crawler `.env` 为 `Australia/Melbourne`；与 SKR/Demo 当前 POS 时区不同。更改生产环境变量需等活动目录 job 和排队增量 job 完成，避免中断同步。
 - 商品目录 job `1256` 仍在进行：source `skr` 映射目标 `skr` + `demo`，`products_only=true`、`full_catalog_snapshot=true`；2026-11-20 22:13 UTC 阶段 `products:fetched:4550`、heartbeat 正常。常规 interval job `1257` queued（已合并 2 个 interval windows）。终态回执与同步后 source ID 差异待查。
+
+## 2026-11-21 Allow cash out without sale
+
+- 根因：设置 `company.sell.allow_cash_out_without_sale` 已可编辑且默认 `false`，但收银服务从未读取该值，`CASH_OUT` 仍会创建现金流水；收银条也无条件显示入口。
+- 修复：后端对新的 `CASH_OUT` 写入执行 vendor 级设置门禁（默认拒绝），`CASH_IN` 不受影响；已成功流水的同键精确重放仍可恢复。`/api/retail/registers/sale-policy` 返回 `allowCashOutWithoutSale`，收银条仅在值为 true 时显示 Cash Out，读取失败时保持隐藏。
+- 本地验证：`RegisterSessionServiceTest` + `RetailRegisterControllerTest` 13 tests PASS；`npm run typecheck` PASS；`git diff --check` PASS。
+- 线上状态：尚未部署；SKR/Demo 设置未更改，也没有创建现金流水。部署后仅做版本、策略 API 和页面只读核验；Shopfront 对应设置值未复核，因此不宣称此项已与 Shopfront 值对齐。
 

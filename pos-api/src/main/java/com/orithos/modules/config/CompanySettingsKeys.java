@@ -27,6 +27,7 @@ public final class CompanySettingsKeys {
     public static final String LOGIN_REQUIRE_PASSWORD = "company.login.require_password";
     public static final String DISCOUNTS_REQUIRE_REASON = "company.sell.discounts_require_reason";
     public static final String REFUNDS_REQUIRE_REASON = "company.sell.refunds_require_reason";
+    public static final String CASH_OUT_WITHOUT_SALE = "company.sell.allow_cash_out_without_sale";
     public static final String OWNED_PREFIX = "meta.owned.";
 
     /** Default values applied when a key is absent (AU bottle-shop pilot). */
@@ -66,7 +67,7 @@ public final class CompanySettingsKeys {
         d.put("company.sell.cash_drawer_require_reason", "false");
         d.put("company.sell.cash_out_reasons", "[]");
         d.put("company.sell.cash_in_reasons", "[]");
-        d.put("company.sell.allow_cash_out_without_sale", "false");
+        d.put(CASH_OUT_WITHOUT_SALE, "false");
         d.put("company.sell.require_note_on_parked_sale", "false");
         d.put("company.sell.invoice_number_length", "8");
         // Outlets
