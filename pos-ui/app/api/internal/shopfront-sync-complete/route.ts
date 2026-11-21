@@ -2,14 +2,10 @@ import { timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { clearReportingCache } from "@/lib/reporting-dashboard-cache";
 import { recordShopfrontSyncForHost } from "@/lib/shopfront-sync-registry";
-import { applyShopfrontSyncNotification } from "@/lib/shopfront-sync-notification";
+import { applyShopfrontSyncNotification, shopfrontSyncHostsForTargets } from "@/lib/shopfront-sync-notification";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-const STORE_TARGET_HOSTS: Record<string, string[]> = {
-  skr: ["skr.orithos.com.au", "demo.orithos.com.au"],
-};
 
 function equalToken(value: string, expected: string) {
   const a = Buffer.from(value), b = Buffer.from(expected);
@@ -32,6 +28,15 @@ export async function POST(request: NextRequest) {
     || (body.syncRunId !== null && body.syncRunId !== undefined && !Number.isSafeInteger(body.syncRunId))) {
     return NextResponse.json({ message: "Invalid sync completion record" }, { status: 400 });
   }
+  let hosts: string[];
+  try {
+    hosts = shopfrontSyncHostsForTargets(
+      String(body.storeKey),
+      Object.prototype.hasOwnProperty.call(body, "targetStoreKeys") ? body.targetStoreKeys : undefined,
+    );
+  } catch {
+    return NextResponse.json({ message: "Invalid sync target stores" }, { status: 400 });
+  }
   const coverageStart = new Date(`${body.toDay}T00:00:00.000Z`);
   coverageStart.setUTCDate(coverageStart.getUTCDate() - 179);
   const earliestCoveredDay = coverageStart.toISOString().slice(0, 10);
@@ -46,18 +51,17 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const knownHosts = STORE_TARGET_HOSTS[body.storeKey] || [];
-    if (!knownHosts.length) return NextResponse.json({ message: "No Orithos stores are configured for this Shopfront source" }, { status: 503 });
+    if (!hosts.length) return NextResponse.json({ message: "No Orithos stores are configured for this Shopfront source" }, { status: 503 });
     await applyShopfrontSyncNotification({
       status: body.status as "completed" | "partial" | "failed",
-      hosts: knownHosts,
+      hosts,
       at: Date.now(),
       coverageRanges: coverageRanges as Array<{ fromDay: string; toDay: string }>,
       latestThroughDay: String(body.toDay),
       record: recordShopfrontSyncForHost,
       clear: clearReportingCache,
     });
-    return NextResponse.json({ accepted: true, stores: knownHosts.length, status: body.status });
+    return NextResponse.json({ accepted: true, stores: hosts.length, status: body.status });
   } catch {
     return NextResponse.json({ message: "Report refresh could not be recorded" }, { status: 503 });
   }

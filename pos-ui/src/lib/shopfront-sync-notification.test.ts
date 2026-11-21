@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { applyShopfrontSyncNotification } from "./shopfront-sync-notification.ts";
+import { applyShopfrontSyncNotification, shopfrontSyncHostsForTargets } from "./shopfront-sync-notification.ts";
+
+test("targeted sync notifications only advance the selected Orithos host", () => {
+  assert.deepEqual(shopfrontSyncHostsForTargets("skr", ["demo"]), ["demo.orithos.com.au"]);
+  assert.deepEqual(shopfrontSyncHostsForTargets("skr"), ["skr.orithos.com.au", "demo.orithos.com.au"]);
+  assert.throws(() => shopfrontSyncHostsForTargets("skr", ["other"]), /configured target/);
+});
 
 test("only completed syncs advance the freshness stamp while every status clears report caches", async () => {
   for (const status of ["completed", "partial", "failed"] as const) {
