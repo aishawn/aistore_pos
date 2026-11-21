@@ -107,13 +107,13 @@
 
 | 检查 | 环境/版本 | 结果 | 证据/范围 |
 |------|-----------|------|-----------|
-| Runtime identity | SKR + Demo，`8d387b5cc146fccb81b2ca44f91bb183c8b86142` | PASS | 两店 frontend/backend SHA 一致 |
+| Runtime identity | SKR + Demo，`50cd5440374c7a08ab8005416214bdd4a6bb67c6` | PASS | 两店 frontend/backend SHA 一致 |
 | 定价设置与 Shopfront 只读读回 | SKR + Demo + Shopfront `/settings` | PASS（设置值） | 三项值逐项一致：`HIGH_MIX_PRICE` / `High Mix Price`、`MATCH_PRICE_POINTS` / `Match Price Points`、`REDISTRIBUTE` / `Redistribute` |
-| 数量阶梯报价 API + Sell 页面金额 | SKR + Demo，`8d387b5c` | PASS | `-196 LEMON`、`4 PINES NEW WORLD`、`4 PINES PACIFIC`；覆盖 1–18 件的选定数量节点，API 应答与页面显示均匹配源阶梯总价；最终结账按钮可用 |
-| 业务写入监测 | SKR + Demo，`8d387b5c` | PASS | 两店各 10/10 项检查通过；报价会话没有 checkout/sale/cash-movement 写入，结束时退出登录 |
+| 数量阶梯报价 API + Sell 页面金额 | SKR + Demo，`50cd5440` | PASS | `-196 LEMON`、`4 PINES NEW WORLD`、`4 PINES PACIFIC`；覆盖 1–18 件的选定数量节点，API 应答与页面显示均匹配源阶梯总价；最终结账按钮可用 |
+| 业务写入监测 | SKR + Demo，`50cd5440` | PASS | 两店各 10/10 项检查通过；报价会话没有 checkout/sale/cash-movement 写入，结束时退出登录 |
 | Shopfront Register 交易对照 | Shopfront | NOT_RUN | 按只读约束未创建源站交易；设置值一致和数量报价矩阵不等于 Register 全流程等价 |
 
-本机详细报告：`temp/continued-settings-uat-20261121/pricing-skr-quote-current.json`、`temp/continued-settings-uat-20261121/pricing-demo-quote-current.json`（临时 UAT 输出，未纳入仓库）。本次复验确认当前部署的三件普通数量阶梯商品；不证明 Family、促销、客户价、价格表继承或 Shopfront Register 对照已实现/等价。Shopfront 仍只读，没有创建交易。
+本机详细报告：`temp/continued-settings-uat-20261121/pricing-skr-debug-78f.json`、`temp/continued-settings-uat-20261121/pricing-demo-debug-78f.json`（临时 UAT 输出，未纳入仓库）。两店并行复跑曾在第三件商品的报价响应等待阶段超时；改为每店串行运行后均 10/10 通过，后续应串行执行该 UAT。当前证据覆盖三件普通数量阶梯商品；不证明 Family、促销、客户价、价格表继承或 Shopfront Register 对照已实现/等价。Shopfront 仍只读，没有创建交易。
 
 ## 2026-11-21 crawler 环境修复与运行验收
 
