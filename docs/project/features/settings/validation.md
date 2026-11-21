@@ -1,5 +1,21 @@
 # Settings 1:1 — validation
 
+## 2026-11-21 Sale Keys Position 实际收银界面验收（线上 SHA 086ecea1）
+
+| 检查 | 环境/版本 | 结果 | 证据/范围 |
+|------|-----------|------|-----------|
+| Runtime identity | SKR + Demo，`086ecea17b69a5c6579746a326b0ad86bdb59bfb` | PASS | 前后端 SHA 一致；验收前后稳定 |
+| 目标配置 | SKR + Demo | PASS | 两店 `company.misc.sale_keys_position=LEFT`；策略 API 同步读回 `LEFT`，与 Shopfront 全局 `sale_keys_position=left` 对齐 |
+| 实际 `/sell` 桌面位置 | SKR + Demo，1440px | PASS | 浏览器测得快捷键面板在购物车左侧；几何断言基于真实面板边界框，不创建销售 |
+| 实际 `/sell` 手机顺序 | SKR + Demo，390px | PASS | 快捷键面板纵向位于购物车之前；不打开购物车付款流程 |
+| 所有设置页面/主题 | SKR + Demo，390/768/1440px | PASS | 每店 17 路由 × 3 视口 × light/dark；102 个页面主题组合通过，无横向溢出 |
+| Company 字段状态 | SKR + Demo | PASS | 每店 60 项中 23 项运行时支持/可编辑，37 项仅保存/禁用；Sale Keys Position 已改为运行时支持 |
+| 页面错误及业务写入 | SKR + Demo | PASS | 页面错误 0、拦截/尝试的业务写请求 0；设置改值仅为目标布局，不产生销售或现金流水 |
+
+本机报告：`temp/settings-audit-sale-position-final-20261121.json`。脚本共 121 条记录，119 项显式 PASS，另有 2 项 Runtime identity 原始记录不带 `result` 字段；0 FAIL。Demo 员工权限弹窗核验通过；SKR Add staff 不可用，跳过该项。
+
+根因记录：先前实现接到了没有挂载 `/sell` 路由的 `SellPage`，首次线上几何验收显示真实 `/sell` 仍是固定右侧。已改接实际 `OdooRegisterPage` 主布局和加载骨架，并在完整 SKR/Demo `/sell` 验收中验证 LEFT 坐标。Shopfront 仍保持只读，未进入 Shopfront Register。`Default Sale Keys` 组未导入，成本/调拨/低于成本折扣策略仍未完成等价映射。
+
 ## 2026-11-21 当前线上 Settings 只读复验（线上 SHA 6006f5e2）
 
 | 检查 | 环境/版本 | 结果 | 证据/范围 |

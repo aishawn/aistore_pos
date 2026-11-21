@@ -2,6 +2,15 @@
 
 更新日期：2026-11-21。
 
+## 2026-11-21 Sale Keys Position 修复与线上验收
+
+- 根因：字段 `company.misc.sale_keys_position` 原先被 UI 标为仅保存；首个候选把消费逻辑接到未挂载的 `SellPage`，只读几何 UAT 失败后确认真实 `/sell` 路由使用 `OdooRegisterPage`。
+- 修复：策略窄接口按当前 vendor 返回 sale-key 位置；Company Settings 将该字段标为运行时支持；真实 `/sell` 的主布局和 skeleton 都消费 `LEFT` / `RIGHT` / `BOTTOM`，购物车侧栏支持相同的布局映射。未知值或策略 API 失败回退 `RIGHT`。`Default Sale Keys` 保持仅保存，因为 Shopfront sale-key 集合需要 sale 上下文且不能进入源 Register 读取。
+- 配置对齐：通过 Orithos 设置 API 将 SKR 和 Demo 的值从 `RIGHT` 更新为 `LEFT`；两店设置读回和 `sale-policy` 均为 `LEFT`。这是配置更新，无销售或现金流水写入。
+- 验证：后端 `RetailRegisterControllerTest` PASS；前端 7 个 Sale Keys layout/runtime 状态用例 PASS；TypeScript PASS；受影响文件 ESLint 0 errors（13 warnings 来自页面既有 effect 与旧 API 变量）；脚本语法及 `git diff --check` PASS。
+- 发布：POS `main` 提交 `086ecea17b69a5c6579746a326b0ad86bdb59bfb`；SKR/Demo 前后端均运行该 SHA。只读验收两店实际 `/sell` 的 1440px 左右位置与 390px 纵向顺序 PASS；每店 17 Settings 路由 × 3 视口 × 2 主题通过，无页面错误/业务写入。证据 `temp/settings-audit-sale-position-final-20261121.json`。
+- 仍未对齐：Shopfront 默认 Sale Keys 组、成本/调拨成本来源、低于成本折扣规则、空白设置的 effective 默认值；完整定价等价仍未证明。
+
 ## 2026-11-21 当前 main 只读复验
 
 - POS `main` 提交 `6006f5e2d02f1424d2a880204f100586156e2e23` 已推送；SKR/Demo 前后端当前均运行该 SHA。
