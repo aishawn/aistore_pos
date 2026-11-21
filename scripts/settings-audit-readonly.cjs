@@ -95,6 +95,7 @@ async function main() {
       const runtimeSupportedLabels = new Set([
         'Quantity Pricing Method', 'Family Price Distribution Method', 'Price Rounding Mode', 'Discounts Require Reason', 'Refunds Require Reason',
         'Allow cash out without sale',
+        'Require Note on Parked Sale',
         'Legal company name', 'ABN', 'Street address', 'City', 'Postcode', 'Phone', 'Email',
         'Require Password', 'Cash In Reasons', 'Cash Out Reasons', 'Timezone', 'Date Format',
         'Time Format', 'Start of the Week', 'Round To',
@@ -123,8 +124,8 @@ async function main() {
       const supportedFields = companyFields.filter(field => runtimeSupportedLabels.has(field.label));
       const inertFields = companyFields.filter(field => !runtimeSupportedLabels.has(field.label));
       assert.equal(companyFields.length, 60, `${host} company field catalogue size`);
-      assert.equal(supportedFields.length, 21, `${host} runtime-supported company fields`);
-      assert.equal(inertFields.length, 39, `${host} stored-only company fields`);
+      assert.equal(supportedFields.length, 22, `${host} runtime-supported company fields`);
+      assert.equal(inertFields.length, 38, `${host} stored-only company fields`);
       assert.ok(supportedFields.every(field => !field.disabled && !field.storedOnly), `${host} supported fields must remain editable`);
       assert.ok(inertFields.every(field => field.disabled && field.storedOnly), `${host} stored-only fields must be disabled and labelled`);
       checks.push({ host, check: 'All company fields reflect runtime support in the UI', supported: supportedFields.length, storedOnly: inertFields.length, result: 'PASS' });

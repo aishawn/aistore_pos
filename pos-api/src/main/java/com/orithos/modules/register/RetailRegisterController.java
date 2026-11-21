@@ -58,7 +58,8 @@ public class RetailRegisterController {
         return ApiResult.ok(new SalePolicy(
                 companySettings.getBoolean(CompanySettingsKeys.DISCOUNTS_REQUIRE_REASON, false),
                 companySettings.getBoolean(CompanySettingsKeys.REFUNDS_REQUIRE_REASON, true),
-                companySettings.getBoolean(CompanySettingsKeys.CASH_OUT_WITHOUT_SALE, false)));
+                companySettings.getBoolean(CompanySettingsKeys.CASH_OUT_WITHOUT_SALE, false),
+                companySettings.getBoolean(CompanySettingsKeys.REQUIRE_NOTE_ON_PARKED_SALE, false)));
     }
 
     private List<String> parseOptions(String raw) {
@@ -120,5 +121,5 @@ public class RetailRegisterController {
     public record CashReasonOptions(List<String> cashInReasons, List<String> cashOutReasons) {}
     public record StoreDateTimeOptions(String timezone, String dateFormat, String timeFormat) {}
     public record SalePolicy(boolean discountsRequireReason, boolean refundsRequireReason,
-                             boolean allowCashOutWithoutSale) {}
+                             boolean allowCashOutWithoutSale, boolean requireNoteOnParkedSale) {}
 }

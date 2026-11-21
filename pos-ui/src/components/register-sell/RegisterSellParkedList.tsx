@@ -35,6 +35,7 @@ export function RegisterSellParkedList({ sales, formatDate, onResume, onDiscard 
                   <p className="mt-1 text-sm font-semibold tabular-nums text-[var(--oh-text)]">
                     {parkedQty} {parkedQty === 1 ? "item" : "items"} · {money(parkedTotal)}
                   </p>
+                  {sale.note && <p className="mt-1 break-words text-sm text-[var(--oh-text-secondary)]">{sale.note}</p>}
                 </div>
                 <div className="flex shrink-0 items-center gap-3">
                   <button

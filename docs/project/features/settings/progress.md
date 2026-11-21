@@ -98,3 +98,10 @@
 - 本地验证：`RegisterSessionServiceTest` + `RetailRegisterControllerTest` 13 tests PASS；`npm run typecheck` PASS；`git diff --check` PASS。
 - 线上验收：SKR + Demo 前后端均为 `f6ce8b23abe170d16d62dc1f51d05fb6eaf845a4`。1440px 只读审计两店均通过：17 个 Settings 路由可达、21 项运行时支持 / 39 项仅保存分类正确，字段可编辑性正确；策略 API 与公司设置均为 `false`，Sell 页 Cash Out 按钮隐藏；无浏览器错误或业务写入。审计报告在本地 `temp/settings-cashout-readonly.json`（不提交）。Shopfront 对应设置值未复核，因此不宣称此项已与 Shopfront 值对齐。
 
+## 2026-11-21 Require Note on Parked Sale（候选）
+
+- 根因：此设置仅存储；持久化停放 API 未校验 `note`，正在使用的 Sell 页把草稿放在浏览器本地，却没有收集或展示备注。
+- 修复候选：公司策略 API 返回 `requireNoteOnParkedSale`；服务端在任何商品读取/销售写入前验证必填备注并保存 trim 后的值；本地停放流程在启用时要求输入，停放清单显示备注，收银机切换复用同一确认；策略接口缺失/失败时阻止停放。
+- 本地验证：`SellServiceParkedSaleNoteTest` + `RetailRegisterControllerTest` + `SellServiceParkedSaleReadTest` 11 tests PASS；前端备注规则 2 tests PASS（Node 22 type stripping）；`npm run typecheck` PASS；`git diff --check` PASS。
+- 线上状态：当前尚未部署；SKR/Demo 设置值不变，Shopfront 对应值未核对。线上验收须确认运行 SHA、设置编辑状态、策略读回、策略 true 时的本地停放备注流程（仅 localStorage，不提交业务写请求）及 false 时兼容旧行为。
+

@@ -3,6 +3,8 @@ package com.orithos.modules.sell;
 import com.orithos.common.AustraliaTime;
 import com.orithos.common.BusinessException;
 import com.orithos.common.SqlLikeUtils;
+import com.orithos.modules.config.CompanySettingsKeys;
+import com.orithos.modules.config.CompanySettingsService;
 import com.orithos.modules.customer.Customer;
 import com.orithos.modules.customer.mapper.CustomerMapper;
 import com.orithos.modules.product.Product;
@@ -34,19 +36,27 @@ public class SellService {
     private final ProductMapper productMapper;
     private final CustomerMapper customerMapper;
     private final SaleMapper saleMapper;
+    private final CompanySettingsService companySettings;
     private final boolean nativePosOnlyMode;
 
     public SellService(ProductMapper productMapper, CustomerMapper customerMapper, SaleMapper saleMapper) {
-        this(productMapper, customerMapper, saleMapper, false);
+        this(productMapper, customerMapper, saleMapper, null, false);
     }
 
     @Autowired
     public SellService(ProductMapper productMapper, CustomerMapper customerMapper, SaleMapper saleMapper,
+                       CompanySettingsService companySettings,
                        @Value("${app.native-pos-only-mode:true}") boolean nativePosOnlyMode) {
         this.productMapper = productMapper;
         this.customerMapper = customerMapper;
         this.saleMapper = saleMapper;
+        this.companySettings = companySettings;
         this.nativePosOnlyMode = nativePosOnlyMode;
+    }
+
+    public SellService(ProductMapper productMapper, CustomerMapper customerMapper, SaleMapper saleMapper,
+                       boolean nativePosOnlyMode) {
+        this(productMapper, customerMapper, saleMapper, null, nativePosOnlyMode);
     }
 
     /** Search products and customers for the Sell-pad search bar. */
@@ -134,6 +144,12 @@ public class SellService {
         if (req.getItems() == null || req.getItems().isEmpty()) {
             throw new BusinessException("Cannot park an empty sale.");
         }
+        boolean noteRequired = companySettings != null
+                && companySettings.getBoolean(CompanySettingsKeys.REQUIRE_NOTE_ON_PARKED_SALE, false);
+        String note = req.getNote() == null ? null : req.getNote().trim();
+        if (noteRequired && (note == null || note.isEmpty())) {
+            throw new BusinessException(40000, "A note is required when parking this sale.");
+        }
 
         Long vendorId = requireVendorId();
         Long outletId = requireOutletId();
@@ -166,7 +182,7 @@ public class SellService {
         sale.setRegisterId(req.getRegisterId());
         sale.setUserId(CurrentUser.id());
         sale.setCustomerId(resolveCustomerId(req.getCustomerId()));
-        sale.setNote(req.getNote());
+        sale.setNote(note == null || note.isEmpty() ? null : note);
         sale.setTotalQuantity(quantity);
         sale.setTotalPrice(total);
         sale.setOutstanding(total);

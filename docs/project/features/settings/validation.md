@@ -1,5 +1,19 @@
 # Settings 1:1 — validation
 
+## 2026-11-21 Require Note on Parked Sale（本地候选）
+
+| 检查 | 环境 | 结果 | 证据/范围 |
+|------|------|------|-----------|
+| 策略开启时 API 拒绝空白备注且不写停放销售 | 本地 Java 21 | PASS | `SellServiceParkedSaleNoteTest` |
+| API trims 并存储有效备注 | 本地 Java 21 | PASS | `SellServiceParkedSaleNoteTest` |
+| 策略关闭时 API 仍允许空备注 | 本地 Java 21 | PASS | `SellServiceParkedSaleNoteTest` |
+| 策略接口按公司设置返回值 | 本地 Java 21 | PASS | `RetailRegisterControllerTest` |
+| 本地草稿备注必填判定与清理 | 本地 Node 22 | PASS | `parked-sale-note.test.ts`，2 tests |
+| Sell 页面类型检查 | 本地 | PASS | `npm run typecheck` |
+| SKR / Demo 线上 UI 流程 | 线上 | NOT RUN | 候选尚未部署；设置未修改，Shopfront 值未核对 |
+
+限制：本地测试证明 API 策略和前端备注规则，不证明线上部署或 Shopfront 值一致。线上 true 分支 UAT 仅使用浏览器 localStorage 草稿，并拦截所有业务写 API。
+
 ## 2026-11-21 Allow cash out without sale（线上 SHA f6ce8b23）
 
 | 检查 | 环境 | 结果 | 证据/范围 |

@@ -15,6 +15,7 @@ import { RegisterSellPaymentBar } from "@/components/register-sell/RegisterSellP
 import {
   CASE_PACK_OPTIONS,
   money,
+  prepareParkedSaleNote,
   provisionalLineUnit,
   shelfUnitPrice,
   type CartLine,
@@ -213,6 +214,10 @@ export function OdooRegisterPage() {
   const [cashOutReasonIsCustom, setCashOutReasonIsCustom] = useState(false);
   const [cashOutReasons, setCashOutReasons] = useState<string[]>([]);
   const [discountReasonRequired, setDiscountReasonRequired] = useState<boolean | null>(null);
+  const [parkedSaleNoteRequired, setParkedSaleNoteRequired] = useState<boolean | null>(null);
+  const [parkNoteDialog, setParkNoteDialog] = useState<{ switchToRegisterId: number | null } | null>(null);
+  const [parkNoteInput, setParkNoteInput] = useState("");
+  const [parkNoteError, setParkNoteError] = useState<string | null>(null);
   const [cashOutBusy, setCashOutBusy] = useState(false);
   const [parkedSales, setParkedSales] = useState<ParkedSale[]>([]);
   const [parkedLoaded, setParkedLoaded] = useState(false);
@@ -284,8 +289,13 @@ export function OdooRegisterPage() {
         if (!active) return;
         setDiscountReasonRequired(policy.discountsRequireReason);
         setCashOutWithoutSaleAllowed(policy.allowCashOutWithoutSale);
+        setParkedSaleNoteRequired(typeof policy.requireNoteOnParkedSale === "boolean" ? policy.requireNoteOnParkedSale : null);
       })
-      .catch(() => { if (active) setDiscountReasonRequired(null); });
+      .catch(() => {
+        if (!active) return;
+        setDiscountReasonRequired(null);
+        setParkedSaleNoteRequired(null);
+      });
     return () => { active = false; };
   }, []);
 
@@ -420,12 +430,13 @@ export function OdooRegisterPage() {
     openCloseRegister();
   }
 
-  const dialogOpen = helpOpen || closeRegisterCartWarn || clearSaleConfirm || cashOutOpen || Boolean(receipt) || Boolean(parkedAction) || pendingRegisterId !== null || registerStartupPrompt !== null;
+  const dialogOpen = helpOpen || closeRegisterCartWarn || clearSaleConfirm || cashOutOpen || Boolean(receipt) || Boolean(parkedAction) || Boolean(parkNoteDialog) || pendingRegisterId !== null || registerStartupPrompt !== null;
   useDialogFocus(dialogOpen, () => {
     if (helpOpen) setHelpOpen(false);
     else if (closeRegisterCartWarn) setCloseRegisterCartWarn(false);
     else if (clearSaleConfirm) setClearSaleConfirm(false);
     else if (cashOutOpen && !cashOutBusy) setCashOutOpen(false);
+    else if (parkNoteDialog) setParkNoteDialog(null);
     else if (parkedAction) setParkedAction(null);
     else if (pendingRegisterId !== null) setPendingRegisterId(null);
     else if (receipt) setReceipt(null);
@@ -926,10 +937,25 @@ export function OdooRegisterPage() {
     }
   }
 
-  function parkCurrentSale() {
+  function parkCurrentSale(switchToRegisterId: number | null = null, noteInput?: string) {
     if (!lines.length || !selectedConfig || selectedCompanyId === null || !registerUserId) return false;
     if (parkedSales.length >= 50) {
       setError("This terminal has reached its 50 parked sale limit. Resume or discard an older sale first.");
+      return false;
+    }
+    if (parkedSaleNoteRequired === null) {
+      setError("The parked-sale note policy could not be verified. Refresh the register and try again.");
+      return false;
+    }
+    if (parkedSaleNoteRequired && noteInput === undefined) {
+      setParkNoteInput("");
+      setParkNoteError(null);
+      setParkNoteDialog({ switchToRegisterId });
+      return false;
+    }
+    const preparedNote = prepareParkedSaleNote(noteInput ?? "", parkedSaleNoteRequired);
+    if (!preparedNote.valid) {
+      setParkNoteError("Enter a note before parking this sale.");
       return false;
     }
     const sale: ParkedSale = {
@@ -943,6 +969,7 @@ export function OdooRegisterPage() {
       timezone: selectedConfig.timezone,
       paymentMethodId,
       customer: customer ? { id: customer.id, name: customer.name } : null,
+      note: preparedNote.note,
       lines: lines.map((line) => ({ ...line, product: { ...line.product } })),
       createdAt: new Date().toISOString(),
     };
@@ -955,7 +982,17 @@ export function OdooRegisterPage() {
     setWorkspaceTab("parked");
     orderUuid.current = null;
     checkoutFingerprint.current = null;
+    if (switchToRegisterId !== null) selectRegister(switchToRegisterId);
     return true;
+  }
+
+  function confirmParkCurrentSale() {
+    if (!parkNoteDialog) return;
+    if (parkCurrentSale(parkNoteDialog.switchToRegisterId, parkNoteInput)) {
+      setParkNoteDialog(null);
+      setParkNoteInput("");
+      setParkNoteError(null);
+    }
   }
 
   function restoreParkedSale(sale: ParkedSale) {
@@ -1928,7 +1965,21 @@ export function OdooRegisterPage() {
           <p id="register-change-description" className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">The current cart belongs to {selectedConfig?.name ?? "this register"}. It will be saved on this terminal and will only appear when you return to that register.</p>
           <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <button type="button" onClick={() => setPendingRegisterId(null)} className="h-11 rounded-md border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-text)]">Stay here</button>
-            <button type="button" onClick={() => { const nextId = pendingRegisterId; if (parkCurrentSale() && nextId !== null) selectRegister(nextId); }} className="h-11 rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)]">Park &amp; switch</button>
+            <button type="button" onClick={() => { if (pendingRegisterId !== null) parkCurrentSale(pendingRegisterId); }} className="h-11 rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)]">Park &amp; switch</button>
+          </div>
+        </section>
+      </div>}
+      {parkNoteDialog && <div className="fixed inset-0 z-[60] grid place-items-center bg-black/40 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) setParkNoteDialog(null); }}>
+        <section role="dialog" aria-modal="true" aria-labelledby="park-note-title" className="w-full max-w-md rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-6 shadow-2xl">
+          <h2 id="park-note-title" className="text-lg font-semibold text-[var(--oh-text)]">Add a note to this parked sale</h2>
+          <label className="mt-4 grid gap-1.5 text-sm font-medium text-[var(--oh-text)]">
+            Note <span className="font-normal text-[var(--oh-muted)]">(required)</span>
+            <textarea autoFocus rows={3} value={parkNoteInput} onChange={(event) => { setParkNoteInput(event.target.value); setParkNoteError(null); }} className="rounded-md border border-[var(--oh-border)] bg-white px-3 py-2 outline-none focus:border-[var(--oh-primary)]" placeholder="Why this sale is being parked" />
+          </label>
+          {parkNoteError && <p role="alert" className="mt-2 text-sm text-red-700">{parkNoteError}</p>}
+          <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <button type="button" onClick={() => setParkNoteDialog(null)} className="min-h-11 rounded-md border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-text)]">Cancel</button>
+            <button type="button" onClick={confirmParkCurrentSale} disabled={!parkNoteInput.trim()} className="min-h-11 rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">{parkNoteDialog.switchToRegisterId === null ? "Park sale" : "Park & switch"}</button>
           </div>
         </section>
       </div>}

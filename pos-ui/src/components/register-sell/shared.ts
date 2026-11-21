@@ -25,9 +25,15 @@ export type ParkedSale = {
   timezone?: string;
   paymentMethodId: number | null;
   customer: { id: number; name: string } | null;
+  note?: string | null;
   lines: CartLine[];
   createdAt: string;
 };
+
+export function prepareParkedSaleNote(value: string, required: boolean): { valid: boolean; note: string | null } {
+  const note = value.trim();
+  return { valid: !required || note.length > 0, note: note || null };
+}
 
 export const CASE_PACK_OPTIONS = [1, 6, 12, 24] as const;
 

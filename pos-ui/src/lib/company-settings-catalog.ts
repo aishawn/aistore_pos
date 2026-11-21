@@ -25,6 +25,7 @@ const runtimeSettings = new Set([
   "company.sell.discounts_require_reason",
   "company.sell.refunds_require_reason",
   "company.sell.allow_cash_out_without_sale",
+  "company.sell.require_note_on_parked_sale",
   "company.sell.cash_in_reasons",
   "company.sell.cash_out_reasons",
   "company.timezone",
