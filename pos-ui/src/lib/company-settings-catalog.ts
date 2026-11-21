@@ -108,7 +108,7 @@ export const COMPANY_SECTIONS: CompanySection[] = [
     title: "Login",
     href: "/settings/company/login-after-sale",
     fields: [
-      { key: "company.login.login_type", label: "Login Type", description: "PIN login is unavailable; save to use username and password.", type: "select", options: [
+      { key: "company.login.login_type", label: "Login Type", description: "Orithos currently supports username and password sign-in only.", type: "select", options: [
         { value: "USERNAME_PASSWORD", label: "Username & password" },
       ]},
       { key: "company.login.mask_username", label: "Mask Username", type: "boolean" },

@@ -19,6 +19,8 @@ test("login settings do not offer the unimplemented PIN flow", () => {
   const loginType = section?.fields.find((field) => field.key === "company.login.login_type");
   assert.ok(loginType);
   assert.deepEqual(loginType.options?.map((option) => option.value), ["USERNAME_PASSWORD"]);
+  assert.equal(loginType.description, "Orithos currently supports username and password sign-in only.");
+  assert.equal(isCompanySettingRuntimeSupported(loginType.key), false);
   assert.equal(normalizeCompanySetting(loginType, "PIN"), "USERNAME_PASSWORD");
   assert.equal(normalizeCompanySetting(loginType, "USERNAME_PASSWORD"), "USERNAME_PASSWORD");
 });
