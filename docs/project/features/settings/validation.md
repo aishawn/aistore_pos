@@ -89,3 +89,16 @@
 | Crawler 调度时区 | 生产 crawler | MISMATCH / 未修复 | `/api/sync/schedule` 为 `Australia/Adelaide`，POS 与本地 crawler 配置为 `Australia/Melbourne`。所有 job 空闲；Dokploy URL 许可校验停止了浏览器自动化，本轮没有写环境变量或重启 |
 
 限制：价格报价仍只覆盖一个商品和五个数量；Shopfront Family 无真实样本，促销、客户价、价格表继承与 Shopfront Register 对照未做。目录专用修复尚未用下一次新线上任务验证销售 upsert 为 0；179 条历史成本候选需要复核。Shopfront 保持只读，未创建 Shopfront Register 销售。
+
+## 2026-11-21 当前线上三商品报价复验
+
+| 检查 | 环境/版本 | 结果 | 证据/范围 |
+|------|-----------|------|-----------|
+| Runtime identity | SKR + Demo，`b81890a7bb9e7b9e95a917860378c2d854f96c47` | PASS | 两店 `/api/public/version` 的 frontend/backend SHA 相同，且与本地 `main` / `origin/main` HEAD 一致 |
+| Shopfront 同步源阶梯 | crawler `skr` 只读商品归档 | PASS（有限样本） | `-196 LEMON`：1/4/10 件 `$8.99/$26.99/$51.99`（源更新时间 11/16）；`4 PINES NEW WORLD`：1/6/18 件 `$5.99/$23.99/$57.99`（11/19）；`4 PINES PACIFIC`：1/6/18 件 `$4.99/$19.99/$51.99`（11/11） |
+| High Mix 数量报价 | SKR + Demo，`b81890a7` | PASS | Lemon，1/3/4/7/10 件 `$8.99/$26.97/$26.99/$53.96/$51.99`；New World，1/6/7/18 件 `$5.99/$23.99/$29.98/$57.99`；Pacific，1/6/7/18 件 `$4.99/$19.99/$24.98/$51.99`。每店 API 响应和页面金额一致 |
+| 报价 API / Sell UI | SKR + Demo，`b81890a7` | PASS | 每店 10 项检查通过；报价按请求数量逐一匹配 `/api/sales/quote` 200，最终结账按钮可用 |
+| 业务写入监测 | SKR + Demo，`b81890a7` | PASS | 0 checkout/sale/cash movement 写入；独立报价会话退出，没有提交交易 |
+| Shopfront 设置页面 / Register | Shopfront | NOT_RUN | 价格档来自 crawler 最近同步的 Shopfront 归档，不是本轮直连 Shopfront 页面的对照；没有进入 Shopfront Register |
+
+本机详细报告：`temp/continued-settings-uat-20261121/pricing-skr-quote.json`、`temp/continued-settings-uat-20261121/pricing-demo-quote.json`（本地临时验收证据，未纳入仓库）。限制：三个商品均为普通数量阶梯；Shopfront 当前无 Family 源商品，Family 真实样本、促销、客户价及价表继承仍未覆盖，不能据此宣称全部定价规则 1:1。
