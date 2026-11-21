@@ -137,10 +137,10 @@
 
 | 检查 | 环境/版本 | 结果 | 证据/范围 |
 |------|-----------|------|-----------|
-| Runtime identity | SKR + Demo，`f9b92a7758c3e9604861bd7abc57411643bbc054` | PASS | 两店 frontend/backend SHA 相同；运行版本是 Settings 修复 `6c008620` 的直接子提交。当前 GitHub `main` 后续已前进至 `21898ec6`；该 SHA 与线上运行版本不同，Settings 页面组件和字段目录在二者间无差异 |
+| Runtime identity | SKR + Demo，`40ae2470b6012dd887bc05203056bb4b0b705cd2` | PASS | 两店 frontend/backend SHA 相同，且与本轮 GitHub `main` 一致；包含 Settings 修复 `6c008620` |
 | Settings 页面矩阵 | SKR + Demo，1440px 桌面视口 | PASS | 每店 17 个设置路由；导航、主题切换、无横向溢出、权限只读弹窗、旧路由、区域接口故障重试均通过；无浏览器异常、无非认证写请求 |
 | 公司设置字段可用性 | SKR + Demo，10 个 Company 分区 | PASS | 每店实测 60 个表单字段：18 个运行时支持项均可编辑且无“Stored only”提示；42 个尚无运行时消费者的字段均禁用且有明确提示 |
-| 页面验收稳定性 | SKR + Demo | PASS | UAT 前后各自 `/api/public/version` frontend/backend SHA 未变化；脚本阻断全部非认证 API 写入。详细临时报告 `temp/settings-audit-current-20261121/field-runtime-report.json` 不纳入版本库 |
+| 页面验收稳定性 | SKR + Demo | PASS | UAT 前后各自 `/api/public/version` frontend/backend SHA 未变化；脚本阻断全部非认证 API 写入。详细临时报告 `temp/settings-audit-current-20261121/latest-main-stable-report.json` 不纳入版本库 |
 | 设置保存行为 | SKR + Demo | NOT_RUN | 本轮没有改动或保存线上设置，也没有创建销售/现金交易 |
 | Shopfront 全字段页面复核 | Shopfront | NOT_RUN | 本轮只验收 Orithos Settings UI。已有定价字段值和只读报价记录不代表 Shopfront 全部设置逐字段一致 |
 
