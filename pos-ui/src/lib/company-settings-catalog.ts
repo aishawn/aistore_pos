@@ -130,7 +130,6 @@ export const COMPANY_SECTIONS: CompanySection[] = [
       { key: "company.sell.select_product_paginated", label: "Make Select Product Popup Paginated by Default", type: "boolean" },
       { key: "company.sell.discounts_require_reason", label: "Discounts Require Reason", type: "boolean" },
       { key: "company.sell.refunds_require_reason", label: "Refunds Require Reason", type: "boolean" },
-      { key: "company.sell.cash_drawer_require_reason", label: "Require reason when opening the cash drawer", type: "boolean" },
       { key: "company.sell.allow_cash_out_without_sale", label: "Allow cash out without sale", type: "boolean" },
       { key: "company.sell.require_note_on_parked_sale", label: "Require Note on Parked Sale", type: "boolean" },
       { key: "company.sell.invoice_number_length", label: "Invoice number length", type: "number" },

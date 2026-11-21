@@ -44,6 +44,11 @@ test("only company settings wired to Orithos behavior remain editable", () => {
   assert.equal(isCompanySettingRuntimeSupported("company.search.product_level"), false);
 });
 
+test("cash drawer reason setting is not offered until opening actions enforce and audit it", () => {
+  const fields = COMPANY_SECTIONS.flatMap((section) => section.fields);
+  assert.equal(fields.some((field) => field.key === "company.sell.cash_drawer_require_reason"), false);
+});
+
 test("cash reason settings render one reason per line", () => {
   assert.equal(formatCompanySetting({ key: "company.sell.cash_in_reasons", label: "Cash In", type: "string-list" }, '["Float top-up","Till correction"]'), "Float top-up\nTill correction");
 });
