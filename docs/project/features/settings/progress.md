@@ -133,3 +133,9 @@
 - 成本算法设置目前仅保存。POS 采购优化无价文件时固定使用 last cost；AI 建议类 SQL 优先读取 average cost；这些消费者没有读取 `company.general.cost_calculation_method`。全局成本、调拨成本和低于成本折扣尚无已证实等价路径，因此本轮没有改算法或成本数据。
 - 线上证据与依赖的下一步已记录于 `validation.md` 的“Sale Keys 与成本消费者追查”节。Shopfront 源站保持只读。
 
+## 2026-11-21 Sale Keys API 租户隔离
+
+- 修复 `sale_keys` API 过去未按已有 `outlet_id` 过滤的跨门店读写风险；列表/ID 操作和 CRUD SQL 现在使用认证用户当前 outlet，创建与复制强制设置 outlet，缺失租户上下文拒绝请求。
+- 新增 Sale Keys Controller/Mapper 范围测试；POS API 全量测试 1,044 项通过。修复仍未部署。
+- 复核真实 `/sell` 路由后发现默认 Sale Keys 仍未接入实际收银台：当前路由使用固定快捷分类，旧 hook/面板未挂载。Shopfront 布局读取受现有 403 限制；不能宣称默认 Sale Keys 已对齐。
+

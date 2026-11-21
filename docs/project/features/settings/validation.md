@@ -272,3 +272,10 @@ Shopfront Developer Documentation 的 `Determine Product Prices` 将标准数量
 - `company.general.cost_calculation_method` 只在设置默认值/UI catalog 中定义，没有 POS 运行时读取点；设置值不决定实际成本算法。当前购买优化器在无供应商价文件时固定使用 `last_cost`；部分 AI 预测/补货/价格建议 SQL 则优先 `average_cost` 再回退 `cost`。这些路径分别取值，不能声称受公司成本方法控制。
 - `use_global_cost`、调拨采用平均/最新成本、`discount_below_cost_behaviour` 仍没有可确认的 POS 对应执行路径。本轮没有改算法或成本数据，因为现有文档/样本不足以决定这些路径的安全等价行为。
 - 下一步：由 Shopfront 管理员确认 `salesKeys` 是否有可授予的只读 scope（不授予管理写 scope）；若无，需在可合法读取的导出/API/页面中取得默认布局。成本功能需先明确受影响操作（采购、调拨、库存估值、利润与折扣门禁）及各自规则，再做独立 UAT；不能用一个全局 `COST_METHOD` 字段覆盖不同业务成本消费者。
+
+## 2026-11-21 Sale Keys 租户隔离修复（本地，待部署）
+
+- 根因：`sale_keys` 表已带 `outlet_id`，但 API 原列表、按 ID 查询、创建、更新、删除都没有 outlet 条件；任意已认证门店可读写其他 outlet 的组。创建也允许客户端实体直接写入，无法可靠建立租户归属。
+- 修复：`SaleKeys` 补 `outletId`；全部 Mapper 查询/更新/删除按当前 `outlet_id` 过滤，创建和复制强制使用认证用户当前 outlet；所有端点要求有效的 vendor/outlet 上下文；跨 outlet ID 返回 not found。原有 `settings.store` 写权限继续保留。
+- 验证：新增 `SaleKeysControllerTest`（7 项）与 `SaleKeysMapperSqlTest`（1 项），覆盖未认证、创建/更新强制当前 outlet、跨 outlet 读删、复制及 SQL 范围；POS API 全量 `mvn -B test`：1,044 tests，0 failures/errors。仅本地验证，尚未推送/部署。
+- 仍未完成默认组功能：`/sell` 实际路由挂载 `OdooRegisterPage`，快捷分类来自 `RegisterSellCatalogWorkspace` 的固定 `SALE_KEY_CATEGORIES`；`useDefaultSaleKeys` 与自定义 `SaleKeysPanel` 只在未挂载的旧 `SellPage`。因此 `company.misc.default_sale_keys` 仍仅保存，不能影响实际收银台。Shopfront 默认布局也仍无法从现有只读 grant 导出，不能猜造。

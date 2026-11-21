@@ -7,6 +7,7 @@ import java.time.LocalDateTime;
 @Data
 public class SaleKeys {
     private Long id;
+    private Long outletId;
     private String name;
     private String saleKeys;
     private LocalDateTime createdAt;
