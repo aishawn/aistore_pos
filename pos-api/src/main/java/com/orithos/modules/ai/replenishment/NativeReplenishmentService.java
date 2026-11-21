@@ -179,8 +179,8 @@ public class NativeReplenishmentService {
             statement.setString(1, zone);
             statement.setString(2, zone);
             statement.setLong(3, tenant.requireOutletId());
-            statement.setLong(4, tenant.requireOutletId());
-            statement.setString(5, zone);
+            statement.setString(4, zone);
+            statement.setLong(5, tenant.requireOutletId());
             statement.setLong(6, tenant.requireOutletId());
             return statement;
         }, (rs, rowNum) -> new Row(rs.getLong("id"), rs.getString("name"),

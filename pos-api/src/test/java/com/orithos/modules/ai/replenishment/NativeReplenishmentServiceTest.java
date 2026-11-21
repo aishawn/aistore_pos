@@ -93,8 +93,8 @@ class NativeReplenishmentServiceTest {
         verify(statement).setString(1, "Australia/Melbourne");
         verify(statement).setString(2, "Australia/Melbourne");
         verify(statement).setLong(3, 87L);
-        verify(statement).setLong(4, 87L);
-        verify(statement).setString(5, "Australia/Melbourne");
+        verify(statement).setString(4, "Australia/Melbourne");
+        verify(statement).setLong(5, 87L);
         verify(statement).setLong(6, 87L);
     }
 
@@ -129,8 +129,8 @@ class NativeReplenishmentServiceTest {
         verify(statement).setString(1, "Australia/Adelaide");
         verify(statement).setString(2, "Australia/Adelaide");
         verify(statement).setLong(3, 87L);
-        verify(statement).setLong(4, 87L);
-        verify(statement).setString(5, "Australia/Adelaide");
+        verify(statement).setString(4, "Australia/Adelaide");
+        verify(statement).setLong(5, 87L);
         verify(statement).setLong(6, 87L);
     }
 

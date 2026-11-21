@@ -103,8 +103,8 @@ public class ReplenishmentWorkspaceService {
             statement.setString(2, zone);
             statement.setString(3, zone);
             statement.setString(4, zone);
-            statement.setString(5, zone);
-            statement.setLong(6, outletId);
+            statement.setLong(5, outletId);
+            statement.setString(6, zone);
             statement.setLong(7, outletId);
             statement.setLong(8, outletId);
             return statement;
