@@ -20,6 +20,19 @@
 
 限制：设置矩阵/API 证明 Orithos 两店在当前版本上一致，不能证明与 Shopfront 完整 1:1。Shopfront `sale_keys_position=default` 与 Orithos `RIGHT` 的语义映射待确认；`use_global_cost`、average/last cost transfer flags、`discount_below_cost_behaviour` 尚无 Orithos Company catalog 的直接同名对应项。Shopfront 页面有效值和停放备注 true/false 页面流程仍未验收。
 
+## 2026-11-21 当前 main 定价 UAT 复验（线上 SHA c5565986）
+
+| 检查 | 环境/版本 | 结果 | 证据/范围 |
+|------|-----------|------|-----------|
+| Runtime identity | SKR + Demo，`c55659861e2b4840a3f0ad97501e3b3b2e084d91` | PASS | 前后端 `/api/public/version` 均返回同一 SHA |
+| 定价设置 | SKR + Demo | PASS | 当前值 `HIGH_MIX_PRICE / MATCH_PRICE_POINTS / REDISTRIBUTE`；此次只读报价不修改设置 |
+| 数量阶梯报价 API + Sell 页面 | SKR + Demo，当前 main | PASS | `-196 LEMON`、`4 PINES NEW WORLD`、`4 PINES PACIFIC`；选定数量节点的报价 API 和页面总额均符合 Shopfront 源阶梯样本；最终结账按钮可用 |
+| 业务写入监测 | SKR + Demo | PASS | 两店各 10/10 项通过，`productionBusinessWrites=0`；没有 checkout、sale 或 cash movement 写入 |
+| 首轮 SKR 报价响应 | SKR，`eed54213` | TRANSIENT | 第一商品通过；第二商品首次报价等待 30 秒超时。SKR 随后完整重跑 10/10 通过，Demo 串行运行 10/10 通过 |
+| Shopfront Register 交易对照 | Shopfront | NOT_RUN | 保持源站只读；不创建交易，不能据此声称 Register 全流程等价 |
+
+本机详细报告：`temp/settings-audit-current-20261121/pricing-current-skr-retry.json`、`temp/settings-audit-current-20261121/pricing-current-demo.json`（临时 UAT 输出，不纳入版本库）。当前证据覆盖三个普通数量阶梯商品；不覆盖 Family、促销、客户价、价表继承或 Shopfront Register 交易对照。Family 当前没有可用 Shopfront 样本，不能据单测宣称线上等价。
+
 ## 2026-11-21 Allow cash out without sale（线上 SHA f6ce8b23）
 
 | 检查 | 环境 | 结果 | 证据/范围 |
