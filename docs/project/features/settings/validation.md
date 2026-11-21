@@ -1,5 +1,19 @@
 # Settings 1:1 — validation
 
+## 2026-11-21 当前线上 Settings 只读复验（线上 SHA 6006f5e2）
+
+| 检查 | 环境/版本 | 结果 | 证据/范围 |
+|------|-----------|------|-----------|
+| Runtime identity | SKR + Demo，`6006f5e2d02f1424d2a880204f100586156e2e23` | PASS | 前后端版本一致；验收前后 SHA 稳定 |
+| Settings 页面、主题与导航 | SKR + Demo，390/768/1440px | PASS | 各店 17 路由 × 3 视口 × light/dark，共 102 个页面主题组合；无文档横向溢出 |
+| Company 字段运行时状态 | SKR + Demo | PASS | 每店 60 字段中 22 项可编辑且有运行时支持说明，38 项禁用并标注仅保存 |
+| 注册策略与现金入口 | SKR + Demo | PASS | `sale-policy` 的 Cash Out 值与公司设置一致；当前 false 时 Sell 页入口隐藏 |
+| Settings 数据路由、账号连接页及重试 | SKR + Demo | PASS | 税率/付款/门店加载无错误；连接状态展示；未知账号 tab 回退；注入 502 后 Retry 恢复 |
+| 员工权限对照 | Demo | PASS | 角色模板弹窗权限条目与真实角色权限 API 一致；SKR Add staff 不可用，跳过 |
+| 浏览器错误与业务写请求 | SKR + Demo | PASS | 页面错误 0；被拦截/尝试的业务写请求 0 |
+
+本机报告：`temp/settings-audit-resume-20261121.json`。这是只读 UI/API 验收，不验证 Shopfront 完整页面语义、设置保存流程或全部业务消费者；字段状态 PASS 只证明 UI 正确地区分已接入与仅保存，不表示 60 项均已实现。
+
 ## 2026-11-21 Require Note on Parked Sale（线上 SHA 86b73a45）
 
 | 检查 | 环境 | 结果 | 证据/范围 |

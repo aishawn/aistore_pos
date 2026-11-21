@@ -2,6 +2,13 @@
 
 更新日期：2026-11-21。
 
+## 2026-11-21 当前 main 只读复验
+
+- POS `main` 提交 `6006f5e2d02f1424d2a880204f100586156e2e23` 已推送；SKR/Demo 前后端当前均运行该 SHA。
+- 当前只读脚本重验 SKR/Demo：各 17 Settings 路由 × 390/768/1440px × light/dark，共 102 个页面主题组合通过；每店 60 个 Company 字段的 22 支持/38 仅保存分类断言通过；2 店无页面错误、无业务写请求，脚本总计 119 条检查记录全部满足断言。
+- 本次只读报告 `temp/settings-audit-resume-20261121.json`。Demo 员工权限弹窗核验通过；SKR Add staff 不可用，故仅跳过该项。此验收不证明 Shopfront 完整设置页等价，也不验证设置保存/登录登出流程。
+- 仍有明确差距：Sale Keys 位置仅保存、Shopfront 默认 Sale Keys 组未映射；成本来源/调拨成本与低于成本折扣无等价运行路径；Shopfront 部分空白设置的 effective 默认值未证实。定价 UAT 仍仅覆盖普通数量阶梯样本。
+
 ## 本轮候选
 
 - pos-api：`CompanySettingsService` / keys、`SettingsImportService`、`SettingsImportController`、`SettingsPromoteController`、Enterprise/Push controllers、Checkout `round_to` 接线、所有权保护单测。
