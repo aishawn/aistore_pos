@@ -36,10 +36,11 @@ class ProjectDocsChecks(unittest.TestCase):
         self.assertEqual(errors, [])
         self.assertEqual(count, 0)
 
-    def test_present_fact_library_still_requires_its_entrypoint(self):
+    def test_present_fact_library_still_requires_complete_corpus(self):
         (self.root / "docs" / "project").mkdir(parents=True)
+        (self.root / "docs" / "project" / "README.md").write_text("# Incomplete fact library\n", encoding="utf-8")
         errors, _ = docs.validate(self.root)
-        self.assertTrue(any("docs/project/README.md" in error for error in errors))
+        self.assertTrue(any("docs/project/overview.md" in error for error in errors))
 
     def test_local_file_unicode_heading_and_external_url(self):
         (self.root / "设计.md").write_text("# 验证与效果\n", encoding="utf-8")
