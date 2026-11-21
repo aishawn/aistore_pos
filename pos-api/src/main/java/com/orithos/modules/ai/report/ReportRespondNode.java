@@ -76,11 +76,13 @@ public class ReportRespondNode implements NodeAction {
                             + (dateRange.isBlank() ? "" : "销售统计区间：" + dateRange + "。");
                 }
                 case "report_stock_value" -> "No on-hand products with a recorded cost were found.";
-                default -> "No completed sales found for " + rangeText(from, to)
-                        + ". Try a wider range — for example ask: sales last 7 days"
-                        + (from != null && !from.isBlank() && from.equals(to)
-                        ? ", or yesterday / last week."
-                        : ".");
+                default -> "report_sales".equals(intent) && chinese
+                        ? rangeText(from, to, true) + "没有已完成销售记录。数据来源：Orithos POS 报表。"
+                        : "No completed sales found for " + rangeText(from, to)
+                                + ". Try a wider range — for example ask: sales last 7 days"
+                                + (from != null && !from.isBlank() && from.equals(to)
+                                ? ", or yesterday / last week."
+                                : ".");
             };
         }
         return switch (intent == null ? "" : intent) {

@@ -93,6 +93,47 @@ class ReportRespondNodeTest {
     }
 
     @Test
+    void emptyChineseSalesRangeReportsNoDataInChinese() {
+        OverAllState state = state("", List.of(), "2026-11-01", "2026-11-20");
+        when(state.value("question", String.class)).thenReturn(Optional.of("这段时间营业额多少？"));
+
+        assertEquals("2026-11-01 至 2026-11-20没有已完成销售记录。数据来源：Orithos POS 报表。",
+                node.apply(state).get("answer"));
+    }
+
+    @Test
+    void chineseRefundOnlyRangeUsesChineseDateSeparator() {
+        OverAllState state = state("", List.of(Map.of("sales", -9.48, "grossSales", 0.00,
+                "refunds", 9.48, "refundTransactions", 1, "transactions", 0,
+                "grossProfit", -8.62, "costAvailable", true)), "2026-11-01", "2026-11-20");
+        when(state.value("question", String.class)).thenReturn(Optional.of("这段时间退款后营业额多少？"));
+
+        assertEquals("2026-11-01 至 2026-11-20没有已完成销售交易；退款 AUD 9.48，共 1 笔，净营业额 AUD -9.48。数据来源：Orithos POS 报表。",
+                node.apply(state).get("answer"));
+    }
+
+    @Test
+    void chineseAverageTicketUsesChineseDateSeparator() {
+        OverAllState state = state("", List.of(Map.of("aov", 25.50, "tickets", 4)),
+                "2026-11-01", "2026-11-20");
+        when(state.value("intent", String.class)).thenReturn(Optional.of("report_aov"));
+        when(state.value("question", String.class)).thenReturn(Optional.of("这段时间平均客单价多少？"));
+
+        assertEquals("2026-11-01 至 2026-11-20平均客单价 AUD 25.50，基于 4 笔销售交易。数据来源：Orithos POS 报表。",
+                node.apply(state).get("answer"));
+    }
+
+    @Test
+    void emptyChineseAverageTicketRangeReportsNoDataInChinese() {
+        OverAllState state = state("", List.of(), "2026-11-01", "2026-11-20");
+        when(state.value("intent", String.class)).thenReturn(Optional.of("report_aov"));
+        when(state.value("question", String.class)).thenReturn(Optional.of("这段时间平均客单价多少？"));
+
+        assertEquals("2026-11-01 至 2026-11-20没有已完成销售记录。数据来源：Orithos POS 报表。",
+                node.apply(state).get("answer"));
+    }
+
+    @Test
     void refundOnlyDayReportsTheRefundAndNegativeNetSales() {
         OverAllState state = state("", List.of(Map.of("sales", -9.48, "grossSales", 0.00,
                 "refunds", 9.48, "refundTransactions", 1, "transactions", 0,
