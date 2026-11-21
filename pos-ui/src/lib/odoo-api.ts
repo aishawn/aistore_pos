@@ -1975,6 +1975,7 @@ export interface OdooSalePolicy {
   refundsRequireReason: boolean;
   allowCashOutWithoutSale: boolean;
   requireNoteOnParkedSale: boolean;
+  saleKeysPosition: string;
 }
 
 export function getOdooSalePolicy(): Promise<OdooSalePolicy> {

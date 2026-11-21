@@ -29,6 +29,7 @@ public final class CompanySettingsKeys {
     public static final String REFUNDS_REQUIRE_REASON = "company.sell.refunds_require_reason";
     public static final String CASH_OUT_WITHOUT_SALE = "company.sell.allow_cash_out_without_sale";
     public static final String REQUIRE_NOTE_ON_PARKED_SALE = "company.sell.require_note_on_parked_sale";
+    public static final String SALE_KEYS_POSITION = "company.misc.sale_keys_position";
     public static final String OWNED_PREFIX = "meta.owned.";
 
     /** Default values applied when a key is absent (AU bottle-shop pilot). */
@@ -91,7 +92,7 @@ public final class CompanySettingsKeys {
         d.put("company.integrations.metcash_host_file", "true");
         // Miscellaneous
         d.put("company.misc.default_sale_keys", "");
-        d.put("company.misc.sale_keys_position", "RIGHT");
+        d.put(SALE_KEYS_POSITION, "RIGHT");
         d.put("company.misc.price_change_notifications", "false");
         d.put("company.misc.statement_reply_to", "");
         d.put("company.misc.avg_cost_on_price_editor", "false");

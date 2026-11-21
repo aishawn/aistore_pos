@@ -28,6 +28,7 @@ const runtimeSettings = new Set([
   "company.sell.require_note_on_parked_sale",
   "company.sell.cash_in_reasons",
   "company.sell.cash_out_reasons",
+  "company.misc.sale_keys_position",
   "company.timezone",
   "company.date_format",
   "company.time_format",
