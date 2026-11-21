@@ -20,6 +20,16 @@ export function storeDateTimeSettingsFromCompanyBundle(
   };
 }
 
+export function storeDateTimeSettingsFromOptions(
+  options: Partial<StoreDateTimeSettings> | null | undefined,
+): StoreDateTimeSettings {
+  return {
+    timezone: options?.timezone || DEFAULT_STORE_DATE_TIME.timezone,
+    dateFormat: options?.dateFormat || DEFAULT_STORE_DATE_TIME.dateFormat,
+    timeFormat: options?.timeFormat || DEFAULT_STORE_DATE_TIME.timeFormat,
+  };
+}
+
 const DATE_FORMATS = new Set(["DD/MM/YYYY", "MM/DD/YYYY", "YYYY-MM-DD"]);
 const TIME_FORMATS = new Set(["HH:mm", "HH:mm:ss", "hh:mm a", "hh:mm:ss a"]);
 
@@ -55,6 +65,11 @@ function formatParts(date: Date, timezone: string) {
     day: "2-digit",
   }).formatToParts(date);
   return Object.fromEntries(parts.map(({ type, value }) => [type, value]));
+}
+
+export function todayInStore(settings: StoreDateTimeSettings, now = new Date()): string {
+  const parts = formatParts(now, safeTimezone(settings.timezone));
+  return `${parts.year}-${parts.month}-${parts.day}`;
 }
 
 function formatDateParts(parts: Record<string, string>, format: string): string {

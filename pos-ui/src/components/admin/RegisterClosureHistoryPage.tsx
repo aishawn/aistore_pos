@@ -3,8 +3,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AlertTriangle, Download, LoaderCircle, Printer, RefreshCw } from "lucide-react";
 import { api, listRetailRegisters, type Page, type RetailRegister } from "@/lib/api";
-import { formatStoreDateTime, formatStoreEpoch } from "@/lib/retail-date";
 import { salesDate, shiftDay } from "@/lib/replenishment-safety";
+import { DEFAULT_STORE_DATE_TIME, todayInStore } from "@/lib/store-date-time";
+import { useStoreDateTime } from "@/lib/store-date-time-context";
 import { FilterDateRangePicker } from "@/components/admin/FilterDateRangePicker";
 import { ReportColumnChooser } from "@/components/admin/ReportColumnChooser";
 import { ReportDateControls } from "@/components/admin/ReportDateControls";
@@ -42,11 +43,10 @@ const REPORT_COLUMNS = [
 ] as const;
 
 type ClosureSummary = ReturnType<typeof summarizeRegisterClosures>;
-const STORE_TIMEZONE = "Australia/Adelaide";
 const PAGE_SIZE = 50;
 
-function initialDates() {
-  const to = salesDate(new Date().toISOString(), STORE_TIMEZONE);
+function initialDates(timezone: string) {
+  const to = todayInStore({ ...DEFAULT_STORE_DATE_TIME, timezone });
   return { from: shiftDay(to, -29), to };
 }
 
@@ -109,7 +109,8 @@ function csvCell(value: string | number) {
 }
 
 export function RegisterClosureHistoryPage() {
-  const [draftDates, setDraftDates] = useState(initialDates);
+  const { timezone, ready: dateTimeReady, formatDate, formatDateTime } = useStoreDateTime();
+  const [draftDates, setDraftDates] = useState(() => initialDates(timezone));
   const [dates, setDates] = useState(() => draftDates);
   const [allRows, setAllRows] = useState<Closure[]>([]);
   const [printRows, setPrintRows] = useState<Closure[] | null>(null);
@@ -121,13 +122,21 @@ export function RegisterClosureHistoryPage() {
   const [selectedColumns, setSelectedColumns] = useState<string[]>(REPORT_COLUMNS.map((column) => column.key));
   const [company] = useState("Orithos store");
   const [currency] = useState("AUD");
-  const [timezone] = useState(STORE_TIMEZONE);
   const [generatedAt, setGeneratedAt] = useState<string | null>(null);
   const [urlReady, setUrlReady] = useState(false);
   const requestRevision = useRef(0);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!dateTimeReady) return;
+    const params = new URLSearchParams(location.search);
+    if (params.has("from") || params.has("to")) return;
+    const next = initialDates(timezone);
+    setDates(next);
+    setDraftDates(next);
+  }, [dateTimeReady, timezone]);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -296,8 +305,9 @@ export function RegisterClosureHistoryPage() {
   }, [comparison, dates.from, dates.to, exceptionsOnly, timezone]);
 
   useEffect(() => {
+    if (!dateTimeReady) return;
     void load(false);
-  }, [load]);
+  }, [dateTimeReady, load]);
   useEffect(() => () => {
     requestRevision.current++;
   }, []);
@@ -346,7 +356,7 @@ export function RegisterClosureHistoryPage() {
           <button type="button" onClick={() => void load(false)} disabled={loading} aria-label="Refresh closure history" title="Refresh" className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-[var(--oh-border)] bg-white disabled:opacity-50">{loading ? <LoaderCircle size={15} className="animate-spin" /> : <RefreshCw size={15} />}</button>
           <ReportColumnChooser columns={[...REPORT_COLUMNS]} selected={selectedColumns} onChange={toggleColumn} />
         </section>
-        <p className="text-xs text-[var(--oh-muted)]">Company scope: {company} · Period: {dates.from} to {dates.to} · Timezone: {timezone} · Source: Orithos register closures · Report prepared {generatedAt ? formatStoreEpoch(Date.parse(generatedAt), timezone) : "—"}</p>
+        <p className="text-xs text-[var(--oh-muted)]">Company scope: {company} · Period: {formatDate(dates.from)} to {formatDate(dates.to)} · Timezone: {timezone} · Source: Orithos register closures · Report prepared {generatedAt ? formatDateTime(generatedAt) : "—"}</p>
         {comparison !== "none" && (
           <p role="status" className="border-l-2 border-[var(--oh-border)] px-3 py-2 text-sm text-[var(--oh-muted)]">
             {comparisonError
@@ -373,8 +383,8 @@ export function RegisterClosureHistoryPage() {
               {visible.map((row) => (
                 <tr key={row.id}>
                   {selectedColumns.includes("register") && <th scope="row" className="px-4 py-3 font-medium">{row.register}<span className="ml-2 text-xs font-normal text-[var(--oh-muted)]">{row.name}</span></th>}
-                  {selectedColumns.includes("opened") && <td className="px-4 py-3 tabular-nums">{row.openedAt ? formatStoreDateTime(String(row.openedAt), timezone) : "—"}</td>}
-                  {selectedColumns.includes("closed") && <td className="px-4 py-3 tabular-nums">{row.closedAt ? formatStoreDateTime(String(row.closedAt), timezone) : "—"}</td>}
+                  {selectedColumns.includes("opened") && <td className="px-4 py-3 tabular-nums">{row.openedAt ? formatDateTime(String(row.openedAt)) : "—"}</td>}
+                  {selectedColumns.includes("closed") && <td className="px-4 py-3 tabular-nums">{row.closedAt ? formatDateTime(String(row.closedAt)) : "—"}</td>}
                   {selectedColumns.includes("expected") && <td className="px-4 py-3 text-right tabular-nums">{row.expected === null ? "—" : money.format(row.expected)}</td>}
                   {selectedColumns.includes("received") && <td className="px-4 py-3 text-right tabular-nums">{row.received === null ? "—" : money.format(row.received)}</td>}
                   {selectedColumns.includes("difference") && <td className={`px-4 py-3 text-right tabular-nums ${row.difference !== null && Math.abs(row.difference) >= 0.005 ? "font-semibold text-amber-800" : ""}`}>{row.difference === null ? "—" : money.format(row.difference)}</td>}

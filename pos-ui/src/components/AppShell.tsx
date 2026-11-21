@@ -15,6 +15,7 @@ import { LaunchRingHost } from "@/components/LaunchRingHost";
 import { AiTransitionOverlay } from "@/components/AiTransitionOverlay";
 import { AiAssistantProvider } from "@/lib/ai-assistant";
 import { SellScreenProvider } from "@/lib/sell-screen";
+import { StoreDateTimeProvider } from "@/lib/store-date-time-context";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
 import {
   controlPlaneLandingPath,
@@ -163,29 +164,31 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <UnsavedChangesProvider>
-      <AiAssistantProvider>
-      <CloseRegisterUiProvider>
-        <SalesHistoryUiProvider>
-          <AppShellChrome
-            userName={user?.name || user?.username || "admin"}
-            sidebarOpen={sidebarOpen}
-            mobileSidebarOpen={mobileSidebarOpen}
-            isMobileViewport={isMobileViewport}
-            userMenuOpen={userMenuOpen}
-            setUserMenuOpen={setUserMenuOpen}
-            setMobileSidebarOpen={setMobileSidebarOpen}
-            toggleNavigation={toggleNavigation}
-            onLogout={onLogout}
-            pathname={pathname}
-          >
-            {children}
-          </AppShellChrome>
-        </SalesHistoryUiProvider>
-      </CloseRegisterUiProvider>
-      <AiTransitionOverlay />
-      </AiAssistantProvider>
-    </UnsavedChangesProvider>
+    <StoreDateTimeProvider>
+      <UnsavedChangesProvider>
+        <AiAssistantProvider>
+          <CloseRegisterUiProvider>
+            <SalesHistoryUiProvider>
+              <AppShellChrome
+                userName={user?.name || user?.username || "admin"}
+                sidebarOpen={sidebarOpen}
+                mobileSidebarOpen={mobileSidebarOpen}
+                isMobileViewport={isMobileViewport}
+                userMenuOpen={userMenuOpen}
+                setUserMenuOpen={setUserMenuOpen}
+                setMobileSidebarOpen={setMobileSidebarOpen}
+                toggleNavigation={toggleNavigation}
+                onLogout={onLogout}
+                pathname={pathname}
+              >
+                {children}
+              </AppShellChrome>
+            </SalesHistoryUiProvider>
+          </CloseRegisterUiProvider>
+          <AiTransitionOverlay />
+        </AiAssistantProvider>
+      </UnsavedChangesProvider>
+    </StoreDateTimeProvider>
   );
 }
 

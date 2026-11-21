@@ -2,15 +2,15 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
 import {
   DEFAULT_STORE_DATE_TIME,
   formatStoreDate,
   formatStoreDateTime,
-  storeDateTimeSettingsFromCompanyBundle,
+  storeDateTimeSettingsFromOptions,
   type StoreDateTimeSettings,
 } from "@/lib/store-date-time";
 
-type CompanySettingsBundle = Record<string, { value?: string | null }>;
 type StoreDateTimeContextValue = StoreDateTimeSettings & {
   ready: boolean;
   refresh: () => Promise<void>;
@@ -21,23 +21,31 @@ type StoreDateTimeContextValue = StoreDateTimeSettings & {
 const StoreDateTimeContext = createContext<StoreDateTimeContextValue | null>(null);
 
 export function StoreDateTimeProvider({ children }: { children: React.ReactNode }) {
+  const { user, ready: authReady } = useAuth();
   const [settings, setSettings] = useState(DEFAULT_STORE_DATE_TIME);
   const [ready, setReady] = useState(false);
 
   const refresh = useCallback(async () => {
+    if (!authReady || !user) return;
+    setReady(false);
     try {
-      const response = await api.get<CompanySettingsBundle>("/api/settings/company");
-      setSettings(storeDateTimeSettingsFromCompanyBundle(response));
+      const response = await api.get<StoreDateTimeSettings>("/api/retail/registers/store-date-time-options");
+      setSettings(storeDateTimeSettingsFromOptions(response));
     } catch {
-      // Keep the last known values when company settings are unavailable.
+      // Preserve the last known store settings during a temporary API outage.
     } finally {
       setReady(true);
     }
-  }, []);
+  }, [authReady, user]);
 
   useEffect(() => {
+    if (!authReady) return;
+    if (!user) {
+      setReady(true);
+      return;
+    }
     void refresh();
-  }, [refresh]);
+  }, [authReady, user, refresh]);
 
   const value = useMemo<StoreDateTimeContextValue>(() => ({
     ...settings,

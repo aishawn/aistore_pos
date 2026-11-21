@@ -3,6 +3,7 @@ package com.orithos.modules.register;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.orithos.common.BusinessException;
 import com.orithos.config.NativePosGate;
+import com.orithos.modules.config.CompanySettingsKeys;
 import com.orithos.modules.config.CompanySettingsService;
 import com.orithos.security.AuthUser;
 import org.junit.jupiter.api.AfterEach;
@@ -50,6 +51,33 @@ class RetailRegisterControllerTest {
     @Test
     void cashReasonOptionsRequireAnAuthenticatedTenant() {
         assertThrows(BusinessException.class, controller::cashReasonOptions);
+        verifyNoInteractions(companySettings);
+    }
+
+    @Test
+    void storeDateTimeOptionsAreAvailableToCashiersAndScopedToTheirVendor() {
+        SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
+                new AuthUser(7L, "cashier", false, 12L, 3L), null));
+        when(companySettings.getString(CompanySettingsKeys.TIMEZONE, 3L, "Australia/Melbourne"))
+                .thenReturn("Australia/Melbourne");
+        when(companySettings.getString(CompanySettingsKeys.DATE_FORMAT, 3L, "DD/MM/YYYY"))
+                .thenReturn("YYYY-MM-DD");
+        when(companySettings.getString(CompanySettingsKeys.TIME_FORMAT, 3L, "HH:mm"))
+                .thenReturn("HH:mm:ss");
+
+        var response = controller.storeDateTimeOptions();
+
+        assertEquals("Australia/Melbourne", response.data().timezone());
+        assertEquals("YYYY-MM-DD", response.data().dateFormat());
+        assertEquals("HH:mm:ss", response.data().timeFormat());
+        verify(companySettings).getString(CompanySettingsKeys.TIMEZONE, 3L, "Australia/Melbourne");
+        verify(companySettings).getString(CompanySettingsKeys.DATE_FORMAT, 3L, "DD/MM/YYYY");
+        verify(companySettings).getString(CompanySettingsKeys.TIME_FORMAT, 3L, "HH:mm");
+    }
+
+    @Test
+    void storeDateTimeOptionsRequireAnAuthenticatedTenant() {
+        assertThrows(BusinessException.class, controller::storeDateTimeOptions);
         verifyNoInteractions(companySettings);
     }
 }

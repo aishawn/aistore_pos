@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { AlertCircle, RefreshCw } from "lucide-react";
 import { FilterDateRangePicker } from "@/components/admin/FilterDateRangePicker";
 import { compareIsoDateDesc } from "@/lib/natural-sort";
+import { DEFAULT_STORE_DATE_TIME, todayInStore } from "@/lib/store-date-time";
+import { useStoreDateTime } from "@/lib/store-date-time-context";
 
 type HistoryDay = {
   date: string;
@@ -22,10 +24,6 @@ type HistoryPayload = {
   days: HistoryDay[];
 };
 
-function todayInStore() {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: "Australia/Adelaide", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
-}
-
 function shiftDay(day: string, amount: number) {
   const date = new Date(`${day}T12:00:00Z`);
   date.setUTCDate(date.getUTCDate() + amount);
@@ -43,7 +41,9 @@ export function NativeSalesHistoryPage({
   variant?: "page" | "panel";
   onRequestClose?: () => void;
 } = {}) {
-  const today = todayInStore();
+  const { timezone, formatDate, ready: dateTimeReady } = useStoreDateTime();
+  const dateTimeSettings = { ...DEFAULT_STORE_DATE_TIME, timezone };
+  const today = todayInStore(dateTimeSettings);
   const [from, setFrom] = useState(() => shiftDay(today, -29));
   const [to, setTo] = useState(() => today);
   const [draft, setDraft] = useState(() => ({ start: shiftDay(today, -29), end: today }));
@@ -58,6 +58,16 @@ export function NativeSalesHistoryPage({
     if (params.get("from")) setFrom(params.get("from")!);
     if (params.get("to")) setTo(params.get("to")!);
   }, [variant]);
+
+  useEffect(() => {
+    if (!dateTimeReady) return;
+    const today = todayInStore(dateTimeSettings);
+    const params = variant === "page" && typeof location !== "undefined"
+      ? new URLSearchParams(location.search)
+      : null;
+    setFrom(params?.get("from") || shiftDay(today, -29));
+    setTo(params?.get("to") || today);
+  }, [dateTimeReady, timezone, variant]);
 
   useEffect(() => {
     setDraft({ start: from, end: to });
@@ -152,7 +162,7 @@ export function NativeSalesHistoryPage({
           <tbody className="divide-y divide-[var(--oh-border)]">
             {sortedRows.map((row) => (
               <tr key={row.date}>
-                <td className="px-3 py-2">{row.date}</td>
+                <td className="px-3 py-2">{formatDate(row.date)}</td>
                 <td className="px-3 py-2">{Number(row.salesTransactions).toLocaleString("en-AU")}</td>
                 <td className="px-3 py-2">{Number(row.refundTransactions).toLocaleString("en-AU")}</td>
                 <td className="px-3 py-2">{money(Number(row.salesAmount))}</td>

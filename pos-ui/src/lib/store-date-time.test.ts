@@ -5,6 +5,8 @@ import {
   formatStoreDate,
   formatStoreDateTime,
   storeDateTimeSettingsFromCompanyBundle,
+  storeDateTimeSettingsFromOptions,
+  todayInStore,
   type StoreDateTimeSettings,
 } from "./store-date-time.ts";
 
@@ -32,12 +34,27 @@ test("reads store date-time values from the company settings bundle", () => {
   });
 });
 
+test("reads only the public date-time options and applies safe defaults", () => {
+  assert.deepEqual(storeDateTimeSettingsFromOptions({
+    timezone: "Australia/Melbourne",
+    dateFormat: "YYYY-MM-DD",
+  }), {
+    timezone: "Australia/Melbourne",
+    dateFormat: "YYYY-MM-DD",
+    timeFormat: "HH:mm",
+  });
+});
+
 test("formats an instant in the configured store timezone and seconds format", () => {
   assert.equal(formatStoreDateTime("2026-11-18T13:04:05Z", melbourne), "19/11/2026 00:04:05");
 });
 
 test("keeps a business-date value on its stated date", () => {
   assert.equal(formatStoreDate("2026-11-19", melbourne), "19/11/2026");
+});
+
+test("uses the configured store timezone when deriving today's business date", () => {
+  assert.equal(todayInStore(melbourne, new Date("2026-11-18T13:04:05Z")), "2026-11-19");
 });
 
 test("supports the configured 12-hour format", () => {

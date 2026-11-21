@@ -8,6 +8,7 @@ import com.orithos.security.CurrentUser;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.orithos.modules.config.CompanySettingsKeys;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
@@ -39,6 +40,16 @@ public class RetailRegisterController {
         return ApiResult.ok(new CashReasonOptions(
                 parseOptions(companySettings.getString("company.sell.cash_in_reasons", vendorId, "[]")),
                 parseOptions(companySettings.getString("company.sell.cash_out_reasons", vendorId, "[]"))));
+    }
+
+    @GetMapping("/store-date-time-options")
+    public ApiResult<StoreDateTimeOptions> storeDateTimeOptions() {
+        Long vendorId = CurrentUser.vendorId();
+        if (vendorId == null) throw new BusinessException(40100, "Authenticated tenant is required.");
+        return ApiResult.ok(new StoreDateTimeOptions(
+                companySettings.getString(CompanySettingsKeys.TIMEZONE, vendorId, "Australia/Melbourne"),
+                companySettings.getString(CompanySettingsKeys.DATE_FORMAT, vendorId, "DD/MM/YYYY"),
+                companySettings.getString(CompanySettingsKeys.TIME_FORMAT, vendorId, "HH:mm")));
     }
 
     private List<String> parseOptions(String raw) {
@@ -98,4 +109,5 @@ public class RetailRegisterController {
     public record CashMovementRequest(String type, BigDecimal amount, String reason) {}
     public record CloseRequest(BigDecimal countedCash, Map<Long, BigDecimal> countedTenders, String note) {}
     public record CashReasonOptions(List<String> cashInReasons, List<String> cashOutReasons) {}
+    public record StoreDateTimeOptions(String timezone, String dateFormat, String timeFormat) {}
 }

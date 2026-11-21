@@ -5,6 +5,7 @@ import { AlertCircle, CheckCircle2, LoaderCircle, Save } from "lucide-react";
 import { CompanySettingsScaffold } from "@/components/admin/CompanySettingsScaffold";
 import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { useStoreDateTime } from "@/lib/store-date-time-context";
 import { type CompanyField, type CompanySection } from "@/lib/company-settings-catalog";
 import { formatCompanySetting, normalizeCompanySetting, serializeCompanySetting, validateCompanySetting } from "@/lib/company-settings-form";
 
@@ -16,6 +17,7 @@ function asBool(value: string | undefined) {
 
 export function CompanyKvEditor({ section }: { section: CompanySection }) {
   const { ready, hasPermission } = useAuth();
+  const { refresh: refreshStoreDateTime } = useStoreDateTime();
   const canEdit = ready && hasPermission("settings.store");
   const [values, setValues] = useState<Record<string, string>>({});
   const [saved, setSaved] = useState<Record<string, string>>({});
@@ -74,6 +76,9 @@ export function CompanyKvEditor({ section }: { section: CompanySection }) {
         }
       }
       await api.put("/api/settings/company", payload);
+      if (["company.timezone", "company.date_format", "company.time_format"].some((key) => key in payload)) {
+        await refreshStoreDateTime();
+      }
       await load();
       setNotice("Settings saved to Orithos. Scheduled import will not overwrite these values.");
     } catch (cause) {
