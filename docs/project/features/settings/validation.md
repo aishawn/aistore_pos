@@ -152,4 +152,5 @@
 - 后端结账再次按租户设置强制校验，拒绝缺少理由或超长理由的折扣；折扣理由进入幂等请求身份并写入 `sale_item.discount_reason`。策略默认关闭，现有线上行为不变，门店策略值未被更改。
 - `scripts/settings-audit-readonly.cjs` 将公司字段可编辑断言更新为 19 项支持 / 41 项仅保存字段。
 - 聚焦验证：`CheckoutServiceFlowTest` 与 `RetailRegisterControllerTest` 通过；POS UI `npm run typecheck` 通过；`git diff --check` 通过。UI 单测未能启动：当前 checkout 缺少 `tsx`，`npm run test:unit` 因命令不可用退出；没有安装依赖或改动锁文件。
-- 尚未做线上销售写入 UAT，也未更改 SKR/Demo 策略值。服务端开启策略时的拒绝/保存行为由单测覆盖；线上只读页面与策略读回需要部署后复验，不能据此宣称全站 Settings 与 Shopfront 完全一致。
+- 部署后线上只读验收（SKR + Demo，`da7265b7d1bccc0dd917f1990985f86358843fb2`）：`/api/retail/registers/sale-policy` 均返回 `discountsRequireReason=false`，与当前门店配置一致；Settings 审计每店检查 18 个路由，60 个公司字段中 19 个可编辑、41 个禁用并标注仅保存；无页面异常、无非认证业务写请求。UAT 脚本报告保存在本机临时目录 `temp/settings-audit-current-20261121/discount-reason-deploy-audit.json`，不纳入仓库。
+- 尚未做任何销售写入 UAT，也未更改 SKR/Demo 策略值。服务端开启策略时的拒绝/保存行为由单测覆盖；线上复验仅确认当前关闭策略读回和 Settings UI 字段状态。视口为 1440px 桌面，不代表移动视口或全站 Settings 与 Shopfront 完全一致。
