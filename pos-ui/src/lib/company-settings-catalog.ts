@@ -10,6 +10,31 @@ export type CompanyField = {
   options?: { value: string; label: string }[];
 };
 
+const runtimeSettings = new Set([
+  "company.general.use_quantity_rate",
+  "company.general.family_price_distribution",
+  "company.general.price_rounding_mode",
+  "company.name",
+  "company.abn",
+  "company.street",
+  "company.city",
+  "company.zip",
+  "company.phone",
+  "company.email",
+  "company.login.require_password",
+  "company.sell.cash_in_reasons",
+  "company.sell.cash_out_reasons",
+  "company.timezone",
+  "company.date_format",
+  "company.time_format",
+  "company.start_of_week",
+  "company.currency.round_to",
+]);
+
+export function isCompanySettingRuntimeSupported(key: string): boolean {
+  return runtimeSettings.has(key);
+}
+
 export type CompanySection = {
   id: string;
   title: string;

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { COMPANY_SECTIONS } from "./company-settings-catalog.ts";
+import { COMPANY_SECTIONS, isCompanySettingRuntimeSupported } from "./company-settings-catalog.ts";
 import { formatCompanySetting, normalizeCompanySetting, serializeCompanySetting, validateCompanySetting } from "./company-settings-form.ts";
 
 test("date and time settings expose the supported Shopfront formats", () => {
@@ -21,6 +21,14 @@ test("login settings do not offer the unimplemented PIN flow", () => {
   assert.deepEqual(loginType.options?.map((option) => option.value), ["USERNAME_PASSWORD"]);
   assert.equal(normalizeCompanySetting(loginType, "PIN"), "USERNAME_PASSWORD");
   assert.equal(normalizeCompanySetting(loginType, "USERNAME_PASSWORD"), "USERNAME_PASSWORD");
+});
+
+test("only company settings wired to Orithos behavior remain editable", () => {
+  assert.equal(isCompanySettingRuntimeSupported("company.general.use_quantity_rate"), true);
+  assert.equal(isCompanySettingRuntimeSupported("company.login.require_password"), true);
+  assert.equal(isCompanySettingRuntimeSupported("company.sell.cash_out_reasons"), true);
+  assert.equal(isCompanySettingRuntimeSupported("company.sell.discounts_require_reason"), false);
+  assert.equal(isCompanySettingRuntimeSupported("company.search.product_level"), false);
 });
 
 test("cash reason settings render one reason per line", () => {

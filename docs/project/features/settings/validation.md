@@ -125,3 +125,10 @@
 | 调度时区 | Production crawler | PASS | `/api/sync/schedule` 返回 `Australia/Melbourne`，计划时间带 Melbourne `+11:00` 偏移 |
 
 环境变量仅保存到 Dokploy Compose 配置并通过重新部署生效，没有手动启动同步任务。Shopfront 页面只核对了三项定价设置，没有保存设置或进入 Register。
+
+## Settings 字段可用性保护（当前 main 候选）
+
+- 源码逐字段核查了 Settings 的 60 个公司字段：18 个有明确运行时代码消费者，另外 42 个此前只被保存/读回，没有改变 Orithos 行为。这是配置 UI 与运行能力之间的根本差距。
+- Settings 现在保留这些 Shopfront 对照项及其当前值，但对尚未实现的 42 个字段禁用编辑并标注“仅保存、不影响 Orithos 行为”；避免店铺人员误以为改值已改变 POS 行为。已有运行路径的 18 个字段仍可编辑。
+- 聚焦验证：`company-settings-form.test.ts` 6/6 PASS；POS UI `npm run typecheck` PASS；`git diff --check` PASS。
+- 部署与 SKR/Demo 页面级禁用态验收待本候选推送部署后确认。此项修复不会让 42 个未实现字段获得 Shopfront 功能等价；它阻止无效配置继续被当作已完成能力。

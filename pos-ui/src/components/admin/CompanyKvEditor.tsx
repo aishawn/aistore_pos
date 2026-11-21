@@ -6,7 +6,7 @@ import { CompanySettingsScaffold } from "@/components/admin/CompanySettingsScaff
 import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useStoreDateTime } from "@/lib/store-date-time-context";
-import { type CompanyField, type CompanySection } from "@/lib/company-settings-catalog";
+import { isCompanySettingRuntimeSupported, type CompanyField, type CompanySection } from "@/lib/company-settings-catalog";
 import { formatCompanySetting, normalizeCompanySetting, serializeCompanySetting, validateCompanySetting } from "@/lib/company-settings-form";
 
 type SettingView = { name: string; value: string; datatype?: string; orithosOwned?: boolean; persisted?: boolean };
@@ -94,7 +94,7 @@ export function CompanyKvEditor({ section }: { section: CompanySection }) {
   }
 
   const inputClass =
-    "h-11 w-full max-w-md rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 text-base outline-none transition focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/20";
+    "h-11 w-full max-w-md rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 text-base outline-none transition focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/20 disabled:cursor-not-allowed disabled:opacity-60";
 
   return (
     <CompanySettingsScaffold subSectionTitle={section.title} activeHref={section.href} showSearch={false} showSave={false}>
@@ -128,15 +128,20 @@ export function CompanyKvEditor({ section }: { section: CompanySection }) {
           <form onSubmit={save} className="grid gap-1 rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-5 shadow-[var(--oh-shadow-card)] sm:p-6">
             {section.fields.map((field) => (
               <div key={field.key} className="border-b border-[var(--oh-border)] py-4 last:border-b-0">
+                {!isCompanySettingRuntimeSupported(field.key) && (
+                  <p className="mb-2 text-xs font-medium text-[var(--oh-muted)]">
+                    Stored only; this setting does not affect Orithos behavior yet.
+                  </p>
+                )}
                 <label className="grid gap-1.5 text-sm font-semibold text-[var(--oh-text)]">
                   {field.label}
                   {field.description && <span className="font-normal text-[var(--oh-muted)]">{field.description}</span>}
                   {field.type === "boolean" ? (
                     <button
                       type="button"
-                      disabled={!canEdit || busy}
+                      disabled={!canEdit || busy || !isCompanySettingRuntimeSupported(field.key)}
                       onClick={() => update(field, asBool(values[field.key]) ? "false" : "true")}
-                      className={`mt-2 flex h-7 w-12 items-center rounded-full p-1 ${asBool(values[field.key]) ? "justify-end bg-[var(--oh-info)]" : "bg-[var(--oh-border-strong)]"}`}
+                      className={`mt-2 flex h-7 w-12 items-center rounded-full p-1 disabled:cursor-not-allowed disabled:opacity-60 ${asBool(values[field.key]) ? "justify-end bg-[var(--oh-info)]" : "bg-[var(--oh-border-strong)]"}`}
                       aria-pressed={asBool(values[field.key])}
                     >
                       <span className="h-5 w-5 rounded-full bg-white shadow-sm" />
@@ -144,7 +149,7 @@ export function CompanyKvEditor({ section }: { section: CompanySection }) {
                   ) : field.type === "select" ? (
                     <select
                       className={inputClass}
-                      disabled={!canEdit || busy}
+                      disabled={!canEdit || busy || !isCompanySettingRuntimeSupported(field.key)}
                       value={values[field.key] ?? ""}
                       onChange={(e) => update(field, e.target.value)}
                     >
@@ -155,7 +160,7 @@ export function CompanyKvEditor({ section }: { section: CompanySection }) {
                   ) : field.type === "string-list" ? (
                     <textarea
                       className={`${inputClass} min-h-[7rem] max-w-lg resize-y py-2`}
-                      disabled={!canEdit || busy}
+                      disabled={!canEdit || busy || !isCompanySettingRuntimeSupported(field.key)}
                       value={values[field.key] ?? ""}
                       onChange={(e) => update(field, e.target.value)}
                       placeholder="One reason per line"
@@ -164,7 +169,7 @@ export function CompanyKvEditor({ section }: { section: CompanySection }) {
                     <input
                       className={inputClass}
                       type={field.type === "number" ? "number" : "text"}
-                      disabled={!canEdit || busy}
+                      disabled={!canEdit || busy || !isCompanySettingRuntimeSupported(field.key)}
                       value={values[field.key] ?? ""}
                       onChange={(e) => update(field, e.target.value)}
                     />
