@@ -265,6 +265,8 @@ Shopfront Developer Documentation 的 `Determine Product Prices` 将标准数量
 
 ## 2026-11-21 Sale Keys 与成本消费者追查
 
+- 本轮再次调用 crawler 只读 `shopfront-settings` endpoint 刷新 SKR 原始值：Vendor 的 `use_quantity_rate`、`discount_require_reason`、`allow_cashout_without_sale`、`note_on_held_sale` 均为空字符串；`require_refund_reason=1`、`cost_calculation_method=last`、`sale_keys_position=left`。SKR Outlet 的 `sale_keys_position=default`、`default_sale_keys=default`、`discount_below_cost_behaviour=ignore`、`use_global_cost=1`、三项 transfer cost 开关均为 `1`。这些是原始行值，不代表空布尔有效值为 false。
+- Shopfront 官方 `Objects/Settings` 文档只定义通用 name/value/datatype/updatedAt 字段，没有规定空值的 effective default 或继承规则；页面有效值仍不能从 GraphQL 原始行推断。尝试检查 Shopfront 页面时，Computer Use 的 URL 许可校验停止了操作；没有绕过，也没有输入凭据。
 - Shopfront schema 同时有无参数的 `salesKeys`（返回 `SaleKeys[]`）和按 ID 查询的 `saleKeys(id)`（返回单个 `SaleKeys`）。不能将前者仅凭名称判断为可读列表。
 - crawler 既有只读 Query scan 记录显示：`salesKeys` 请求到 Shopfront 后返回 `403 permission_denied`，读取数为 0；`saleKeys(id)` 被安全扫描器阻止，因为必需的 `id` 没有已批准的只读来源策略。生产 crawler `main` 源指纹 `fdd91fd2db1ceda99aeff20ff3d9551db2cd40d73c9e7d4be47a28fb873cf54` 与其运行指纹相同。没有请求 `modify_sale_keys` scope，也没有进入 Shopfront Register。
 - `company.general.cost_calculation_method` 只在设置默认值/UI catalog 中定义，没有 POS 运行时读取点；设置值不决定实际成本算法。当前购买优化器在无供应商价文件时固定使用 `last_cost`；部分 AI 预测/补货/价格建议 SQL 则优先 `average_cost` 再回退 `cost`。这些路径分别取值，不能声称受公司成本方法控制。
