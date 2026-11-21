@@ -151,5 +151,6 @@
 - 当前 SHA Settings 只读审计通过：每店 17 个路由 × 390/768/1440px × light/dark；60 项公司字段中 23 项已接运行时、37 项正确禁用并标明仅保存；页面异常和业务写入为 0，UAT 前后 SHA 稳定。报告位于本地 `temp/settings-audit-results.json`。
 - 使用现有 quote-only UAT 脚本按店串行运行；SKR、Demo 各 10/10 通过，三件商品的数量阶梯报价和 Sell 页面金额一致；没有 checkout、sale 或 cash movement 写入。详细范围见 `validation.md`。
 - Shopfront 定价文档说明 High Mix 目标是动态 Knapsack 最佳组合；POS 实现有动态规划及非 greedy 用例。本次线上范围仍限三件普通商品，不延伸为所有价格阶梯等价声明。
+- 对两个本地 quote-only UAT 报告中保留的完整数量结果，按 Shopfront 同步包价进行最优包数组合计算后，SKR/Demo 各 46 个数量报价点均零差异（Lemon 1..10；New World 与 Pacific 各 1..18）。这补足了先前仅验证选定数量节点的证据；报告范围不外推到 Family、促销、客户价或价格表继承。
 - 同 SHA 下 Sale Keys API 两店均为 0 组。默认 Shopfront 组无法通过当前只读权限读取，真实 `/sell` 仍按 Orithos 商品类别显示快捷入口；未把本地示例网格接入线上。
 

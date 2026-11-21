@@ -7,11 +7,12 @@
 | Runtime identity | SKR + Demo，`24e6544146258bb883ca85b60b427b8112d996ee` | PASS | 两店 `/api/public/version` frontend/backend SHA 均为 `24e65441` |
 | Settings 页面与公司字段状态 | SKR + Demo，`24e65441` | PASS | 每店 17 个路由 × 390/768/1440px × light/dark；每店 60 字段中 23 项有运行时支持、37 项禁用并标记仅保存；浏览器错误 0、业务写入 0，UAT 前后 runtime SHA 稳定 |
 | High Mix 商品阶梯报价 | SKR + Demo，`24e65441` | PASS | 现成 quote-only UI/API UAT 每店 10/10；三商品数量节点 API 报价与页面总价一致，最终结账按钮可用 |
+| High Mix 全整数数量矩阵 | SKR + Demo，`24e65441` | PASS（46 点/店） | 由保存的 quote-only 响应读取每款商品完整 1..最高价档数量；使用 Shopfront 同步的包价运行无限包数最优组合 DP，SKR/Demo 共 46/46 点均为零差异 |
 | 业务写入 | SKR + Demo | PASS | 两店各自隔离会话，仅登录、读商品、调用 `/api/sales/quote`；checkout/sale/cash movement 写入为 0，会话结束后登出 |
 | Sale Keys 列表可读性 | SKR + Demo，`24e65441` | PASS（数据为空） | `GET /api/sale-keys` 均 HTTP 200、成功响应、0 组；无设置写入 |
 | Shopfront 默认 Sale Keys 对照 | Shopfront 只读授权 | BLOCKED | Shopfront `salesKeys` 列表返回 403；按 ID 查询缺少已批准的安全 ID 来源。未请求 `modify_sale_keys` 写权限，也未进入 Register |
 
-线上报价报告仅保存在本地 `temp/current-main-pricing-skr.json` 与 `temp/current-main-pricing-demo.json`；Settings 审计报告保存在本地 `temp/settings-audit-results.json`。普通数量阶梯报价在本 SHA 上两店均已复验；此结果不覆盖 Family 实例、促销、客户价、价格表覆盖/继承，也不构成完整结账等价。官方 `Determine Product Prices` 文档注明 High Mix 内部使用动态 Knapsack 求最佳组合；POS `TierPriceCalculator` 使用动态规划并有非 greedy 组合回归用例，但 Shopfront 的完整内部实现属于未公开细节，线上抽样不能证明对所有阶梯完全相同。
+线上报价报告仅保存在本地 `temp/current-main-pricing-skr.json` 与 `temp/current-main-pricing-demo.json`；Settings 审计报告保存在本地 `temp/settings-audit-results.json`。本次对 Lemon 的数量 1..10 和两款 4 Pines 的数量 1..18，逐一将源包价作为可重复购买的组合包，以最小总价动态规划计算期望值，再对照两店线上 API 报价；共 46 个数量/门店组合全部一致。范围仍限这三款普通商品与当前 `HIGH_MIX_PRICE` 设置，不覆盖 Family 实例、促销、客户价、价格表覆盖/继承，也不构成完整结账等价。官方文档说明 Shopfront 内部使用动态 Knapsack；POS `TierPriceCalculator` 使用动态规划并有非 greedy 组合回归用例。Shopfront 完整内部实现未公开，因此抽样不能证明所有商品/数量完全相同。
 
 ## 2026-11-21 Sale Keys Position 实际收银界面验收（线上 SHA 086ecea1）
 
