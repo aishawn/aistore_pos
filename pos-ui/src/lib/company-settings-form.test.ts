@@ -29,6 +29,7 @@ test("only company settings wired to Orithos behavior remain editable", () => {
   assert.equal(isCompanySettingRuntimeSupported("company.sell.cash_out_reasons"), true);
   assert.equal(isCompanySettingRuntimeSupported("company.sell.discounts_require_reason"), true);
   assert.equal(isCompanySettingRuntimeSupported("company.sell.refunds_require_reason"), true);
+  assert.equal(isCompanySettingRuntimeSupported("company.sell.allow_cash_out_without_sale"), true);
   assert.equal(isCompanySettingRuntimeSupported("company.search.product_level"), false);
 });
 
