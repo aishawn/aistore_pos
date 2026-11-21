@@ -52,10 +52,37 @@ async function main() {
       const salePolicy = (await salePolicyResponse.json()).data;
       const allowCashOutWithoutSale = String(companySettings?.['company.sell.allow_cash_out_without_sale']?.value).toLowerCase() === 'true';
       assert.equal(salePolicy.allowCashOutWithoutSale, allowCashOutWithoutSale, `${host} cash out policy must match company settings`);
+      const saleKeysPosition = companySettings?.['company.misc.sale_keys_position']?.value ?? 'RIGHT';
+      assert.equal(salePolicy.saleKeysPosition, saleKeysPosition, `${host} sale-key layout policy must match company settings`);
       await page.goto(base + '/sell', { waitUntil: 'domcontentloaded' });
       const cashOutButtonCount = await page.getByRole('button', { name: 'Cash Out', exact: true }).count();
       assert.equal(cashOutButtonCount, allowCashOutWithoutSale ? 1 : 0, `${host} Cash Out visibility must follow company setting`);
       checks.push({ host, check: 'Cash out policy API and Sell button follow the company setting', allowCashOutWithoutSale, result: 'PASS' });
+      const quickKeysPanel = page.getByText('Sale keys', { exact: true }).locator('xpath=ancestor::section[1]');
+      const checkoutPanel = page.getByText('Cart is empty', { exact: true }).locator('xpath=ancestor::aside[1]');
+      await quickKeysPanel.waitFor();
+      await checkoutPanel.waitFor();
+      const desktopKeys = await quickKeysPanel.boundingBox();
+      const desktopCheckout = await checkoutPanel.boundingBox();
+      assert.ok(desktopKeys && desktopCheckout, `${host} sell panels must be visible`);
+      const layoutEvidence = {
+        saleKeysPosition,
+        desktopKeys,
+        desktopCheckout,
+        quickKeysClass: await quickKeysPanel.getAttribute('class'),
+        checkoutClass: await checkoutPanel.getAttribute('class'),
+      };
+      if (saleKeysPosition.toUpperCase() === 'LEFT') assert.ok(desktopKeys.x < desktopCheckout.x, `${host} LEFT keys must precede checkout horizontally: ${JSON.stringify(layoutEvidence)}`);
+      else if (saleKeysPosition.toUpperCase() === 'BOTTOM') assert.ok(desktopKeys.y > desktopCheckout.y, `${host} BOTTOM keys must follow checkout vertically: ${JSON.stringify(layoutEvidence)}`);
+      else assert.ok(desktopKeys.x > desktopCheckout.x, `${host} RIGHT keys must follow checkout horizontally: ${JSON.stringify(layoutEvidence)}`);
+      await page.setViewportSize({ width: 390, height: 900 });
+      const mobileKeys = await quickKeysPanel.boundingBox();
+      const mobileCheckout = await checkoutPanel.boundingBox();
+      assert.ok(mobileKeys && mobileCheckout, `${host} mobile sell panels must be visible`);
+      if (saleKeysPosition.toUpperCase() === 'BOTTOM') assert.ok(mobileKeys.y > mobileCheckout.y, `${host} mobile BOTTOM keys must follow checkout`);
+      else assert.ok(mobileKeys.y < mobileCheckout.y, `${host} mobile LEFT/RIGHT keys must precede checkout`);
+      checks.push({ host, check: 'Sale Keys Position matches desktop and mobile Sell layout', saleKeysPosition, result: 'PASS' });
+      await page.setViewportSize({ width: 1440, height: 900 });
       for (const width of (env.SETTINGS_UAT_WIDTHS ? env.SETTINGS_UAT_WIDTHS.split(',').map(Number) : [390, 768, 1440])) {
         await page.setViewportSize({ width, height: 900 });
         for (const [label, route] of [['Company','/settings/company/general'],['Company','/settings/company/date-time'],['Staff & access','/settings/staff'],['Store','/settings/registers-outlets'],['Store','/settings/payment'],['Store','/settings/tax'],['Store','/settings/hardware'],['Store','/settings/customerdisplay'],['Store','/settings/receipts'],['Store','/settings/keys'],['Store','/settings/rules'],['Store','/settings/loyalty'],['Store','/settings/surcharging'],['Store','/settings/push'],['Data','/settings/data'],['Account','/settings/account?tab=connection'],['Account','/settings/account?tab=unknown']]) {

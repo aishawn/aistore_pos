@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { cn } from "./utils";
 import { getSellLayoutClasses } from "./sell-layout";
 
 test("sale keys LEFT places shortcuts before checkout", () => {
@@ -28,4 +29,13 @@ test("sale keys BOTTOM places checkout above shortcuts", () => {
 
 test("unknown sale keys positions fall back to RIGHT", () => {
   assert.deepEqual(getSellLayoutClasses("default"), getSellLayoutClasses("RIGHT"));
+});
+
+test("configured checkout placement overrides the cart panel defaults", () => {
+  const classes = cn(
+    "order-3 lg:col-start-1 lg:row-start-2 lg:w-auto",
+    getSellLayoutClasses("LEFT").checkout,
+  );
+  assert.match(classes, /lg:col-start-2/);
+  assert.doesNotMatch(classes, /lg:col-start-1/);
 });

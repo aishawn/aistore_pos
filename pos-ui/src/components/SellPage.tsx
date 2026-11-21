@@ -24,8 +24,6 @@ import { QuantityKeypadModal } from "@/components/QuantityKeypadModal";
 import { SaleKeysPanel } from "@/components/SaleKeysPanel";
 import { useDefaultSaleKeys } from "@/hooks/useDefaultSaleKeys";
 import { ProductImage } from "@/components/ProductImage";
-import { getRetailSalePolicy } from "@/lib/retail-api";
-import { getSellLayoutClasses } from "@/lib/sell-layout";
 
 type WorkspaceTab = "keys" | "parked" | "more";
 
@@ -88,7 +86,6 @@ function formatParkedTime(iso: string | undefined): string {
 /** Sell workspace — project UI, reference POS features, distinct card-based layout. */
 export function SellPage() {
   const sell = useSellScreen();
-  const [saleKeysPosition, setSaleKeysPosition] = useState("RIGHT");
   const [tab, setTab] = useState<WorkspaceTab>("keys");
 
   useEffect(() => {
@@ -98,20 +95,6 @@ export function SellPage() {
       setTab("keys");
     }
   }, [sell.view, sell.keypadPage]);
-
-  useEffect(() => {
-    let active = true;
-    void getRetailSalePolicy()
-      .then((policy) => {
-        if (active) setSaleKeysPosition(policy.saleKeysPosition);
-      })
-      .catch(() => {
-        if (active) setSaleKeysPosition("RIGHT");
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
 
   function switchTab(next: WorkspaceTab) {
     setTab(next);
@@ -131,7 +114,6 @@ export function SellPage() {
     sell.view === "customers" ||
     sell.view === "promotions" ||
     sell.view === "products";
-  const sellLayout = getSellLayoutClasses(saleKeysPosition);
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-[var(--oh-surface)] p-4 font-sans md:p-5">
@@ -153,8 +135,8 @@ export function SellPage() {
       </div>
 
       {/* Payment actions stay above the shortcut and checkout panels. */}
-      <div className={cn("grid min-h-0 flex-1 grid-cols-1 gap-4", sellLayout.grid)}>
-        <section className={cn("relative flex min-h-0 min-w-0 flex-col overflow-hidden rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] shadow-[var(--oh-shadow-card)]", sellLayout.quickKeys)}>
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-[380px_minmax(0,1fr)] lg:grid-rows-[auto_minmax(0,1fr)]">
+        <section className="relative order-2 flex min-h-0 min-w-0 flex-col overflow-hidden rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] shadow-[var(--oh-shadow-card)] lg:order-none lg:col-start-2 lg:row-start-2">
           <div className="flex shrink-0 items-center gap-1 border-b border-[var(--oh-border)] px-3 py-2">
             <TabButton
               active={tab === "keys" && !overlayView}
@@ -194,7 +176,7 @@ export function SellPage() {
           <PaymentActionStrip />
         </div>
 
-        <CheckoutPanel className={sellLayout.checkout} />
+        <CheckoutPanel className="order-3 lg:order-none lg:col-start-1 lg:row-start-2 lg:w-auto" />
       </div>
     </div>
   );

@@ -12,6 +12,7 @@ import { RegisterSellFinaliseButton } from "./RegisterSellFinaliseButton";
 import { CASE_PACK_OPTIONS, money, provisionalLineUnit, type CartLine } from "./shared";
 
 type RegisterSellCartAsideProps = {
+  className?: string;
   mobileOpen: boolean;
   onCloseMobile: () => void;
   customer: RetailCustomerRecord | null;
@@ -60,6 +61,7 @@ type RegisterSellCartAsideProps = {
 };
 
 export function RegisterSellCartAside({
+  className,
   mobileOpen,
   onCloseMobile,
   customer,
@@ -108,6 +110,7 @@ export function RegisterSellCartAside({
   return (
     <aside className={cn(
       "order-3 flex w-full shrink-0 flex-col overflow-hidden rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] shadow-[var(--oh-shadow-card)] lg:order-none lg:col-start-1 lg:row-start-2 lg:w-auto",
+      className,
       mobileOpen && "fixed inset-x-0 top-[50px] bottom-0 z-50 min-h-0 w-auto rounded-none lg:static lg:inset-auto lg:z-auto lg:rounded-[var(--oh-radius)]",
     )}>
       {mobileOpen && (

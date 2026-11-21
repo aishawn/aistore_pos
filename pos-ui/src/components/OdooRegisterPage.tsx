@@ -49,6 +49,7 @@ import { friendlyProductName } from "@/lib/product-display-name";
 import { splitMoney } from "@/lib/sell-screen";
 import { formatStoreDateTime } from "@/lib/retail-date";
 import { companySettingOptions, normalizeRequiredCashReason } from "@/lib/company-setting-options";
+import { getSellLayoutClasses } from "@/lib/sell-layout";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
 import { useAuth } from "@/lib/auth";
 import {
@@ -215,6 +216,7 @@ export function OdooRegisterPage() {
   const [cashOutReasons, setCashOutReasons] = useState<string[]>([]);
   const [discountReasonRequired, setDiscountReasonRequired] = useState<boolean | null>(null);
   const [parkedSaleNoteRequired, setParkedSaleNoteRequired] = useState<boolean | null>(null);
+  const [saleKeysPosition, setSaleKeysPosition] = useState("RIGHT");
   const [parkNoteDialog, setParkNoteDialog] = useState<{ switchToRegisterId: number | null } | null>(null);
   const [parkNoteInput, setParkNoteInput] = useState("");
   const [parkNoteError, setParkNoteError] = useState<string | null>(null);
@@ -290,11 +292,13 @@ export function OdooRegisterPage() {
         setDiscountReasonRequired(policy.discountsRequireReason);
         setCashOutWithoutSaleAllowed(policy.allowCashOutWithoutSale);
         setParkedSaleNoteRequired(typeof policy.requireNoteOnParkedSale === "boolean" ? policy.requireNoteOnParkedSale : null);
+        setSaleKeysPosition(policy.saleKeysPosition);
       })
       .catch(() => {
         if (!active) return;
         setDiscountReasonRequired(null);
         setParkedSaleNoteRequired(null);
+        setSaleKeysPosition("RIGHT");
       });
     return () => { active = false; };
   }, []);
@@ -1203,13 +1207,15 @@ export function OdooRegisterPage() {
     <p className="text-sm">If the result remains unknown, a store administrator must reconcile the order and payment in Orithos before another sale is attempted.</p>
   </main>;
 
+  const sellLayout = getSellLayoutClasses(saleKeysPosition);
+
   if (loading) return (
     <main aria-busy="true" aria-label="Loading register" className="flex h-[calc(100dvh-50px)] min-h-0 flex-col overflow-hidden bg-[var(--oh-surface)] p-4 font-sans md:p-5">
       <header className="register-header relative z-30 mb-3 flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="h-7 w-14 animate-pulse rounded bg-[var(--oh-border)]" />
         <div className="h-11 w-full max-w-xs animate-pulse rounded-full border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] sm:w-56" />
       </header>
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-[380px_minmax(0,1fr)] lg:grid-rows-[auto_minmax(0,1fr)]">
+      <div className={cn("grid min-h-0 flex-1 grid-cols-1 gap-4", sellLayout.grid)}>
         <div className="order-1 shrink-0 lg:order-none lg:col-span-2 lg:col-start-1 lg:row-start-1">
           <div className="flex flex-wrap items-center gap-2">
             {Array.from({ length: 4 }, (_, index) => (
@@ -1218,7 +1224,7 @@ export function OdooRegisterPage() {
             <div className="ml-auto h-11 w-24 animate-pulse rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)]" />
           </div>
         </div>
-        <section className="relative order-2 flex min-h-0 min-w-0 flex-col overflow-hidden rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] shadow-[var(--oh-shadow-card)] lg:order-none lg:col-start-2 lg:row-start-2">
+        <section className={cn("relative flex min-h-0 min-w-0 flex-col overflow-hidden rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] shadow-[var(--oh-shadow-card)]", sellLayout.quickKeys)}>
           <div className="flex shrink-0 items-center gap-1 border-b border-[var(--oh-border)] px-3 py-2">
             <div className="h-11 w-28 animate-pulse rounded-lg bg-[var(--oh-orange-light)]" />
             <div className="h-11 w-32 animate-pulse rounded-lg bg-[var(--oh-surface-muted)]" />
@@ -1236,7 +1242,7 @@ export function OdooRegisterPage() {
             </div>
           </div>
         </section>
-        <aside className="order-3 flex w-full shrink-0 flex-col overflow-hidden rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] shadow-[var(--oh-shadow-card)] lg:order-none lg:col-start-1 lg:row-start-2 lg:w-auto">
+        <aside className={cn("flex w-full shrink-0 flex-col overflow-hidden rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] shadow-[var(--oh-shadow-card)]", sellLayout.checkout)}>
           <div className="border-b border-[var(--oh-border)] px-4 py-3">
             <div className="h-11 w-full animate-pulse rounded-lg border border-dashed border-[var(--oh-border)] bg-[var(--oh-surface-muted)]" />
           </div>
@@ -1632,9 +1638,10 @@ export function OdooRegisterPage() {
         </div>
       )}
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-[380px_minmax(0,1fr)] lg:grid-rows-[auto_minmax(0,1fr)]">
+      <div className={cn("grid min-h-0 flex-1 grid-cols-1 gap-4", sellLayout.grid)}>
         <section className={cn(
-          "relative order-2 flex min-h-0 min-w-0 flex-col overflow-hidden rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] shadow-[var(--oh-shadow-card)] lg:order-none lg:col-start-2 lg:row-start-2",
+          "relative flex min-h-0 min-w-0 flex-col overflow-hidden rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] shadow-[var(--oh-shadow-card)]",
+          sellLayout.quickKeys,
           mobileCatalogOpen && "fixed inset-x-0 top-[50px] bottom-0 z-50 rounded-none lg:static lg:inset-auto lg:z-auto lg:rounded-[var(--oh-radius)]",
         )}>
           <div className="flex shrink-0 items-center gap-1 border-b border-[var(--oh-border)] px-3 py-2">
@@ -1784,6 +1791,7 @@ export function OdooRegisterPage() {
         />
 
         <RegisterSellCartAside
+          className={sellLayout.checkout}
           mobileOpen={mobileCartOpen}
           onCloseMobile={() => {
             setMobileCartOpen(false);
