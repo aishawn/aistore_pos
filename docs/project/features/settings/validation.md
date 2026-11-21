@@ -1,6 +1,6 @@
 # Settings 1:1 — validation
 
-## 2026-11-21 Require Note on Parked Sale（本地候选）
+## 2026-11-21 Require Note on Parked Sale（线上 SHA 86b73a45）
 
 | 检查 | 环境 | 结果 | 证据/范围 |
 |------|------|------|-----------|
@@ -10,9 +10,12 @@
 | 策略接口按公司设置返回值 | 本地 Java 21 | PASS | `RetailRegisterControllerTest` |
 | 本地草稿备注必填判定与清理 | 本地 Node 22 | PASS | `parked-sale-note.test.ts`，2 tests |
 | Sell 页面类型检查 | 本地 | PASS | `npm run typecheck` |
-| SKR / Demo 线上 UI 流程 | 线上 | NOT RUN | 候选尚未部署；设置未修改，Shopfront 值未核对 |
+| SKR / Demo frontend/backend 运行 SHA | 线上 | PASS | `/api/public/version` 两店均稳定为 `86b73a4512acd7918fb0295055866ad6fcdc6932` |
+| SKR / Demo 线上策略、公司设置读回 | 线上 | NOT RUN | 登录引导返回控制台 bootstrap 数据而非门店 access token；未能安全完成租户 API 读回 |
+| SKR / Demo 线上 UI 流程 | 线上 | NOT RUN | 浏览器 URL 许可校验阻止自动化；Register 初始化可能开会话，故未进入真实收银流程 |
+| Shopfront 对应设置值 | Shopfront 只读 | NOT RUN | 本轮未能打开获准的 Shopfront 浏览器页面，也未验证该设置的源值 |
 
-限制：本地测试证明 API 策略和前端备注规则，不证明线上部署或 Shopfront 值一致。线上 true 分支 UAT 仅使用浏览器 localStorage 草稿，并拦截所有业务写 API。
+限制：部署 SHA 已验证，但不证明线上策略设置值或 Shopfront 行为一致。线上 UI、两店设置值、Shopfront 源值及 localStorage true/false 分支仍待验证；本轮没有线上业务写入。
 
 ## 2026-11-21 Allow cash out without sale（线上 SHA f6ce8b23）
 
