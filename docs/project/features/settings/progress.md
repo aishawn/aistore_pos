@@ -122,8 +122,14 @@
 - 发布：提交 `86b73a4512acd7918fb0295055866ad6fcdc6932` 已推送 `main`；SKR 和 Demo 的 frontend/backend `/api/public/version` 均稳定返回该 SHA。
 - 线上只读验收：审计脚本在 1440px 下对 SKR/Demo 各检查 17 个 Settings 页面组合；每店 60 个 Company 字段中 22 项运行时支持、38 项明确仅保存；无页面错误或尝试的业务写请求。两店 `/api/settings/company` 均为 66 个键，键集合相同、值差异 0；`sale-policy` 四项值相同，`requireNoteOnParkedSale=false`，与公司设置一致。UAT 时前后端稳定 SHA 为 `eed54213c9a381f444d66f244812d0a3cbbc65a3`。报告：`../temp/settings-audit-current-20261121/after-note-86b73a45.json`。
 - Sell 页面 true/false localStorage 草稿流程仍未做线上 UI UAT；虽然只读脚本已断言无业务写请求，但本轮没有为了 UAT 添加停放草稿或切换 Register。
-- Shopfront 设置值已通过新 crawler 只读 API 读取，未进入 Shopfront Register、未写源站、未运行 settings import/promote：SKR 有 69 项 Vendor 全局设置和 33 项 outlet overrides；凭据字符串值脱敏。全局 `sale_keys_position=left` 与 Orithos `RIGHT` 不同；Shopfront 选定 `default_sale_keys` set，但 Orithos Sale Keys API 当前 0 组并回退内建分类键；成本/调拨与低于成本折扣设置没有运行时等价路径。`cost_calculation_method=last` 与 Orithos `LAST_COST` 只有存储值一致，POS 没有使用该字段。
+- Shopfront 设置值已通过新 crawler 只读 API 读取，未进入 Shopfront Register、未写源站、未运行 settings import/promote：SKR 有 69 项 Vendor 全局设置和 33 项 outlet overrides；凭据字符串值脱敏。Shopfront Vendor `sale_keys_position=left`、SKR Outlet `default` 继承全局；Orithos SKR/Demo 均为 `LEFT`，实际 Sell 布局 UAT 已通过。Shopfront 选定 `default_sale_keys` set，但列表查询在现有 OAuth grant 下 403；Orithos Sale Keys API 当前 0 组并回退内建分类键。crawler 只配置 `skr` 源，`demo` 是镜像目标。成本/调拨与低于成本折扣没有运行时等价路径；`cost_calculation_method=last` 与 Orithos `LAST_COST` 只有存储值一致，POS 没有使用该字段。
 - Shopfront 与 Orithos 当前值相符的主要项：Melbourne 时区、日期/时间格式、周一开始、现金舍入 `0.05`、家庭价格点分配、rounding、Require Password、退款理由。Shopfront 为空的全局 boolean 行不能视为有效 false；`note_on_held_sale` 等默认行为仍待源端有效值确认。完整比对表及限制见 `validation.md`。
 - 当前 main 定价 UAT：文档提交 `c55659861e2b4840a3f0ad97501e3b3b2e084d91` 部署后，SKR 与 Demo 三商品数量阶梯报价复验各 10/10 通过，业务写入计数均为 0。SKR 首轮第二商品曾遇到报价响应超时，串行完整重跑通过；详细范围与 Family/促销/客户价/价表继承限制见 `validation.md` 当前 main 复验记录。
 - 官方文档边界复核：Shopfront 描述的标准数量算法为 High Mix / Quantity Rate；Orithos Low Mix、Average 和 Family 的 Proportional 分配是扩展，未证明 1:1。较早的宽扫描和直连 DB 限制已由 crawler 授权窄查询绕开，当前 SKR 设置原始行值已刷新；空值仍需区分“无显式值”和 effective 默认值。
+
+## 2026-11-21 继续：Sale Keys / 成本路径
+
+- 生产 crawler 只读 schema audit 的历史执行记录已确认：Shopfront 无参数 `salesKeys` 返回 `403 permission_denied`；`saleKeys(id)` 需要 ID 且安全扫描器阻止了无策略的 ID 猜测。未请求写 scope，Shopfront 未写入。
+- 成本算法设置目前仅保存。POS 采购优化无价文件时固定使用 last cost；AI 建议类 SQL 优先读取 average cost；这些消费者没有读取 `company.general.cost_calculation_method`。全局成本、调拨成本和低于成本折扣尚无已证实等价路径，因此本轮没有改算法或成本数据。
+- 线上证据与依赖的下一步已记录于 `validation.md` 的“Sale Keys 与成本消费者追查”节。Shopfront 源站保持只读。
 

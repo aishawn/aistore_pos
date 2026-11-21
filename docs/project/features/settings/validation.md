@@ -48,7 +48,7 @@
 | Shopfront 全局/门店设置 API 读取 | Shopfront GraphQL 只读 | PASS（原始行读取） | crawler 只读 endpoint 返回 `Vendor.settings` 69 项、SKR outlet overrides 33 项；6 个凭据字符串值已脱敏。空白值代表设置行没有显式值，不能直接当作 effective false |
 | Shopfront Note on Held Sale 源行 | Shopfront GraphQL 只读 | PARTIAL | Vendor `note_on_held_sale` 存在但值为空；与 Orithos `require_note_on_parked_sale=false` 的有效行为等价仍待确认 |
 
-限制：设置矩阵/API 证明 Orithos 两店在当前版本上一致，不能证明与 Shopfront 完整 1:1。Shopfront `sale_keys_position=default` 与 Orithos `RIGHT` 的语义映射待确认；`use_global_cost`、average/last cost transfer flags、`discount_below_cost_behaviour` 尚无 Orithos Company catalog 的直接同名对应项。Shopfront 页面有效值和停放备注 true/false 页面流程仍未验收。
+限制：设置矩阵/API 证明 Orithos 两店在当前版本上一致，不能证明与 Shopfront 完整 1:1。SKR Outlet 的 `sale_keys_position=default` 使用 Vendor 全局 `left`；Orithos 两店已设为 `LEFT`，且实际 Sell 布局 UAT 通过。默认 Sale Keys 组、`use_global_cost`、average/last cost transfer flags、`discount_below_cost_behaviour` 仍无已验证的 Orithos 等价实现。Shopfront 页面有效值和停放备注 true/false 页面流程仍未验收。
 
 ## 2026-11-21 当前 main 定价 UAT 复验（线上 SHA c5565986）
 
@@ -75,13 +75,13 @@ Shopfront Developer Documentation 的 `Determine Product Prices` 将标准数量
 | `timezone=Australia/Melbourne`、`date_format=DD/MM/YYYY`、`time_format=HH:mm:ss`、`start_of_week=monday` | Melbourne、相同日期/时间格式、`MONDAY` | 值一致；周起始大小写已规范化 |
 | `round_to=0.05`、`sign_in_require_password=1`、`require_refund_reason=1` | `0.05`、`true`、`true` | 值一致 |
 | `cost_calculation_method=last` | `LAST_COST` | 存储值映射一致，但该 Orithos 字段没有运行时消费者，改值不会切换实际成本行为 |
-| `sale_keys_position=left` | `company.misc.sale_keys_position=RIGHT` | 明确值不一致；Orithos 此字段当前仅保存，收银台不消费该配置 |
+| Vendor `sale_keys_position=left`；SKR Outlet `sale_keys_position=default` | `company.misc.sale_keys_position=LEFT`（SKR + Demo） | 与全局布局对齐；SKR + Demo 实际 `/sell` 桌面/手机位置 UAT 通过 |
 | `default_sale_keys=<Shopfront set id>` | `company.misc.default_sale_keys=""`，`GET /api/sale-keys` 返回 0 组 | 明确配置缺口；Orithos Sell 使用内建分类快捷键回退，没有导入 Shopfront 默认 sale-key 布局 |
 | `use_average_cost=1`；门店 `use_global_cost=1`、调拨平均/最新成本开关均为 `1` | 无直接等价的 Orithos 公司设置/成本选择运行路径 | 成本来源及转库存成本行为未对齐；不能只把 `LAST_COST` 字段值相同视作已实现 |
 | 门店 `discount_below_cost_behaviour=ignore` | 无直接对应字段 | 低于成本折扣的规则缺失 |
 | `use_quantity_rate`、`discount_require_reason`、`allow_cashout_without_sale`、`note_on_held_sale` 等全局 boolean 行值为空 | Orithos 对应值分别为 High Mix、false、false、false | PARTIAL；空白不是可直接证明的 false。Quantity Rate、折扣理由、cash-out 与停放备注仍需确认 Shopfront 默认/有效值 |
 
-只读读取 endpoint 由 crawler `main` 的 `8204c43`、`2266347`、`f434c4d` 加入/加固，生产 source fingerprint 已与当前 crawler 源码一致；查询同时读 Vendor 全局设置与映射 outlet 覆盖，绝不调用 settings import/promote。Shopfront 全量 `saleKeys` API 需要 sale 上下文，因此本轮没有进入 Register，也没有尝试复制该布局。
+只读读取 endpoint 由 crawler `main` 的 `8204c43`、`2266347`、`f434c4d` 加入/加固；查询同时读取 Vendor 全局设置与映射 outlet 覆盖，绝不调用 settings import/promote。crawler 配置的是 Shopfront `skr` 源，`demo` 不是有效 Shopfront source key；POS Demo 是 crawler 将同一 SKR 来源数据镜像的目标。Shopfront schema 有无参数 `salesKeys` 列表根和按 ID 查询的 `saleKeys(id)`：现有只读 grant 下 `salesKeys` 返回 403，`saleKeys(id)` 又无可批准的安全 ID 来源；因此没有进入 Register，也没有尝试复制该布局。
 
 ## 2026-11-21 Allow cash out without sale（线上 SHA f6ce8b23）
 
@@ -262,3 +262,11 @@ Shopfront Developer Documentation 的 `Determine Product Prices` 将标准数量
 - 聚焦验证：`RefundServiceTest`、`RetailRegisterControllerTest` 和 POS UI `npm run typecheck` 通过；`git diff --check` 通过。UI 单测仍受本地缺少 `tsx` 限制，未安装依赖。
 - 部署后只读验收（SKR + Demo，runtime `dc708c3e767d84792e97bcbe7837a13f79437969`）：`/api/retail/registers/sale-policy` 两店均返回 `discountsRequireReason=false`、`refundsRequireReason=true`；每店 18 个 Settings 路由通过，60 个公司字段中 20 个可编辑、40 个禁用并标注仅保存；无页面错误、无非认证业务写请求，UAT 前后 runtime SHA 未变化。报告位于本机临时文件 `temp/settings-audit-current-20261121/refund-reason-deploy-audit.json`，不纳入仓库。
 - 尚未做线上退款写入 UAT，也未修改 SKR/Demo 策略值。策略启用/关闭两条分支由服务测试覆盖；Shopfront 的对应 Refunds Require Reason 值尚未读取，因此本次只证明 Orithos 两店一致，不证明该设置与 Shopfront 相同。线上退款账本不使用真实交易验证。
+
+## 2026-11-21 Sale Keys 与成本消费者追查
+
+- Shopfront schema 同时有无参数的 `salesKeys`（返回 `SaleKeys[]`）和按 ID 查询的 `saleKeys(id)`（返回单个 `SaleKeys`）。不能将前者仅凭名称判断为可读列表。
+- crawler 既有只读 Query scan 记录显示：`salesKeys` 请求到 Shopfront 后返回 `403 permission_denied`，读取数为 0；`saleKeys(id)` 被安全扫描器阻止，因为必需的 `id` 没有已批准的只读来源策略。生产 crawler `main` 源指纹 `fdd91fd2db1ceda99aeff20ff3d9551db2cd40d73c9e7d4be47a28fb873cf54` 与其运行指纹相同。没有请求 `modify_sale_keys` scope，也没有进入 Shopfront Register。
+- `company.general.cost_calculation_method` 只在设置默认值/UI catalog 中定义，没有 POS 运行时读取点；设置值不决定实际成本算法。当前购买优化器在无供应商价文件时固定使用 `last_cost`；部分 AI 预测/补货/价格建议 SQL 则优先 `average_cost` 再回退 `cost`。这些路径分别取值，不能声称受公司成本方法控制。
+- `use_global_cost`、调拨采用平均/最新成本、`discount_below_cost_behaviour` 仍没有可确认的 POS 对应执行路径。本轮没有改算法或成本数据，因为现有文档/样本不足以决定这些路径的安全等价行为。
+- 下一步：由 Shopfront 管理员确认 `salesKeys` 是否有可授予的只读 scope（不授予管理写 scope）；若无，需在可合法读取的导出/API/页面中取得默认布局。成本功能需先明确受影响操作（采购、调拨、库存估值、利润与折扣门禁）及各自规则，再做独立 UAT；不能用一个全局 `COST_METHOD` 字段覆盖不同业务成本消费者。
