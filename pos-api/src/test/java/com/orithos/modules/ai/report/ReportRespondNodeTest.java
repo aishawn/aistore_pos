@@ -82,6 +82,17 @@ class ReportRespondNodeTest {
     }
 
     @Test
+    void chineseSalesAnswerUsesChineseWordForMultiDayDateRange() {
+        OverAllState state = state("", List.of(Map.of("sales", 125.50, "grossProfit", "",
+                "costAvailable", false, "transactions", 4)), "2026-10-16", "2026-10-20");
+        when(state.value("intent", String.class)).thenReturn(Optional.of("report_sales"));
+        when(state.value("question", String.class)).thenReturn(Optional.of("這段期間營業額多少？"));
+
+        assertEquals("2026-10-16 至 2026-10-20营业额 AUD 125.50；毛利暂不可用，销售成本数据不完整。数据来源：Orithos POS 报表。",
+                node.apply(state).get("answer"));
+    }
+
+    @Test
     void refundOnlyDayReportsTheRefundAndNegativeNetSales() {
         OverAllState state = state("", List.of(Map.of("sales", -9.48, "grossSales", 0.00,
                 "refunds", 9.48, "refundTransactions", 1, "transactions", 0,

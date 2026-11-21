@@ -64,7 +64,7 @@ public class ReportRespondNode implements NodeAction {
             return switch (intent == null ? "" : intent) {
                 case "report_stock" -> chinese ? "没有找到匹配库存，请检查商品名称或目录拼写。" : "No matching stock found. Check the product name or catalogue spelling.";
                 case "report_aov" -> chinese
-                        ? rangeText(from, to) + "没有已完成销售记录。数据来源：Orithos POS 报表。"
+                        ? rangeText(from, to, true) + "没有已完成销售记录。数据来源：Orithos POS 报表。"
                         : "No completed sales found for " + rangeText(from, to) + ". Source: Orithos POS report.";
                 case "report_dead_stock" -> {
                     if (!chinese) {
@@ -124,7 +124,7 @@ public class ReportRespondNode implements NodeAction {
             if (refunds.signum() > 0) {
                 String refundCount = positiveCount(row.get("refundTransactions"));
                 return chinese
-                        ? rangeText(from, to) + "没有已完成销售交易；退款 AUD " + money(refunds)
+                        ? rangeText(from, to, true) + "没有已完成销售交易；退款 AUD " + money(refunds)
                                 + (refundCount.isEmpty() ? "" : "，共 " + refundCount + " 笔")
                                 + "，净营业额 AUD " + money(sales) + "。数据来源：Orithos POS 报表。"
                         : "No completed sale transactions were recorded for " + rangeText(from, to)
@@ -134,11 +134,11 @@ public class ReportRespondNode implements NodeAction {
                                 + " resulted in net sales of AUD " + money(sales)
                                 + ". Source: Orithos POS report.";
             }
-            return chinese ? rangeText(from, to) + "没有已完成销售记录。数据来源：Orithos POS 报表。"
+            return chinese ? rangeText(from, to, true) + "没有已完成销售记录。数据来源：Orithos POS 报表。"
                     : "No completed sales found for " + rangeText(from, to) + ". Source: Orithos POS report.";
         }
         Object profit = row.get("grossProfit");
-        String range = rangeText(from, to);
+        String range = rangeText(from, to, chinese);
         String refundDisclosure = refundDisclosure(row, chinese);
         if (Boolean.FALSE.equals(row.get("costAvailable")) || profit == null
                 || profit.toString().isBlank()) {
@@ -303,7 +303,7 @@ public class ReportRespondNode implements NodeAction {
     }
 
     private String formatAov(Map<String, Object> row, String from, String to, boolean chinese) {
-        String range = rangeText(from, to);
+        String range = rangeText(from, to, chinese);
         String aov = "AUD " + money(ReportQueryService.toDecimal(row.get("aov")));
         String tickets = ReportQueryService.toDecimal(row.get("tickets")).stripTrailingZeros().toPlainString();
         if (chinese) {
@@ -501,6 +501,14 @@ public class ReportRespondNode implements NodeAction {
             return from;
         }
         return from + " to " + to;
+    }
+
+    private static String rangeText(String from, String to, boolean chinese) {
+        if (!chinese) return rangeText(from, to);
+        if (from == null || from.isBlank()) {
+            return to == null || to.isBlank() ? "所选期间" : to;
+        }
+        return chineseDateRange(from, to);
     }
 
     private static String money(BigDecimal v) {
