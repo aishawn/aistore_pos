@@ -102,3 +102,13 @@
 | Shopfront 设置页面 / Register | Shopfront | NOT_RUN | 价格档来自 crawler 最近同步的 Shopfront 归档，不是本轮直连 Shopfront 页面的对照；没有进入 Shopfront Register |
 
 本机详细报告：`temp/continued-settings-uat-20261121/pricing-skr-quote.json`、`temp/continued-settings-uat-20261121/pricing-demo-quote.json`（本地临时验收证据，未纳入仓库）。限制：三个商品均为普通数量阶梯；Shopfront 当前无 Family 源商品，Family 真实样本、促销、客户价及价表继承仍未覆盖，不能据此宣称全部定价规则 1:1。
+
+## 2026-11-21 当前线上定价 UAT 复验（8d387b5c）
+
+| 检查 | 环境/版本 | 结果 | 证据/范围 |
+|------|-----------|------|-----------|
+| Runtime identity | SKR + Demo，`8d387b5cc146fccb81b2ca44f91bb183c8b86142` | PASS | 两店 frontend/backend SHA 一致 |
+| 数量阶梯报价 API + Sell 页面金额 | SKR + Demo，`8d387b5c` | PASS | `-196 LEMON`、`4 PINES NEW WORLD`、`4 PINES PACIFIC`；覆盖 1–18 件的选定数量节点，API 应答与页面显示均匹配源阶梯总价；最终结账按钮可用 |
+| 业务写入监测 | SKR + Demo，`8d387b5c` | PASS | 两店各 10/10 项检查通过；报价会话没有 checkout/sale/cash-movement 写入，结束时退出登录 |
+
+本机详细报告：`temp/continued-settings-uat-20261121/pricing-skr-quote-current.json`、`temp/continued-settings-uat-20261121/pricing-demo-quote-current.json`（临时 UAT 输出，未纳入仓库）。本次复验确认当前部署的三件普通数量阶梯商品；不证明 Family、促销、客户价、价格表继承或 Shopfront Register 对照已实现/等价。Shopfront 仍只读，没有创建交易。
