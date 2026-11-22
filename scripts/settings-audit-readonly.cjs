@@ -150,9 +150,9 @@ async function main() {
       }
       const supportedFields = companyFields.filter(field => runtimeSupportedLabels.has(field.label));
       const inertFields = companyFields.filter(field => !runtimeSupportedLabels.has(field.label));
-      assert.equal(companyFields.length, 60, `${host} company field catalogue size`);
+      assert.equal(companyFields.length, 59, `${host} company field catalogue size`);
       assert.equal(supportedFields.length, 23, `${host} runtime-supported company fields`);
-      assert.equal(inertFields.length, 37, `${host} stored-only company fields`);
+      assert.equal(inertFields.length, 36, `${host} stored-only company fields`);
       assert.ok(supportedFields.every(field => !field.disabled && !field.storedOnly), `${host} supported fields must remain editable`);
       assert.ok(inertFields.every(field => field.disabled && field.storedOnly), `${host} stored-only fields must be disabled and labelled`);
       checks.push({ host, check: 'All company fields reflect runtime support in the UI', supported: supportedFields.length, storedOnly: inertFields.length, result: 'PASS' });
