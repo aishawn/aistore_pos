@@ -210,16 +210,18 @@ public interface SaleMapper {
      * Rows with no business date fall back to {@code created_at} (UTC wall clock).
      */
     @Update("""
-        UPDATE sale
+        UPDATE sale s
         SET status = 'VOIDED',
             outstanding = 0,
-            internal_note = TRIM(CONCAT(COALESCE(internal_note, ''), ' Auto-expired parked sale'))
-        WHERE status = 'PARKED'
-          AND vendor_id = #{vendorId}
-          AND COALESCE(source_system, '') <> 'shopfront'
+            internal_note = TRIM(CONCAT(COALESCE(s.internal_note, ''), ' Auto-expired parked sale'))
+        FROM outlet o
+        WHERE s.outlet_id = o.id
+          AND o.vendor_id = #{vendorId}
+          AND s.status = 'PARKED'
+          AND COALESCE(s.source_system, '') <> 'shopfront'
           AND (
-            (business_date IS NOT NULL AND business_date < #{expireBefore})
-            OR (business_date IS NULL AND created_at < #{createdBeforeUtc})
+            (s.business_date IS NOT NULL AND s.business_date < #{expireBefore})
+            OR (s.business_date IS NULL AND s.created_at < #{createdBeforeUtc})
           )
         """)
     int expireParkedBefore(@Param("vendorId") Long vendorId,
@@ -232,7 +234,7 @@ public interface SaleMapper {
         return expireParkedBefore(null, expireBefore, createdBeforeUtc);
     }
 
-    @Select("SELECT DISTINCT vendor_id FROM sale WHERE status = 'PARKED' AND vendor_id IS NOT NULL ORDER BY vendor_id")
+    @Select("SELECT DISTINCT o.vendor_id FROM sale s JOIN outlet o ON o.id = s.outlet_id WHERE s.status = 'PARKED' AND o.vendor_id IS NOT NULL ORDER BY o.vendor_id")
     List<Long> findParkedVendorIds();
 
     @Select("""
