@@ -18,7 +18,7 @@ export type StoreCompanyProfile = {
 type SettingRow = { name: string; value?: string | null };
 type AuthMe = { id?: number | string; name?: string; vendorId?: number };
 
-const DEFAULT_TIMEZONE = "Australia/Adelaide";
+const DEFAULT_TIMEZONE = "Australia/Melbourne";
 const DEFAULT_CURRENCY = "AUD";
 
 function settingValue(settings: SettingRow[], key: string) {

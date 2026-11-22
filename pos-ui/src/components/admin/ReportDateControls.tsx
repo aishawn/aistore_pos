@@ -2,7 +2,7 @@
 
 import { reportDatePreset, type ReportComparison, type ReportDatePreset, type ReportDateRange } from "@/lib/report-date-selection";
 
-export function ReportDateControls({ value, onChange, comparison, onComparisonChange, timezone = "Australia/Adelaide" }: {
+export function ReportDateControls({ value, onChange, comparison, onComparisonChange, timezone = "Australia/Melbourne" }: {
   value: ReportDateRange;
   onChange: (range: ReportDateRange) => void;
   comparison: ReportComparison;

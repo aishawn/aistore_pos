@@ -26,7 +26,7 @@ const LEGACY_PERIOD: Record<string, ReportDatePreset> = {
 export function reportDatePreset(
   preset: Exclude<ReportDatePreset, "custom">,
   now = new Date(),
-  timezone = "Australia/Adelaide",
+  timezone = "Australia/Melbourne",
 ): ReportDateRange {
   const today = salesDate(now.toISOString(), timezone);
   if (preset === "today") return { from: today, to: today };
@@ -45,7 +45,7 @@ export function matchReportDatePreset(
   from: string,
   to: string,
   now = new Date(),
-  timezone = "Australia/Adelaide",
+  timezone = "Australia/Melbourne",
 ): ReportDatePreset {
   for (const preset of NAMED_PRESETS) {
     const range = reportDatePreset(preset, now, timezone);
@@ -81,7 +81,7 @@ export type ReportRangeSelection = {
 export function readReportRangeFromSearch(
   search: string,
   now = new Date(),
-  timezone = "Australia/Adelaide",
+  timezone = "Australia/Melbourne",
 ): ReportRangeSelection {
   const params = new URLSearchParams(search.startsWith("?") ? search.slice(1) : search);
   const fromParam = params.get("from");

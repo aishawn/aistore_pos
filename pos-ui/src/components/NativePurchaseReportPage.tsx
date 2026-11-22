@@ -323,7 +323,7 @@ export function NativePurchaseReportPage() {
       <header className="shrink-0 border-b border-[var(--oh-border)] bg-[var(--oh-surface-elevated)]">
         <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2 border-b border-[var(--oh-border)] bg-[var(--oh-surface)] px-4 py-3 md:px-6">
           <div>
-            <p className="text-xs font-medium text-[var(--oh-muted)]">Orithos report · Australia/Adelaide</p>
+            <p className="text-xs font-medium text-[var(--oh-muted)]">Orithos report · Australia/Melbourne</p>
             <h1 className="text-lg font-semibold tracking-tight text-[var(--oh-text)]">Purchase report</h1>
             <p className="mt-0.5 text-sm text-[var(--oh-muted)]">
               Received purchase spend by order date · {from === to ? from : `${from} → ${to}`}

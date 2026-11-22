@@ -87,7 +87,7 @@ export function NativeSalesReportPage() {
       <header className="shrink-0 space-y-4 border-b border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-4 py-4 md:px-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-xs font-medium text-[var(--oh-muted)]">Orithos ledger · Australia/Adelaide</p>
+            <p className="text-xs font-medium text-[var(--oh-muted)]">Orithos ledger · Australia/Melbourne</p>
             <h1 className="text-2xl font-semibold tracking-tight text-[var(--oh-text)]">Sales ledger</h1>
             <p className="mt-1 text-xs text-[var(--oh-muted)]">{from === to ? from : `${from} → ${to}`}</p>
           </div>

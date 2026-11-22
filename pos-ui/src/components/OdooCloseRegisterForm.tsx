@@ -336,7 +336,7 @@ export function OdooCloseRegisterForm({
             <p className="mt-1 text-sm text-[var(--oh-muted)]">
               Reconcile the drawer, then end the open Orithos POS session.
               {lastLoadedAt !== null && (
-                <span className="ml-2">Last refreshed {formatStoreEpoch(lastLoadedAt, selected?.timezone ?? bootstrap?.configs[0]?.timezone ?? "Australia/Adelaide")}.</span>
+                <span className="ml-2">Last refreshed {formatStoreEpoch(lastLoadedAt, selected?.timezone ?? bootstrap?.configs[0]?.timezone ?? "Australia/Melbourne")}.</span>
               )}
             </p>
           </div>

@@ -51,7 +51,7 @@ function money(value: number | null | undefined) {
 function dateTime(value?: string | null) {
   if (!value) return "—";
   const parsed = Date.parse(value);
-  return Number.isFinite(parsed) ? formatStoreEpoch(parsed, "Australia/Adelaide") : value;
+  return Number.isFinite(parsed) ? formatStoreEpoch(parsed, "Australia/Melbourne") : value;
 }
 
 export function NativeCustomerViewModal({
