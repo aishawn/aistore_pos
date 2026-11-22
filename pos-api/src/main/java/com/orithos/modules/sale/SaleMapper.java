@@ -215,14 +215,25 @@ public interface SaleMapper {
             outstanding = 0,
             internal_note = TRIM(CONCAT(COALESCE(internal_note, ''), ' Auto-expired parked sale'))
         WHERE status = 'PARKED'
+          AND vendor_id = #{vendorId}
           AND COALESCE(source_system, '') <> 'shopfront'
           AND (
             (business_date IS NOT NULL AND business_date < #{expireBefore})
             OR (business_date IS NULL AND created_at < #{createdBeforeUtc})
           )
         """)
-    int expireParkedBefore(@Param("expireBefore") java.time.LocalDate expireBefore,
+    int expireParkedBefore(@Param("vendorId") Long vendorId,
+                           @Param("expireBefore") java.time.LocalDate expireBefore,
                            @Param("createdBeforeUtc") java.time.LocalDateTime createdBeforeUtc);
+
+    /** Compatibility signature for tests and non-vendor cleanup callers. */
+    default int expireParkedBefore(java.time.LocalDate expireBefore,
+                                   java.time.LocalDateTime createdBeforeUtc) {
+        return expireParkedBefore(null, expireBefore, createdBeforeUtc);
+    }
+
+    @Select("SELECT DISTINCT vendor_id FROM sale WHERE status = 'PARKED' AND vendor_id IS NOT NULL ORDER BY vendor_id")
+    List<Long> findParkedVendorIds();
 
     @Select("""
         SELECT s.created_at AS timestamp, u.name AS user_name, si.quantity,

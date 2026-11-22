@@ -1,6 +1,7 @@
 package com.orithos.modules.sell;
 
 import com.orithos.common.AustraliaTime;
+import com.orithos.common.BusinessTimezoneService;
 import com.orithos.common.BusinessException;
 import com.orithos.common.SqlLikeUtils;
 import com.orithos.modules.config.CompanySettingsKeys;
@@ -37,26 +38,49 @@ public class SellService {
     private final CustomerMapper customerMapper;
     private final SaleMapper saleMapper;
     private final CompanySettingsService companySettings;
+    private final BusinessTimezoneService businessTimezone;
     private final boolean nativePosOnlyMode;
 
     public SellService(ProductMapper productMapper, CustomerMapper customerMapper, SaleMapper saleMapper) {
-        this(productMapper, customerMapper, saleMapper, null, false);
+        this(productMapper, customerMapper, saleMapper, null, null, false);
     }
 
     @Autowired
     public SellService(ProductMapper productMapper, CustomerMapper customerMapper, SaleMapper saleMapper,
                        CompanySettingsService companySettings,
+                       BusinessTimezoneService businessTimezone,
                        @Value("${app.native-pos-only-mode:true}") boolean nativePosOnlyMode) {
         this.productMapper = productMapper;
         this.customerMapper = customerMapper;
         this.saleMapper = saleMapper;
         this.companySettings = companySettings;
+        this.businessTimezone = businessTimezone;
         this.nativePosOnlyMode = nativePosOnlyMode;
     }
 
     public SellService(ProductMapper productMapper, CustomerMapper customerMapper, SaleMapper saleMapper,
                        boolean nativePosOnlyMode) {
-        this(productMapper, customerMapper, saleMapper, null, nativePosOnlyMode);
+        this(productMapper, customerMapper, saleMapper, null, null, nativePosOnlyMode);
+    }
+
+    public SellService(ProductMapper productMapper, CustomerMapper customerMapper, SaleMapper saleMapper,
+                       CompanySettingsService companySettings, boolean nativePosOnlyMode) {
+        this(productMapper, customerMapper, saleMapper, companySettings, null, nativePosOnlyMode);
+    }
+
+    private LocalDate today(Long vendorId) {
+        return businessTimezone == null ? AustraliaTime.today() : businessTimezone.today(vendorId);
+    }
+
+    private java.time.LocalDateTime localNow(Long vendorId) {
+        return businessTimezone == null ? AustraliaTime.localNow() : businessTimezone.localNow(vendorId);
+    }
+
+    private LocalDate parkedBusinessDate(Sale sale, Long vendorId) {
+        if (sale.getBusinessDate() != null) return sale.getBusinessDate();
+        if (sale.getCreatedAt() == null) return null;
+        return businessTimezone == null ? AustraliaTime.fromUtcWall(sale.getCreatedAt()).toLocalDate()
+                : businessTimezone.fromUtcWall(sale.getCreatedAt(), vendorId).toLocalDate();
     }
 
     /** Search products and customers for the Sell-pad search bar. */
@@ -100,10 +124,10 @@ public class SellService {
     public List<Sale> listParked() {
         Long vendorId = requireVendorId();
         Long outletId = requireOutletId();
-        LocalDate today = AustraliaTime.today();
+        LocalDate today = today(vendorId);
         List<Sale> parked = saleMapper.page(vendorId, outletId, "PARKED", null, 50, 0);
         for (Sale sale : parked) {
-            LocalDate parkedOn = parkedBusinessDate(sale);
+            LocalDate parkedOn = parkedBusinessDate(sale, vendorId);
             sale.setStale(ParkedSalePolicy.stale(parkedOn, today));
             sale.setClearsOn(ParkedSalePolicy.clearsOn(parkedOn));
         }
@@ -115,16 +139,16 @@ public class SellService {
      * Called by the scheduled cleanup job every 15 minutes.
      */
     public int expireOverdueParkedSales() {
-        LocalDate today = AustraliaTime.today();
-        return saleMapper.expireParkedBefore(
-                ParkedSalePolicy.expireBefore(today),
-                ParkedSalePolicy.createdBeforeUtc(today));
-    }
-
-    private static LocalDate parkedBusinessDate(Sale sale) {
-        if (sale.getBusinessDate() != null) return sale.getBusinessDate();
-        if (sale.getCreatedAt() == null) return null;
-        return AustraliaTime.fromUtcWall(sale.getCreatedAt()).toLocalDate();
+        int expired = 0;
+        for (Long vendorId : saleMapper.findParkedVendorIds()) {
+            LocalDate today = today(vendorId);
+            java.time.ZoneId zone = businessTimezone == null
+                    ? java.time.ZoneId.of("Australia/Melbourne") : businessTimezone.zoneForVendor(vendorId);
+            expired += saleMapper.expireParkedBefore(vendorId,
+                    ParkedSalePolicy.expireBefore(today),
+                    ParkedSalePolicy.createdBeforeUtc(today, zone));
+        }
+        return expired;
     }
 
     /** Load a parked sale with its line items (for resume). */
@@ -186,8 +210,8 @@ public class SellService {
         sale.setTotalQuantity(quantity);
         sale.setTotalPrice(total);
         sale.setOutstanding(total);
-        sale.setBusinessDate(AustraliaTime.today());
-        sale.setLocalSoldAt(AustraliaTime.localNow());
+        sale.setBusinessDate(today(vendorId));
+        sale.setLocalSoldAt(localNow(vendorId));
         saleMapper.insert(sale);
 
         for (int i = 0; i < req.getItems().size(); i++) {

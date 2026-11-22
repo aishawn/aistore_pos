@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.orithos.common.AustraliaTime;
+import com.orithos.common.BusinessTimezoneService;
 import com.orithos.common.BusinessException;
 import com.orithos.common.CashRounding;
 import com.orithos.common.GstMath;
@@ -25,6 +26,7 @@ import com.orithos.modules.sale.dto.CheckoutResponse;
 import com.orithos.modules.sale.dto.CheckoutQuoteResponse;
 import com.orithos.security.CurrentUser;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -52,12 +54,24 @@ public class CheckoutService {
     private final RegisterSessionMapper registerSessionMapper;
     private final ObjectMapper objectMapper;
     private final CompanySettingsService companySettings;
+    private final BusinessTimezoneService businessTimezone;
     private final EftposService eftposService;
 
     public CheckoutService(SaleMapper saleMapper, SalePaymentMapper paymentMapper,
                            PaymentMethodMapper paymentMethodMapper, ProductMapper productMapper,
                            RegisterMapper registerMapper, RegisterSessionMapper registerSessionMapper,
                            ObjectMapper objectMapper, CompanySettingsService companySettings,
+                           EftposService eftposService) {
+        this(saleMapper, paymentMapper, paymentMethodMapper, productMapper, registerMapper,
+                registerSessionMapper, objectMapper, companySettings, null, eftposService);
+    }
+
+    @Autowired
+    public CheckoutService(SaleMapper saleMapper, SalePaymentMapper paymentMapper,
+                           PaymentMethodMapper paymentMethodMapper, ProductMapper productMapper,
+                           RegisterMapper registerMapper, RegisterSessionMapper registerSessionMapper,
+                           ObjectMapper objectMapper, CompanySettingsService companySettings,
+                           BusinessTimezoneService businessTimezone,
                            EftposService eftposService) {
         this.saleMapper = saleMapper;
         this.paymentMapper = paymentMapper;
@@ -67,7 +81,16 @@ public class CheckoutService {
         this.registerSessionMapper = registerSessionMapper;
         this.objectMapper = objectMapper;
         this.companySettings = companySettings;
+        this.businessTimezone = businessTimezone;
         this.eftposService = eftposService;
+    }
+
+    private java.time.LocalDate today(Long vendorId) {
+        return businessTimezone == null ? AustraliaTime.today() : businessTimezone.today(vendorId);
+    }
+
+    private java.time.LocalDateTime localNow(Long vendorId) {
+        return businessTimezone == null ? AustraliaTime.localNow() : businessTimezone.localNow(vendorId);
     }
 
     public CheckoutQuoteResponse quote(CheckoutRequest req) {
@@ -244,7 +267,7 @@ public class CheckoutService {
         payment.setAmount(paymentAmount);
         payment.setRounding(rounding.signum() == 0 ? null : rounding);
         payment.setCashout(cashout.signum() > 0 ? cashout : null);
-        payment.setProcessTime(AustraliaTime.localNow());
+        payment.setProcessTime(localNow(CurrentUser.vendorId()));
         paymentMapper.insert(payment);
 
         BigDecimal newOutstanding = outstanding.subtract(paymentAmount).setScale(2, RoundingMode.HALF_UP);
@@ -261,15 +284,15 @@ public class CheckoutService {
             sale.setTotalTax(BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP));
         }
         if (sale.getBusinessDate() == null) {
-            sale.setBusinessDate(AustraliaTime.today());
+            sale.setBusinessDate(today(CurrentUser.vendorId()));
         }
         if (sale.getLocalSoldAt() == null) {
-            sale.setLocalSoldAt(AustraliaTime.localNow());
+            sale.setLocalSoldAt(localNow(CurrentUser.vendorId()));
         }
         if (completed) {
             sale.setStatus("COMPLETED");
-            sale.setBusinessDate(AustraliaTime.today());
-            sale.setLocalSoldAt(AustraliaTime.localNow());
+            sale.setBusinessDate(today(CurrentUser.vendorId()));
+            sale.setLocalSoldAt(localNow(CurrentUser.vendorId()));
             if (sale.getInvoiceId() == null) {
                 sale.setInvoiceId(nextInvoiceId());
             }
@@ -403,8 +426,8 @@ public class CheckoutService {
         sale.setTotalDiscount(discountTotal.setScale(2, RoundingMode.HALF_UP));
         sale.setOutstanding(total);
         sale.setTotalChange(BigDecimal.ZERO);
-        sale.setBusinessDate(AustraliaTime.today());
-        sale.setLocalSoldAt(AustraliaTime.localNow());
+        sale.setBusinessDate(today(CurrentUser.vendorId()));
+        sale.setLocalSoldAt(localNow(CurrentUser.vendorId()));
         saleMapper.insert(sale);
 
         for (CheckoutRequest.Item item : req.getItems()) {

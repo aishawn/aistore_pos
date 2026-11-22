@@ -1,9 +1,8 @@
 package com.orithos.modules.sell;
 
-import com.orithos.common.AustraliaTime;
-
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 
 /**
@@ -25,7 +24,11 @@ public final class ParkedSalePolicy {
 
     /** UTC wall-clock cutoff matching {@link #expireBefore(LocalDate)} at outlet midnight. */
     public static LocalDateTime createdBeforeUtc(LocalDate today) {
-        return expireBefore(today).atStartOfDay(AustraliaTime.ZONE)
+        return createdBeforeUtc(today, ZoneId.of("Australia/Melbourne"));
+    }
+
+    public static LocalDateTime createdBeforeUtc(LocalDate today, ZoneId zone) {
+        return expireBefore(today).atStartOfDay(zone)
                 .withZoneSameInstant(ZoneOffset.UTC)
                 .toLocalDateTime();
     }

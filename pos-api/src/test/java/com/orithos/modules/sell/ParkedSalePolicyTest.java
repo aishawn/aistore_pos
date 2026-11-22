@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.time.ZoneId;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -43,5 +44,15 @@ class ParkedSalePolicyTest {
         assertEquals(LocalDateTime.of(2026, 9, 22, 14, 0), cutoff);
         assertEquals(LocalDate.of(2026, 9, 23),
                 cutoff.atZone(ZoneOffset.UTC).withZoneSameInstant(com.orithos.common.AustraliaTime.ZONE).toLocalDate());
+    }
+
+    @Test
+    void utcCutoffUsesTheConfiguredVendorTimezone() {
+        LocalDateTime cutoff = ParkedSalePolicy.createdBeforeUtc(today, ZoneId.of("Australia/Adelaide"));
+        assertEquals(LocalDateTime.of(2026, 9, 22, 14, 30), cutoff);
+
+        LocalDateTime summerCutoff = ParkedSalePolicy.createdBeforeUtc(
+                LocalDate.of(2026, 1, 10), ZoneId.of("Pacific/Auckland"));
+        assertEquals(LocalDateTime.of(2026, 1, 8, 11, 0), summerCutoff);
     }
 }

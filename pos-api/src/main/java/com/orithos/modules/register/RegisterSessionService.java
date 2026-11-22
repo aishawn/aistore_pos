@@ -2,10 +2,12 @@ package com.orithos.modules.register;
 
 import com.orithos.common.BusinessException;
 import com.orithos.common.AustraliaTime;
+import com.orithos.common.BusinessTimezoneService;
 import com.orithos.modules.config.CompanySettingsKeys;
 import com.orithos.modules.config.CompanySettingsService;
 import com.orithos.security.CurrentUser;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -22,12 +24,25 @@ public class RegisterSessionService {
     private final RegisterSessionMapper sessions;
     private final RegisterClosureMapper closures;
     private final CompanySettingsService companySettings;
+    private final BusinessTimezoneService businessTimezone;
 
     public RegisterSessionService(RegisterSessionMapper sessions, RegisterClosureMapper closures,
                                   CompanySettingsService companySettings) {
+        this(sessions, closures, companySettings, null);
+    }
+
+    @Autowired
+    public RegisterSessionService(RegisterSessionMapper sessions, RegisterClosureMapper closures,
+                                  CompanySettingsService companySettings,
+                                  BusinessTimezoneService businessTimezone) {
         this.sessions = sessions;
         this.closures = closures;
         this.companySettings = companySettings;
+        this.businessTimezone = businessTimezone;
+    }
+
+    private LocalDateTime localNow(Long vendorId) {
+        return businessTimezone == null ? AustraliaTime.localNow() : businessTimezone.localNow(vendorId);
     }
 
     public List<Register> list() {
@@ -48,7 +63,7 @@ public class RegisterSessionService {
         if (register == null) throw notFound();
         RegisterSession session = sessions.findActiveSession(registerId, scope.vendorId(), scope.outletId());
         if (session == null) throw conflict("There is no open register session to close.");
-        LocalDateTime now = AustraliaTime.localNow();
+        LocalDateTime now = localNow(scope.vendorId());
         BigDecimal movement = nz(sessions.sumCashMovements(session.getId(), scope.vendorId(), scope.outletId()));
         BigDecimal netCash = nz(sessions.cashSalesNetOfChange(registerId, scope.outletId(), session.getOpenedAt(), now));
         BigDecimal expectedCash = session.getOpeningFloat().add(movement).add(netCash).setScale(2, RoundingMode.HALF_UP);
@@ -80,7 +95,7 @@ public class RegisterSessionService {
             return replay;
         }
         if (sessions.lockActiveSession(registerId, scope.vendorId(), scope.outletId()) != null) throw conflict("This register already has an open session.");
-        LocalDateTime now = AustraliaTime.localNow();
+        LocalDateTime now = localNow(scope.vendorId());
         RegisterSession session = new RegisterSession();
         session.setVendorId(scope.vendorId()); session.setOutletId(scope.outletId()); session.setRegisterId(registerId);
         session.setOpenedBy(scope.userId()); session.setOpenedAt(now); session.setOpeningFloat(openingFloat.setScale(2, RoundingMode.HALF_UP));
@@ -136,7 +151,7 @@ public class RegisterSessionService {
         if (register == null) throw notFound();
         RegisterSession session = sessions.lockActiveSession(registerId, scope.vendorId(), scope.outletId());
         if (session == null) throw conflict("There is no open register session to close.");
-        LocalDateTime now = AustraliaTime.localNow();
+        LocalDateTime now = localNow(scope.vendorId());
         if (sessions.countUnsettledSales(registerId, scope.outletId(), session.getOpenedAt(), now) > 0) {
             throw conflict("An unpaid sale remains open; finish or cancel it before closing the register.");
         }

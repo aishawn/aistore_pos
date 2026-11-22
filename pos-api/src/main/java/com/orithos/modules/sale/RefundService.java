@@ -2,6 +2,7 @@ package com.orithos.modules.sale;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.orithos.common.AustraliaTime;
+import com.orithos.common.BusinessTimezoneService;
 import com.orithos.common.BusinessException;
 import com.orithos.common.CashRounding;
 import com.orithos.common.Ids;
@@ -18,6 +19,7 @@ import com.orithos.modules.sale.dto.RefundRequest;
 import com.orithos.modules.sale.dto.RefundResponse;
 import com.orithos.security.CurrentUser;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -37,11 +39,20 @@ public class RefundService {
     private final RegisterMapper registers;
     private final RegisterSessionMapper sessions;
     private final CompanySettingsService companySettings;
+    private final BusinessTimezoneService businessTimezone;
     private final ObjectMapper json;
 
     public RefundService(SaleMapper sales, SalePaymentMapper payments, PaymentMethodMapper paymentMethods,
                         ProductMapper products, RegisterMapper registers, RegisterSessionMapper sessions,
+                        CompanySettingsService companySettings, ObjectMapper json) {
+        this(sales, payments, paymentMethods, products, registers, sessions, companySettings, null, json);
+    }
+
+    @Autowired
+    public RefundService(SaleMapper sales, SalePaymentMapper payments, PaymentMethodMapper paymentMethods,
+                        ProductMapper products, RegisterMapper registers, RegisterSessionMapper sessions,
                         CompanySettingsService companySettings,
+                        BusinessTimezoneService businessTimezone,
                         ObjectMapper json) {
         this.sales = sales;
         this.payments = payments;
@@ -50,7 +61,16 @@ public class RefundService {
         this.registers = registers;
         this.sessions = sessions;
         this.companySettings = companySettings;
+        this.businessTimezone = businessTimezone;
         this.json = json;
+    }
+
+    private java.time.LocalDate today(Long vendorId) {
+        return businessTimezone == null ? AustraliaTime.today() : businessTimezone.today(vendorId);
+    }
+
+    private java.time.LocalDateTime localNow(Long vendorId) {
+        return businessTimezone == null ? AustraliaTime.localNow() : businessTimezone.localNow(vendorId);
     }
 
     @Transactional
@@ -111,8 +131,8 @@ public class RefundService {
         refund.setCustomerId(original.getCustomerId());
         refund.setOutletId(outletId);
         refund.setInvoiceId("REF-" + Ids.next());
-        refund.setBusinessDate(AustraliaTime.today());
-        refund.setLocalSoldAt(AustraliaTime.localNow());
+        refund.setBusinessDate(today(vendorId));
+        refund.setLocalSoldAt(localNow(vendorId));
         refund.setTotalPrice(BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP));
         refund.setTotalTax(BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP));
         refund.setTotalDiscount(BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP));
@@ -185,7 +205,7 @@ public class RefundService {
         payment.setAmount(refundAmount.negate());
         BigDecimal cashRounding = refundAmount.subtract(cashPaid);
         payment.setRounding(cashRounding.signum() == 0 ? null : cashRounding);
-        payment.setProcessTime(AustraliaTime.localNow());
+        payment.setProcessTime(localNow(vendorId));
         payments.insert(payment);
 
         boolean fullyRefunded = originalLines.stream().allMatch(line ->
