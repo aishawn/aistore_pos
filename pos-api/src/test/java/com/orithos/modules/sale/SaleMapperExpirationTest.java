@@ -23,7 +23,7 @@ class SaleMapperExpirationTest {
                 "createdBeforeUtc", LocalDateTime.of(2026, 11, 19, 0, 0)
         )).getSql().toLowerCase();
 
-        assertTrue(sql.matches("(?s).*coalesce\\s*\\(\\s*source_system\\s*,\\s*''\\s*\\)\\s*<>\\s*'shopfront'.*"),
+        assertTrue(sql.matches("(?s).*coalesce\\s*\\(\\s*(?:s\\.)?source_system\\s*,\\s*''\\s*\\)\\s*<>\\s*'shopfront'.*"),
                 "parked-sale expiration must preserve source-of-truth Shopfront sales");
     }
 }
