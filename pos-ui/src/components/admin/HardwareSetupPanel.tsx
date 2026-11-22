@@ -223,12 +223,16 @@ export function HardwareSetupPanel() {
   return (
     <div className="space-y-6">
       <section id="hardware-connect" className="sr-only" aria-hidden="true" />
-      <section id="hardware-printer" className="rounded-lg border border-[var(--oh-border)] bg-white p-4 sm:p-5">
+      <details id="hardware-printer" open className="rounded-lg border border-[var(--oh-border)] bg-white">
+        <summary className="flex min-h-14 cursor-pointer list-none flex-wrap items-center justify-between gap-3 px-4 py-3 focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)] sm:px-5 [&::-webkit-details-marker]:hidden">
+          <span className="font-semibold text-[var(--oh-text)]">Receipt printer</span>
+          <span className="text-sm text-[var(--oh-muted)]">
+            {activePrinter || (state.connected ? "Choose a printer" : "Not connected")}
+          </span>
+        </summary>
+        <div className="border-t border-[var(--oh-border)] p-4 sm:p-5">
         <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[var(--oh-border)] pb-4">
           <div>
-            <h2 id="hardware-connect-title" className="text-base font-semibold text-[var(--oh-text)]">
-              Receipt printer
-            </h2>
             <p className="mt-1 text-xs text-[var(--oh-muted)]">
               {state.connected && bridgeLabel ? (
                 <>
@@ -245,10 +249,10 @@ export function HardwareSetupPanel() {
               type="button"
               onClick={saveDraft}
               disabled={!dirty}
-              className="inline-flex min-h-10 items-center gap-2 rounded-md bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white disabled:opacity-50"
+              className={`inline-flex min-h-10 items-center gap-2 rounded-md px-3 text-sm font-semibold disabled:cursor-default ${dirty ? "bg-[var(--oh-primary)] text-white" : "bg-[var(--oh-surface)] text-[var(--oh-muted)]"}`}
             >
               <Save size={15} aria-hidden="true" />
-              Save
+              {dirty ? "Save changes" : "Saved"}
             </button>
             <p className="mt-1 max-w-[14rem] text-[11px] leading-snug text-[var(--oh-muted)]">Saved on this PC only (this browser).</p>
           </div>
@@ -555,25 +559,23 @@ export function HardwareSetupPanel() {
             </button>
           </details>
         </div>
-      </section>
+        </div>
+      </details>
 
-      <section id="hardware-scanner" className="rounded-lg border border-[var(--oh-border)] bg-white p-4 sm:p-5">
+      <details id="hardware-scanner" className="rounded-lg border border-[var(--oh-border)] bg-white">
+        <summary className="flex min-h-14 cursor-pointer list-none flex-wrap items-center justify-between gap-3 px-4 py-3 focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)] sm:px-5 [&::-webkit-details-marker]:hidden">
+          <span className="font-semibold text-[var(--oh-text)]">Barcode scanner</span>
+          <span className={`text-sm ${scannerVerified ? "text-emerald-800" : "text-[var(--oh-muted)]"}`}>
+            {scannerVerified ? "Input verified on this PC" : "Not verified yet"}
+          </span>
+        </summary>
+        <section className="border-t border-[var(--oh-border)] p-4 sm:p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2 className="text-base font-semibold text-[var(--oh-text)]">Barcode scanner</h2>
             <p className="mt-1 text-xs text-[var(--oh-muted)]">
               USB keyboard mode — plug in the scanner; no Hardware Connect or pairing.
             </p>
           </div>
-          <span
-            className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${
-              scannerVerified
-                ? "border-emerald-200 bg-emerald-50 text-emerald-900"
-                : "border-amber-200 bg-amber-50 text-amber-950"
-            }`}
-          >
-            {scannerVerified ? "Input verified on this PC" : "Not verified yet"}
-          </span>
         </div>
         <label className="mt-4 grid max-w-lg gap-1 text-sm font-medium">
           Scan test
@@ -603,7 +605,8 @@ export function HardwareSetupPanel() {
             <li>Leading zeros on barcodes must be preserved; test with a known product.</li>
           </ul>
         </details>
-      </section>
+        </section>
+      </details>
 
       <details id="hardware-optional-tests" className="rounded-lg border border-[var(--oh-border)] bg-white px-4 py-3 sm:px-5">
         <summary className="cursor-pointer text-sm font-medium text-[var(--oh-text)]">Electronic scale (diagnostic)</summary>

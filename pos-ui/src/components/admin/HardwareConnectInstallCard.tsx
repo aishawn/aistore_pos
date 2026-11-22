@@ -145,10 +145,13 @@ export function HardwareConnectInstallCard({ compact, stepsCollapsed }: Props) {
         below.
       </p>
       {body}
-      <p className="mt-3 text-xs text-[var(--oh-muted)]">
-        Replacing an old build? Uninstall via tray → <span className="font-medium">Uninstall</span>, Windows Apps, or run{" "}
-        <span className="font-mono">%LOCALAPPDATA%\Orithos\HardwareConnect\OrithosHardwareConnect.exe --uninstall</span>.
-      </p>
+      <details className="mt-3 text-xs text-[var(--oh-muted)]">
+        <summary className="cursor-pointer font-medium">Replacing an old build?</summary>
+        <p className="mt-1">
+          Uninstall via tray → <span className="font-medium">Uninstall</span>, Windows Apps, or run{" "}
+          <span className="break-all font-mono">%LOCALAPPDATA%\Orithos\HardwareConnect\OrithosHardwareConnect.exe --uninstall</span>.
+        </p>
+      </details>
     </div>
   );
 }

@@ -138,57 +138,81 @@ export function HardwareSetupSteps() {
   }, []);
 
   const completed = STEP_META.filter((step) => stepDone(step.id, bridge, network)).length;
+  const currentStep = STEP_META.find((step) => !stepDone(step.id, bridge, network));
 
   return (
     <nav
       aria-label="Device setup steps"
-      className="rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3 py-3 sm:px-4"
+      className="rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-4 py-3"
     >
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-xs font-medium uppercase tracking-wide text-[var(--oh-muted)]">Setup progress</p>
-        <p className="text-xs tabular-nums text-[var(--oh-muted)]">
-          <span className="font-semibold text-[var(--oh-text)]">{completed}</span> of {STEP_META.length} complete
-        </p>
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
+          <p className="text-sm font-medium text-[var(--oh-text)]">Setup progress</p>
+          <p className="text-xs tabular-nums text-[var(--oh-muted)]">
+            <span className="font-semibold text-[var(--oh-text)]">{completed}</span> of {STEP_META.length} complete
+          </p>
+        </div>
+        {currentStep ? (
+          <button
+            type="button"
+            onClick={() => focusSetupAnchor(currentStep.anchor)}
+            aria-current="step"
+            className="inline-flex min-h-9 items-center gap-2 rounded-md border border-[var(--oh-primary)] px-3 text-left text-sm font-semibold text-[var(--oh-primary)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
+          >
+            <span className="truncate">{currentStep.label}</span>
+            <span aria-hidden="true">›</span>
+          </button>
+        ) : (
+          <span className="inline-flex min-h-9 items-center gap-2 text-sm font-medium text-emerald-800">
+            <Check size={16} aria-hidden="true" />
+            All setup steps complete
+          </span>
+        )}
       </div>
-      <ol className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-        {STEP_META.map((step, index) => {
-          const state = stepState(step.id, bridge, network);
-          const hint = stepHint(step.id, bridge, network);
-          const ring =
-            state === "done"
-              ? "border-emerald-200 bg-emerald-50/80"
-              : state === "current"
-                ? "border-[var(--oh-primary)] bg-white ring-1 ring-[var(--oh-primary)]"
-                : "border-[var(--oh-border)] bg-white";
-          return (
-            <li key={step.id}>
-              <button
-                type="button"
-                onClick={() => focusSetupAnchor(step.anchor)}
-                aria-current={state === "current" ? "step" : undefined}
-                className={`flex w-full min-h-11 items-start gap-2 rounded-lg border px-2.5 py-2 text-left transition-colors hover:bg-[var(--oh-surface)] ${ring}`}
-              >
-                <span
-                  className={`mt-0.5 grid size-5 shrink-0 place-items-center rounded-full border text-[10px] font-bold ${
-                    state === "done"
-                      ? "border-emerald-600 bg-emerald-600 text-white"
-                      : state === "current"
-                        ? "border-[var(--oh-primary)] text-[var(--oh-primary)]"
-                        : "border-[var(--oh-border)] text-[var(--oh-muted)]"
-                  }`}
-                  aria-hidden="true"
+      <details className="mt-2 border-t border-[var(--oh-border)] pt-2">
+        <summary className="min-h-8 cursor-pointer text-xs font-medium text-[var(--oh-muted)] hover:text-[var(--oh-text)]">
+          View all setup steps
+        </summary>
+        <ol className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {STEP_META.map((step, index) => {
+            const state = stepState(step.id, bridge, network);
+            const hint = stepHint(step.id, bridge, network);
+            const ring =
+              state === "done"
+                ? "border-emerald-200 bg-white"
+                : state === "current"
+                  ? "border-[var(--oh-primary)] bg-white"
+                  : "border-[var(--oh-border)] bg-white";
+            return (
+              <li key={step.id}>
+                <button
+                  type="button"
+                  onClick={() => focusSetupAnchor(step.anchor)}
+                  aria-current={state === "current" ? "step" : undefined}
+                  className={`flex min-h-11 w-full items-start gap-2 rounded-md border px-2.5 py-2 text-left transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)] ${ring}`}
                 >
-                  {state === "done" ? <Check size={12} strokeWidth={3} /> : index + 1}
-                </span>
-                <span className="min-w-0">
-                  <span className="block text-xs font-semibold text-[var(--oh-text)]">{step.label}</span>
-                  <span className="mt-0.5 block truncate text-[11px] font-normal text-[var(--oh-muted)]">{hint}</span>
-                </span>
-              </button>
-            </li>
-          );
-        })}
-      </ol>
+                  <span
+                    className={`mt-0.5 grid size-5 shrink-0 place-items-center rounded-full border text-[10px] font-bold ${
+                      state === "done"
+                        ? "border-emerald-600 bg-emerald-600 text-white"
+                        : state === "current"
+                          ? "border-[var(--oh-primary)] text-[var(--oh-primary)]"
+                          : "border-[var(--oh-border)] text-[var(--oh-muted)]"
+                    }`}
+                    aria-hidden="true"
+                  >
+                    {state === "done" ? <Check size={12} strokeWidth={3} /> : index + 1}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-xs font-semibold text-[var(--oh-text)]">{step.label}</span>
+                    <span className="mt-0.5 block truncate text-[11px] font-normal text-[var(--oh-muted)]">{hint}</span>
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ol>
+      </details>
     </nav>
   );
 }
