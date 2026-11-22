@@ -49,7 +49,9 @@ public class RetailRegisterController {
         return ApiResult.ok(new StoreDateTimeOptions(
                 companySettings.getString(CompanySettingsKeys.TIMEZONE, vendorId, "Australia/Melbourne"),
                 companySettings.getString(CompanySettingsKeys.DATE_FORMAT, vendorId, "DD/MM/YYYY"),
-                companySettings.getString(CompanySettingsKeys.TIME_FORMAT, vendorId, "HH:mm")));
+                companySettings.getString(CompanySettingsKeys.TIME_FORMAT, vendorId, "HH:mm"),
+                companySettings.getString("company.name", vendorId, "Orithos"),
+                companySettings.getString(CompanySettingsKeys.ROUND_TO, vendorId, "0.05")));
     }
 
     @GetMapping("/sale-policy")
@@ -120,7 +122,8 @@ public class RetailRegisterController {
     public record CashMovementRequest(String type, BigDecimal amount, String reason) {}
     public record CloseRequest(BigDecimal countedCash, Map<Long, BigDecimal> countedTenders, String note) {}
     public record CashReasonOptions(List<String> cashInReasons, List<String> cashOutReasons) {}
-    public record StoreDateTimeOptions(String timezone, String dateFormat, String timeFormat) {}
+    public record StoreDateTimeOptions(String timezone, String dateFormat, String timeFormat,
+                                       String companyName, String cashRounding) {}
     public record SalePolicy(boolean discountsRequireReason, boolean refundsRequireReason,
                              boolean allowCashOutWithoutSale, boolean requireNoteOnParkedSale,
                              String saleKeysPosition) {}

@@ -64,15 +64,21 @@ class RetailRegisterControllerTest {
                 .thenReturn("YYYY-MM-DD");
         when(companySettings.getString(CompanySettingsKeys.TIME_FORMAT, 3L, "HH:mm"))
                 .thenReturn("HH:mm:ss");
+        when(companySettings.getString("company.name", 3L, "Orithos")).thenReturn("SKR Retail Pty Ltd");
+        when(companySettings.getString(CompanySettingsKeys.ROUND_TO, 3L, "0.05")).thenReturn("0.10");
 
         var response = controller.storeDateTimeOptions();
 
         assertEquals("Australia/Melbourne", response.data().timezone());
         assertEquals("YYYY-MM-DD", response.data().dateFormat());
         assertEquals("HH:mm:ss", response.data().timeFormat());
+        assertEquals("SKR Retail Pty Ltd", response.data().companyName());
+        assertEquals("0.10", response.data().cashRounding());
         verify(companySettings).getString(CompanySettingsKeys.TIMEZONE, 3L, "Australia/Melbourne");
         verify(companySettings).getString(CompanySettingsKeys.DATE_FORMAT, 3L, "DD/MM/YYYY");
         verify(companySettings).getString(CompanySettingsKeys.TIME_FORMAT, 3L, "HH:mm");
+        verify(companySettings).getString("company.name", 3L, "Orithos");
+        verify(companySettings).getString(CompanySettingsKeys.ROUND_TO, 3L, "0.05");
     }
 
     @Test

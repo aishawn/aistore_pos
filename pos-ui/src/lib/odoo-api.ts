@@ -22,6 +22,24 @@ import {
 import { getOdooQuoteTimeoutMessage, ODOO_QUOTE_TIMEOUT_MS } from "./odoo-quote-timeout";
 import { mapNativeProduct, type NativeProductRow } from "./native-product-mapping";
 
+const DEFAULT_STORE_TIMEZONE = "Australia/Melbourne";
+
+function validStoreTimezone(value: string | undefined): string {
+  const timezone = value?.trim();
+  if (!timezone) return DEFAULT_STORE_TIMEZONE;
+  try {
+    new Intl.DateTimeFormat("en-AU", { timeZone: timezone });
+    return timezone;
+  } catch {
+    return DEFAULT_STORE_TIMEZONE;
+  }
+}
+
+function cashRoundingIncrement(value: string | undefined): number {
+  const increment = Number(value);
+  return Number.isFinite(increment) && increment > 0 ? increment : 0.05;
+}
+
 export type OdooRecordType =
   | "products"
   | "purchaseProducts"
@@ -682,10 +700,15 @@ function paymentMethodsForRegister(registerId: number, assignments: RetailPaymen
 }
 
 async function buildNativeBootstrap(): Promise<OdooPosBootstrap> {
-  const [registers, assignments] = await Promise.all([
+  const [registers, assignments, dateTimeOptions] = await Promise.all([
     listRetailRegisters(),
     loadRetailPaymentMethods(),
+    api.get<{ timezone?: string; companyName?: string; cashRounding?: string }>("/api/retail/registers/store-date-time-options")
+      .catch(() => ({} as { timezone?: string; companyName?: string; cashRounding?: string })),
   ]);
+  const companyName = dateTimeOptions.companyName?.trim() || "Orithos";
+  const timezone = validStoreTimezone(dateTimeOptions.timezone);
+  const cashRounding = cashRoundingIncrement(dateTimeOptions.cashRounding);
   const configs = await Promise.all(registers.map(async (register: RetailRegister) => {
     let session: RetailRegisterSession | null = null;
     let summary: Awaited<ReturnType<typeof getRetailRegisterSessionSummary>> | null = null;
@@ -698,8 +721,8 @@ async function buildNativeBootstrap(): Promise<OdooPosBootstrap> {
     return {
       id: Number(register.id),
       name: register.name,
-      company: [Number(register.outletId) || 0, "Orithos"] as [number, string],
-      timezone: "Australia/Adelaide",
+      company: [Number(register.outletId) || 0, companyName] as [number, string],
+      timezone,
       session: session ? {
         id: Number(session.id),
         name: `Session ${session.id}`,
@@ -712,7 +735,7 @@ async function buildNativeBootstrap(): Promise<OdooPosBootstrap> {
       } : null,
       paymentMethods: paymentMethodsForRegister(Number(register.id), assignments),
       pricelistIds: [] as number[],
-      cashRounding: { id: 1, rounding: 0.05, rounding_method: "HALF-UP" as const },
+      cashRounding: { id: 1, rounding: cashRounding, rounding_method: "HALF-UP" as const },
       onlyRoundCashMethod: true,
     };
   }));
@@ -1107,7 +1130,13 @@ export async function searchOdooDailySales(options: {
   offset?: number;
 } = {}): Promise<OdooDailySalesPage> {
   void options.status;
-  const timezone = "Australia/Adelaide";
+  let timezone = DEFAULT_STORE_TIMEZONE;
+  try {
+    const options = await api.get<{ timezone?: string }>("/api/retail/registers/store-date-time-options");
+    timezone = validStoreTimezone(options.timezone);
+  } catch {
+    // Keep daily sales available with the documented Melbourne default during settings API outages.
+  }
   const today = new Intl.DateTimeFormat("en-CA", { timeZone: timezone }).format(new Date());
   const shift = (day: string, days: number) => {
     const date = new Date(`${day}T12:00:00Z`);

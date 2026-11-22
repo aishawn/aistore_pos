@@ -1042,7 +1042,7 @@ export function OdooRegisterPage() {
   }
 
   function formatParkedDate(value: string, timezone?: string) {
-    return formatStoreDate(value, timezone || selectedConfig?.timezone || "Australia/Adelaide");
+    return formatStoreDate(value, timezone || selectedConfig?.timezone || "Australia/Melbourne");
   }
 
   function persistPendingOrder(request: RetailCheckoutRequest) {
