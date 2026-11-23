@@ -99,6 +99,13 @@ public class ReportTemplateRegistry {
                                AS store_inventory_value_total,
                              COUNT(*) FILTER (WHERE COALESCE(c.case_cost, c.cost, 0) > 0) AS valued_product_count,
                              COUNT(*) FILTER (WHERE COALESCE(c.case_cost, c.cost, 0) <= 0) AS excluded_product_count,
+                             COUNT(*) FILTER (WHERE p.status <> 'ACTIVE') AS inactive_product_count,
+                             COALESCE(SUM(CASE WHEN c.case_cost IS NOT NULL AND c.case_quantity > 0
+                                               THEN i.quantity * c.case_cost / c.case_quantity
+                                               ELSE i.quantity * c.cost END)
+                                      FILTER (WHERE p.status <> 'ACTIVE'
+                                                AND COALESCE(c.case_cost, c.cost, 0) > 0), 0)
+                               AS inactive_inventory_value_total,
                              MAX(i.updated_at) AS latest_inventory_observation
                       FROM ai_rpt_inventory i
                       JOIN ai_rpt_product_core p ON p.id = i.product_id AND p.outlet_id = i.outlet_id
@@ -118,8 +125,9 @@ public class ReportTemplateRegistry {
                     )
                     SELECT t.id, t.name, t.on_hand, t.inventory_value,
                            s.store_inventory_value_total, s.valued_product_count, s.excluded_product_count,
+                           s.inactive_product_count, s.inactive_inventory_value_total,
                            to_char(s.latest_inventory_observation, 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS "dataAsOf",
-                           CASE WHEN s.excluded_product_count > 0 THEN 'incomplete'
+                           CASE WHEN s.excluded_product_count > 0 OR s.inactive_product_count > 0 THEN 'incomplete'
                                 WHEN s.valued_product_count = 0 THEN 'no_data'
                                 ELSE 'available' END AS "reportDataStatus"
                     FROM store_summary s

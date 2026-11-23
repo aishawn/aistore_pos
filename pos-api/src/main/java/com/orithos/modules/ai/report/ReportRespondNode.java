@@ -404,11 +404,20 @@ public class ReportRespondNode implements NodeAction {
         BigDecimal storeTotal = ReportQueryService.toDecimal(summary.get("store_inventory_value_total"));
         int valuedCount = ReportQueryService.toDecimal(summary.get("valued_product_count")).intValue();
         int excludedCount = ReportQueryService.toDecimal(summary.get("excluded_product_count")).intValue();
+        int inactiveCount = ReportQueryService.toDecimal(summary.get("inactive_product_count")).intValue();
+        BigDecimal inactiveValue = ReportQueryService.toDecimal(summary.get("inactive_inventory_value_total"));
         if (hasStoreTotal && valuedCount == 0) {
-            return chinese
+            String unavailable = chinese
                     ? "库存金额暂不可用：没有可验证的商品成本；有库存但未计价的商品数为 " + excludedCount + "。"
                     : "Inventory value is unavailable because no on-hand products have verifiable positive costs; "
                             + excludedCount + " products were not valued.";
+            if (inactiveCount > 0) {
+                unavailable += chinese
+                        ? "其中停用商品有 " + inactiveCount + " 个在库，成本未核实；核对状态前请勿将其视为正常在售库存。"
+                        : " " + inactiveCount + " inactive product(s) are on hand with unverified cost; "
+                                + "verify their status before treating them as active stock.";
+            }
+            return unavailable;
         }
         BigDecimal topTotal = BigDecimal.ZERO;
         StringBuilder sb = new StringBuilder(chinese ? "库存资金占用最高的商品：" : "Top inventory cash usage: ");
@@ -429,14 +438,34 @@ public class ReportRespondNode implements NodeAction {
                         .append("，覆盖 ").append(valuedCount).append(" 个商品；另有 ")
                         .append(excludedCount).append(" 个商品未计价，完整库存金额暂不可用。前 ")
                         .append(Math.min(8, valuedCount)).append(" 个商品小计 AUD ").append(money(topTotal))
-                        .append("。数据来源：Orithos 当前库存和商品成本快照。");
+                        .append("。");
+                if (inactiveCount > 0) {
+                    sb.append("其中停用商品有 ").append(inactiveCount).append(" 个在库");
+                    if (inactiveValue.signum() > 0) {
+                        sb.append("，可计成本部分 AUD ").append(money(inactiveValue));
+                    } else {
+                        sb.append("，成本未核实");
+                    }
+                    sb.append("；核对状态前请勿将其视为正常在售库存。");
+                }
+                sb.append("数据来源：Orithos 当前库存和商品成本快照。");
             } else {
                 sb.append(". Known-cost on-hand inventory subtotal: AUD ")
                         .append(money(storeTotal)).append(" across ").append(valuedCount)
                         .append(" products; ").append(excludedCount)
                         .append(" products were not valued, so the complete inventory value is unavailable. Top ")
                         .append(Math.min(8, valuedCount)).append(" items subtotal AUD ").append(money(topTotal))
-                        .append(" Source: Orithos on-hand quantities and product costs; current snapshot.");
+                        .append(".");
+                if (inactiveCount > 0) {
+                    sb.append(" Includes ").append(inactiveCount).append(" inactive product(s) on hand");
+                    if (inactiveValue.signum() > 0) {
+                        sb.append("; known-cost portion AUD ").append(money(inactiveValue));
+                    } else {
+                        sb.append(" with unverified cost");
+                    }
+                    sb.append("; verify their status before treating them as active stock.");
+                }
+                sb.append(" Source: Orithos on-hand quantities and product costs; current snapshot.");
             }
             return sb.toString();
         }

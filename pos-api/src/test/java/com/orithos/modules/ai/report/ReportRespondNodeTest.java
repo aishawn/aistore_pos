@@ -607,6 +607,67 @@ class ReportRespondNodeTest {
     }
 
     @Test
+    void stockValueDisclosesInactiveStockAndItsKnownCost() {
+        Map<String, Object> summary = new java.util.HashMap<>();
+        summary.put("name", "PVC bag");
+        summary.put("inventory_value", BigDecimal.valueOf(8904));
+        summary.put("store_inventory_value_total", BigDecimal.valueOf(395522.40));
+        summary.put("valued_product_count", 3085);
+        summary.put("excluded_product_count", 4);
+        summary.put("inactive_product_count", 21);
+        summary.put("inactive_inventory_value_total", BigDecimal.valueOf(20460.28));
+        OverAllState stockValue = state("", List.of(summary));
+        when(stockValue.value("intent", String.class)).thenReturn(Optional.of("report_stock_value"));
+        when(stockValue.value("question", String.class)).thenReturn(Optional.of("How much cash is tied up in stock?"));
+
+        String answer = (String) node.apply(stockValue).get("answer");
+
+        org.junit.jupiter.api.Assertions.assertTrue(answer.contains("21 inactive product(s) on hand"));
+        org.junit.jupiter.api.Assertions.assertTrue(answer.contains("known-cost portion AUD 20460.28"));
+        org.junit.jupiter.api.Assertions.assertTrue(answer.contains("verify their status"));
+    }
+
+    @Test
+    void chineseStockValueDisclosesInactiveStockAndItsKnownCost() {
+        Map<String, Object> summary = new java.util.HashMap<>();
+        summary.put("name", "PVC bag");
+        summary.put("inventory_value", BigDecimal.valueOf(8904));
+        summary.put("store_inventory_value_total", BigDecimal.valueOf(395522.40));
+        summary.put("valued_product_count", 3085);
+        summary.put("excluded_product_count", 4);
+        summary.put("inactive_product_count", 21);
+        summary.put("inactive_inventory_value_total", BigDecimal.valueOf(20460.28));
+        OverAllState stockValue = state("", List.of(summary));
+        when(stockValue.value("intent", String.class)).thenReturn(Optional.of("report_stock_value"));
+        when(stockValue.value("question", String.class)).thenReturn(Optional.of("库存资金占用了多少？"));
+
+        String answer = (String) node.apply(stockValue).get("answer");
+
+        org.junit.jupiter.api.Assertions.assertTrue(answer.contains("停用商品有 21 个在库"));
+        org.junit.jupiter.api.Assertions.assertTrue(answer.contains("AUD 20460.28"));
+        org.junit.jupiter.api.Assertions.assertTrue(answer.contains("核对状态前"));
+    }
+
+    @Test
+    void stockValueWithoutAnyVerifiableCostsStillDisclosesInactiveStock() {
+        Map<String, Object> summary = new java.util.HashMap<>();
+        summary.put("store_inventory_value_total", BigDecimal.ZERO);
+        summary.put("valued_product_count", 0);
+        summary.put("excluded_product_count", 21);
+        summary.put("inactive_product_count", 21);
+        summary.put("inactive_inventory_value_total", BigDecimal.ZERO);
+        OverAllState stockValue = state("", List.of(summary));
+        when(stockValue.value("intent", String.class)).thenReturn(Optional.of("report_stock_value"));
+        when(stockValue.value("question", String.class)).thenReturn(Optional.of("库存金额多少？"));
+
+        String answer = (String) node.apply(stockValue).get("answer");
+
+        org.junit.jupiter.api.Assertions.assertTrue(answer.contains("停用商品有 21 个在库"));
+        org.junit.jupiter.api.Assertions.assertTrue(answer.contains("成本未核实"));
+        org.junit.jupiter.api.Assertions.assertFalse(answer.contains("AUD 0.00"));
+    }
+
+    @Test
     void missingOutletAndPermissionHaveDistinctGuidance() {
         assertError("NO_OUTLET", "Your account is not bound to a store.");
         assertError("NO_PERMISSION", "You do not have permission to query reports.");

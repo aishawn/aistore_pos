@@ -91,8 +91,11 @@ class ReportTemplateRegistryTest {
         assertTrue(bound.sql().contains("AND COALESCE(c.case_cost, c.cost, 0) > 0"));
         assertTrue(bound.sql().contains(
                 "COUNT(*) FILTER (WHERE COALESCE(c.case_cost, c.cost, 0) <= 0)"));
+        assertTrue(bound.sql().contains("COUNT(*) FILTER (WHERE p.status <> 'ACTIVE') AS inactive_product_count"));
+        assertTrue(bound.sql().contains("AS inactive_inventory_value_total"));
         assertTrue(bound.sql().contains("MAX(i.updated_at)"));
-        assertTrue(bound.sql().contains("s.excluded_product_count > 0 THEN 'incomplete'"));
+        assertTrue(bound.sql().contains(
+                "s.excluded_product_count > 0 OR s.inactive_product_count > 0 THEN 'incomplete'"));
         assertTrue(bound.sql().contains("LIMIT 8"));
         assertFalse(bound.sql().contains("OVER ()"));
         assertEquals(List.of(87L, 87L), bound.params());
