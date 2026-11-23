@@ -27,6 +27,16 @@ export function localMidnightUtc(day: string, timezone: string): string {
   return new Date(instant).toISOString().slice(0, 19).replace("T", " ");
 }
 
+export const NEGATIVE_STOCK_REVIEW_HREF = "/purchases?tab=replenishment&review=negative-stock";
+
+export function negativeStockReviewQueue<T extends { id: number; onHand: number; soldUnits: number }>(
+  products: readonly T[],
+): T[] {
+  return products.filter((product) => product.onHand < 0).sort((left, right) =>
+    right.soldUnits - left.soldUnits || left.onHand - right.onHand || left.id - right.id,
+  );
+}
+
 export function replenishmentIssues(product: Record<string, unknown>): string[] {
   const issues: string[] = [];
   const onHand = Number(product.qty_available);

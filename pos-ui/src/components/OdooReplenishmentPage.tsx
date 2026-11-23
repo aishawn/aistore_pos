@@ -4,6 +4,8 @@ import { estimatePurchaseValue, formatPurchaseQuantity, positivePurchaseLines } 
 import { draftSupplierId } from "@/lib/purchase-draft-policy";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { negativeStockReviewQueue } from "@/lib/replenishment-safety";
 import {
   AlertCircle,
   CalendarRange,
@@ -131,7 +133,7 @@ type ReplenishmentData = {
   };
 };
 
-type ListFilter = "suggestions" | "urgent" | "out_of_stock" | "review" | "missing_data" | "slow_stock" | "all";
+type ListFilter = "suggestions" | "urgent" | "out_of_stock" | "negative_stock" | "review" | "missing_data" | "slow_stock" | "all";
 
 const coverageOptions = [7, 14, 21, 28, 42];
 const number = new Intl.NumberFormat("en-AU", { maximumFractionDigits: 1 });
@@ -205,7 +207,8 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
   const [coverageDays, setCoverageDays] = useState(21);
   const [exceptionOnly, setExceptionOnly] = useState(false);
   const [supplierFilter, setSupplierFilter] = useState("");
-  const [listFilter, setListFilter] = useState<ListFilter>("suggestions");
+  const requestedReview = useSearchParams().get("review");
+  const [listFilter, setListFilter] = useState<ListFilter>(() => requestedReview === "negative-stock" ? "negative_stock" : "suggestions");
   const [query, setQuery] = useState("");
   const [showMoreColumns, setShowMoreColumns] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(() => new Set());
@@ -345,6 +348,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
   );
   const totalOrderReadyUnits = orderReadyItems.reduce((sum, product) => sum + product.suggestedQuantity, 0);
   const totalSuggestedUnits = suggestedItems.reduce((sum, product) => sum + product.suggestedQuantity, 0);
+  const negativeStockCount = data?.reviewIssueCounts?.NEGATIVE_STOCK ?? 0;
   const outOfStockWithDemand = (data?.products ?? []).filter((product) => product.onHand <= 0 && product.soldUnits > 0).length;
   const urgentRiskCount = (data?.products ?? []).filter((product) => product.risk === "HIGH" || (product.onHand <= 0 && product.soldUnits > 0)).length;
   const forecastReadinessSummary = useMemo(() => forecastReadiness(data?.products ?? []), [data?.products]);
@@ -371,6 +375,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
       ? base.filter((product) => product.suggestedQuantity > 0 && product.recommendationStatus === "READY")
       : listFilter === "urgent"
         ? base.filter((product) => product.risk === "HIGH" || (product.onHand <= 0 && product.soldUnits > 0))
+      : listFilter === "negative_stock" ? negativeStockReviewQueue(base)
       : listFilter === "review" ? base.filter((product) => product.recommendationStatus === "REVIEW_DATA")
       : listFilter === "missing_data" ? base.filter((product) =>
         !(typeof product.unitCost === "number" && Number.isFinite(product.unitCost) && product.unitCost > 0)
@@ -730,6 +735,11 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
           {(data?.reviewRequiredCount ?? 0) > 0 && (
             <div className="mt-2 flex flex-wrap gap-1.5">
               <button type="button" onClick={() => setListFilter("urgent")} className="rounded-md border border-[var(--oh-border)] bg-white px-2 py-1 text-xs font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)]">Urgent · {number.format(urgentRiskCount)}</button>
+              {negativeStockCount > 0 && (
+                <button type="button" onClick={() => setListFilter("negative_stock")} className="rounded-md border border-[var(--oh-border)] bg-white px-2 py-1 text-xs font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)]">
+                  Negative stock · {number.format(negativeStockCount)}
+                </button>
+              )}
               <button type="button" onClick={() => setListFilter("review")} className="rounded-md border border-[var(--oh-border)] bg-white px-2 py-1 text-xs font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)]">Review data</button>
             </div>
           )}
@@ -748,7 +758,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
         <header className="flex flex-col gap-2.5 border-b border-[var(--oh-border)] px-4 py-3 md:px-5">
           <div>
             <h2 className="text-sm font-semibold text-[var(--oh-text)]">
-              {listFilter === "all" ? "All products" : listFilter === "urgent" ? "Urgent" : listFilter === "out_of_stock" ? "Out of stock with sales" : listFilter === "missing_data" ? "Missing cost or lead time" : listFilter === "review" ? "Review data" : "Ready to order"}
+              {listFilter === "all" ? "All products" : listFilter === "urgent" ? "Urgent" : listFilter === "out_of_stock" ? "Out of stock with sales" : listFilter === "missing_data" ? "Missing cost or lead time" : listFilter === "negative_stock" ? "Negative stock review" : listFilter === "review" ? "Review data" : "Ready to order"}
             </h2>
             <p className="mt-0.5 text-xs text-[var(--oh-muted)]">
               {number.format(filteredItems.length)} lines
@@ -799,6 +809,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
                 <option value="suggestions">Ready to order</option>
                 <option value="urgent">Urgent risks ({number.format(urgentRiskCount)})</option>
                 <option value="out_of_stock">Out of stock with demand</option>
+                <option value="negative_stock">Negative stock ({number.format(negativeStockCount)})</option>
                 <option value="review">Review data ({data?.reviewRequiredCount ?? 0})</option>
                 <option value="missing_data">Missing cost or lead time ({number.format(missingDataCount)})</option>
                 <option value="slow_stock">Slow or overstocked</option>

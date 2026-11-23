@@ -11,6 +11,7 @@ import { AiCommandPreviewCard } from "@/components/ai/AiCommandPreviewCard";
 import { OrithosLogo } from "@/components/OrithosLogo";
 import { createPortal } from "react-dom";
 import Link from "next/link";
+import { NEGATIVE_STOCK_REVIEW_HREF } from "@/lib/replenishment-safety";
 import { usePathname, useRouter } from "next/navigation";
 import { BarChart3, Boxes, ChevronDown, Eraser, ExternalLink, History, Lightbulb, MessageCircle, MoreHorizontal, PackageSearch, Plus, RefreshCw, ShoppingCart, Sparkles, Store, X } from "lucide-react";
 import { cn, formatReportColumnHeader } from "@/lib/utils";
@@ -2020,6 +2021,16 @@ function DialogueView({
                         className={cn(chatNavLinkClassName, "mt-2 min-h-11 rounded-lg border border-[var(--oh-border)] px-3 focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)]")}
                       >
                         {assistantCardCtaLabel(cardCta, chineseCard)}
+                        <ExternalLink className="h-3 w-3 shrink-0 opacity-70" aria-hidden />
+                      </button>
+                    ) : null}
+                    {card.type === "replenishment" && (card.inventoryGapCount ?? 0) > 0 ? (
+                      <button
+                        type="button"
+                        onClick={() => onOpenLink(NEGATIVE_STOCK_REVIEW_HREF)}
+                        className={cn(chatNavLinkClassName, "mt-2 min-h-11 px-3 text-[var(--oh-muted)]")}
+                      >
+                        {chineseCard ? "查看负库存复核" : "Open negative stock review"}
                         <ExternalLink className="h-3 w-3 shrink-0 opacity-70" aria-hidden />
                       </button>
                     ) : null}

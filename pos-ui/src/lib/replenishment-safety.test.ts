@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { salesDate, shiftDay, localMidnightUtc, isValidBusinessDay, replenishmentIssues, replenishmentDemandIssues, stockoutProjection, replenishmentAttention } from "./replenishment-safety.ts";
+import { salesDate, shiftDay, localMidnightUtc, isValidBusinessDay, replenishmentIssues, replenishmentDemandIssues, stockoutProjection, replenishmentAttention, negativeStockReviewQueue } from "./replenishment-safety.ts";
 
 test("Odoo UTC orders cross into the Australian business day", () => {
   assert.equal(salesDate("2026-10-30 14:00:00", "Australia/Adelaide"), "2026-10-31");
@@ -57,4 +57,16 @@ test("attention prioritises data review and projected stockout", () => {
   assert.deepEqual(replenishmentAttention({ trend: "up", risk: "LOW" }), {
     level: "MEDIUM", score: 50, reasons: ["DEMAND_TREND_UP"],
   });
+});
+
+test("negative stock review ranks recent demand before the stock discrepancy", () => {
+  const products = [
+    { id: 1, onHand: -50, soldUnits: 0 },
+    { id: 2, onHand: 0, soldUnits: 12 },
+    { id: 3, onHand: -2, soldUnits: 5 },
+    { id: 4, onHand: -12, soldUnits: 5 },
+    { id: 5, onHand: -12, soldUnits: 5 },
+  ];
+  assert.deepEqual(negativeStockReviewQueue(products).map((product) => product.id), [4, 5, 3, 1]);
+  assert.deepEqual(products.map((product) => product.id), [1, 2, 3, 4, 5]);
 });
