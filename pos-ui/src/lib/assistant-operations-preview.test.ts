@@ -1,7 +1,13 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { ageOperationsPreviewSnapshot, clearOperationsPreviewSnapshots } from "./assistant-operations-snapshot-cache.ts";
-import { assistantRequestTimeoutMs, assistantTimeoutMessage, operationsPreviewIntent, readOperationsPreview } from "./assistant-operations-preview.ts";
+import {
+  assistantRequestTimeoutMs,
+  assistantTimeoutMessage,
+  operationsPreviewIntent,
+  readOperationsPreview,
+  replenishmentExpectedArrivalDate,
+} from "./assistant-operations-preview.ts";
 import { storeWeekStart } from "./assistant-business-period.ts";
 
 const question = "Analyse low stock items and suggest what to reorder";
@@ -55,6 +61,7 @@ test("full catalogue suggestions survive unrelated review products", async () =>
   assert.match(result?.answer ?? "", /1 product lacks a recorded purchase cost/);
   assert.equal(result?.cards?.[0].items?.[0].id, 501);
   assert.match(result?.cards?.[0].items?.[0].label ?? "", /30-day supplier lead time/);
+  assert.match(result?.cards?.[0].items?.[0].label ?? "", /estimated arrival 2026-12-13/);
   assert.equal(result?.dataAsOf, "2026-11-13T01:00:00Z");
   assert.equal(result?.dataSource, "orithos_ledger");
   assert.equal(result?.storeScope, "current_authenticated_store");
@@ -65,6 +72,40 @@ test("full catalogue suggestions survive unrelated review products", async () =>
   assert.deepEqual(result?.writeRequests, []);
   assert.doesNotMatch(result?.answer ?? "", /Gift card/);
   assert.match(result?.answer ?? "", /Negative stock to review: Milk/);
+});
+
+test("arrival dates use the store business date across daylight saving transitions", () => {
+  assert.equal(
+    replenishmentExpectedArrivalDate("2026-10-03T15:30:00Z", 2, "Australia/Melbourne"),
+    "2026-10-06",
+  );
+  assert.equal(replenishmentExpectedArrivalDate("2026-11-13T01:00:00Z", 0, "Australia/Melbourne"), "2026-11-13");
+  assert.equal(replenishmentExpectedArrivalDate("2026-11-13T01:00:00Z", null, "Australia/Melbourne"), null);
+  assert.equal(replenishmentExpectedArrivalDate(null, 4, "Australia/Melbourne"), null);
+  assert.equal(replenishmentExpectedArrivalDate("invalid", 4, "Australia/Melbourne"), null);
+  assert.equal(replenishmentExpectedArrivalDate("2026-11-13T01:00:00Z", 4, "invalid/timezone"), null);
+});
+
+test("replenishment cards disclose an unknown arrival date when lead time is missing", async () => {
+  const result = await readOperationsPreview(question, null, undefined, mockFetch({ data: {
+    dataSource: "orithos_ledger", storeScope: "current_authenticated_store",
+    reportPeriodFrom: "2026-10-01", reportPeriodTo: "2026-11-13",
+    reportTimeZone: "Australia/Melbourne", reportDataStatus: "available",
+    dataAsOf: "2026-11-13T01:00:00Z", coverageDays: 21, itemsNeedingOrder: 1,
+    dataGapCount: 0, dataGaps: [], top: [{ productId: 501, name: "Beer", suggestedQuantity: 8 }],
+  } }));
+  assert.match(result?.cards?.[0].items?.[0].label ?? "", /supplier lead time not recorded; arrival date unknown/);
+});
+
+test("replenishment cards disclose an unknown arrival date when the data timestamp is missing", async () => {
+  const timestampMissing = await readOperationsPreview(question, null, undefined, mockFetch({ data: {
+    dataSource: "orithos_ledger", storeScope: "current_authenticated_store",
+    reportPeriodFrom: "2026-10-01", reportPeriodTo: "2026-11-13",
+    reportTimeZone: "Australia/Melbourne", reportDataStatus: "available",
+    dataAsOf: null, coverageDays: 21, itemsNeedingOrder: 1,
+    dataGapCount: 0, dataGaps: [], top: [{ productId: 501, name: "Beer", suggestedQuantity: 8, leadTimeDays: 4 }],
+  } }));
+  assert.match(timestampMissing?.cards?.[0].items?.[0].label ?? "", /data timestamp or store timezone unavailable; arrival date unknown/);
 });
 
 test("all review is not a claim that no replenishment is needed", async () => {
