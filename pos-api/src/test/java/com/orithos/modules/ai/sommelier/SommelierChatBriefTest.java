@@ -74,6 +74,17 @@ class SommelierChatBriefTest {
     }
 
     @Test
+    void australianBudgetAndMealReachTheWineMatcher() {
+        var white = SommelierChatBrief.fromQuestion("Recommend a white wine under A$30 for prawns and fish");
+        assertEquals(new BigDecimal("30"), white.budgetMax());
+        assertEquals("white", white.wineType());
+        assertEquals(List.of("seafood", "fish"), white.food());
+        var barbecue = SommelierChatBrief.fromQuestion("推荐 35 澳元以内、配烤羊肉和烧烤的红酒");
+        assertEquals(new BigDecimal("35"), barbecue.budgetMax());
+        assertEquals(List.of("lamb", "bbq"), barbecue.food());
+    }
+
+    @Test
     void unavailableCatalogueIsExplicitAndDoesNotInventRecommendations() {
         SommelierService service = mock(SommelierService.class);
         TenantContext tenant = new TenantContext(1L, 1L, 1L, List.of(1L), Set.of("ROLE_ADMIN"));

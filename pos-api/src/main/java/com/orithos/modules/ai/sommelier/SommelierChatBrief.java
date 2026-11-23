@@ -9,7 +9,9 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -22,13 +24,28 @@ import java.util.regex.Pattern;
 public class SommelierChatBrief {
 
     private static final Pattern UNDER_BUDGET = Pattern.compile(
-            "(?:under|below|less than|最多|不超过|以内)\\s*\\$?(\\d+(?:\\.\\d{1,2})?)|"
+            "(?:under|below|less than|最多|不超过|以内)\\s*(?:AUD\\s*|A?\\$\\s*)?(\\d+(?:\\.\\d{1,2})?)|"
                     + "\\$?(\\d+(?:\\.\\d{1,2})?)\\s*(?:元|澳元|刀)?\\s*(?:以内|以下)",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern RED = Pattern.compile("\\bred\\b|红(?:葡萄)?酒", Pattern.CASE_INSENSITIVE);
     private static final Pattern WHITE = Pattern.compile("\\bwhite\\b|白葡萄酒|白酒", Pattern.CASE_INSENSITIVE);
     private static final Pattern SPARKLING = Pattern.compile(
             "\\bsparkling\\b|香槟|起泡(?:酒)?", Pattern.CASE_INSENSITIVE);
+
+    private static final List<Map.Entry<String, Pattern>> FOOD_PAIRINGS = List.of(
+            food("steak", "\\b(?:steak|beef)\\b|牛排|牛肉"),
+            food("seafood", "\\b(?:seafood|prawns?|shrimp|oysters?)\\b|海鲜|虾|生蚝"),
+            food("fish", "\\b(?:fish|salmon|barramundi)\\b|鱼"),
+            food("lamb", "\\blamb\\b|羊肉"),
+            food("bbq", "\\b(?:bbq|barbecue|barbeque)\\b|烧烤"),
+            food("chicken", "\\bchicken\\b|鸡肉"),
+            food("pasta", "\\bpasta\\b|意面"),
+            food("pizza", "\\bpizza\\b|披萨"),
+            food("cheese", "\\bcheese\\b|奶酪|芝士"));
+
+    private static Map.Entry<String, Pattern> food(String tag, String terms) {
+        return Map.entry(tag, Pattern.compile(terms, Pattern.CASE_INSENSITIVE));
+    }
 
     private final SommelierService sommelierService;
 
@@ -132,6 +149,10 @@ public class SommelierChatBrief {
         }
         String occasion = q.toLowerCase(Locale.ROOT).contains("steak")
                 || q.contains("牛排") ? "steak dinner" : null;
-        return new RecommendRequest(wineType, null, budgetMax, null, null, null, null, null, null, occasion);
+        List<String> food = FOOD_PAIRINGS.stream()
+                .filter(entry -> entry.getValue().matcher(q).find())
+                .map(Map.Entry::getKey)
+                .toList();
+        return new RecommendRequest(wineType, null, budgetMax, null, null, null, null, null, food, occasion);
     }
 }
