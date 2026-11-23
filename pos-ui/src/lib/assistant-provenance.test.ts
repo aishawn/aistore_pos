@@ -36,9 +36,15 @@ test("reports actual returned range separately from the latest returned day", ()
 test("distinguishes missing sales rows from aggregated rows without dates", () => {
   assert.equal(assistantReturnedSalesDateSummary([], false), "No sales rows returned");
   assert.equal(assistantReturnedSalesDateSummary([{ Metric: "Sales", Value: "123.45" }], false),
-    "Sales data was returned without readable daily dates");
+    "Aggregated sales result has no daily breakdown");
   assert.equal(assistantReturnedSalesDateSummary([{ 指标: "营业额", 金额: "123.45" }], true),
-    "已返回销售数据，但没有可识别的逐日日期");
+    "销售汇总数据未包含逐日明细");
+  assert.equal(assistantReturnedSalesDateSummary([{ Sales: "123.45" }], false, "2026-11-23"),
+    "Daily aggregate for 2026-11-23");
+  assert.equal(assistantReturnedSalesDateSummary([{ Sales: "123.45" }], true, "2026-11-23"),
+    "单日报表汇总日期：2026-11-23");
+  assert.equal(assistantReturnedSalesDateSummary([{ Sales: "123.45" }], false, "2026-11-01 to 2026-11-23"),
+    "Aggregated result covers 2026-11-01 to 2026-11-23; no daily breakdown returned");
   assert.equal(assistantReturnedSalesDateSummary([{ date: "2026-11-12", Sales: "123.45" }], false),
     "Rows span: 2026-11-12 · Latest returned sales date: 2026-11-12");
 });

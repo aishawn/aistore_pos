@@ -48,6 +48,7 @@ const FLOAT_SHADOW =
   "0 4px 24px rgba(37, 99, 235, 0.10), 0 1px 4px rgba(15, 23, 42, 0.06)";
 const FLOAT_POS_KEY = "orithos-ai-float-anchor";
 const DRAG_THRESHOLD_PX = 6;
+const SALES_TABLE_METADATA_COLUMNS = new Set(["reportDataStatus", "costAvailable", "dataAsOf", "dataSource"]);
 
 type FloatAnchor = { x: number; y: number };
 
@@ -1931,6 +1932,9 @@ function DialogueView({
         {messages.map((msg, i) => {
           const links = messageLinks(msg);
           const cards = msg.cards ?? [];
+          const tableColumns = msg.table?.columns.filter((col) =>
+            msg.diagnostics?.intent !== "report_sales" || !SALES_TABLE_METADATA_COLUMNS.has(col),
+          ) ?? [];
           const cardCtas = cards.map(resolveAssistantCardCta);
           const cardRoutes = new Set(cardCtas.flatMap((cta) => cta ? [cta.href] : []));
           const fallbackLinks = links.filter((link) => !cardRoutes.has(link.href));
@@ -2116,12 +2120,12 @@ function DialogueView({
                 ) : null}
               </>
             )}
-            {msg.role === "assistant" && msg.table && msg.table.rows.length > 0 && (
+            {msg.role === "assistant" && msg.table && msg.table.rows.length > 0 && tableColumns.length > 0 && (
               <div className="mt-2 overflow-x-auto">
                 <table aria-label="Assistant result table" className="w-full border-collapse text-[13px]">
                   <thead>
                     <tr>
-                      {msg.table.columns.map((col) => (
+                      {tableColumns.map((col) => (
                         <th
                           key={col}
                           scope="col"
@@ -2135,7 +2139,7 @@ function DialogueView({
                   <tbody>
                     {msg.table.rows.slice(0, 8).map((row, ri) => (
                       <tr key={ri}>
-                        {msg.table!.columns.map((col) => (
+                        {tableColumns.map((col) => (
                           <td key={col} className="px-1.5 py-1 text-[var(--oh-text-secondary)]">
                             {row[col] == null ? "" : String(row[col])}
                           </td>
@@ -2191,7 +2195,11 @@ function DialogueView({
                 {msg.diagnostics?.intent === "report_sales" && msg.table?.rows?.length ? (
                   <>
                     {(msg.dataSource || msg.source || msg.requestedDateRange || msg.reportPeriodRange) ? " · " : ""}
-                    {assistantReturnedSalesDateSummary(msg.table.rows, /[\u3400-\u9fff]/.test(msg.question ?? msg.text))}
+                    {assistantReturnedSalesDateSummary(
+                      msg.table.rows,
+                      /[\u3400-\u9fff]/.test(msg.question ?? msg.text),
+                      msg.requestedDateRange,
+                    )}
                   </>
                 ) : null}
                 {(msg.dataAsOf || msg.dataSource || msg.reportPeriodRange) ? (

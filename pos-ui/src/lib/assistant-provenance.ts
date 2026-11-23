@@ -62,6 +62,7 @@ export function returnedReportDateRange(rows: ReportRow[] | null | undefined): s
 export function assistantReturnedSalesDateSummary(
   rows: ReportRow[] | null | undefined,
   chinese: boolean,
+  requestedDateRange?: string | null,
 ): string {
   const range = returnedReportDateRange(rows);
   if (range) {
@@ -71,9 +72,20 @@ export function assistantReturnedSalesDateSummary(
       : `Rows span: ${range} · Latest returned sales date: ${latest}`;
   }
   if (!rows?.length) return chinese ? "没有返回销售行" : "No sales rows returned";
+  const requestedDates = requestedDateRange?.split(/\s+to\s+/i).map(reportDate) ?? [];
+  if (requestedDates.length === 1 && requestedDates[0]) {
+    return chinese
+      ? `单日报表汇总日期：${requestedDates[0]}`
+      : `Daily aggregate for ${requestedDates[0]}`;
+  }
+  if (requestedDates.length === 2 && requestedDates.every((date): date is string => date !== null)) {
+    return chinese
+      ? `报表期间：${requestedDates[0]} 至 ${requestedDates[1]}；未返回逐日明细`
+      : `Aggregated result covers ${requestedDates[0]} to ${requestedDates[1]}; no daily breakdown returned`;
+  }
   return chinese
-    ? "已返回销售数据，但没有可识别的逐日日期"
-    : "Sales data was returned without readable daily dates";
+    ? "销售汇总数据未包含逐日明细"
+    : "Aggregated sales result has no daily breakdown";
 }
 
 export function requestedSalesDateRange(
