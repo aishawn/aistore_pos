@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { looksLikeAssistantWriteCommand } from "./assistant-command-routing.ts";
+import { isExpiryReviewQuestion, looksLikeAssistantWriteCommand } from "./assistant-command-routing.ts";
 
 test("read-only replenishment questions do not enter the command parser", () => {
   for (const question of [
@@ -20,4 +20,13 @@ test("explicit replenishment writes and other edits still enter command preview"
     "Update product price to 20",
     "Change customer phone to 0412000000",
   ]) assert.equal(looksLikeAssistantWriteCommand(question), true, question);
+});
+
+test("expiry review recognises scoped English and Chinese questions", () => {
+  for (const question of ["Which batches are expiring soon?", "Open expiry review.", "哪些批次快到期？", "查看临期商品"]) {
+    assert.equal(isExpiryReviewQuestion(question), true, question);
+  }
+  for (const question of ["Update the expiry date", "Which contracts are expiring soon?", "查询库存 苹果"]) {
+    assert.equal(isExpiryReviewQuestion(question), false, question);
+  }
 });

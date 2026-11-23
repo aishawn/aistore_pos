@@ -3,7 +3,7 @@
 import { assistantRequestTimeoutMs, assistantTimeoutMessage, operationsPreviewIntent, prefetchOperationsPreviewSnapshots, readOperationsPreview } from "@/lib/assistant-operations-preview";
 import { clearOperationsPreviewSnapshots } from "@/lib/assistant-operations-snapshot-cache";
 import { fallbackHrefForQuickAction, questionForQuickAction, shortcutForQuickAction, WORKSPACE_HERO_SHORTCUTS } from "@/lib/assistant-shortcuts";
-import { looksLikeAssistantWriteCommand } from "@/lib/assistant-command-routing";
+import { EXPIRY_REVIEW_HREF, isExpiryReviewQuestion, looksLikeAssistantWriteCommand } from "@/lib/assistant-command-routing";
 
 import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
 import { AssistantComposer } from "@/components/AssistantComposer";
@@ -589,7 +589,7 @@ export function SellAiPanel({
   }
 
   /** Offer a page link inside chat. Only jump immediately when AI chat is off (shortcut mode). */
-  function openWorkspace(href: string, note: string, options?: { immediate?: boolean }) {
+  function openWorkspace(href: string, note: string, options?: { immediate?: boolean; label?: string }) {
     const jumpNow = options?.immediate === true || aiEnabled === false;
     if (jumpNow) {
       pushAssistantNote(note);
@@ -597,7 +597,7 @@ export function SellAiPanel({
       router.push(href);
       return;
     }
-    const link = { label: labelForHref(href), href };
+    const link = { label: options?.label ?? labelForHref(href), href };
     setMessages((prev) => [
       ...prev,
       {
@@ -622,6 +622,14 @@ export function SellAiPanel({
 
   function tryLocalWorkspaceIntent(text: string): boolean {
     const t = text.trim();
+    if (isExpiryReviewQuestion(t)) {
+      const chinese = /[\u3400-\u9fff]/u.test(t);
+      openWorkspace(EXPIRY_REVIEW_HREF, chinese
+        ? "临期复核列出到期在即及已过期的收货批次。请到货架核对剩余数量。"
+        : "Expiry review lists received batches due soon or already expired. Check remaining quantities on the shelf.",
+      { label: chinese ? "打开临期复核" : "Open expiry review" });
+      return true;
+    }
     const productWithQuery = t.match(/^(?:查询产品|查找产品|产品查询)\s+(.+)$/);
     if (productWithQuery) {
       openProductLookup(productWithQuery[1]);
