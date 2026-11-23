@@ -1463,6 +1463,8 @@ export interface GroceryRecommendCard {
   caseQuantity: number | null;
   matchPct: number;
   reason: string;
+  promotionName?: string | null;
+  promotionEndsAt?: string | null;
 }
 
 export interface GroceryRecommendResponse {

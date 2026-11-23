@@ -49,8 +49,14 @@ public class GroceryChatBrief {
             List<Map<String, Object>> items = new ArrayList<>();
             for (GroceryRecommendCard card : response.recommendations()) {
                 answer.append("\n• ").append(card.badge()).append(" — ")
-                        .append(AssistantDisplayText.productName(card.name())).append(" — $")
+                        .append(AssistantDisplayText.productName(card.name())).append(" — A$")
                         .append(AssistantDisplayText.money(card.sellPrice()));
+                answer.append(chinese ? "（澳元，含 GST）" : " (AUD, GST included)");
+                if (card.promotionName() != null) {
+                    answer.append(chinese ? "；促销：" : "; offer: ").append(card.promotionName());
+                    if (card.promotionEndsAt() != null) answer.append(chinese ? "，截止 " : ", ends ")
+                            .append(card.promotionEndsAt());
+                }
                 String packaging = card.saleQuantity().compareTo(java.math.BigDecimal.ONE) > 0
                         ? (chinese ? " / 每包 " : " / pack of ") + card.saleQuantity().stripTrailingZeros().toPlainString()
                         : "";
@@ -63,8 +69,10 @@ public class GroceryChatBrief {
                 item.put("stockQuantity", card.stockQuantity());
                 item.put("saleQuantity", card.saleQuantity());
                 item.put("reason", card.reason());
+                item.put("promotionName", card.promotionName());
+                item.put("promotionEndsAt", card.promotionEndsAt());
                 item.put("label", card.badge() + " — " + AssistantDisplayText.productName(card.name())
-                        + " — $" + AssistantDisplayText.money(card.sellPrice()) + packaging);
+                        + " — A$" + AssistantDisplayText.money(card.sellPrice()) + " (AUD, GST included)" + packaging);
                 items.add(item);
             }
             answer.append(chinese ? "\n\n打开商品推荐页面查看完整结果。" : "\n\nOpen grocery recommendations to see the full results.");

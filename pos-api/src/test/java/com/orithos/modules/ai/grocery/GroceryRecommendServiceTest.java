@@ -3,9 +3,11 @@ package com.orithos.modules.ai.grocery;
 import com.orithos.common.BusinessException;
 import com.orithos.modules.ai.report.NativeAiReportQueryService;
 import com.orithos.modules.ai.report.TenantContext;
+import com.orithos.modules.product.ShopfrontProductOfferService;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -77,6 +79,55 @@ class GroceryRecommendServiceTest {
                 new GroceryRecommendRequest("beer", null, new BigDecimal("34.99"), null), tenant).recommendations().getFirst();
         assertEquals(new BigDecimal("34.99"), card.sellPrice());
         assertEquals(BigDecimal.ONE, card.stockQuantity());
+    }
+
+    @Test
+    void appliesFreshSinglePackOffersBeforeBudgetFilteringAndReturnsOfferDetails() {
+        var offers = mock(ShopfrontProductOfferService.class);
+        var product = row(21, "Harbour Lager 6PK", "BEER", "3.3333", "24");
+        product.put("sale_quantity", new BigDecimal("6"));
+        when(reports.listRecommendationProducts(tenant)).thenReturn(catalog(product));
+        when(reports.businessTimezone(tenant)).thenReturn(java.time.ZoneId.of("Australia/Melbourne"));
+        when(offers.checkoutOffers(7, 3, List.of(21L))).thenReturn(new ShopfrontProductOfferService.CheckoutOffers(
+                Map.of(21L, List.of(new ShopfrontProductOfferService.Offer("Weekend special", new BigDecimal("6"),
+                        new BigDecimal("17.50"), null, Instant.parse("2026-11-24T13:00:00Z"),
+                        Instant.parse("2026-11-24T00:00:00Z")))), false));
+
+        var response = new GroceryRecommendService(reports, offers).recommend(
+                new GroceryRecommendRequest("beer", null, new BigDecimal("18"), null), tenant);
+
+        var card = response.recommendations().getFirst();
+        assertEquals(new BigDecimal("17.50"), card.sellPrice());
+        assertEquals(new BigDecimal("20.00"), card.listPrice());
+        assertEquals("Weekend special", card.promotionName());
+        assertEquals("2026-11-25", card.promotionEndsAt());
+    }
+
+    @Test
+    void ignoresPackThresholdsConflictingAndExpiredOfferSnapshots() {
+        var offers = mock(ShopfrontProductOfferService.class);
+        var product = row(22, "Harbour Lager 6PK", "BEER", "20.00", "24");
+        product.put("sale_quantity", new BigDecimal("6"));
+        when(reports.listRecommendationProducts(tenant)).thenReturn(catalog(product));
+        var quantityMismatch = new ShopfrontProductOfferService.Offer("Buy two packs", new BigDecimal("12"),
+                new BigDecimal("30"), null, null, Instant.now());
+        when(offers.checkoutOffers(7, 3, List.of(22L))).thenReturn(new ShopfrontProductOfferService.CheckoutOffers(
+                Map.of(22L, List.of(quantityMismatch)), false));
+        var service = new GroceryRecommendService(reports, offers);
+        assertEquals(new BigDecimal("120.00"), service.recommend(
+                new GroceryRecommendRequest("beer", null, null, null), tenant).recommendations().getFirst().sellPrice());
+
+        var conflict = new ShopfrontProductOfferService.Offer("Conflicting special", new BigDecimal("6"),
+                new BigDecimal("18"), null, null, Instant.now());
+        when(offers.checkoutOffers(7, 3, List.of(22L))).thenReturn(new ShopfrontProductOfferService.CheckoutOffers(
+                Map.of(22L, List.of(new ShopfrontProductOfferService.Offer("Special", new BigDecimal("6"),
+                        new BigDecimal("17"), null, null, Instant.now()), conflict)), false));
+        assertEquals(new BigDecimal("120.00"), service.recommend(
+                new GroceryRecommendRequest("beer", null, null, null), tenant).recommendations().getFirst().sellPrice());
+        when(offers.checkoutOffers(7, 3, List.of(22L))).thenReturn(new ShopfrontProductOfferService.CheckoutOffers(
+                Map.of(22L, List.of(conflict)), true));
+        assertEquals(new BigDecimal("120.00"), service.recommend(
+                new GroceryRecommendRequest("beer", null, null, null), tenant).recommendations().getFirst().sellPrice());
     }
 
     @Test

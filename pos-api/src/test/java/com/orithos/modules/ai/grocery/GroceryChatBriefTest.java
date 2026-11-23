@@ -39,6 +39,8 @@ class GroceryChatBriefTest {
 
         assertTrue(result.answer().contains("Harbour Lager"));
         assertTrue(result.answer().contains("12.50"));
+        assertTrue(result.answer().contains("A$12.50"));
+        assertTrue(result.answer().contains("GST included"));
         assertEquals("ready", result.card().status());
         assertEquals("catalogue", result.card().source());
         assertEquals(11L, result.card().items().getFirst().get("productId"));

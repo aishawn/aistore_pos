@@ -22,8 +22,11 @@ export function ProductRecommendCard({ card }: { card: GroceryRecommendCard }) {
         <div>
           <p className="text-[13px] font-semibold text-[var(--oh-primary)]">{card.badge}</p>
           <p className="mt-1 text-[26px] font-semibold leading-none text-[var(--oh-text)]">
-            {formatMoney(card.sellPrice)}
+            A${formatMoney(card.sellPrice).slice(1)}
           </p>
+          {card.promotionName && <p className="mt-1 text-sm font-medium text-emerald-700">{card.promotionName}</p>}
+          {card.promotionEndsAt && <p className="text-xs text-[var(--oh-muted)]">Offer ends {card.promotionEndsAt}</p>}
+          <p className="text-xs text-[var(--oh-muted)]">AUD · GST included</p>
           {isPack && <p className="mt-1 text-sm text-[var(--oh-muted)]">Per pack of {saleQuantity}</p>}
         </div>
         <div className="rounded-full bg-blue-50 px-2.5 py-1 text-[13px] font-semibold text-blue-800">
