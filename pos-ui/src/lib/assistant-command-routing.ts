@@ -7,7 +7,13 @@ export function looksLikeAssistantWriteCommand(text: string): boolean {
 
 export const EXPIRY_REVIEW_HREF = "/purchases?tab=expiry-review";
 
+const expiryReviewNavigation = /^(?:open|show(?: me)?|view) (?:the )?expiry review$/iu;
+const expiryReviewStockQuestion = /^(?:(?:which|what|any) (?:(?:batches|products|stock|items) )?(?:are |is )?(?:expiring soon|expires soon|near expiry|expired)|show(?: me)? (?:expired|near-expiry) (?:batches|products|stock|items))$/iu;
+const expiryReviewChineseQuestion = /^(?:(?:查看|打开|显示)(?:临期商品|临期批次|临期复核)|(?:临期商品|临期批次|过期商品)(?:有哪些)?|哪些(?:商品|批次)(?:快到期|即将到期|已过期|临期)|(?:快到期|即将到期)的(?:商品|批次))$/u;
+
 export function isExpiryReviewQuestion(text: string): boolean {
   const question = text.trim().replace(/[?？。.!！]+$/u, "").trim();
-  return /^(?:(?:open|show(?: me)?) (?:the )?expiry review|which (?:batches|products) are (?:expiring soon|near expiry|expired)|(?:查看|打开)(?:临期商品|临期批次|临期复核)|哪些(?:商品|批次)(?:快到期|即将到期|已过期))$/iu.test(question);
+  return expiryReviewNavigation.test(question)
+    || expiryReviewStockQuestion.test(question)
+    || expiryReviewChineseQuestion.test(question);
 }

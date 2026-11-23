@@ -23,10 +23,25 @@ test("explicit replenishment writes and other edits still enter command preview"
 });
 
 test("expiry review recognises scoped English and Chinese questions", () => {
-  for (const question of ["Which batches are expiring soon?", "Open expiry review.", "哪些批次快到期？", "查看临期商品"]) {
+  for (const question of [
+    "Which batches are expiring soon?",
+    "Open expiry review.",
+    "What stock expires soon?",
+    "Show expired products",
+    "哪些批次快到期？",
+    "哪些商品临期",
+    "临期商品有哪些",
+    "查看临期商品",
+  ]) {
     assert.equal(isExpiryReviewQuestion(question), true, question);
   }
-  for (const question of ["Update the expiry date", "Which contracts are expiring soon?", "查询库存 苹果"]) {
+  for (const question of [
+    "Update the expiry date",
+    "Which contracts are expiring soon?",
+    "Show expired products and remove them",
+    "把临期商品下架",
+    "查询库存 苹果",
+  ]) {
     assert.equal(isExpiryReviewQuestion(question), false, question);
   }
 });
