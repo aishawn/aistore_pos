@@ -86,6 +86,7 @@ export function averageTicketAcceptance(answer, report, { from, to }) {
     `Average Ticket for ${from} to ${to} is`,
     `${from} to ${to}平均客单价`,
     `${from} 至 ${to}平均客单价`,
+    ...(from === to ? [`Average Ticket for ${from} is`, `${from}平均客单价`] : []),
   ];
   const answeredAverage = answerMoney(answer, labels);
   const ticketMatch = String(answer ?? "").match(/(?:across\s+|基于\s*)([\d,]+(?:\.\d+)?)\s*(?:sales? transactions?|笔销售交易)/i);

@@ -83,6 +83,20 @@ test("single-day sales answers reconcile without a repeated date range", () => {
   ).passed, true);
 });
 
+test("single-day average ticket answers reconcile in English and Chinese", () => {
+  const report = { averageSale: 26.24, transactions: 154 };
+  const day = { from: "2026-11-23", to: "2026-11-23" };
+  assert.equal(averageTicketAcceptance(
+    "2026-11-23平均客单价 AUD 26.24，基于 154 笔销售交易。", report, day,
+  ).passed, true);
+  assert.equal(averageTicketAcceptance(
+    "Average Ticket for 2026-11-23 is AUD 26.24 across 154 sales transactions.", report, day,
+  ).passed, true);
+  assert.equal(averageTicketAcceptance(
+    "2026-11-23平均客单价 AUD 20.00，基于 154 笔销售交易。", report, day,
+  ).passed, false);
+});
+
 test("refund-only days require the refund amount and negative net sales", () => {
   const report = {
     grossSales: 0, refunds: 9.48, refundTransactions: 1,
