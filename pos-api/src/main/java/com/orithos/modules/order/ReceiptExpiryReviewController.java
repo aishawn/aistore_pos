@@ -30,7 +30,8 @@ public class ReceiptExpiryReviewController {
 
     @GetMapping("/api/orders/expiry-review")
     public ApiResult<Review> review(@RequestParam(defaultValue = "1") int page,
-                                    @RequestParam(defaultValue = "all") String status) {
+                                    @RequestParam(defaultValue = "all") String status,
+                                    @RequestParam(defaultValue = "") String barcode) {
         permissions.requirePermission("stock.purchases");
         Long vendorId = CurrentUser.vendorId();
         Long outletId = CurrentUser.outletId();
@@ -40,11 +41,16 @@ public class ReceiptExpiryReviewController {
         if (page < 1 || !List.of("all", "upcoming", "expired").contains(status)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid expiry review page or status.");
         }
+        String code = barcode.strip();
+        if (code.length() > 128) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Barcode must be at most 128 characters.");
+        }
         LocalDate today = timezone.today(vendorId);
         LocalDate through = today.plusDays(14);
         LocalDate from = "upcoming".equals(status) ? today : null;
         LocalDate end = "expired".equals(status) ? today.minusDays(1) : through;
-        List<Batch> rows = orders.findExpiryReview(vendorId, outletId, from, end, (page - 1L) * PAGE_SIZE);
+        List<Batch> rows = orders.findExpiryReview(vendorId, outletId, from, end,
+                code.isEmpty() ? null : code, (page - 1L) * PAGE_SIZE);
         return ApiResult.ok(new Review(today, through, rows.stream().limit(PAGE_SIZE).toList(),
                 rows.size() > PAGE_SIZE, page, orders.expiryReviewCoverage(vendorId, outletId)));
     }

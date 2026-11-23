@@ -28,7 +28,9 @@ interface Review {
 export function ReceiptExpiryReview({ initialStatus }: { initialStatus: "all" | "upcoming" | "expired" }) {
   const [status, setStatus] = useState<string>(initialStatus);
   const [page, setPage] = useState(1);
-  const { data, loading, error, reload } = useApi<Review>("/api/orders/expiry-review", { status, page });
+  const [barcodeInput, setBarcodeInput] = useState("");
+  const [barcode, setBarcode] = useState("");
+  const { data, loading, error, reload } = useApi<Review>("/api/orders/expiry-review", { status, page, barcode: barcode || undefined });
   return (
     <section aria-labelledby="expiry-review-heading" className="m-4 rounded-xl border border-[var(--oh-border)] bg-white p-4 sm:m-6 sm:p-5">
       <h2 id="expiry-review-heading" className="text-base font-semibold">Batches to check on the shelf</h2>
@@ -48,6 +50,32 @@ export function ReceiptExpiryReview({ initialStatus }: { initialStatus: "all" | 
           <option value="expired">Past label date</option>
         </select>
       </label>
+      <form className="mt-3 flex flex-wrap items-end gap-2 text-sm" onSubmit={(event) => {
+        event.preventDefault();
+        setBarcode(barcodeInput.trim());
+        setPage(1);
+      }}>
+        <label className="grid gap-1">
+          Product barcode
+          <input
+            type="search"
+            autoComplete="off"
+            maxLength={128}
+            placeholder="Scan or enter barcode"
+            value={barcodeInput}
+            onChange={(event) => setBarcodeInput(event.target.value)}
+            className="min-h-10 rounded-md border border-[var(--oh-border)] bg-white px-2"
+          />
+        </label>
+        <button type="submit" className="min-h-10 rounded-md border border-[var(--oh-border)] px-3 font-semibold">Find batches</button>
+        {barcode && (
+          <button type="button" className="min-h-10 underline" onClick={() => {
+            setBarcodeInput("");
+            setBarcode("");
+            setPage(1);
+          }}>Clear barcode</button>
+        )}
+      </form>
       {loading && <p role="status" className="mt-2 text-sm">Loading received batches…</p>}
       {error && (
         <div className="mt-2 flex flex-wrap items-center gap-3 text-sm">
@@ -63,6 +91,7 @@ export function ReceiptExpiryReview({ initialStatus }: { initialStatus: "all" | 
               : <>Shows received batches expiring through {formatAuDate(data.throughDate)}.</>}{" "}
             Check remaining quantities on the shelf.
           </p>
+          {barcode && <p className="mt-2 break-all text-sm">Showing batches for barcode {barcode}.</p>}
           {!data.batches.length && (
             <p className="mt-4 text-sm">
               {data.coverage?.receivedLines === 0
