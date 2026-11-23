@@ -268,7 +268,7 @@ export function SommelierWinePage({ productId }: { productId: string }) {
           onClick={() => void loadSimilar("upgrade")}
           className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] py-2 text-[14px] font-medium text-[var(--oh-text)] hover:bg-slate-50 disabled:opacity-60"
         >
-          {busy === "upgrade" ? "Looking…" : "Something better"}
+          {busy === "upgrade" ? "Looking…" : "Similar style, higher price"}
         </button>
       </div>
 
