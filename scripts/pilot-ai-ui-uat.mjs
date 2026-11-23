@@ -14,9 +14,18 @@ const env = Object.fromEntries(
       return [line.slice(0, index).trim(), line.slice(index + 1).trim()];
     }),
 );
-const base = "https://demo.orithos.com.au";
-const adminPassword = process.env.INITIAL_ADMIN_PASSWORD || env.INITIAL_ADMIN_PASSWORD;
-if (!adminPassword) throw new Error("MISSING_ADMIN_PASSWORD");
+const store = process.env.PILOT_STORE || "demo";
+const stores = {
+  demo: { base: "https://demo.orithos.com.au", username: "admin", password: process.env.INITIAL_ADMIN_PASSWORD || env.INITIAL_ADMIN_PASSWORD },
+  skr: {
+    base: "https://skr.orithos.com.au",
+    username: process.env.ORITHOS_SKR_USER || env.ORITHOS_SKR_USER,
+    password: process.env.ORITHOS_SKR_PASS || env.ORITHOS_SKR_PASS,
+  },
+};
+if (!Object.hasOwn(stores, store)) throw new Error("PILOT_STORE_MUST_BE_DEMO_OR_SKR");
+const { base, username, password } = stores[store];
+if (!username || !password) throw new Error(`MISSING_${store.toUpperCase()}_LOGIN`);
 
 const browser = await chromium.launch({ headless: true });
 const results = [];
@@ -24,7 +33,7 @@ const results = [];
 async function runViewport(viewport) {
   const context = await browser.newContext({ viewport });
   const login = await context.request.post(`${base}/api/auth/login`, {
-    data: { username: "admin", password: adminPassword },
+    data: { username, password },
     headers: { Origin: base },
   });
   const loginBody = await login.json().catch(() => ({}));
@@ -40,13 +49,32 @@ async function runViewport(viewport) {
   page.on("pageerror", (error) => pageErrors.push(error.message));
 
   await page.goto(`${base}/sommelier/find`, { waitUntil: "domcontentloaded", timeout: 60000 });
+  await page.waitForLoadState("load", { timeout: 30000 });
   await page.getByRole("heading", { name: "Find a wine" }).waitFor({ timeout: 30000 });
-  for (const label of ["Not sure", "No preference", "Not sure", "Full Body", "🍽 No food", "Dinner tonight"]) {
+  const flow = [
+    { question: "What are you looking for?", answer: "Not sure" },
+    { question: "What's your budget?", answer: "No preference" },
+    { question: "How dry do you like your wine?", answer: "Not sure" },
+    { question: "How much body do you like?", answer: "Full Body" },
+    { question: "What are you having it with?", answer: "🍽 No food" },
+    { question: "What's the occasion?", answer: "Dinner tonight" },
+  ];
+  for (const { question, answer } of flow) {
+    try {
+      await page.getByRole("heading", { name: question, exact: true }).waitFor({ state: "visible", timeout: 30000 });
+    } catch {
+      const state = await page.evaluate(() => ({
+        url: location.href,
+        headings: Array.from(document.querySelectorAll("h1, h2, h3")).map((element) => element.textContent?.trim()),
+        buttons: Array.from(document.querySelectorAll("button")).filter((element) => element.getClientRects().length > 0).map((element) => element.textContent?.trim()),
+      }));
+      throw new Error(`SOMMELIER_STEP_MISSING_${viewport.width}_${JSON.stringify({ question, state, pageErrors })}`);
+    }
+    const label = answer;
     await page.getByRole("button", { name: label, exact: true }).click();
     const next = page.getByRole("button", { name: label === "Dinner tonight" ? "Recommend" : "Continue", exact: true });
     if (label !== "Dinner tonight") {
       await next.click();
-      await page.waitForTimeout(300);
     }
   }
   const recommendResponse = page.waitForResponse(
@@ -111,15 +139,16 @@ async function runViewport(viewport) {
   await page.getByRole("button", { name: "Similar but cheaper", exact: true }).click();
   await page.getByText(/cheaper|No cheaper/i).first().waitFor({ timeout: 60000 });
 
-  // Every signed-in store page, including overview, exposes the floating assistant.
-  const overviewConfigResponse = page.waitForResponse(
+  // Overview and dashboard use their own AI entry points; verify the floating
+  // assistant on a regular store page where the launcher is intentionally shown.
+  const storePageConfigResponse = page.waitForResponse(
     (response) => response.request().method() === "GET"
       && response.url().includes("/api/ai/config/client"),
     { timeout: 30000 },
   );
-  const overviewResponse = await page.goto(`${base}/overview`, { waitUntil: "domcontentloaded", timeout: 60000 });
-  await overviewConfigResponse;
-  const permissionsPolicy = overviewResponse?.headers()["permissions-policy"] ?? "";
+  const storePageResponse = await page.goto(`${base}/products`, { waitUntil: "domcontentloaded", timeout: 60000 });
+  await storePageConfigResponse;
+  const permissionsPolicy = storePageResponse?.headers()["permissions-policy"] ?? "";
   const aiConfigResponse = await context.request.get(`${base}/api/ai/config/client`);
   const aiConfigBody = await aiConfigResponse.json().catch(() => ({}));
   const storeAiEnabled = Boolean(aiConfigBody?.data?.enabled);
