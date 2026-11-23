@@ -22,6 +22,14 @@ import {
   WarehouseIcon,
 } from "@/components/icons";
 import { cn } from "@/lib/utils";
+import { formatStoreDateTime } from "@/lib/retail-date";
+
+type ShopfrontOffers = {
+  timeZone: string;
+  items: { name: string; requiredUnits: number; total: number; startsAt: string | null; endsAt: string | null; syncedAt: string }[];
+};
+
+const offerMoney = new Intl.NumberFormat("en-AU", { style: "currency", currency: "AUD" });
 
 type NavId =
   | "home"
@@ -262,16 +270,6 @@ function MetaRow({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
-function PlaceholderPanel({ title, description }: { title: string; description: string }) {
-  return (
-    <div className="flex flex-col items-center justify-center rounded-[var(--oh-radius)] border border-dashed border-[var(--oh-border)] bg-[var(--oh-surface)] py-20 text-center">
-      <h3 className="text-[16px] font-semibold text-[var(--oh-text)]">{title}</h3>
-      <p className="mt-2 max-w-sm text-[13px] text-[var(--oh-muted)]">{description}</p>
-      <p className="mt-4 text-[13px] text-[var(--oh-placeholder)]">No records to display yet.</p>
-    </div>
-  );
-}
-
 function ActivityTable({
   loading,
   error,
@@ -487,6 +485,9 @@ export function ProductViewPage({ productId }: { productId: string }) {
   const inventoryLog = useApi<InventoryEvent[]>(
     nav === "inventory-log" ? `/api/products/${productId}/inventory-log` : null,
   );
+  const offers = useApi<ShopfrontOffers>(
+    nav === "promotions" ? `/api/products/${productId}/shopfront-offers` : null,
+  );
 
   const coreSupplierIdRaw = product?.supplierIds?.[0];
   const coreSupplierId =
@@ -666,7 +667,29 @@ className="min-h-9 rounded-md border border-[var(--oh-tile-red-border)] bg-[var(
                 />
               )}
               {nav === "promotions" && (
-                <PlaceholderPanel title="Promotions" description="Promotions that apply to this product." />
+                <InfoCard title="Shopfront offers">
+                  <p className="mb-3 text-sm text-[var(--oh-muted)]">
+                    Reference prices from Shopfront. Confirm the price in Orithos before quoting a customer.
+                  </p>
+                  <AsyncState loading={offers.loading} error={offers.error} empty={false} onRetry={offers.reload}>
+                    {offers.data?.items.length === 0 && <p className="text-sm">No current single-product fixed-total offers were found in Shopfront.</p>}
+                    {offers.data && offers.data.items.length > 0 && (
+                      <ul className="divide-y divide-[var(--oh-border)]">
+                        {offers.data.items.map((offer) => (
+                          <li key={JSON.stringify(offer)} className="py-3 text-sm">
+                            <p className="font-semibold">{offer.name}</p>
+                            <p>{offer.requiredUnits} units for {offerMoney.format(offer.total)}</p>
+                            <p className="text-[var(--oh-muted)]">
+                              {offer.startsAt && <>Starts {formatStoreDateTime(offer.startsAt, offers.data?.timeZone)} · </>}
+                              {offer.endsAt ? `Ends ${formatStoreDateTime(offer.endsAt, offers.data?.timeZone)}` : "No end date supplied"}
+                            </p>
+                            <p className="text-[var(--oh-muted)]">Synced {formatStoreDateTime(offer.syncedAt, offers.data?.timeZone)}</p>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </AsyncState>
+                </InfoCard>
               )}
               {nav === "revision-history" && (
                 <ProductRevisionPanel
