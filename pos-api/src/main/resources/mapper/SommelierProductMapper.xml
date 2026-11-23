@@ -14,7 +14,9 @@
                f.name AS family_name,
                b.name AS brand_name,
                (SELECT pp.price FROM product_price pp
-                 WHERE pp.product_id = p.id ORDER BY pp.quantity LIMIT 1) AS price,
+                 WHERE pp.product_id = p.id
+                   AND pp.outlet_id = #{outletId}
+                 ORDER BY pp.quantity LIMIT 1) AS price,
                (SELECT pb.promotion_price FROM product_barcode pb
                  WHERE pb.product_id = p.id AND pb.promotion_price IS NOT NULL
                  ORDER BY pb.id LIMIT 1) AS promo_price,
@@ -48,6 +50,7 @@
         LEFT JOIN product_wine_profile wp ON wp.product_id = p.id
         WHERE p.deleted_at IS NULL
           AND p.status = 'ACTIVE'
+          AND p.outlet_id = #{outletId}
     </sql>
 
     <sql id="wineLike">
