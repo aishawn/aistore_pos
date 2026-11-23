@@ -159,7 +159,7 @@ public interface SupplierMapper {
                s.email_format, s.comments, s.fee_amount, s.distribute_fees, s.distribute_freight,
                s.freight_included_on_invoices, s.freight_tax_id, s.fees_tax_id,
                s.allow_order_below_minimum, s.minimum_order_value, s.maximum_order_value,
-               s.default_days_until_due, s.freight_fixed_cost_per_case,
+               s.default_days_until_due, s.freight_fixed_cost_per_case, s.lead_time_days,
                ct.email, ct.fax, ct.phone, ct.mobile, ct.website, ct.twitter, ct.facebook,
                ct.address_street1 AS street_address1,
                ct.address_street2 AS street_address2,
@@ -194,13 +194,13 @@ public interface SupplierMapper {
                               email_format, comments, fee_amount, distribute_fees, distribute_freight,
                               freight_included_on_invoices, freight_tax_id, fees_tax_id,
                               allow_order_below_minimum, minimum_order_value, maximum_order_value,
-                              default_days_until_due, freight_fixed_cost_per_case)
+                              default_days_until_due, freight_fixed_cost_per_case, lead_time_days)
         VALUES (#{outletId}, #{name}, #{mdbId}, #{status}, #{contactId}, #{businessNumber}, #{accountNumber},
                 #{orderNotes}, #{internalOrderNotes}, #{orderAutomaticEmail}, #{defaultOrderTax},
                 #{emailFormat}, #{comments}, #{feeAmount}, #{distributeFees}, #{distributeFreight},
                 #{freightIncludedOnInvoices}, #{freightTaxId}, #{feesTaxId},
                 #{allowOrderBelowMinimum}, #{minimumOrderValue}, #{maximumOrderValue},
-                #{defaultDaysUntilDue}, #{freightFixedCostPerCase})
+                #{defaultDaysUntilDue}, #{freightFixedCostPerCase}, #{leadTimeDays})
         """)
     int insertDetail(SupplierDetail s);
 
@@ -215,7 +215,7 @@ public interface SupplierMapper {
                freight_tax_id=#{freightTaxId}, fees_tax_id=#{feesTaxId},
                allow_order_below_minimum=#{allowOrderBelowMinimum},
                minimum_order_value=#{minimumOrderValue}, maximum_order_value=#{maximumOrderValue},
-               default_days_until_due=#{defaultDaysUntilDue},
+               default_days_until_due=#{defaultDaysUntilDue}, lead_time_days=#{leadTimeDays},
                freight_fixed_cost_per_case=#{freightFixedCostPerCase}
         WHERE id=#{id} AND outlet_id=#{outletId}
         """)

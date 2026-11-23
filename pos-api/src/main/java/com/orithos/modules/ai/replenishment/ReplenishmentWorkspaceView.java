@@ -47,7 +47,7 @@ public record ReplenishmentWorkspaceView(
             String risk,
             String attentionLevel,
             List<String> attentionReasons,
-            Long supplierId, String supplierName, Double caseQuantity, double onOrder
+            Long supplierId, String supplierName, Double caseQuantity, double onOrder, Integer leadTimeDays
     ) { }
 
     public record SalesHistory(

@@ -98,6 +98,18 @@ class SupplierServiceTenantScopeTest {
         verifyNoMoreInteractions(suppliers);
     }
 
+    @Test
+    void supplierLeadTimeAcceptsSameDayAndDistinguishesAnExplicitClear() throws Exception {
+        var mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+        var sameDay = mapper.readValue("{\"leadTimeDays\":0}", SupplierDetail.class);
+        var cleared = mapper.readValue("{\"leadTimeDays\":null}", SupplierDetail.class);
+        var omitted = mapper.readValue("{}", SupplierDetail.class);
+        org.junit.jupiter.api.Assertions.assertTrue(sameDay.isLeadTimeDaysProvided());
+        org.junit.jupiter.api.Assertions.assertTrue(cleared.isLeadTimeDaysProvided());
+        org.junit.jupiter.api.Assertions.assertFalse(omitted.isLeadTimeDaysProvided());
+        assertEquals(0, mapper.valueToTree(sameDay).path("leadTimeDays").asInt(-1));
+    }
+
     private static SupplierService service(SupplierMapper suppliers, OutletMapper outlets) {
         return new SupplierService(suppliers, mock(ContactMapper.class),
                 mock(SupplierAuthenticationMapper.class), mock(SupplierAdditionalContactMapper.class),

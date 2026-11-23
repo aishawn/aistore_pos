@@ -21,7 +21,8 @@ public class PurchaseReceiptSchemaMigrator implements CommandLineRunner {
     @Override
     public void run(String... args) {
         var populator = new ResourceDatabasePopulator(
-                new ClassPathResource("db/migration_purchase_receipts.sql"));
+                new ClassPathResource("db/migration_purchase_receipts.sql"),
+                new ClassPathResource("db/migration_supplier_lead_time.sql"));
         populator.setContinueOnError(false);
         DatabasePopulatorUtils.execute(populator, dataSource);
     }

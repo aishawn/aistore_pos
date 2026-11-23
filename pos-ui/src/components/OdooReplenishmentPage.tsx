@@ -354,7 +354,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
   const forecastReadinessSummary = useMemo(() => forecastReadiness(data?.products ?? []), [data?.products]);
   const missingDataCount = (data?.products ?? []).filter((product) =>
     !(typeof product.unitCost === "number" && Number.isFinite(product.unitCost) && product.unitCost > 0)
-    || !(typeof product.leadTimeDays === "number" && Number.isFinite(product.leadTimeDays) && product.leadTimeDays > 0),
+    || !(typeof product.leadTimeDays === "number" && Number.isFinite(product.leadTimeDays) && product.leadTimeDays >= 0),
   ).length;
   const hasRecentSales = data?.products.some((product) => product.soldUnits > 0) ?? false;
 
@@ -379,7 +379,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
       : listFilter === "review" ? base.filter((product) => product.recommendationStatus === "REVIEW_DATA")
       : listFilter === "missing_data" ? base.filter((product) =>
         !(typeof product.unitCost === "number" && Number.isFinite(product.unitCost) && product.unitCost > 0)
-        || !(typeof product.leadTimeDays === "number" && Number.isFinite(product.leadTimeDays) && product.leadTimeDays > 0),
+        || !(typeof product.leadTimeDays === "number" && Number.isFinite(product.leadTimeDays) && product.leadTimeDays >= 0),
       )
       : listFilter === "out_of_stock"
         ? base.filter((product) => product.onHand <= 0 && product.soldUnits > 0)

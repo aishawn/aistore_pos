@@ -67,7 +67,7 @@ public class ReplenishmentWorkspaceService {
                        END AS unit_cost,
                        (SELECT MIN(pp.price) FROM product_price pp
                         WHERE pp.product_id = p.id AND pp.outlet_id = p.outlet_id) AS unit_price,
-                       chosen.id AS supplier_id, chosen.name AS supplier_name,
+                       chosen.id AS supplier_id, chosen.name AS supplier_name, chosen.lead_time_days,
                        links.link_count AS supplier_link_count,
                        COALESCE((SELECT MAX(ps.minimum_order_quantity) FROM product_supplier ps
                                  WHERE ps.product_id = p.id AND ps.outlet_id = p.outlet_id
@@ -251,7 +251,7 @@ public class ReplenishmentWorkspaceService {
                 risk,
                 attentionLevel,
                 List.copyOf(dataIssues), row.supplierId(), row.supplierName(),
-                row.caseQuantity() > 0 ? row.caseQuantity() : null, row.onOrder());
+                row.caseQuantity() > 0 ? row.caseQuantity() : null, row.onOrder(), row.leadTimeDays());
     }
 
     private static String buildReason(double demand, int cover, int lead, double onHand, double onOrder, double quantity) {
@@ -341,7 +341,7 @@ public class ReplenishmentWorkspaceService {
                 asDouble(rs.getObject("unit_price")),
                 rs.getObject("supplier_id", Long.class), rs.getString("supplier_name"),
                 rs.getLong("supplier_link_count"),
-                rs.getDouble("minimum_order"));
+                rs.getDouble("minimum_order"), rs.getObject("lead_time_days", Integer.class));
     }
 
     private static Double asDouble(Object value) {
@@ -356,7 +356,7 @@ public class ReplenishmentWorkspaceService {
 
     private record Row(long id, String name, String sku, double caseQuantity, Double onHand, double onOrder,
                        Instant inventoryUpdatedAt, double sold7d, double recentUnits, double previousUnits,
-                       Double unitCost, Double unitPrice, Long supplierId, String supplierName, long supplierLinkCount, double minimumOrder) { }
+                       Double unitCost, Double unitPrice, Long supplierId, String supplierName, long supplierLinkCount, double minimumOrder, Integer leadTimeDays) { }
 
     private record InventoryMeta(ReplenishmentWorkspaceView.InventoryHistory history) { }
 }

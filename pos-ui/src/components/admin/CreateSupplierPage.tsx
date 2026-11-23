@@ -66,6 +66,7 @@ interface SupplierDetail {
   minimumOrderValue?: number | null;
   maximumOrderValue?: number | null;
   defaultDaysUntilDue?: number | null;
+  leadTimeDays?: number | null;
   feeAmount?: number | null;
   distributeFees?: string;
   distributeFreight?: string;
@@ -113,6 +114,7 @@ interface SupplierForm {
   minimumOrderValue: string;
   maximumOrderValue: string;
   defaultDaysUntilDue: string;
+  leadTimeDays: string;
   paymentFeePercentage: string;
   distributeFees: string;
   distributeFreightAcross: string;
@@ -177,6 +179,7 @@ const EMPTY_FORM: SupplierForm = {
   minimumOrderValue: "",
   maximumOrderValue: "",
   defaultDaysUntilDue: "",
+  leadTimeDays: "",
   paymentFeePercentage: "",
   distributeFees: "PROPORTIONALLY",
   distributeFreightAcross: "ITEMS",
@@ -261,6 +264,7 @@ function supplierDetailToForm(d: SupplierDetail): SupplierForm {
     minimumOrderValue: numStr(d.minimumOrderValue),
     maximumOrderValue: numStr(d.maximumOrderValue),
     defaultDaysUntilDue: numStr(d.defaultDaysUntilDue),
+    leadTimeDays: numStr(d.leadTimeDays),
     paymentFeePercentage: numStr(d.feeAmount),
     distributeFees: d.distributeFees ?? "PROPORTIONALLY",
     distributeFreightAcross: d.distributeFreight ?? "ITEMS",
@@ -342,6 +346,7 @@ function buildSaveBody(form: SupplierForm, additionalContacts: AdditionalContact
   body.mdbId = form.mdbId ? Number(form.mdbId) : null;
   if (form.minimumOrderValue.trim()) body.minimumOrderValue = Number(form.minimumOrderValue);
   if (form.maximumOrderValue.trim()) body.maximumOrderValue = Number(form.maximumOrderValue);
+  body.leadTimeDays = form.leadTimeDays.trim() ? Number(form.leadTimeDays) : null;
   if (form.defaultDaysUntilDue.trim()) body.defaultDaysUntilDue = Number(form.defaultDaysUntilDue);
   if (form.paymentFeePercentage.trim()) body.feeAmount = Number(form.paymentFeePercentage);
   if (form.fixedFreightCostPerCase.trim()) {
@@ -1016,6 +1021,19 @@ export function CreateSupplierPage({ supplierId }: { supplierId?: string } = {})
                     onChange={(v) => set("maximumOrderValue", v)}
                     type="number"
                   />
+                  <label className="block space-y-1 text-sm">
+                    <span>Confirmed supplier lead time (calendar days)</span>
+                    <input
+                      value={form.leadTimeDays}
+                      onChange={(e) => set("leadTimeDays", e.target.value)}
+                      placeholder="Unknown"
+                      className={inputClass}
+                      type="number"
+                      min={0}
+                      max={365}
+                      step={1}
+                    />
+                  </label>
                   <input
                     value={form.defaultDaysUntilDue}
                     onChange={(e) => set("defaultDaysUntilDue", e.target.value)}

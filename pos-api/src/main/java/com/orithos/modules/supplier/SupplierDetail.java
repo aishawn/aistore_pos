@@ -33,6 +33,14 @@ public class SupplierDetail {
     private BigDecimal minimumOrderValue;
     private BigDecimal maximumOrderValue;
     private Integer defaultDaysUntilDue;
+    private Integer leadTimeDays;
+    @JsonIgnore
+    private boolean leadTimeDaysProvided;
+
+    public void setLeadTimeDays(Integer leadTimeDays) {
+        this.leadTimeDays = leadTimeDays;
+        this.leadTimeDaysProvided = true;
+    }
     private BigDecimal freightFixedCostPerCase;
 
     /** Internal FK used when persisting contact. */

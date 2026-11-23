@@ -135,6 +135,7 @@ public class SupplierService {
         SupplierDetail detail = prepareForSave(input);
         detail.setId(id);
         detail.setOutletId(existing.getOutletId());
+        if (!detail.isLeadTimeDaysProvided()) detail.setLeadTimeDays(existing.getLeadTimeDays());
         ensurePersistableDefaults(detail, existing);
         detail.setContactId(upsertContact(existing.getContactId(), toContact(detail), existing.getOutletId()));
         supplierMapper.updateDetail(detail);
@@ -190,6 +191,9 @@ public class SupplierService {
     private static SupplierDetail normalize(SupplierDetail detail) {
         if (detail.getName() == null || detail.getName().isBlank()) {
             throw new BusinessException("Name is required.");
+        }
+        if (detail.getLeadTimeDays() != null && (detail.getLeadTimeDays() < 0 || detail.getLeadTimeDays() > 365)) {
+            throw new BusinessException("Supplier lead time must be from 0 to 365 calendar days.");
         }
         detail.setName(detail.getName().trim());
         return detail;

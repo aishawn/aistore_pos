@@ -1,0 +1,1 @@
+ALTER TABLE supplier ADD COLUMN IF NOT EXISTS lead_time_days INTEGER CHECK (lead_time_days BETWEEN 0 AND 365);
