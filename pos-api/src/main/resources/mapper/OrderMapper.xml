@@ -61,6 +61,32 @@
                   AND tenant_outlet.vendor_id = #{q.vendorId}
                   AND tenant_outlet.deleted_at IS NULL
             )
+            <!-- A pre-mapping import can leave a second received order with the same source ID. -->
+            AND NOT EXISTS (
+                SELECT 1
+                FROM shopfront_purchase_order_business_mapping mapped
+                JOIN purchase_order canonical ON canonical.id = mapped.purchase_order_id
+                    AND canonical.outlet_id = mapped.outlet_id
+                    AND canonical.type = 'ORDER' AND canonical.entered_as = 'SHOPFRONT'
+                    AND canonical.status = 'RECEIVED'
+                    AND canonical.reference = mapped.source_id
+                WHERE po.type = 'ORDER' AND po.entered_as = 'SHOPFRONT' AND po.status = 'RECEIVED'
+                  AND mapped.outlet_id = po.outlet_id AND mapped.source_id = po.reference
+                  AND canonical.id &lt;&gt; po.id AND canonical.invoice_number = po.invoice_number
+                  AND NOT EXISTS (
+                      SELECT 1 FROM shopfront_purchase_order_business_mapping own
+                      WHERE own.outlet_id = po.outlet_id AND own.purchase_order_id = po.id
+                  )
+                  AND NOT EXISTS (
+                      SELECT 1 FROM purchase_receipt receipt
+                      WHERE receipt.vendor_id = #{q.vendorId} AND receipt.outlet_id = po.outlet_id
+                        AND receipt.order_id = po.id
+                  )
+                  AND NOT EXISTS (
+                      SELECT 1 FROM purchase_order merged
+                      WHERE merged.outlet_id = po.outlet_id AND merged.merged_into_id = po.id
+                  )
+            )
             <if test="q.outstanding">
                 AND po.status IN ('OPEN', 'SENT', 'PARTIALLY_RECEIVED')
             </if>
