@@ -59,6 +59,18 @@ class ReportRespondNodeTest {
     }
 
     @Test
+    void authoritativeSalesAnswerIncludesTransactionCountWhenRequested() {
+        OverAllState state = state("", List.of(Map.of("sales", 125.50, "grossProfit", 40.25,
+                "costAvailable", true, "transactions", 4)), "2026-10-16", "2026-10-16");
+        when(state.value("intent", String.class)).thenReturn(Optional.of("report_sales"));
+        when(state.value("question", String.class)).thenReturn(Optional.of(
+                "What were sales, gross profit and transaction count yesterday?"));
+
+        assertEquals("Sales for 2026-10-16 were AUD 125.50 and gross profit was AUD 40.25 across 4 sales transactions (ex-GST sales less cost). Source: Orithos POS report.",
+                node.apply(state).get("answer"));
+    }
+
+    @Test
     void authoritativeSalesDisclosesRefundsIncludedInNetRevenue() {
         OverAllState state = state("", List.of(Map.of("sales", 5284.66, "grossSales", 5294.14,
                 "refunds", 9.48, "refundTransactions", 2, "grossProfit", "",

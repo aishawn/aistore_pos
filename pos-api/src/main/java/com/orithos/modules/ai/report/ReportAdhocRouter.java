@@ -19,8 +19,16 @@ public final class ReportAdhocRouter {
 
     /** Ticket / order counts are available via average-ticket (includes tickets). */
     private static final Pattern TICKET_COUNT = Pattern.compile(
-            "几笔|笔订单|笔单|订单数|单数|多少单|"
+            "几笔|笔订单|笔单|订单数|单数|多少单|交易笔数|销售笔数|成交笔数|交易数量|销售交易数|"
                     + "how many tickets|how many orders|how many transactions|ticket count|transaction count|number of (?:tickets|orders|sales|transactions)",
+            Pattern.CASE_INSENSITIVE
+    );
+    private static final Pattern SALES_METRIC = Pattern.compile(
+            "销售额|营业额|收入|sales|revenue|takings|profit|gross profit|毛利|利润|margin",
+            Pattern.CASE_INSENSITIVE
+    );
+    private static final Pattern AVERAGE_TICKET = Pattern.compile(
+            "average ticket|average sale|客单价|平均客单|平均每单",
             Pattern.CASE_INSENSITIVE
     );
     private static final Pattern STOCK_SUMMARY = Pattern.compile(
@@ -132,6 +140,10 @@ public final class ReportAdhocRouter {
                 && ExplicitReportDates.parsePair(question).isPresent() && canOverride(intent)) {
             return "report_sales";
         }
+        if (TICKET_COUNT.matcher(q).find() && SALES_METRIC.matcher(q).find()
+                && !AVERAGE_TICKET.matcher(q).find() && canOverride(intent)) {
+            return "report_sales";
+        }
         if (TICKET_COUNT.matcher(q).find() && canOverride(intent)) {
             return "report_aov";
         }
@@ -146,5 +158,9 @@ public final class ReportAdhocRouter {
             return "report_adhoc";
         }
         return intent;
+    }
+
+    public static boolean asksForTicketCount(String question) {
+        return question != null && TICKET_COUNT.matcher(question).find();
     }
 }

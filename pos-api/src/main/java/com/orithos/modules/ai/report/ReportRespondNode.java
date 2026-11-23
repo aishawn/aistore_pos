@@ -40,7 +40,7 @@ public class ReportRespondNode implements NodeAction {
         String to = slots.getOrDefault("to", "");
         String dataStatus = ReportGraphState.string(state, "report_data_status");
         Map<String, Object> result = new java.util.HashMap<>();
-        String answer = format(intent, rows, from, to, slots, chinese);
+        String answer = format(intent, rows, from, to, slots, chinese, question);
         if ("report_dead_stock".equals(intent) && "incomplete".equalsIgnoreCase(dataStatus)) {
             answer = rows == null || rows.isEmpty()
                     ? (chinese ? "无法确认所选期间是否确实没有滞销商品。" : "I cannot confirm that there were no dead-stock items for the selected period.")
@@ -59,7 +59,7 @@ public class ReportRespondNode implements NodeAction {
     }
 
     private String format(String intent, List<Map<String, Object>> rows, String from, String to,
-                          Map<String, String> slots, boolean chinese) {
+                          Map<String, String> slots, boolean chinese, String question) {
         if (rows == null || rows.isEmpty()) {
             return switch (intent == null ? "" : intent) {
                 case "report_stock" -> chinese ? "没有找到匹配库存，请检查商品名称或目录拼写。" : "No matching stock found. Check the product name or catalogue spelling.";
@@ -88,7 +88,7 @@ public class ReportRespondNode implements NodeAction {
         return switch (intent == null ? "" : intent) {
             case "report_sales" -> rows.get(0).containsKey("grossProfit")
                     || Boolean.TRUE.equals(rows.get(0).get("comparison"))
-                    ? formatAuthoritativeSales(rows.get(0), from, to, chinese)
+                    ? formatAuthoritativeSales(rows.get(0), from, to, chinese, question)
                     : formatSeries(rows, "sales", "Sales", from, to);
             case "report_aov" -> formatAov(rows.get(0), from, to, chinese);
             case "report_stock" -> formatStock(rows, slots.get("query"), chinese);
@@ -118,7 +118,8 @@ public class ReportRespondNode implements NodeAction {
                 + " Source: Orithos POS inventory for the current store. Inventory update time is unavailable; verify the snapshot.";
     }
 
-    private String formatAuthoritativeSales(Map<String, Object> row, String from, String to, boolean chinese) {
+    private String formatAuthoritativeSales(Map<String, Object> row, String from, String to, boolean chinese,
+                                            String question) {
         if (Boolean.TRUE.equals(row.get("comparison"))) return formatSalesComparison(row, chinese);
         BigDecimal sales = ReportQueryService.toDecimal(row.get("sales"));
         if (ReportQueryService.toDecimal(row.get("transactions")).signum() == 0) {
@@ -142,34 +143,46 @@ public class ReportRespondNode implements NodeAction {
         Object profit = row.get("grossProfit");
         String range = rangeText(from, to, chinese);
         String refundDisclosure = refundDisclosure(row, chinese);
+        String transactionCount = ReportAdhocRouter.asksForTicketCount(question)
+                ? transactionCountDisclosure(row, chinese) : "";
         if (Boolean.FALSE.equals(row.get("costAvailable")) || profit == null
                 || profit.toString().isBlank()) {
             if ("permission".equals(row.get("profitUnavailableReason"))) {
                 return chinese
-                        ? range + "营业额 AUD " + money(sales) + refundDisclosure + "；毛利暂不可用，因为当前账号没有查看成本数据的权限。数据来源：Orithos POS 报表。"
+                        ? range + "营业额 AUD " + money(sales) + refundDisclosure + transactionCount + "；毛利暂不可用，因为当前账号没有查看成本数据的权限。数据来源：Orithos POS 报表。"
                         : "Sales for " + range + " were AUD " + money(sales)
                             + refundDisclosure
+                            + transactionCount
                             + "; gross profit is unavailable because your account cannot view cost data. Source: Orithos POS report.";
             }
             if ("tax".equals(row.get("profitUnavailableReason"))) {
                 return chinese
-                        ? range + "营业额 AUD " + money(sales) + refundDisclosure + "；毛利暂不可用，销售税额数据不完整。数据来源：Orithos POS 报表。"
+                        ? range + "营业额 AUD " + money(sales) + refundDisclosure + transactionCount + "；毛利暂不可用，销售税额数据不完整。数据来源：Orithos POS 报表。"
                         : "Sales for " + range + " were AUD " + money(sales)
                             + refundDisclosure
+                            + transactionCount
                             + "; gross profit is unavailable because sale tax data is incomplete. Source: Orithos POS report.";
             }
             return chinese
-                    ? range + "营业额 AUD " + money(sales) + refundDisclosure + "；毛利暂不可用，销售成本数据不完整。数据来源：Orithos POS 报表。"
+                    ? range + "营业额 AUD " + money(sales) + refundDisclosure + transactionCount + "；毛利暂不可用，销售成本数据不完整。数据来源：Orithos POS 报表。"
                     : "Sales for " + range + " were AUD " + money(sales)
                         + refundDisclosure
+                        + transactionCount
                         + "; gross profit is unavailable because sale cost data is incomplete. Source: Orithos POS report.";
         }
         String profitText = money(ReportQueryService.toDecimal(profit));
         return chinese
                 ? range + "营业额 AUD " + money(sales) + refundDisclosure + "，毛利 AUD " + profitText
-                    + "（税前营业额减成本）。数据来源：Orithos POS 报表。"
+                    + transactionCount + "（税前营业额减成本）。数据来源：Orithos POS 报表。"
                 : "Sales for " + range + " were AUD " + money(sales) + refundDisclosure + " and gross profit was AUD " + profitText
-                    + " (ex-GST sales less cost). Source: Orithos POS report.";
+                    + transactionCount + " (ex-GST sales less cost). Source: Orithos POS report.";
+    }
+
+    private String transactionCountDisclosure(Map<String, Object> row, boolean chinese) {
+        String count = ReportQueryService.toDecimal(row.get("transactions")).stripTrailingZeros().toPlainString();
+        return chinese
+                ? "，共 " + count + " 笔销售交易"
+                : " across " + count + ("1".equals(count) ? " sales transaction" : " sales transactions");
     }
 
     private String refundDisclosure(Map<String, Object> row, boolean chinese) {

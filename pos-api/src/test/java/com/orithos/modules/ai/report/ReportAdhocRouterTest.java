@@ -20,6 +20,19 @@ class ReportAdhocRouterTest {
     }
 
     @Test
+    void salesAndTicketCountQuestionsUseTheSalesReportWhileAverageTicketStaysSpecific() {
+        for (String question : new String[]{
+                "What were yesterday's sales, gross profit and transaction count?",
+                "What were yesterday's sales and transaction count?",
+                "昨天销售额、毛利和交易笔数是多少？"
+        }) {
+            assertEquals("report_sales", ReportAdhocRouter.maybeOverride(question, "report_aov"), question);
+        }
+        assertEquals("report_aov", ReportAdhocRouter.maybeOverride(
+                "What was the average ticket and transaction count yesterday?", "report_sales"));
+    }
+
+    @Test
     void mixedAndRankForceAdhoc() {
         assertTrue(ReportAdhocRouter.shouldUseNl2Sql("上周五啤酒的销量和金额分别是多少"));
         assertTrue(ReportAdhocRouter.shouldUseNl2Sql("上周哪个商品卖得最多"));
