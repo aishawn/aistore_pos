@@ -1,6 +1,7 @@
 package com.orithos.modules.ai.replenishment;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 
 /** Read-only replenishment plan slice used by the assistant chat brief. */
@@ -13,7 +14,10 @@ public record ReplenishmentPlan(
         Instant dataAsOf,
         int dataGapCount,
         int inventoryGapCount,
-        int supplierGapCount
+        int supplierGapCount,
+        LocalDate periodFrom,
+        LocalDate periodTo,
+        String timeZone
 ) {
     public ReplenishmentPlan(int coverageDays, int itemsNeedingOrder, List<ReplenishmentSuggestion> top) {
         this(coverageDays, itemsNeedingOrder, top, "VALID", List.of(), null, 0, 0, 0);
@@ -30,6 +34,13 @@ public record ReplenishmentPlan(
                              int dataGapCount) {
         this(coverageDays, itemsNeedingOrder, top, dataQualityStatus, dataGaps, dataAsOf,
                 dataGapCount, 0, 0);
+    }
+
+    public ReplenishmentPlan(int coverageDays, int itemsNeedingOrder, List<ReplenishmentSuggestion> top,
+                             String dataQualityStatus, List<String> dataGaps, Instant dataAsOf,
+                             int dataGapCount, int inventoryGapCount, int supplierGapCount) {
+        this(coverageDays, itemsNeedingOrder, top, dataQualityStatus, dataGaps, dataAsOf,
+                dataGapCount, inventoryGapCount, supplierGapCount, null, null, null);
     }
 
     public ReplenishmentPlan {

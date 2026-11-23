@@ -17,7 +17,7 @@ export function restoredAssistantCardFields(
 ): { cards?: AssistantCard[]; retryQuestion?: string } {
   if (!cards?.length) return {};
   const retryQuestion = retryQuestionForAssistantCards(cards, previousQuestion);
-  const restoredCards = metadata ? cards.map((card) => ({
+  const restoredCards = metadata && messageMetadataAppliesToCards(cards) ? cards.map((card) => ({
     ...card,
     dataAsOf: metadataValue(metadata, card, "dataAsOf"),
     dataSource: metadataValue(metadata, card, "dataSource"),
@@ -31,6 +31,10 @@ export function restoredAssistantCardFields(
     cards: restoredCards,
     ...(retryQuestion ? { retryQuestion } : {}),
   };
+}
+
+export function messageMetadataAppliesToCards(cards: AssistantCard[]): boolean {
+  return !cards.some((card) => card.type === "opportunities");
 }
 
 export function assistantCardMetadataValue<K extends keyof AssistantCard>(

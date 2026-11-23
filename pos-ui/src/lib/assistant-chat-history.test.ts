@@ -120,3 +120,14 @@ test("does not restore retry controls for explicitly non-retryable unavailable c
   assert.equal(retryQuestionForAssistantCards([unavailable], "Recommend a red wine"), undefined);
   assert.equal(retryQuestionForAssistantCards([card("unavailable")], "Recommend a red wine"), "Recommend a red wine");
 });
+
+test("history keeps independent metadata on the cards of an opportunities brief", () => {
+  const cards = restoredAssistantCardFields([
+    { type: "opportunities", title: "Store growth opportunities" },
+    { type: "sales", title: "This week's sales", reportPeriodFrom: "2026-11-23", reportDataStatus: "available" },
+    { type: "replenishment", title: "Restock opportunities", reportPeriodFrom: "2026-09-29", reportDataStatus: "incomplete" },
+  ], undefined, { reportPeriodFrom: "2026-11-23", reportDataStatus: "incomplete" }).cards;
+
+  assert.equal(cards?.[1].reportDataStatus, "available");
+  assert.equal(cards?.[2].reportPeriodFrom, "2026-09-29");
+});

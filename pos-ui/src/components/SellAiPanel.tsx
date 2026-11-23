@@ -32,7 +32,7 @@ import {
 } from "@/lib/ai-entity-actions";
 import { entityActionPage, isReadOnlyEntityOperation } from "@/lib/ai-entity-routing";
 import { assistantCardCtaLabel, assistantCardTitle, assistantSaleActionHref, normalizeAssistantHref, resolveAssistantCardCta } from "@/lib/assistant-card-cta";
-import { assistantCardMetadataValue, restoredAssistantCardFields, retryQuestionForAssistantCards } from "@/lib/assistant-chat-history";
+import { assistantCardMetadataValue, messageMetadataAppliesToCards, restoredAssistantCardFields, retryQuestionForAssistantCards } from "@/lib/assistant-chat-history";
 import { assistantAbortOutcome, type AssistantAbortReason } from "@/lib/assistant-request-state";
 import { assistantCardDisplayStatus, assistantDataTimestampLabel, assistantDisplayDataSource, assistantProvenanceFields, assistantReportDataStatus, assistantReportDateRange, assistantReturnedSalesDateSummary, assistantRouteLabel, requestedSalesDateRange } from "@/lib/assistant-provenance";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
@@ -1959,12 +1959,13 @@ function DialogueView({
                   const cardCta = cardCtas[cardIndex];
                   const chineseCard = /[\u3400-\u9fff]/.test(`${msg.question ?? ""} ${card.summary ?? ""}`);
                   const title = assistantCardTitle(card.type, card.title, chineseCard);
-                  const cardDataSource = assistantCardMetadataValue(msg, card, "dataSource");
-                  const cardPeriod = assistantCardMetadataValue(msg, card, "reportPeriodFrom");
-                  const cardPeriodTo = assistantCardMetadataValue(msg, card, "reportPeriodTo");
-                  const cardTimeZone = assistantCardMetadataValue(msg, card, "reportTimeZone");
-                  const cardDataStatus = assistantCardMetadataValue(msg, card, "reportDataStatus");
-                  const cardDataAsOf = assistantCardMetadataValue(msg, card, "dataAsOf");
+                  const metadata = messageMetadataAppliesToCards(cards) ? msg : {};
+                  const cardDataSource = assistantCardMetadataValue(metadata, card, "dataSource");
+                  const cardPeriod = assistantCardMetadataValue(metadata, card, "reportPeriodFrom");
+                  const cardPeriodTo = assistantCardMetadataValue(metadata, card, "reportPeriodTo");
+                  const cardTimeZone = assistantCardMetadataValue(metadata, card, "reportTimeZone");
+                  const cardDataStatus = assistantCardMetadataValue(metadata, card, "reportDataStatus");
+                  const cardDataAsOf = assistantCardMetadataValue(metadata, card, "dataAsOf");
                   const displayStatus = assistantCardDisplayStatus(cardDataStatus, card.status, chineseCard);
                   const periodLabel = cardPeriod
                     ? assistantReportDateRange(cardPeriod, cardPeriodTo) ?? cardPeriod

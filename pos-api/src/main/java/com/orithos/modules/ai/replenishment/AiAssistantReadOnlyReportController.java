@@ -1,7 +1,6 @@
 package com.orithos.modules.ai.replenishment;
 
 import com.orithos.common.ApiResult;
-import com.orithos.common.AustraliaTime;
 import com.orithos.common.BusinessException;
 import com.orithos.config.CorrelationIdContext;
 import com.orithos.modules.ai.report.TenantContextFactory;
@@ -75,7 +74,7 @@ public class AiAssistantReadOnlyReportController {
             log.info("AI replenishment report correlationId={} category=success dataGapCount={} inventoryGapCount={} supplierGapCount={} elapsedMs={}",
                     CorrelationIdContext.current(), plan.dataGapCount(), plan.inventoryGapCount(),
                     plan.supplierGapCount(), elapsedMs(startedAt));
-            return ApiResult.ok(AssistantReplenishmentPreviewResponse.from(plan, AustraliaTime.today()));
+            return ApiResult.ok(AssistantReplenishmentPreviewResponse.from(plan));
         } catch (AccessDeniedException e) {
             log.info("AI replenishment report correlationId={} category=permission dataGapCount=unknown elapsedMs={}",
                     CorrelationIdContext.current(), elapsedMs(startedAt));

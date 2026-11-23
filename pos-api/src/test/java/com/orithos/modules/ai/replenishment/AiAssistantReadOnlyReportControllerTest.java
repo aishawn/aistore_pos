@@ -15,6 +15,7 @@ import org.springframework.security.access.AccessDeniedException;
 
 import java.sql.SQLException;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Set;
 
@@ -45,7 +46,8 @@ class AiAssistantReadOnlyReportControllerTest {
                 new AssistantStoreOpportunitiesBriefResponse.OpportunitiesReplenishmentSection(
                         21, 4, 4, 2, 1, 1,
                         List.of(new ReplenishmentSuggestion(1, "Shiraz", "units", 12, 5d, 1d)),
-                        "incomplete", dataAsOf.toString()));
+                        "incomplete", dataAsOf.toString(), LocalDate.parse("2026-09-19"),
+                        LocalDate.parse("2026-11-13"), "Australia/Adelaide"));
         when(tenantContextFactory.fromSecurity()).thenReturn(tenant);
         when(opportunitiesBriefService.build(tenant)).thenReturn(brief);
         AiAssistantReadOnlyReportController controller = new AiAssistantReadOnlyReportController(
@@ -67,7 +69,8 @@ class AiAssistantReadOnlyReportControllerTest {
         Instant dataAsOf = Instant.parse("2026-11-12T07:30:00Z");
         ReplenishmentPlan plan = new ReplenishmentPlan(21, 2,
                 List.of(new ReplenishmentSuggestion(1, "Shiraz", "units", 12, 5d, 1d)),
-                "DATA_INCOMPLETE", List.of("Shiraz: supplier unavailable"), dataAsOf, 25, 4, 21);
+                "DATA_INCOMPLETE", List.of("Shiraz: supplier unavailable"), dataAsOf, 25, 4, 21,
+                LocalDate.parse("2026-09-19"), LocalDate.parse("2026-11-13"), "Australia/Adelaide");
         when(tenantContextFactory.fromSecurity()).thenReturn(tenant);
         when(replenishmentService.plan(tenant)).thenReturn(plan);
 
@@ -79,9 +82,9 @@ class AiAssistantReadOnlyReportControllerTest {
         assertEquals(0, response.code());
         assertEquals("orithos_ledger", response.data().dataSource());
         assertEquals("current_authenticated_store", response.data().storeScope());
-        assertEquals(AustraliaTime.today().minusDays(56), response.data().reportPeriodFrom());
-        assertEquals(AustraliaTime.today(), response.data().reportPeriodTo());
-        assertEquals("Australia/Melbourne", response.data().reportTimeZone());
+        assertEquals(LocalDate.parse("2026-09-19"), response.data().reportPeriodFrom());
+        assertEquals(LocalDate.parse("2026-11-13"), response.data().reportPeriodTo());
+        assertEquals("Australia/Adelaide", response.data().reportTimeZone());
         assertEquals("incomplete", response.data().reportDataStatus());
         assertEquals(dataAsOf.toString(), response.data().dataAsOf());
         assertEquals(25, response.data().dataGapCount());

@@ -243,3 +243,23 @@ test("week boundaries use Monday and store timezone across DST and year boundari
     ["2026-11-01T00:00:00Z", "Australia/Brisbane", "2026-10-25T14:00:00.000Z"],
   ]) assert.equal(storeWeekStart(new Date(now), timezone).toISOString(), expected);
 });
+
+test("opportunities keep sales and replenishment metadata independent", async () => {
+  const result = await readOperationsPreview("Suggest ways to grow my store", null, undefined, mockFetch({ data: {
+    dataSource: "orithos_ledger", storeScope: "current_authenticated_store",
+    reportPeriodFrom: "2026-11-23", reportPeriodTo: "2026-11-23",
+    reportTimeZone: "Australia/Melbourne", reportDataStatus: "incomplete", dataAsOf: "2026-11-23T03:00:00Z",
+    sales: { revenue: "$100", transactions: 4, currency: "AUD", reportDataStatus: "available", dataAsOf: "2026-11-23T03:00:00Z" },
+    replenishment: {
+      reportPeriodFrom: "2026-09-29", reportPeriodTo: "2026-11-23", reportTimeZone: "Australia/Melbourne",
+      coverageDays: 21, itemsNeedingOrder: 1, actionableItemCount: 1, dataGapCount: 1,
+      inventoryGapCount: 0, supplierGapCount: 1, top: [], reportDataStatus: "incomplete", dataAsOf: null,
+    },
+  } }));
+  assert.equal(result?.cards?.find((card) => card.type === "sales")?.reportPeriodFrom, "2026-11-23");
+  const restock = result?.cards?.find((card) => card.type === "replenishment");
+  assert.equal(restock?.reportPeriodFrom, "2026-09-29");
+  assert.equal(restock?.dataAsOf, undefined);
+  assert.equal(result?.reportPeriodFrom, undefined);
+  assert.match(result?.answer ?? "", /Replenishment period: 2026-09-29 to 2026-11-23/);
+});

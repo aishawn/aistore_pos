@@ -61,6 +61,7 @@ type OpportunitiesBrief = {
     coverageDays: number; itemsNeedingOrder: number; actionableItemCount: number;
     dataGapCount: number; inventoryGapCount: number; supplierGapCount: number;
     top: Product[]; reportDataStatus: string; dataAsOf?: string | null;
+    reportPeriodFrom?: string; reportPeriodTo?: string; reportTimeZone?: string;
   };
 };
 type Sales = {
@@ -327,7 +328,7 @@ async function buildLiveOperationsPreview(
         reportPeriodTo: brief.reportPeriodTo,
         reportTimeZone: brief.reportTimeZone,
         reportDataStatus: brief.sales.reportDataStatus,
-        dataAsOf: brief.sales.dataAsOf ?? brief.dataAsOf ?? undefined,
+        dataAsOf: brief.sales.dataAsOf ?? undefined,
       };
       const replenishmentStatus = brief.replenishment.reportDataStatus === "no_data" ? "unavailable"
         : brief.replenishment.dataGapCount > 0 ? "partial"
@@ -355,11 +356,11 @@ async function buildLiveOperationsPreview(
         })),
         dataSource: brief.dataSource,
         storeScope: brief.storeScope,
-        reportPeriodFrom: brief.reportPeriodFrom,
-        reportPeriodTo: brief.reportPeriodTo,
-        reportTimeZone: brief.reportTimeZone,
+        reportPeriodFrom: brief.replenishment.reportPeriodFrom,
+        reportPeriodTo: brief.replenishment.reportPeriodTo,
+        reportTimeZone: brief.replenishment.reportTimeZone,
         reportDataStatus: brief.replenishment.reportDataStatus,
-        dataAsOf: brief.replenishment.dataAsOf ?? brief.dataAsOf ?? undefined,
+        dataAsOf: brief.replenishment.dataAsOf ?? undefined,
       };
       const overviewCard: AssistantCard = {
         type: "opportunities",
@@ -373,15 +374,18 @@ async function buildLiveOperationsPreview(
           : "Based on this week's sales and replenishment preview: restock top movers first, then review category performance and pricing on the dashboard.",
         dataSource: brief.dataSource,
         storeScope: brief.storeScope,
-        reportPeriodFrom: brief.reportPeriodFrom,
-        reportPeriodTo: brief.reportPeriodTo,
-        reportTimeZone: brief.reportTimeZone,
-        reportDataStatus: brief.reportDataStatus,
-        dataAsOf: brief.dataAsOf ?? undefined,
       };
+      const restockFrom = brief.replenishment.reportPeriodFrom;
+      const restockTo = brief.replenishment.reportPeriodTo;
+      const restockZone = brief.replenishment.reportTimeZone;
+      const period = restockFrom && restockTo && restockZone
+        ? chinese
+          ? `补货分析期间：${restockFrom} 至 ${restockTo}（${restockZone}）。`
+          : `Replenishment period: ${restockFrom} to ${restockTo} (${restockZone}). `
+        : "";
       const answer = chinese
-        ? `本周销售 ${revenueText}（${brief.sales.transactions} 笔）；${brief.replenishment.actionableItemCount} 个 SKU 有补货建议。数据期间：${brief.reportPeriodFrom} 至 ${brief.reportPeriodTo}（${brief.reportTimeZone}）。打开下方卡片继续核对。`
-        : `This week: net sales ${revenueText} (${brief.sales.transactions} transactions); ${brief.replenishment.actionableItemCount} SKUs have replenishment suggestions. Replenishment period: ${brief.reportPeriodFrom} to ${brief.reportPeriodTo} (${brief.reportTimeZone}). Use the cards below to review.`;
+        ? `本周销售 ${revenueText}（${brief.sales.transactions} 笔）；${brief.replenishment.actionableItemCount} 个 SKU 有补货建议。${period}打开下方卡片继续核对。`
+        : `This week: net sales ${revenueText} (${brief.sales.transactions} transactions); ${brief.replenishment.actionableItemCount} SKUs have replenishment suggestions. ${period}Use the cards below to review.`;
       return {
         threadId: threadId ?? "",
         intent: "navigate",
@@ -393,13 +397,8 @@ async function buildLiveOperationsPreview(
         writeRequests: [],
         source: "deterministic",
         llmFallback: false,
-        dataAsOf: brief.dataAsOf ?? undefined,
         dataSource: brief.dataSource,
         storeScope: brief.storeScope,
-        reportPeriodFrom: brief.reportPeriodFrom,
-        reportPeriodTo: brief.reportPeriodTo,
-        reportTimeZone: brief.reportTimeZone,
-        reportDataStatus: brief.reportDataStatus,
         fastPathId: "operations_opportunities",
       };
     } catch (error) {

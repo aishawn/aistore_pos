@@ -90,7 +90,6 @@ class NativeReplenishmentServiceTest {
         new NativeReplenishmentService(jdbc).plan(tenant(55L, 87L));
 
         verify(statement).setQueryTimeout(5);
-        verify(statement).setString(1, "Australia/Melbourne");
         verify(statement).setString(2, "Australia/Melbourne");
         verify(statement).setLong(3, 87L);
         verify(statement).setString(4, "Australia/Melbourne");
@@ -112,7 +111,12 @@ class NativeReplenishmentServiceTest {
 
         BusinessTimezoneService timezones = mock(BusinessTimezoneService.class);
         when(timezones.zoneForVendor(55L)).thenReturn(ZoneId.of("Australia/Adelaide"));
-        new NativeReplenishmentService(jdbc, timezones).plan(tenant(55L, 87L));
+        long instant = Instant.parse("2026-11-22T13:45:00Z").toEpochMilli();
+        ReplenishmentPlan plan = new NativeReplenishmentService(jdbc, () -> instant, timezones)
+                .plan(tenant(55L, 87L));
+        assertEquals(java.time.LocalDate.parse("2026-09-29"), plan.periodFrom());
+        assertEquals(java.time.LocalDate.parse("2026-11-23"), plan.periodTo());
+        assertEquals("Australia/Adelaide", plan.timeZone());
 
         ArgumentCaptor<String> sql = ArgumentCaptor.forClass(String.class);
         verify(connection).prepareStatement(sql.capture());
@@ -126,7 +130,7 @@ class NativeReplenishmentServiceTest {
         assertTrue(sql.getValue().contains("LEFT JOIN supplier"));
         assertFalse(sql.getValue().contains("EXISTS (SELECT 1 FROM product_supplier"));
         assertFalse(sql.getValue().contains("(SELECT MAX(ps.minimum_order_quantity)"));
-        verify(statement).setString(1, "Australia/Adelaide");
+        verify(statement).setObject(1, java.time.LocalDate.parse("2026-11-23"));
         verify(statement).setString(2, "Australia/Adelaide");
         verify(statement).setLong(3, 87L);
         verify(statement).setString(4, "Australia/Adelaide");

@@ -1,6 +1,7 @@
 package com.orithos.modules.ai.replenishment;
 
 import com.orithos.config.CorrelationIdContext;
+import com.orithos.common.AustraliaTime;
 import com.orithos.common.BusinessTimezoneService;
 import com.orithos.modules.ai.report.TenantContext;
 import org.slf4j.Logger;
@@ -14,6 +15,8 @@ import org.springframework.stereotype.Service;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -78,8 +81,10 @@ public class NativeReplenishmentService {
         }
         int cover = coverageDays > 0 ? Math.min(coverageDays, 180) : DEFAULT_COVERAGE_DAYS;
         int limit = Math.max(1, Math.min(50, suggestionLimit));
-        CacheKey key = new CacheKey(tenant.vendorId(), tenant.requireOutletId(), cover, limit);
         long now = currentTimeMillis.getAsLong();
+        ZoneId zone = businessTimezone == null ? AustraliaTime.ZONE : businessTimezone.zoneForVendor(tenant.vendorId());
+        LocalDate today = Instant.ofEpochMilli(now).atZone(zone).toLocalDate();
+        CacheKey key = new CacheKey(tenant.vendorId(), tenant.requireOutletId(), cover, limit, today, zone);
         cache.entrySet().removeIf(entry -> entry.getValue().expiresAtMillis() <= now);
         CachedPlan cached = cache.get(key);
         if (cached != null && cached.expiresAtMillis() > now) {
@@ -88,7 +93,7 @@ public class NativeReplenishmentService {
         }
         if (cached != null) cache.remove(key, cached);
         try {
-            ReplenishmentPlan plan = cache.computeIfAbsent(key, ignored -> new CachedPlan(calculate(tenant, cover, limit),
+            ReplenishmentPlan plan = cache.computeIfAbsent(key, ignored -> new CachedPlan(calculate(tenant, cover, limit, today, zone),
                     currentTimeMillis.getAsLong() + CACHE_TTL_MILLIS)).plan();
             logPlan(correlationId, startedAt, plan, false);
             return plan;
@@ -120,11 +125,12 @@ public class NativeReplenishmentService {
         return "service";
     }
 
-    private ReplenishmentPlan calculate(TenantContext tenant, int cover, int limit) {
+    private ReplenishmentPlan calculate(TenantContext tenant, int cover, int limit, LocalDate today, ZoneId zone) {
+        LocalDate from = today.minusDays(2L * PERIOD_DAYS - 1);
         List<Row> rows = jdbc.query(connection -> {
             var statement = connection.prepareStatement("""
                 WITH period AS (
-                    SELECT (CURRENT_TIMESTAMP AT TIME ZONE ?)::date AS today
+                    SELECT ?::date AS today
                 ), sales_rows AS (
                     SELECT si.product_id, si.quantity,
                            COALESCE(s.business_date, s.local_sold_at::date,
@@ -175,12 +181,10 @@ public class NativeReplenishmentService {
                 ORDER BY p.name, p.id
                 """);
             statement.setQueryTimeout(QUERY_TIMEOUT_SECONDS);
-            String zone = businessTimezone == null ? "Australia/Melbourne"
-                    : businessTimezone.zoneForVendor(tenant.vendorId()).getId();
-            statement.setString(1, zone);
-            statement.setString(2, zone);
+            statement.setObject(1, today);
+            statement.setString(2, zone.getId());
             statement.setLong(3, tenant.requireOutletId());
-            statement.setString(4, zone);
+            statement.setString(4, zone.getId());
             statement.setLong(5, tenant.requireOutletId());
             statement.setLong(6, tenant.requireOutletId());
             return statement;
@@ -199,7 +203,7 @@ public class NativeReplenishmentService {
                 .max(Instant::compareTo).orElse(null);
         if (salesDataAsOf == null) {
             return new ReplenishmentPlan(cover, 0, List.of(), "NO_DATA",
-                    List.of("sales history unavailable"), null, rows.isEmpty() ? 0 : rows.size());
+                    List.of("sales history unavailable"), null, rows.size(), 0, 0, from, today, zone.getId());
         }
         Instant inventoryDataAsOf = rows.stream().map(Row::inventoryDataAsOf).filter(java.util.Objects::nonNull)
                 .max(Instant::compareTo).orElse(null);
@@ -243,14 +247,15 @@ public class NativeReplenishmentService {
                 .thenComparing(ReplenishmentSuggestion::name));
         return new ReplenishmentPlan(cover, suggestions.size(), suggestions.stream().limit(limit).toList(),
                 gaps.isEmpty() ? "VALID" : "DATA_INCOMPLETE", gaps.stream().distinct().limit(20).toList(),
-                dataAsOf, dataGapCount, inventoryGapCount, supplierGapCount);
+                dataAsOf, dataGapCount, inventoryGapCount, supplierGapCount, from, today, zone.getId());
     }
 
     private record Row(long id, String name, double caseQuantity, Double onHand, double onOrder,
                        double recentUnits, double previousUnits, boolean hasSupplier, double minimumOrder,
                        Instant salesDataAsOf, Instant inventoryDataAsOf) { }
 
-    private record CacheKey(long vendorId, long outletId, int coverageDays, int suggestionLimit) { }
+    private record CacheKey(long vendorId, long outletId, int coverageDays, int suggestionLimit,
+                            LocalDate today, ZoneId zone) { }
     private record CachedPlan(ReplenishmentPlan plan, long expiresAtMillis) { }
 
     private static Double asDouble(Object value) {

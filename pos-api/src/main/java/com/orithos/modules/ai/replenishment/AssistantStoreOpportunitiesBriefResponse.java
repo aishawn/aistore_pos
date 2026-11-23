@@ -31,6 +31,9 @@ public record AssistantStoreOpportunitiesBriefResponse(
             int supplierGapCount,
             List<ReplenishmentSuggestion> top,
             String reportDataStatus,
-            String dataAsOf
+            String dataAsOf,
+            LocalDate reportPeriodFrom,
+            LocalDate reportPeriodTo,
+            String reportTimeZone
     ) {}
 }

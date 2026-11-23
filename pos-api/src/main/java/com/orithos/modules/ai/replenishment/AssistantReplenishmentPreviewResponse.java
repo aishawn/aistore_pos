@@ -1,7 +1,5 @@
 package com.orithos.modules.ai.replenishment;
 
-import com.orithos.common.AustraliaTime;
-
 import java.time.LocalDate;
 import java.util.List;
 
@@ -22,13 +20,13 @@ public record AssistantReplenishmentPreviewResponse(
         int supplierGapCount,
         int actionableItemCount
 ) {
-    public static AssistantReplenishmentPreviewResponse from(ReplenishmentPlan plan, LocalDate today) {
+    public static AssistantReplenishmentPreviewResponse from(ReplenishmentPlan plan) {
         return new AssistantReplenishmentPreviewResponse(
                 "orithos_ledger",
                 "current_authenticated_store",
-                today.minusDays(56),
-                today,
-                AustraliaTime.ZONE.getId(),
+                plan.periodFrom(),
+                plan.periodTo(),
+                plan.timeZone(),
                 "NO_DATA".equalsIgnoreCase(plan.dataQualityStatus()) ? "no_data"
                         : "DATA_INCOMPLETE".equalsIgnoreCase(plan.dataQualityStatus()) ? "incomplete" : "available",
                 plan.dataAsOf() == null ? null : plan.dataAsOf().toString(),

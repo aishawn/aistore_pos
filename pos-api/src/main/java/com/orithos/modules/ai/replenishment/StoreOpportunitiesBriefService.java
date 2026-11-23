@@ -1,6 +1,5 @@
 package com.orithos.modules.ai.replenishment;
 
-import com.orithos.common.AustraliaTime;
 import com.orithos.modules.ai.report.TenantContext;
 import com.orithos.modules.report.ReportQueryService;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -29,10 +28,10 @@ public class StoreOpportunitiesBriefService {
         if (outletId == null) {
             throw new IllegalStateException("Store outlet is required");
         }
-        LocalDate today = AustraliaTime.today();
+        ReplenishmentPlan plan = replenishmentService.plan(tenant);
+        LocalDate today = plan.periodTo();
         LocalDate weekStart = today.with(DayOfWeek.MONDAY);
         Map<String, Object> overview = reportQueryService.nativeOverview(tenant.vendorId(), outletId, weekStart, today);
-        ReplenishmentPlan plan = replenishmentService.plan(tenant);
 
         String salesStatus = stringValue(overview.get("reportDataStatus"));
         String replenishmentStatus = mapReplenishmentStatus(plan.dataQualityStatus());
@@ -61,14 +60,15 @@ public class StoreOpportunitiesBriefService {
                         plan.supplierGapCount(),
                         plan.top() == null ? List.of() : plan.top(),
                         replenishmentStatus,
-                        replenishmentDataAsOf);
+                        replenishmentDataAsOf,
+                plan.periodFrom(), plan.periodTo(), plan.timeZone());
 
         return new AssistantStoreOpportunitiesBriefResponse(
                 "orithos_ledger",
                 "current_authenticated_store",
                 weekStart,
                 today,
-                AustraliaTime.ZONE.getId(),
+                plan.timeZone(),
                 combinedStatus,
                 dataAsOf,
                 sales,
