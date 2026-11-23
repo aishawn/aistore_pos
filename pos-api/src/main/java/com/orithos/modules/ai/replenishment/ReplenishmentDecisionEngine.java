@@ -7,6 +7,18 @@ import java.math.RoundingMode;
 public final class ReplenishmentDecisionEngine {
     private ReplenishmentDecisionEngine() { }
 
+    static int effectiveCoverage(int coverageDays, Integer leadTimeDays) {
+        return leadTimeDays == null ? coverageDays : Math.max(coverageDays, leadTimeDays);
+    }
+
+    static double coverageOrderQuantity(double demand, int effectiveCoverage, double available,
+                                        double caseQuantity, double minimumOrder) {
+        double shortfall = demand * effectiveCoverage - available;
+        if (shortfall <= 0) return 0;
+        double casePack = Math.max(1d, caseQuantity);
+        return Math.ceil(Math.max(shortfall, Math.max(1d, minimumOrder)) / casePack) * casePack;
+    }
+
     public static Decision decide(Input input) {
         if (input == null || input.onHand() < 0 || input.onOrder() < 0 || input.averageDailyDemand() < 0
                 || input.demandStdDev() < 0 || input.leadTimeDays() < 0 || input.coverageDays() < 0

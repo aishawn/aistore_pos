@@ -167,12 +167,9 @@ public class ReplenishmentWorkspaceService {
                 : Math.max(recentPerDay, previousPerDay);
         double available = onHand + row.onOrder();
         double forecastStock = available;
-        int lead = cover;
-        double rawDemandTarget = demand * lead;
-        double raw = Math.max(0d, rawDemandTarget - forecastStock);
-        double casePack = Math.max(1d, row.caseQuantity());
-        double minimum = Math.max(1d, row.minimumOrder());
-        double quantity = raw == 0 ? 0 : Math.ceil(Math.max(raw, minimum) / casePack) * casePack;
+        int effectiveCoverage = ReplenishmentDecisionEngine.effectiveCoverage(cover, row.leadTimeDays());
+        double quantity = ReplenishmentDecisionEngine.coverageOrderQuantity(
+                demand, effectiveCoverage, available, row.caseQuantity(), row.minimumOrder());
 
         List<String> dataIssues = new ArrayList<>();
         String status = "READY";
@@ -190,14 +187,14 @@ public class ReplenishmentWorkspaceService {
             reason = "Negative on-hand stock. Reconcile the stock count, sales and receipts before drafting a replenishment order.";
         } else if (quantity <= 0) {
             status = "NO_DEMAND";
-            reason = demand > 0 ? "Stock covers the coverage target." : "No verifiable demand in the sales window.";
+            reason = demand > 0 ? "Stock covers the effective coverage target." : "No verifiable demand in the sales window.";
         } else if (!dataIssues.isEmpty()) {
             if (dataIssues.contains("REVIEW_COST_PRICE")) {
                 status = "REVIEW_DATA";
             }
-            reason = buildReason(demand, cover, lead, onHand, row.onOrder(), quantity);
+            reason = buildReason(demand, effectiveCoverage, onHand, row.onOrder(), quantity);
         } else {
-            reason = buildReason(demand, cover, lead, onHand, row.onOrder(), quantity);
+            reason = buildReason(demand, effectiveCoverage, onHand, row.onOrder(), quantity);
         }
 
         if (onHand >= 0 && row.supplierId() == null) {
@@ -241,10 +238,10 @@ public class ReplenishmentWorkspaceService {
                 row.caseQuantity() > 0 ? row.caseQuantity() : null, row.onOrder(), row.leadTimeDays());
     }
 
-    private static String buildReason(double demand, int cover, int lead, double onHand, double onOrder, double quantity) {
+    private static String buildReason(double demand, int effectiveCoverage, double onHand, double onOrder, double quantity) {
         return String.format(Locale.ROOT,
                 "Weighted demand %.2f units/day × %d effective coverage days − forecast stock %.1f (on hand %.1f + on order %.1f) → suggested %s units.",
-                demand, lead, onHand + onOrder, onHand, onOrder,
+                demand, effectiveCoverage, onHand + onOrder, onHand, onOrder,
                 quantity == Math.floor(quantity) ? String.format(Locale.ROOT, "%.0f", quantity) : String.valueOf(quantity));
     }
 

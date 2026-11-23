@@ -441,6 +441,26 @@ class NativeReplenishmentServiceTest {
         assertTrue(plan.dataGaps().getFirst().contains("cost"));
     }
 
+    @Test
+    void confirmedLeadTimeExtendsTheCoverageTargetInAssistant() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        ResultSet row = replenishmentRow(5L, "Shiraz", 4d, true);
+        when(row.getDouble("recent_units")).thenReturn(28d);
+        when(row.getDouble("previous_units")).thenReturn(28d);
+        when(row.getDouble("on_order")).thenReturn(3d);
+        when(row.getDouble("case_quantity")).thenReturn(6d);
+        when(row.getObject("lead_time_days", Integer.class)).thenReturn(30);
+        when(jdbc.query(any(PreparedStatementCreator.class), any(RowMapper.class))).thenAnswer(invocation -> {
+            RowMapper<?> mapper = invocation.getArgument(1);
+            return List.of(mapper.mapRow(row, 0));
+        });
+        long now = row.getTimestamp("inventory_data_as_of").getTime() + 1;
+
+        var plan = new NativeReplenishmentService(jdbc, () -> now).plan(tenant(55L, 87L), 21);
+
+        assertEquals(24d, plan.top().getFirst().suggestedQuantity());
+    }
+
     private static ResultSet replenishmentRow(long id, String name, Double onHand, boolean supplier)
             throws Exception {
         ResultSet row = mock(ResultSet.class);

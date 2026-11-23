@@ -90,6 +90,10 @@ public class ReplenishmentChatBrief {
                     sb.append(chinese ? "（约剩 " : " (≈").append(formatDays(item.daysOfStock()))
                             .append(chinese ? " 天）" : "d left)");
                 }
+                if (item.leadTimeDays() != null && item.leadTimeDays() > plan.coverageDays()) {
+                    sb.append(chinese ? "，按供应商交期覆盖 " : ", covers the supplier's ")
+                            .append(item.leadTimeDays()).append(chinese ? " 天" : "-day lead time");
+                }
             }
             sb.append(chinese ? "\n\n打开补货页面审核数量并确认订单。"
                     : "\n\nTap below to review quantities and confirm any order.");

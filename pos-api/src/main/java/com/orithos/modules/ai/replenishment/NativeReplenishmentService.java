@@ -135,6 +135,7 @@ public class NativeReplenishmentService {
                        COALESCE(s.previous_units, 0) AS previous_units,
                        s.sales_data_as_of,
                        chosen.id IS NOT NULL AS has_supplier,
+                       chosen.lead_time_days,
                        cost.cost > 0 AS has_recorded_cost,
                 """ + ReplenishmentSalesQuery.SELECTED_MINIMUM_ORDER + """
                 FROM product p
@@ -157,7 +158,8 @@ public class NativeReplenishmentService {
                 rs.getDouble("case_quantity"), asDouble(rs.getObject("on_hand")), rs.getDouble("on_order"),
                 rs.getDouble("recent_units"), rs.getDouble("previous_units"), rs.getBoolean("has_supplier"),
                 rs.getBoolean("has_recorded_cost"),
-                rs.getDouble("minimum_order"), timestampInstant(rs.getTimestamp("sales_data_as_of")),
+                rs.getDouble("minimum_order"), rs.getObject("lead_time_days", Integer.class),
+                timestampInstant(rs.getTimestamp("sales_data_as_of")),
                 timestampInstant(rs.getTimestamp("inventory_data_as_of"))));
 
         List<ReplenishmentSuggestion> suggestions = new ArrayList<>();
@@ -202,10 +204,9 @@ public class NativeReplenishmentService {
                     : Math.max(recentPerDay, previousPerDay);
             if (demand <= 0) continue;
             double available = row.onHand() + row.onOrder();
-            double casePack = Math.max(1d, row.caseQuantity());
-            double minimum = Math.max(1d, row.minimumOrder());
-            double raw = Math.max(0d, demand * cover - available);
-            double quantity = raw == 0 ? 0 : Math.ceil(Math.max(raw, minimum) / casePack) * casePack;
+            int effectiveCoverage = ReplenishmentDecisionEngine.effectiveCoverage(cover, row.leadTimeDays());
+            double quantity = ReplenishmentDecisionEngine.coverageOrderQuantity(
+                    demand, effectiveCoverage, available, row.caseQuantity(), row.minimumOrder());
             if (quantity <= 0) continue;
             if (!row.hasSupplier()) {
                 dataGapCount++;
@@ -220,7 +221,7 @@ public class NativeReplenishmentService {
                 continue;
             }
             suggestions.add(new ReplenishmentSuggestion(row.id(), row.name(), "units", quantity,
-                    Math.max(0d, row.onHand()) / demand, demand, row.onHand(), available));
+                    Math.max(0d, row.onHand()) / demand, demand, row.onHand(), available, row.leadTimeDays()));
         }
         suggestions.sort(Comparator
                 .comparing(ReplenishmentSuggestion::daysOfStock, Comparator.nullsLast(Comparator.naturalOrder()))
@@ -235,7 +236,7 @@ public class NativeReplenishmentService {
 
     private record Row(long id, String name, double caseQuantity, Double onHand, double onOrder,
                        double recentUnits, double previousUnits, boolean hasSupplier, boolean hasRecordedCost,
-                       double minimumOrder,
+                       double minimumOrder, Integer leadTimeDays,
                        Instant salesDataAsOf, Instant inventoryDataAsOf) { }
 
     private record CacheKey(long vendorId, long outletId, int coverageDays, int suggestionLimit,
