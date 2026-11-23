@@ -50,5 +50,6 @@ public class Order {
     private List<ReceivedBatch> receivedBatches;
 
     public record ReceivedBatch(Long receiptId, Long orderProductId, String batchCode,
-                                LocalDate expiryDate, BigDecimal inventoryQuantity) {}
+                                LocalDate expiryDate, BigDecimal inventoryQuantity,
+                                PurchaseReceiptRequest.DateType dateType) {}
 }

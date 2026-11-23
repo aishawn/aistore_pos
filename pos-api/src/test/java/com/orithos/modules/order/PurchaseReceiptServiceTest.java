@@ -60,7 +60,7 @@ class PurchaseReceiptServiceTest {
         var zone = mock(BusinessTimezoneService.class);
         var today = java.time.LocalDate.parse("2026-11-23");
         when(zone.today(5L)).thenReturn(today);
-        var batch = new ReceiptExpiryReviewController.Batch(12L, 44L, 71L, "Milk", "A", today, BigDecimal.ONE);
+        var batch = new ReceiptExpiryReviewController.Batch(12L, 44L, 71L, "Milk", "A", today, BigDecimal.ONE, null);
         when(orders.findExpiryReview(5L, 3L, today, today.plusDays(14), 100L))
                 .thenReturn(java.util.Collections.nCopies(101, batch));
         var controller = new ReceiptExpiryReviewController(orders, zone, mock(com.orithos.security.PermissionAccess.class));
@@ -80,7 +80,7 @@ class PurchaseReceiptServiceTest {
         var controller = new OrderController(orders, service, null, null);
         Order order = order("RECEIVED");
         when(orders.findByIdForVendor(12L, 5L)).thenReturn(order);
-        var batch = new Order.ReceivedBatch(44L, 71L, "L01", java.time.LocalDate.parse("2026-11-28"), new BigDecimal("6"));
+        var batch = new Order.ReceivedBatch(44L, 71L, "L01", java.time.LocalDate.parse("2026-11-28"), new BigDecimal("6"), PurchaseReceiptRequest.DateType.BEST_BEFORE);
         when(orders.findReceivedBatches(12L, 5L, 3L)).thenReturn(List.of(batch));
 
         assertEquals(List.of(batch), controller.get(12L).data().getReceivedBatches());
@@ -90,7 +90,7 @@ class PurchaseReceiptServiceTest {
     void recordsPartialReceiptAndInventoryMovementAtomicallyThroughService() {
         var expiry = java.time.LocalDate.parse("2026-11-30");
         var request = new PurchaseReceiptRequest(List.of(new PurchaseReceiptRequest.Line(71L, new BigDecimal("4"),
-                List.of(new PurchaseReceiptRequest.Batch("A", expiry, new BigDecimal("1")),
+                List.of(new PurchaseReceiptRequest.Batch("A", expiry, new BigDecimal("1"), PurchaseReceiptRequest.DateType.USE_BY),
                         new PurchaseReceiptRequest.Batch("B", expiry, new BigDecimal("3"))))));
         when(orders.lockReceiptIdempotencyKey(5L, "receive-1")).thenReturn(1);
         Order order = order("SENT");
@@ -108,7 +108,7 @@ class PurchaseReceiptServiceTest {
             ((PurchaseReceiptLine) invocation.getArgument(0)).setId(55L);
             return 1;
         });
-        when(orders.insertReceiptBatch(eq(55L), anyString(), eq(expiry), any())).thenReturn(1);
+        when(orders.insertReceiptBatch(eq(55L), anyString(), eq(expiry), any(), any())).thenReturn(1);
         when(products.adjustInventory(81L, 3L, new BigDecimal("24"))).thenReturn(1);
         when(orders.insertInventoryMovement(any())).thenReturn(1);
         when(orders.updateReceivedQuantity(71L, 12L, new BigDecimal("4"))).thenReturn(1);
@@ -120,8 +120,8 @@ class PurchaseReceiptServiceTest {
 
         assertEquals("PARTIALLY_RECEIVED", result.status());
         assertEquals(44L, result.receiptId());
-        verify(orders).insertReceiptBatch(55L, "A", expiry, new BigDecimal("6"));
-        verify(orders).insertReceiptBatch(55L, "B", expiry, new BigDecimal("18"));
+        verify(orders).insertReceiptBatch(55L, "A", expiry, new BigDecimal("6"), PurchaseReceiptRequest.DateType.USE_BY);
+        verify(orders).insertReceiptBatch(55L, "B", expiry, new BigDecimal("18"), null);
         verify(products).adjustInventory(81L, 3L, new BigDecimal("24"));
         verify(orders).insertInventoryMovement(argThat(movement -> movement.getQuantityDelta().equals(new BigDecimal("24"))
                 && movement.getSourceId().equals(44L) && movement.getSourceLineId().equals(55L)));
@@ -135,6 +135,9 @@ class PurchaseReceiptServiceTest {
         var forward = new PurchaseReceiptRequest(List.of(new PurchaseReceiptRequest.Line(71L, new BigDecimal("4"), List.of(a, b))));
         var reverse = new PurchaseReceiptRequest(List.of(new PurchaseReceiptRequest.Line(71L, new BigDecimal("4"), List.of(b, a))));
         assertEquals(OrderService.receiptRequestHash(12L, forward), OrderService.receiptRequestHash(12L, reverse));
+        var typed = new PurchaseReceiptRequest.Batch("A", expiry, BigDecimal.ONE, PurchaseReceiptRequest.DateType.BEST_BEFORE);
+        var typedRequest = new PurchaseReceiptRequest(List.of(new PurchaseReceiptRequest.Line(71L, new BigDecimal("4"), List.of(typed, b))));
+        org.junit.jupiter.api.Assertions.assertNotEquals(OrderService.receiptRequestHash(12L, forward), OrderService.receiptRequestHash(12L, typedRequest));
         org.junit.jupiter.api.Assertions.assertNotEquals(OrderService.receiptRequestHash(12L, request), OrderService.receiptRequestHash(12L, forward));
     }
 

@@ -139,7 +139,7 @@ public class OrderService {
             }
             for (var batch : batches) {
                 if (orderMapper.insertReceiptBatch(receiptLine.getId(), batch.code().trim(),
-                        batch.expiryDate(), batch.quantity().multiply(packSize)) != 1) {
+                        batch.expiryDate(), batch.quantity().multiply(packSize), batch.dateType()) != 1) {
                     throw new IllegalStateException("Purchase receipt batch could not be recorded.");
                 }
             }
@@ -186,7 +186,8 @@ public class OrderService {
                     if (line == null) return "null";
                     String batches = validatedReceiptBatches(line).stream()
                             .map(batch -> java.util.HexFormat.of().formatHex(batch.code().trim().getBytes(StandardCharsets.UTF_8))
-                                    + ":" + batch.expiryDate() + ":" + batch.quantity().stripTrailingZeros().toPlainString())
+                                    + ":" + batch.expiryDate() + ":" + batch.quantity().stripTrailingZeros().toPlainString()
+                                    + (batch.dateType() == null ? "" : ":" + batch.dateType().name()))
                             .sorted().collect(java.util.stream.Collectors.joining(","));
                     return line.orderProductId() + "=" + line.quantity() + (batches.isEmpty() ? "" : "[" + batches + "]");
                 })

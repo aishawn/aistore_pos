@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { receiptDateTypeLabel, type ReceiptDateType } from "@/components/ReceiptBatchEditor";
 import { useApi } from "@/hooks/useApi";
 import { formatAuDate } from "@/lib/au";
 import { formatPurchaseQuantity } from "@/lib/purchase-quantity";
@@ -18,6 +19,7 @@ interface Review {
     productName: string | null;
     batchCode: string;
     expiryDate: string;
+    dateType?: ReceiptDateType | null;
     receivedUnits: number;
   }[];
 }
@@ -42,7 +44,7 @@ export function ReceiptExpiryReview({ initialStatus }: { initialStatus: "all" | 
         >
           <option value="all">All batches in review</option>
           <option value="upcoming">Due within 14 days</option>
-          <option value="expired">Expired</option>
+          <option value="expired">Past label date</option>
         </select>
       </label>
       {loading && <p role="status" className="mt-2 text-sm">Loading received batches…</p>}
@@ -70,7 +72,8 @@ export function ReceiptExpiryReview({ initialStatus }: { initialStatus: "all" | 
                 </div>
                 <div className="flex items-center gap-3">
                   <span className={batch.expiryDate < data.businessDate ? "font-semibold text-rose-800" : "font-medium"}>
-                    {batch.expiryDate < data.businessDate ? "Expired" : "Expires"} {formatAuDate(batch.expiryDate)}
+                    {receiptDateTypeLabel(batch.dateType)} · {formatAuDate(batch.expiryDate)}
+                    {batch.expiryDate < data.businessDate ? " · Past date" : ""}
                   </span>
                   <Link className="inline-flex min-h-10 items-center font-semibold text-[var(--oh-primary)] underline" href={`/orders/${batch.orderId}/view`} aria-label={`View purchase order ${batch.orderId}`}>View order</Link>
                 </div>

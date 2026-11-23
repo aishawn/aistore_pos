@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import Link from "next/link";
-import { ReceiptBatchEditor, receiptBatchPayload, type ReceiptBatchDraft } from "@/components/ReceiptBatchEditor";
+import { ReceiptBatchEditor, receiptBatchPayload, receiptDateTypeLabel, type ReceiptBatchDraft, type ReceiptDateType } from "@/components/ReceiptBatchEditor";
 import { useRouter } from "next/navigation";
 import { PackageCheck } from "lucide-react";
 import { useApi } from "@/hooks/useApi";
@@ -45,6 +45,7 @@ interface OrderDetail {
     orderProductId: number;
     batchCode: string;
     expiryDate: string;
+    dateType?: ReceiptDateType | null;
     inventoryQuantity: number;
   }[];
 }
@@ -292,7 +293,7 @@ export function OrderViewPage({ orderId }: { orderId: string }) {
                           <li key={JSON.stringify([batch.receiptId, batch.orderProductId, batch.batchCode])} className="flex flex-wrap justify-between gap-x-4 gap-y-1 py-2 text-sm">
                             <span className="break-all font-medium">{batch.batchCode}</span>
                             <span className="text-[var(--oh-text-secondary)]">
-                              Product {product?.productId ?? "—"} · Receipt {batch.receiptId} · Expires {formatAuDate(batch.expiryDate)} · {formatPurchaseQuantity(batch.inventoryQuantity)}
+                              Product {product?.productId ?? "—"} · Receipt {batch.receiptId} · {receiptDateTypeLabel(batch.dateType)} · {formatAuDate(batch.expiryDate)} · {formatPurchaseQuantity(batch.inventoryQuantity)}
                             </span>
                           </li>
                         );

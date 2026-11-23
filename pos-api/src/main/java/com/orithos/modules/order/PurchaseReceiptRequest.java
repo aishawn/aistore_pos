@@ -11,5 +11,11 @@ public record PurchaseReceiptRequest(List<Line> lines) {
         }
     }
 
-    public record Batch(String code, LocalDate expiryDate, BigDecimal quantity) {}
+    public enum DateType { USE_BY, BEST_BEFORE }
+
+    public record Batch(String code, LocalDate expiryDate, BigDecimal quantity, DateType dateType) {
+        public Batch(String code, LocalDate expiryDate, BigDecimal quantity) {
+            this(code, expiryDate, quantity, null);
+        }
+    }
 }

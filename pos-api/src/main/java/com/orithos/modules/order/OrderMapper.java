@@ -19,7 +19,7 @@ public interface OrderMapper {
 
     @Select("""
             SELECT r.id AS "receiptId", l.order_product_id AS "orderProductId", b.batch_code AS "batchCode",
-                   b.expiry_date AS "expiryDate", b.inventory_quantity AS "inventoryQuantity"
+                   b.expiry_date AS "expiryDate", b.inventory_quantity AS "inventoryQuantity", b.date_type AS "dateType"
             FROM purchase_receipt r
             JOIN purchase_receipt_line l ON l.receipt_id = r.id
             JOIN purchase_receipt_batch b ON b.receipt_line_id = l.id
@@ -34,7 +34,7 @@ public interface OrderMapper {
     @Select("""
             SELECT r.order_id AS "orderId", l.id AS "receiptLineId", l.product_id AS "productId",
                    p.name AS "productName", b.batch_code AS "batchCode", b.expiry_date AS "expiryDate",
-                   b.inventory_quantity AS "receivedUnits"
+                   b.inventory_quantity AS "receivedUnits", b.date_type AS "dateType"
             FROM purchase_receipt r
             JOIN purchase_receipt_line l ON l.receipt_id = r.id
             JOIN purchase_receipt_batch b ON b.receipt_line_id = l.id
@@ -77,12 +77,13 @@ public interface OrderMapper {
     int insertReceipt(PurchaseReceipt receipt);
 
     @Insert("""
-            INSERT INTO purchase_receipt_batch (receipt_line_id, batch_code, expiry_date, inventory_quantity)
-            VALUES (#{lineId}, #{code}, #{expiryDate}, #{quantity})
+            INSERT INTO purchase_receipt_batch (receipt_line_id, batch_code, expiry_date, inventory_quantity, date_type)
+            VALUES (#{lineId}, #{code}, #{expiryDate}, #{quantity}, #{dateType,jdbcType=VARCHAR})
             """)
     int insertReceiptBatch(@Param("lineId") Long lineId, @Param("code") String code,
                            @Param("expiryDate") java.time.LocalDate expiryDate,
-                           @Param("quantity") java.math.BigDecimal quantity);
+                           @Param("quantity") java.math.BigDecimal quantity,
+                           @Param("dateType") PurchaseReceiptRequest.DateType dateType);
 
     @Update("UPDATE purchase_receipt SET status=#{status} WHERE id=#{id} AND vendor_id=#{vendorId}")
     int updateReceiptEventStatus(@Param("id") Long id, @Param("vendorId") Long vendorId,

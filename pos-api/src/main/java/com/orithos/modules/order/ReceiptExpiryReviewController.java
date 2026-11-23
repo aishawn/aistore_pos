@@ -53,5 +53,6 @@ public class ReceiptExpiryReviewController {
                          boolean truncated, int page) {}
 
     public record Batch(Long orderId, Long receiptLineId, Long productId, String productName,
-                        String batchCode, LocalDate expiryDate, BigDecimal receivedUnits) {}
+                        String batchCode, LocalDate expiryDate, BigDecimal receivedUnits,
+                        PurchaseReceiptRequest.DateType dateType) {}
 }
