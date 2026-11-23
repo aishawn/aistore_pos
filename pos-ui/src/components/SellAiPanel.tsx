@@ -3,7 +3,7 @@
 import { assistantRequestTimeoutMs, assistantTimeoutMessage, operationsPreviewIntent, prefetchOperationsPreviewSnapshots, readOperationsPreview } from "@/lib/assistant-operations-preview";
 import { clearOperationsPreviewSnapshots } from "@/lib/assistant-operations-snapshot-cache";
 import { fallbackHrefForQuickAction, questionForQuickAction, shortcutForQuickAction, WORKSPACE_HERO_SHORTCUTS } from "@/lib/assistant-shortcuts";
-import { EXPIRY_REVIEW_HREF, isExpiryReviewQuestion, looksLikeAssistantWriteCommand } from "@/lib/assistant-command-routing";
+import { EXPIRY_REVIEW_HREF, expiryReviewStatusForQuestion, looksLikeAssistantWriteCommand } from "@/lib/assistant-command-routing";
 
 import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
 import { AssistantComposer } from "@/components/AssistantComposer";
@@ -622,11 +622,13 @@ export function SellAiPanel({
 
   function tryLocalWorkspaceIntent(text: string): boolean {
     const t = text.trim();
-    if (isExpiryReviewQuestion(t)) {
+    const expiryStatus = expiryReviewStatusForQuestion(t);
+    if (expiryStatus) {
       const chinese = /[\u3400-\u9fff]/u.test(t);
-      openWorkspace(EXPIRY_REVIEW_HREF, chinese
-        ? "临期复核列出到期在即及已过期的收货批次。请到货架核对剩余数量。"
-        : "Expiry review lists received batches due soon or already expired. Check remaining quantities on the shelf.",
+      const href = expiryStatus === "all" ? EXPIRY_REVIEW_HREF : EXPIRY_REVIEW_HREF + "&expiryStatus=" + expiryStatus;
+      openWorkspace(href, chinese
+        ? "打开临期复核，查看对应的收货批次，并到货架核对剩余数量。"
+        : "Open expiry review to see the matching received batches, then check remaining quantities on the shelf.",
       { label: chinese ? "打开临期复核" : "Open expiry review" });
       return true;
     }

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { isExpiryReviewQuestion, looksLikeAssistantWriteCommand } from "./assistant-command-routing.ts";
+import { expiryReviewStatusForQuestion, looksLikeAssistantWriteCommand } from "./assistant-command-routing.ts";
 
 test("read-only replenishment questions do not enter the command parser", () => {
   for (const question of [
@@ -33,7 +33,7 @@ test("expiry review recognises scoped English and Chinese questions", () => {
     "临期商品有哪些",
     "查看临期商品",
   ]) {
-    assert.equal(isExpiryReviewQuestion(question), true, question);
+    assert.notEqual(expiryReviewStatusForQuestion(question), null, question);
   }
   for (const question of [
     "Update the expiry date",
@@ -42,6 +42,19 @@ test("expiry review recognises scoped English and Chinese questions", () => {
     "把临期商品下架",
     "查询库存 苹果",
   ]) {
-    assert.equal(isExpiryReviewQuestion(question), false, question);
+    assert.equal(expiryReviewStatusForQuestion(question), null, question);
+  }
+});
+
+test("expiry questions open the matching review filter", () => {
+  for (const [question, expected] of [
+    ["Open expiry review.", "all"],
+    ["What stock expires soon?", "upcoming"],
+    ["临期商品有哪些？", "upcoming"],
+    ["Show expired products", "expired"],
+    ["哪些商品已过期", "expired"],
+    ["Show expired products and remove them", null],
+  ] as const) {
+    assert.equal(expiryReviewStatusForQuestion(question), expected, question);
   }
 });

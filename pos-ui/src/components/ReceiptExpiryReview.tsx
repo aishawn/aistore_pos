@@ -22,8 +22,8 @@ interface Review {
   }[];
 }
 
-export function ReceiptExpiryReview() {
-  const [status, setStatus] = useState("all");
+export function ReceiptExpiryReview({ initialStatus }: { initialStatus: "all" | "upcoming" | "expired" }) {
+  const [status, setStatus] = useState<string>(initialStatus);
   const [page, setPage] = useState(1);
   const { data, loading, error, reload } = useApi<Review>("/api/orders/expiry-review", { status, page });
   return (
