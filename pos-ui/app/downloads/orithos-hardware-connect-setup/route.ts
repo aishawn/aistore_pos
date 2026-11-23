@@ -1,45 +1,14 @@
 import { access, readFile } from "node:fs/promises";
 import path from "node:path";
 import { NextResponse } from "next/server";
-import {
-  ORITHOS_HC_LEGACY_FALLBACK_URL,
-  ORITHOS_HC_OFFICIAL_WINDOWS_URL,
-} from "@/lib/hardware-connect-download";
+import { ORITHOS_HC_OFFICIAL_WINDOWS_URL } from "@/lib/hardware-connect-download";
 
-function externalDownloadUrl(): string | null {
+function externalDownloadUrl(): string {
   const direct = process.env.ORITHOS_HC_DOWNLOAD_URL?.trim();
   if (direct) return direct;
   const bundle = process.env.ORITHOS_HC_BUNDLE_URL?.trim();
   if (bundle) return bundle;
-  return null;
-}
-
-async function probeHttpDownload(url: string): Promise<boolean> {
-  try {
-    const response = await fetch(url, { method: "HEAD", cache: "no-store", redirect: "follow" });
-    if (!response.ok) return false;
-    const type = response.headers.get("content-type") ?? "";
-    const len = Number(response.headers.get("content-length") ?? "0");
-    if (type.includes("zip") || type.includes("octet-stream") || type.includes("application/x-msdownload")) {
-      return len === 0 || len > 500_000;
-    }
-    return false;
-  } catch {
-    return false;
-  }
-}
-
-async function resolveExternalDownloadRedirect(): Promise<string | null> {
-  const configured = externalDownloadUrl();
-  const candidates = [
-    ...(configured ? [configured] : []),
-    ORITHOS_HC_OFFICIAL_WINDOWS_URL,
-    ORITHOS_HC_LEGACY_FALLBACK_URL,
-  ];
-  for (const url of candidates) {
-    if (await probeHttpDownload(url)) return url;
-  }
-  return null;
+  return ORITHOS_HC_OFFICIAL_WINDOWS_URL;
 }
 
 async function serveBundledSetup() {
@@ -70,16 +39,7 @@ export async function GET() {
   if (bundled) {
     return bundled;
   }
-
-  const redirect = await resolveExternalDownloadRedirect();
-  if (redirect) {
-    return NextResponse.redirect(redirect);
-  }
-
-  return new NextResponse("Orithos Hardware Connect installer is not on this server yet.", {
-    status: 503,
-    headers: { "Content-Type": "text/plain; charset=utf-8" },
-  });
+  return NextResponse.redirect(externalDownloadUrl());
 }
 
 export async function HEAD() {
@@ -94,10 +54,6 @@ export async function HEAD() {
     });
   }
 
-  const redirect = await resolveExternalDownloadRedirect();
-  if (redirect) {
-    return new NextResponse(null, { status: 307, headers: { Location: redirect } });
-  }
-
-  return new NextResponse(null, { status: 503 });
+  const redirect = externalDownloadUrl();
+  return new NextResponse(null, { status: 307, headers: { Location: redirect } });
 }

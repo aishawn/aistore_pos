@@ -48,7 +48,7 @@ test("hardware setup reports bridge availability without enabling Linkly payment
   await expect(page.getByRole("status").filter({
     hasText: /Start Orithos Hardware Connect on this PC/,
   })).toBeVisible({ timeout: 15_000 });
-  await page.getByText("EFTPOS integration · Linkly").click();
+  await page.getByText("EFTPOS · Linkly").click();
   const paymentsToggle = page.getByRole("checkbox", { name: "Allow card payments on Sell" });
   await expect(paymentsToggle).not.toBeChecked();
   await expect(page.getByRole("button", { name: "Test $1.00" })).toBeDisabled();
