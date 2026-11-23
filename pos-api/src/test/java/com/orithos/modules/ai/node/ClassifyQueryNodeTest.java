@@ -971,7 +971,7 @@ class ClassifyQueryNodeTest {
 
     @Test
     @SuppressWarnings("unchecked")
-    void sommelierNavigationSkipsRecommendationLookup() {
+    void sommelierRecommendationUsesReadOnlyBriefAndKeepsNavigation() {
         ChatClient chatClient = mock(ChatClient.class);
         IntentConfigService config = mock(IntentConfigService.class);
         IntentSanitizeService sanitizer = mock(IntentSanitizeService.class);
@@ -979,6 +979,7 @@ class ClassifyQueryNodeTest {
         ObjectProvider<SommelierChatBrief> sommelierProvider = mock(ObjectProvider.class);
         SommelierChatBrief brief = mock(SommelierChatBrief.class);
         when(sommelierProvider.getIfAvailable()).thenReturn(brief);
+        when(brief.brief(anyString(), org.mockito.ArgumentMatchers.isNull())).thenReturn("Matched wines");
         ClassifyQueryNode node = new ClassifyQueryNode(
                 chatClient, config, sanitizer, properties, null, sommelierProvider);
 
@@ -990,13 +991,11 @@ class ClassifyQueryNodeTest {
 
             assertEquals("navigate", result.get("intent"), question);
             assertEquals("/sommelier", result.get("ui_route"), question);
-            assertEquals(question.matches("(?s).*[\\u3400-\\u9fff].*")
-                    ? "正在打开品鉴推荐页面。" : "Opening Sommelier recommendations.",
-                    result.get("intent_summary"), question);
+            assertEquals("Matched wines", result.get("intent_summary"), question);
         }
 
-        verify(sommelierProvider, never()).getIfAvailable();
-        verifyNoInteractions(brief, chatClient, config, sanitizer, properties);
+        verify(sommelierProvider, org.mockito.Mockito.times(2)).getIfAvailable();
+        verifyNoInteractions(chatClient, config, sanitizer, properties);
     }
 
     @Test
