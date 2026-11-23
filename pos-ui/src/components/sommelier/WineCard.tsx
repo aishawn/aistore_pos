@@ -48,7 +48,7 @@ export function WineCard({
         <div>
           <p className="text-[13px] font-semibold text-[var(--oh-primary)]">{card.badge}</p>
           <p className="mt-1 text-[26px] font-semibold leading-none text-[var(--oh-text)]">A${formatMoney(card.sellPrice).slice(1)}</p>
-          <p className="mt-1 text-xs text-[var(--oh-muted)]">AUD · GST included</p>
+          <p className="mt-1 text-xs text-[var(--oh-muted)]">Per unit · AUD · GST included</p>
           {card.onPromotion ? (
             <p className="mt-1 text-[13px] text-amber-700">
               On promotion · normally A${formatMoney(card.listPrice).slice(1)}
@@ -105,7 +105,10 @@ export function WineCard({
           Help me sell
         </button>
       </div>
-      <p className="mt-2 text-[13px] text-[var(--oh-muted)]">In stock: {card.stockQuantity}</p>
+      <p className="mt-2 text-[13px] text-[var(--oh-muted)]">
+        In stock: {card.stockQuantity} units
+        {Number(card.caseQuantity) > 1 ? ` · Case pack: ${Number(card.caseQuantity).toLocaleString("en-AU")} units` : ""}
+      </p>
     </article>
   );
 }

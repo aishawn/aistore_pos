@@ -184,13 +184,16 @@ export function SommelierWinePage({ productId }: { productId: string }) {
         <div className="flex items-end justify-between gap-3">
           <div>
             <p className="text-[28px] font-semibold leading-none text-[var(--oh-text)]">A${formatMoney(wine.sellPrice).slice(1)}</p>
-            <p className="mt-1 text-xs text-[var(--oh-muted)]">AUD · GST included</p>
+            <p className="mt-1 text-xs text-[var(--oh-muted)]">Per unit · AUD · GST included</p>
             {wine.onPromotion ? (
               <p className="mt-1 text-[13px] text-amber-700">On promotion · normally A${formatMoney(wine.listPrice).slice(1)}</p>
             ) : null}
             {wine.onPromotion ? <p className="text-xs text-[var(--oh-muted)]">{wine.promotionEndsAt ? `Offer ends ${wine.promotionEndsAt}` : "Promotion end date unverified"}</p> : null}
           </div>
-          <p className="text-[13px] text-[var(--oh-muted)]">In stock: {wine.stockQuantity}</p>
+          <p className="text-[13px] text-[var(--oh-muted)]">
+            In stock: {wine.stockQuantity} units
+            {Number(wine.caseQuantity) > 1 ? ` · Case pack: ${Number(wine.caseQuantity).toLocaleString("en-AU")} units` : ""}
+          </p>
         </div>
         <div className="mt-4 flex flex-wrap gap-2 text-[13px]">
           <Chip>{wine.drynessLabel}</Chip>
