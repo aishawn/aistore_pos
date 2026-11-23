@@ -9,6 +9,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class ForecastRiskServiceTest {
     @Test
+    void confirmedLeadTimeChangesStockoutUrgency() {
+        assertEquals("CRITICAL", ForecastRiskService.stockoutSeverity(3, 3));
+        assertEquals("WARNING", ForecastRiskService.stockoutSeverity(4, 3));
+        assertEquals("WARNING", ForecastRiskService.stockoutSeverity(3, null));
+        assertEquals("CRITICAL", ForecastRiskService.stockoutSeverity(1, 0));
+    }
+
+    @Test
     void incomingStockPreventsFalseStockoutAlert() {
         List<ForecastDtos.Point> forecast = List.of(
                 new ForecastDtos.Point(LocalDate.parse("2026-11-01"), 4, 5, 6),

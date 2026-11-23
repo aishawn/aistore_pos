@@ -71,7 +71,8 @@ public class ForecastRiskService {
                 row.put("forecastDemand", cumulative);
                 row.put("dataQuality", item.dataQuality());
                 row.put("reasonCode", "FORECAST_DEMAND_EXCEEDS_AVAILABLE");
-                row.put("severity", day <= Math.max(1, current.leadTimeDays()) ? "CRITICAL" : "WARNING");
+                row.put("leadTimeDays", current.leadTimeDays());
+                row.put("severity", stockoutSeverity(day, current.leadTimeDays()));
                 row.put("confidence", item.confidence()); row.put("reason", "forecast demand exceeds available stock");
                 stockout.add(row);
             }
@@ -101,21 +102,38 @@ public class ForecastRiskService {
                                CASE WHEN p.shopfront_source_updated_at IS NULL OR p.case_cost IS NOT NULL
                                     THEN p.cost END)
                        END AS cost,
-                       0 AS lead_time
+                       chosen.lead_time_days
                 FROM product p
                 JOIN outlet o ON o.id = p.outlet_id AND o.vendor_id = ? AND o.deleted_at IS NULL
                 LEFT JOIN product_inventory i ON i.product_id = p.id AND i.outlet_id = p.outlet_id
                 LEFT JOIN product_cost pc ON pc.product_id = p.id AND pc.outlet_id = p.outlet_id
+                LEFT JOIN supplier core ON core.id = p.core_supplier_id
+                    AND core.outlet_id = p.outlet_id AND core.deleted_at IS NULL
+                LEFT JOIN LATERAL (
+                    SELECT MIN(ps.supplier_id) AS only_id
+                    FROM product_supplier ps
+                    JOIN supplier linked ON linked.id = ps.supplier_id
+                        AND linked.outlet_id = ps.outlet_id AND linked.deleted_at IS NULL
+                    WHERE ps.product_id = p.id AND ps.outlet_id = p.outlet_id
+                    HAVING COUNT(DISTINCT ps.supplier_id) = 1
+                ) links ON core.id IS NULL
+                LEFT JOIN supplier chosen ON chosen.id = COALESCE(core.id, links.only_id)
+                    AND chosen.outlet_id = p.outlet_id AND chosen.deleted_at IS NULL
                 WHERE p.outlet_id = ? AND p.deleted_at IS NULL
                 """, (org.springframework.jdbc.core.RowCallbackHandler) rs -> result.put(rs.getLong("product_id"), new Inventory(
                         asDouble(rs.getObject("on_hand")), asDouble(rs.getObject("available_stock")),
                         asDouble(rs.getObject("cost")),
-                        rs.getInt("lead_time"))), tenant.vendorId(), tenant.requireOutletId());
+                        rs.getObject("lead_time_days", Integer.class))), tenant.vendorId(), tenant.requireOutletId());
         return result;
     }
 
     private static Double asDouble(Object value) {
         return value instanceof Number number ? number.doubleValue() : null;
+    }
+
+    static String stockoutSeverity(int stockoutDay, Integer leadTimeDays) {
+        int urgentWindow = leadTimeDays == null ? 1 : Math.max(1, leadTimeDays);
+        return stockoutDay <= urgentWindow ? "CRITICAL" : "WARNING";
     }
 
     static int firstStockoutDay(List<ForecastDtos.Point> forecast, double availableStock) {
@@ -138,5 +156,5 @@ public class ForecastRiskService {
         return "VALID".equals(item.dataQuality()) && !"LOW".equals(item.confidence());
     }
 
-    private record Inventory(Double onHand, Double projectedAvailable, Double cost, int leadTimeDays) { }
+    private record Inventory(Double onHand, Double projectedAvailable, Double cost, Integer leadTimeDays) { }
 }
