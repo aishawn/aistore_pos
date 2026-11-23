@@ -9,6 +9,7 @@ import com.orithos.modules.payment.PaymentMethod;
 import com.orithos.modules.payment.PaymentMethodMapper;
 import com.orithos.modules.product.Product;
 import com.orithos.modules.product.ProductPrice;
+import com.orithos.modules.product.ShopfrontProductOfferService;
 import com.orithos.modules.product.mapper.ProductMapper;
 import com.orithos.modules.register.Register;
 import com.orithos.modules.register.RegisterMapper;
@@ -103,6 +104,45 @@ class CheckoutServiceFlowTest {
     @AfterEach
     void clearAuthentication() {
         SecurityContextHolder.clearContext();
+    }
+
+    @Test
+    void cashCheckoutPersistsTheQuotedOfferAndRequotesIfItExpires() {
+        var offers = mock(ShopfrontProductOfferService.class);
+        service = new CheckoutService(sales, payments, paymentMethods, products, registers, sessions,
+                new ObjectMapper().registerModule(new JavaTimeModule()), companySettings, null,
+                mock(EftposService.class), offers);
+        var offer = new ShopfrontProductOfferService.Offer("Fixture promotion", BigDecimal.ONE,
+                new BigDecimal("9.00"), null, null, java.time.Instant.now());
+        var matching = java.util.Map.of(42L, List.of(offer));
+        when(offers.currentOffers(eq(3L), eq(12L), any(), eq(true)))
+                .thenReturn(matching, java.util.Map.of(), matching);
+        when(sessions.findActiveSession(99L, 3L, 12L)).thenReturn(session);
+
+        var quote = service.quote(cashRequest("9.00"));
+        assertEquals(new BigDecimal("9.00"), quote.total());
+        assertEquals(new BigDecimal("0.82"), quote.gst());
+
+        var expired = cashRequest("9.00");
+        expired.setExpectedTotal(quote.total());
+        expired.setExpectedGst(quote.gst());
+        assertThrows(BusinessException.class, () -> service.checkout(expired, "expired-offer"));
+        verify(sales, never()).insert(any(Sale.class));
+        verify(payments, never()).insert(any(SalePayment.class));
+
+        var valid = cashRequest("9.00");
+        valid.setExpectedTotal(quote.total());
+        valid.setExpectedGst(quote.gst());
+        saleLine.setTotalPrice(quote.total());
+        saleLine.setTax(quote.gst());
+        assertTrue(service.checkout(valid, "valid-offer").isCompleted());
+
+        var persisted = org.mockito.ArgumentCaptor.forClass(SaleItem.class);
+        verify(sales).insertItem(persisted.capture());
+        assertEquals(quote.total(), persisted.getValue().getTotalPrice());
+        assertEquals(quote.gst(), persisted.getValue().getTax());
+        verify(payments).insert(any(SalePayment.class));
+        verify(products).adjustInventoryIfAvailable(42L, 12L, BigDecimal.ONE.negate());
     }
 
     @Test
