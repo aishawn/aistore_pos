@@ -551,23 +551,24 @@ public class CheckoutService {
         }
         List<BigDecimal> totals = FamilyPriceCalculator.price(pricingLines, distribution, quantityRate, rounding);
         Map<Long, List<ShopfrontProductOfferService.Offer>> offers = shopfrontOffers == null
-                ? Map.of() : shopfrontOffers.currentOffers(vendorId, outletId, products.keySet());
+                ? Map.of() : shopfrontOffers.currentOffers(vendorId, outletId, products.keySet(), true);
+        Map<Integer, BigDecimal> groupTotals = mixedOfferTotals(req.getItems(), pricingLines, totals, offers);
         for (int i = 0; i < req.getItems().size(); i++) {
             CheckoutRequest.Item item = req.getItems().get(i);
             BigDecimal discountFactor = BigDecimal.ONE.subtract(item.getDiscountPercent().movePointLeft(2));
-            BigDecimal total = totals.get(i);
+            BigDecimal total = groupTotals.getOrDefault(i, totals.get(i));
             var lineOffers = offers.get(item.getProductId());
             Long familyId = pricingLines.get(i).familyId();
-            if (lineOffers != null && item.getDiscountPercent().signum() == 0
+            if (!groupTotals.containsKey(i) && lineOffers != null && item.getDiscountPercent().signum() == 0
                     && pricingLines.stream().filter(line -> line.productId().equals(item.getProductId())
                             || (familyId != null && familyId.equals(line.familyId())))
                             .count() == 1) {
                 var matchingTotals = lineOffers.stream()
-                        .filter(offer -> offer.requiredUnits().compareTo(item.getQuantity()) == 0)
+                        .filter(offer -> offer.groupId() == null && offer.requiredUnits().compareTo(item.getQuantity()) == 0)
                         .map(offer -> offer.total().setScale(2, RoundingMode.HALF_UP)).distinct().toList();
                 if (matchingTotals.isEmpty()) {
                     matchingTotals = lineOffers.stream()
-                            .filter(offer -> offer.requiredUnits().compareTo(BigDecimal.ONE) > 0
+                            .filter(offer -> offer.groupId() == null && offer.requiredUnits().compareTo(BigDecimal.ONE) > 0
                                     && item.getQuantity().remainder(offer.requiredUnits()).signum() == 0)
                             .map(offer -> offer.total().multiply(item.getQuantity().divideToIntegralValue(offer.requiredUnits()))
                                     .setScale(2, RoundingMode.HALF_UP))
@@ -577,6 +578,57 @@ public class CheckoutService {
             }
             item.setLineTotal(total.multiply(discountFactor).setScale(2, RoundingMode.HALF_UP));
         }
+    }
+
+    private static Map<Integer, BigDecimal> mixedOfferTotals(List<CheckoutRequest.Item> items,
+            List<FamilyPriceCalculator.Line> pricingLines, List<BigDecimal> totals,
+            Map<Long, List<ShopfrontProductOfferService.Offer>> offers) {
+        Map<ShopfrontProductOfferService.Offer, List<Integer>> groups = new LinkedHashMap<>();
+        for (int i = 0; i < items.size(); i++) {
+            for (var offer : offers.getOrDefault(items.get(i).getProductId(), List.of())) {
+                if (offer.groupId() != null) groups.computeIfAbsent(offer, ignored -> new ArrayList<>()).add(i);
+            }
+        }
+        Map<Integer, BigDecimal> result = new LinkedHashMap<>();
+        java.util.Set<Integer> overlaps = new java.util.HashSet<>();
+        for (var group : groups.entrySet()) {
+            var offer = group.getKey();
+            var indexes = group.getValue();
+            if (indexes.size() < 2) continue;
+            BigDecimal quantity = indexes.stream().map(i -> items.get(i).getQuantity())
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            if (quantity.compareTo(offer.requiredUnits()) != 0) continue;
+            BigDecimal regularTotal = indexes.stream().map(totals::get).reduce(BigDecimal.ZERO, BigDecimal::add);
+            if (offer.total().compareTo(regularTotal) >= 0) continue;
+            var first = items.get(indexes.getFirst());
+            Map<Integer, BigDecimal> shares = new LinkedHashMap<>();
+            for (int index : indexes) {
+                var item = items.get(index);
+                Long familyId = pricingLines.get(index).familyId();
+                if (item.getDiscountPercent().signum() != 0
+                        || first.getExpectedTaxRate().compareTo(item.getExpectedTaxRate()) != 0
+                        || regularTotal.multiply(item.getQuantity()).compareTo(totals.get(index).multiply(quantity)) != 0
+                        || pricingLines.stream().filter(line -> line.productId().equals(item.getProductId())).count() != 1
+                        || (familyId != null && java.util.stream.IntStream.range(0, items.size())
+                                .anyMatch(i -> !indexes.contains(i) && familyId.equals(pricingLines.get(i).familyId())))
+                        || offers.get(item.getProductId()).stream().anyMatch(candidate -> candidate.groupId() == null
+                                && item.getQuantity().remainder(candidate.requiredUnits()).signum() == 0)) {
+                    shares.clear();
+                    break;
+                }
+                BigDecimal share = offer.total().multiply(item.getQuantity()).divide(quantity, 2, RoundingMode.HALF_UP);
+                shares.put(index, share);
+            }
+            if (shares.values().stream().reduce(BigDecimal.ZERO, BigDecimal::add).compareTo(offer.total()) != 0) continue;
+            shares.forEach((index, share) -> {
+                if (result.putIfAbsent(index, share) != null) overlaps.add(index);
+            });
+        }
+        if (!overlaps.isEmpty()) {
+            groups.values().stream().filter(indexes -> indexes.stream().anyMatch(overlaps::contains))
+                    .flatMap(List::stream).forEach(result::remove);
+        }
+        return result;
     }
 
     /**

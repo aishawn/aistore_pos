@@ -28,6 +28,10 @@ public class ShopfrontProductOfferService {
     }
 
     public Map<Long, List<Offer>> currentOffers(long vendorId, long outletId, Collection<Long> productIds) {
+        return currentOffers(vendorId, outletId, productIds, false);
+    }
+
+    public Map<Long, List<Offer>> currentOffers(long vendorId, long outletId, Collection<Long> productIds, boolean includeGroups) {
         if (productIds.isEmpty()) return Map.of();
         Instant now = Instant.now();
         return jdbc.query("""
@@ -58,7 +62,7 @@ public class ShopfrontProductOfferService {
             Instant syncedAt = rs.getObject("snapshot_at", OffsetDateTime.class).toInstant();
             for (JsonNode mapping : mappings) {
                 var offers = matchingOffers(snapshot, mapping.path("source_product_id").asText(),
-                        mapping.path("shopfront_outlet").asText(), syncedAt, now);
+                        mapping.path("shopfront_outlet").asText(), syncedAt, now, includeGroups);
                 if (!offers.isEmpty()) result.computeIfAbsent(mapping.path("id").asLong(), ignored -> new ArrayList<>()).addAll(offers);
             }
             result.replaceAll((id, offers) -> offers.stream().distinct().sorted(
@@ -68,6 +72,11 @@ public class ShopfrontProductOfferService {
     }
 
     static List<Offer> matchingOffers(JsonNode snapshot, String sourceId, String sourceOutlet, Instant syncedAt, Instant now) {
+        return matchingOffers(snapshot, sourceId, sourceOutlet, syncedAt, now, false);
+    }
+
+    private static List<Offer> matchingOffers(JsonNode snapshot, String sourceId, String sourceOutlet,
+                                              Instant syncedAt, Instant now, boolean includeGroups) {
         List<Offer> result = new ArrayList<>();
         if (sourceOutlet == null || sourceOutlet.isBlank()) return result;
         for (JsonNode promotion : snapshot) {
@@ -88,23 +97,34 @@ public class ShopfrontProductOfferService {
                 if ((start != null && now.isBefore(start)) || (end != null && now.isAfter(end))) continue;
                 JsonNode criteria = promotion.path("criteria").get(0);
                 JsonNode items = criteria.path("items");
-                if (!items.isArray() || items.size() != 1) continue;
-                JsonNode entry = items.get(0);
-                JsonNode product = entry.path("item");
-                if (!"Product".equals(product.path("__typename").asText()) || !sourceId.equals(product.path("id").asText())
-                        || entry.path("exclude").asBoolean() || entry.path("rebate").asDouble() != 0
-                        || criteria.path("excludePricePoints").asBoolean() || criteria.path("excludeCountQuantity").asBoolean()
+                if (!items.isArray() || items.isEmpty() || (!includeGroups && items.size() != 1)) continue;
+                if (criteria.path("excludePricePoints").asBoolean() || criteria.path("excludeCountQuantity").asBoolean()
                         || criteria.path("discountEverydayPromotions").asBoolean() || criteria.path("mixedOnly").asBoolean()
                         || criteria.path("optional").asBoolean() || criteria.hasNonNull("buyAmountMax")
                         || criteria.hasNonNull("minQuantity")
                         || !"SELL_TOTAL".equals(criteria.path("type").asText())
                         || !"QUANTITY".equals(criteria.path("buyAmountType").asText())
                         || !"EXACT".equals(criteria.path("quantityType").asText())) continue;
+                boolean matchesProduct = false;
+                boolean supportedItems = true;
+                for (JsonNode entry : items) {
+                    JsonNode product = entry.path("item");
+                    if (!"Product".equals(product.path("__typename").asText()) || product.path("id").asText().isBlank()
+                            || entry.path("exclude").asBoolean() || entry.path("rebate").asDouble() != 0) {
+                        supportedItems = false;
+                        break;
+                    }
+                    matchesProduct |= sourceId.equals(product.path("id").asText());
+                }
+                if (!supportedItems || !matchesProduct) continue;
                 JsonNode buy = criteria.path("buyAmount");
                 JsonNode total = criteria.path("discountAmount");
                 if (!buy.isNumber() || !total.isNumber() || buy.decimalValue().signum() <= 0 || total.decimalValue().signum() <= 0) continue;
                 String name = promotion.path("name").asText("").strip();
-                if (!name.isEmpty()) result.add(new Offer(name, buy.decimalValue(), total.decimalValue(), start, end, syncedAt));
+                String groupId = items.size() > 1 ? promotion.path("id").asText() : null;
+                if (!name.isEmpty() && (groupId == null || !groupId.isBlank())) {
+                    result.add(new Offer(name, buy.decimalValue(), total.decimalValue(), start, end, syncedAt, groupId));
+                }
             } catch (DateTimeParseException ignored) {
                 // An unrecognised date cannot establish that the offer is current.
             }
@@ -117,5 +137,10 @@ public class ShopfrontProductOfferService {
         return OffsetDateTime.parse(node.asText().replaceFirst("([+-]\\d{2})(\\d{2})$", "$1:$2")).toInstant();
     }
 
-    public record Offer(String name, BigDecimal requiredUnits, BigDecimal total, Instant startsAt, Instant endsAt, Instant syncedAt) {}
+    public record Offer(String name, BigDecimal requiredUnits, BigDecimal total, Instant startsAt, Instant endsAt,
+                        Instant syncedAt, String groupId) {
+        public Offer(String name, BigDecimal requiredUnits, BigDecimal total, Instant startsAt, Instant endsAt, Instant syncedAt) {
+            this(name, requiredUnits, total, startsAt, endsAt, syncedAt, null);
+        }
+    }
 }

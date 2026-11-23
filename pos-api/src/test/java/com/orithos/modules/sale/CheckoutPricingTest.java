@@ -50,7 +50,7 @@ class CheckoutPricingTest {
         when(saleMapper.findSellTaxPercent(42L, 3L, 12L)).thenReturn(new BigDecimal("10"));
         when(registerMapper.findById(99L)).thenReturn(openRegister());
         when(registerSessionMapper.findActiveSession(99L, 3L, 12L)).thenReturn(new RegisterSession());
-        when(offers.currentOffers(eq(3L), eq(12L), any())).thenReturn(java.util.Map.of(42L, List.of(
+        when(offers.currentOffers(eq(3L), eq(12L), any(), eq(true))).thenReturn(java.util.Map.of(42L, List.of(
                 new ShopfrontProductOfferService.Offer("Four for twenty", new BigDecimal("4"),
                         new BigDecimal("20"), null, null, java.time.Instant.now()))));
 
@@ -72,6 +72,33 @@ class CheckoutPricingTest {
         manual.getItems().getFirst().setDiscountPercent(new BigDecimal("10"));
         assertEquals(new BigDecimal("21.56"), service.quote(manual).total());
         verify(saleMapper, never()).insert(any());
+    }
+
+    @Test
+    void quotesExactMixedOfferWithEqualUnitPricingAndPreservesLineGst() {
+        for (long id : List.of(42L, 43L)) {
+            Product product = product("17.99");
+            product.setId(id);
+            when(productMapper.findSellableForOutlet(id, 3L, 12L, BigDecimal.ONE)).thenReturn(product);
+            when(productMapper.findPricesForOutlet(id, 12L)).thenReturn(List.of(price("1", "17.99")));
+            when(saleMapper.findTaxRateId(id, 3L, 12L)).thenReturn(9L);
+            when(saleMapper.findSellTaxPercent(id, 3L, 12L)).thenReturn(new BigDecimal("10"));
+        }
+        var offer = new ShopfrontProductOfferService.Offer("Two for 28", new BigDecimal("2"),
+                new BigDecimal("28.00"), null, null, java.time.Instant.now(), "campaign");
+        when(offers.currentOffers(eq(3L), eq(12L), any(), eq(true)))
+                .thenReturn(java.util.Map.of(42L, List.of(offer), 43L, List.of(offer)));
+        when(registerMapper.findById(99L)).thenReturn(openRegister());
+        when(registerSessionMapper.findActiveSession(99L, 3L, 12L)).thenReturn(new RegisterSession());
+        var request = request(42L, "1", "0", null);
+        request.setItems(List.of(request.getItems().getFirst(), request(43L, "1", "0", null).getItems().getFirst()));
+        request.setRegisterId(99L);
+
+        var quote = service.quote(request);
+        assertEquals(new BigDecimal("28.00"), quote.total());
+        assertEquals(new BigDecimal("2.54"), quote.gst());
+        assertEquals(List.of(new BigDecimal("14.00"), new BigDecimal("14.00")),
+                quote.lines().stream().map(line -> line.total()).toList());
     }
 
     @BeforeEach
