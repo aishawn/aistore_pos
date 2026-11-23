@@ -20,7 +20,7 @@ public class AiGatewayProperties {
     private String fallbackModel = "qwen-flash";
     private String transcriptionModel = "qwen3-asr-flash";
     private String visionModel = "qwen3.8-flash";
-    private String fallbackVisionModel = "qwen-vl-plus";
+    private String fallbackVisionModel = "";
 
     public String getProvider() { return provider; }
     public void setProvider(String provider) { if (provider != null && !provider.isBlank()) this.provider = provider.trim(); }

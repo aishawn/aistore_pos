@@ -8,7 +8,7 @@ public record AiProperties(
         String graphName,
 /** Remote ASR model for Voice → text (default qwen3-asr-flash). */
         String transcriptionModel,
-/** Remote vision model for wine-label OCR (default qwen-vl-plus). */
+/** Remote model for invoice and wine-label vision requests. */
         String visionModel,
         /**
          * Optional lighter model for intent classify only. Empty = use the primary
@@ -29,7 +29,7 @@ public record AiProperties(
             transcriptionModel = "qwen3-asr-flash";
         }
         if (visionModel == null || visionModel.isBlank()) {
-            visionModel = "qwen-vl-plus";
+            visionModel = "qwen3.8-flash";
         }
         if (classifyModel == null) {
             classifyModel = "";

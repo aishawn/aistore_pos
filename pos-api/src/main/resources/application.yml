@@ -132,7 +132,7 @@ app:
       execution-enabled: ${AI_COMMANDS_EXECUTION_ENABLED:false}
     graph-name: pos-assistant       # Graph 工作流名称
     transcription-model: ${AI_GATEWAY_TRANSCRIPTION_MODEL:qwen3-asr-flash}
-    vision-model: ${AI_GATEWAY_VISION_MODEL:qwen-vl-plus}
+    vision-model: ${AI_GATEWAY_VISION_MODEL:${AI_VISION_MODEL:qwen3.8-flash}}
     classify-model: ${AI_GATEWAY_CLASSIFY_MODEL:qwen-flash}
     temperature: ${AI_TEMPERATURE:0.1}
     max-tokens: ${AI_MAX_TOKENS:1024}
@@ -166,8 +166,8 @@ app:
       primary-model: ${AI_GATEWAY_PRIMARY_MODEL:qwen-plus}
       fallback-model: ${AI_GATEWAY_FALLBACK_MODEL:qwen-flash}
       transcription-model: ${AI_GATEWAY_TRANSCRIPTION_MODEL:qwen3-asr-flash}
-      vision-model: ${AI_GATEWAY_VISION_MODEL:${AI_VISION_MODEL:qwen-vl-plus}}
-      fallback-vision-model: ${AI_GATEWAY_FALLBACK_VISION_MODEL:qwen-vl-plus}
+      vision-model: ${AI_GATEWAY_VISION_MODEL:${AI_VISION_MODEL:qwen3.8-flash}}
+      fallback-vision-model: ${AI_GATEWAY_FALLBACK_VISION_MODEL:}
     forecast:
       enabled: ${AI_FORECAST_ENABLED:false}
       base-url: ${AI_FORECAST_BASE_URL:https://ai.orithos.com.au}
