@@ -77,12 +77,11 @@ function DetailField({ label, value }: { label: string; value: React.ReactNode }
   );
 }
 
-function PurchaseReceiptPanel({ order, onReceived }: { order: OrderDetail; onReceived: () => void }) {
+function PurchaseReceiptPanel({ order, onReceived }: { order: OrderDetail; onReceived: (status: string) => void }) {
   const [quantities, setQuantities] = useState<Record<string, string>>({});
   const [batchesByLine, setBatchesByLine] = useState<Record<string, ReceiptBatchDraft[]>>({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
   const idempotencyKey = useRef<string | null>(null);
   const outstanding = (order.products ?? []).filter((line) => Number(line.orderedQuantity ?? 0) > Number(line.receivedQuantity ?? 0));
   if (order.type !== "ORDER" || !["OPEN", "SENT", "PARTIALLY_RECEIVED"].includes(order.status) || !outstanding.length) return null;
@@ -105,7 +104,6 @@ function PurchaseReceiptPanel({ order, onReceived }: { order: OrderDetail; onRec
     idempotencyKey.current ??= crypto.randomUUID();
     setBusy(true);
     setError(null);
-    setSuccess(null);
     try {
       const result = await api.post<{ status: string }>(`/api/orders/${order.id}/receipts`, { lines }, {
         headers: { "Idempotency-Key": idempotencyKey.current },
@@ -113,8 +111,7 @@ function PurchaseReceiptPanel({ order, onReceived }: { order: OrderDetail; onRec
       idempotencyKey.current = null;
       setQuantities({});
       setBatchesByLine({});
-      setSuccess(result.status === "RECEIVED" ? "Purchase order fully received." : "Partial receipt recorded.");
-      onReceived();
+      onReceived(result.status);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Receipt failed.");
     } finally {
@@ -129,7 +126,7 @@ function PurchaseReceiptPanel({ order, onReceived }: { order: OrderDetail; onRec
         <h2 id="receive-stock-heading" className="text-sm font-semibold">Receive stock</h2>
       </div>
       <div className="space-y-3 p-4">
-        <div className="grid grid-cols-[1fr_100px] gap-3 text-xs font-semibold text-[var(--oh-muted)]"><span>Product ID · outstanding</span><span>Receive items</span></div>
+        <div className="grid grid-cols-[1fr_100px] gap-3 text-xs font-semibold text-[var(--oh-muted)]"><span>Product ID · outstanding</span><span>Receive quantity</span></div>
         {outstanding.map((line) => {
           const remaining = Number(line.orderedQuantity ?? 0) - Number(line.receivedQuantity ?? 0);
           return <div key={line.id} className="space-y-2">
@@ -147,7 +144,6 @@ function PurchaseReceiptPanel({ order, onReceived }: { order: OrderDetail; onRec
           </div>;
         })}
         {error && <p role="alert" className="text-sm text-rose-700">{error}</p>}
-        {success && <p role="status" className="text-sm text-emerald-700">{success}</p>}
         <button type="button" onClick={() => void receive()} disabled={busy} className="inline-flex min-h-10 items-center gap-2 rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white disabled:opacity-60">
           <PackageCheck size={16} /> {busy ? "Recording…" : "Record receipt"}
         </button>
@@ -158,6 +154,7 @@ function PurchaseReceiptPanel({ order, onReceived }: { order: OrderDetail; onRec
 
 export function OrderViewPage({ orderId }: { orderId: string }) {
   const router = useRouter();
+  const [receiptConfirmation, setReceiptConfirmation] = useState<string | null>(null);
   const { data: order, loading, error, reload } = useApi<OrderDetail>(
     orderId ? `/api/orders/${orderId}` : null,
   );
@@ -295,7 +292,7 @@ export function OrderViewPage({ orderId }: { orderId: string }) {
                           <li key={JSON.stringify([batch.receiptId, batch.orderProductId, batch.batchCode])} className="flex flex-wrap justify-between gap-x-4 gap-y-1 py-2 text-sm">
                             <span className="break-all font-medium">{batch.batchCode}</span>
                             <span className="text-[var(--oh-text-secondary)]">
-                              Product {product?.productId ?? "—"} · Receipt {batch.receiptId} · Expires {formatAuDate(batch.expiryDate)} · {formatPurchaseQuantity(batch.inventoryQuantity, 1)}
+                              Product {product?.productId ?? "—"} · Receipt {batch.receiptId} · Expires {formatAuDate(batch.expiryDate)} · {formatPurchaseQuantity(batch.inventoryQuantity)}
                             </span>
                           </li>
                         );
@@ -303,7 +300,11 @@ export function OrderViewPage({ orderId }: { orderId: string }) {
                     </ul>
                   </section>
                 )}
-                <PurchaseReceiptPanel order={order} onReceived={reload} />
+                {receiptConfirmation && <p role="status" className="text-sm text-emerald-700">{receiptConfirmation}</p>}
+                <PurchaseReceiptPanel order={order} onReceived={(status) => {
+                  setReceiptConfirmation(status === "RECEIVED" ? "Purchase order fully received." : "Partial receipt recorded.");
+                  reload();
+                }} />
               </>
             )}
           </AsyncState>
