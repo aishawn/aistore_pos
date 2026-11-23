@@ -196,12 +196,11 @@ public class ReplenishmentWorkspaceService {
         }
         if (row.unitCost() == null || row.unitCost() <= 0) dataIssues.add("REVIEW_COST_PRICE");
 
-        boolean inventoryRepairOnly = demand <= 0 && onHand < 0 && quantity > 0;
-        if (inventoryRepairOnly) {
+        if (onHand < 0) {
             dataIssues.add("INVENTORY_RECORD_REPAIR");
             status = "REVIEW_DATA";
-            quantity = Math.ceil(Math.max(Math.abs(onHand), minimum) / casePack) * casePack;
-            reason = "Negative on-hand with no recent demand: suggested quantity corrects the stock record only. Reconcile sales/receipts before ordering for demand.";
+            quantity = 0;
+            reason = "Negative on-hand stock. Reconcile the stock count, sales and receipts before drafting a replenishment order.";
         } else if (quantity <= 0) {
             status = "NO_DEMAND";
             reason = demand > 0 ? "Stock covers the coverage target." : "No verifiable demand in the sales window.";
@@ -214,7 +213,7 @@ public class ReplenishmentWorkspaceService {
             reason = buildReason(demand, cover, lead, onHand, row.onOrder(), quantity);
         }
 
-        if (row.supplierId() == null) {
+        if (onHand >= 0 && row.supplierId() == null) {
             status = "REVIEW_DATA";
             quantity = 0;
             reason = row.supplierLinkCount() > 1

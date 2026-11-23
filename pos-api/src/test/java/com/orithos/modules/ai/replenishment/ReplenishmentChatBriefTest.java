@@ -192,9 +192,9 @@ class ReplenishmentChatBriefTest {
         String english = new ReplenishmentChatBrief(client).brief("What should I restock?", tenant);
         String chinese = new ReplenishmentChatBrief(client).brief("哪些商品需要补货？", tenant);
 
-        assertTrue(english.contains("inventory is missing, stale or has no update timestamp for 2 items"));
+        assertTrue(english.contains("inventory is negative, stale or missing required data for 2 items"));
         assertTrue(english.contains("supplier details are incomplete for 1 item"));
-        assertTrue(chinese.contains("库存记录缺失、过期或更新时间不可用 2 项"));
+        assertTrue(chinese.contains("库存为负数或库存资料缺失、过期 2 项"));
         assertTrue(chinese.contains("供应商资料不完整 1 项"));
     }
 

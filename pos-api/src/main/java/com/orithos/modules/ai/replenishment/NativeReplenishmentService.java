@@ -196,6 +196,12 @@ public class NativeReplenishmentService {
                 gaps.add(row.name() + ": " + reason);
                 continue;
             }
+            if (row.onHand() < 0) {
+                dataGapCount++;
+                inventoryGapCount++;
+                gaps.add(row.name() + ": negative stock; stock reconciliation needed");
+                continue;
+            }
             if (!row.hasSupplier()) {
                 dataGapCount++;
                 supplierGapCount++;
@@ -207,14 +213,7 @@ public class NativeReplenishmentService {
             double demand = recentPerDay > 0 && previousPerDay > 0
                     ? recentPerDay * 0.7 + previousPerDay * 0.3
                     : Math.max(recentPerDay, previousPerDay);
-            if (demand <= 0) {
-                if (row.onHand() < 0) {
-                    dataGapCount++;
-                    inventoryGapCount++;
-                    gaps.add(row.name() + ": negative stock without recent sales; stock reconciliation needed");
-                }
-                continue;
-            }
+            if (demand <= 0) continue;
             double available = row.onHand() + row.onOrder();
             double casePack = Math.max(1d, row.caseQuantity());
             double minimum = Math.max(1d, row.minimumOrder());

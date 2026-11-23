@@ -381,7 +381,7 @@ class NativeReplenishmentServiceTest {
     }
 
     @Test
-    void negativeOnHandWithoutSalesRequiresStockReviewAndDoesNotSuggestBuying() throws Exception {
+    void negativeOnHandRequiresStockReviewEvenWhenThereAreRecentSales() throws Exception {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
         ResultSet noDemand = replenishmentRow(5L, "Shiraz", -13d, true);
         ResultSet sold = replenishmentRow(6L, "Beer", -1d, true);
@@ -393,8 +393,9 @@ class NativeReplenishmentServiceTest {
 
         ReplenishmentPlan plan = new NativeReplenishmentService(jdbc).plan(tenant(55L, 87L));
 
-        assertEquals(List.of(6L), plan.top().stream().map(ReplenishmentSuggestion::productId).toList());
-        assertEquals(1, plan.itemsNeedingOrder());
+        assertTrue(plan.top().isEmpty());
+        assertEquals(0, plan.itemsNeedingOrder());
+        assertEquals(2, plan.inventoryGapCount());
         assertTrue(plan.dataGaps().stream().anyMatch(gap -> gap.contains("stock reconciliation")));
     }
 

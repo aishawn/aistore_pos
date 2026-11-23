@@ -42,6 +42,33 @@ class ReplenishmentWorkspaceControllerTest {
     }
 
     @Test
+    void workspaceExcludesNegativeStockWithVerifiedSalesFromDraftSuggestions() throws Exception {
+        var jdbc = mock(org.springframework.jdbc.core.JdbcTemplate.class);
+        var zones = mock(com.orithos.common.BusinessTimezoneService.class);
+        var row = mock(java.sql.ResultSet.class);
+        when(zones.zoneForVendor(1L)).thenReturn(java.time.ZoneId.of("Australia/Melbourne"));
+        when(row.getString("name")).thenReturn("Milk");
+        when(row.getObject("on_hand")).thenReturn(-2757d);
+        when(row.getDouble("recent_units")).thenReturn(99d);
+        when(row.getObject("supplier_id", Long.class)).thenReturn(7L);
+        when(row.getObject("unit_cost")).thenReturn(2d);
+        when(row.getTimestamp("inventory_updated_at")).thenReturn(java.sql.Timestamp.from(java.time.Instant.now()));
+        when(jdbc.query(org.mockito.ArgumentMatchers.any(org.springframework.jdbc.core.PreparedStatementCreator.class),
+                org.mockito.ArgumentMatchers.any(org.springframework.jdbc.core.RowMapper.class)))
+                .thenAnswer(invocation -> {
+                    org.springframework.jdbc.core.RowMapper<?> mapper = invocation.getArgument(1);
+                    return List.of(mapper.mapRow(row, 0));
+                });
+
+        var plan = new ReplenishmentWorkspaceService(jdbc, "false", zones)
+                .plan(new TenantContext(1L, 2L, 3L, List.of(3L), Set.of()), 21, false, true);
+        var product = plan.products().getFirst();
+        org.junit.jupiter.api.Assertions.assertEquals("REVIEW_DATA", product.recommendationStatus());
+        org.junit.jupiter.api.Assertions.assertEquals(0d, product.suggestedQuantity());
+        assertTrue(product.dataIssues().contains("NEGATIVE_STOCK"));
+    }
+
+    @Test
     void draftEnabledForSkrHost() {
         ReplenishmentWorkspaceService service = mock(ReplenishmentWorkspaceService.class);
         TenantContextFactory tenantFactory = mock(TenantContextFactory.class);

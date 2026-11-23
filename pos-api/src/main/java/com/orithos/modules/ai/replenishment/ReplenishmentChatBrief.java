@@ -170,7 +170,7 @@ public class ReplenishmentChatBrief {
         if (chinese) {
             StringBuilder guidance = new StringBuilder("数据缺口：");
             if (inventoryGaps > 0) {
-                guidance.append("库存记录缺失、过期或更新时间不可用 ").append(inventoryGaps).append(" 项");
+                guidance.append("库存为负数或库存资料缺失、过期 ").append(inventoryGaps).append(" 项");
             }
             if (supplierGaps > 0) {
                 if (inventoryGaps > 0) guidance.append("；");
@@ -184,7 +184,7 @@ public class ReplenishmentChatBrief {
         }
         StringBuilder guidance = new StringBuilder("Data gaps: ");
         if (inventoryGaps > 0) {
-            guidance.append("inventory is missing, stale or has no update timestamp for ")
+            guidance.append("inventory is negative, stale or missing required data for ")
                     .append(inventoryGaps).append(" item").append(inventoryGaps == 1 ? "" : "s");
         }
         if (supplierGaps > 0) {
