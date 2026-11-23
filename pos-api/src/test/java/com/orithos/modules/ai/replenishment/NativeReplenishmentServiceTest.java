@@ -178,6 +178,7 @@ class NativeReplenishmentServiceTest {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
         ResultSet inventoryMissing = replenishmentRow(5L, "Private Shiraz", null, true);
         ResultSet supplierMissing = replenishmentRow(6L, "Private Beer", 4d, false);
+        when(supplierMissing.getDouble("recent_units")).thenReturn(28d);
         when(jdbc.query(any(PreparedStatementCreator.class), any(RowMapper.class))).thenAnswer(invocation -> {
             RowMapper<?> mapper = invocation.getArgument(1);
             return List.of(mapper.mapRow(inventoryMissing, 0), mapper.mapRow(supplierMissing, 1));
@@ -265,10 +266,31 @@ class NativeReplenishmentServiceTest {
     }
 
     @Test
+    void ignoresMissingSuppliersForProductsWithoutAReorderNeed() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        ResultSet stocked = replenishmentRow(5L, "Stocked beer", 10000d, false);
+        when(stocked.getDouble("recent_units")).thenReturn(28d);
+        ResultSet noDemand = replenishmentRow(6L, "No recent demand", 0d, false);
+        when(noDemand.getDouble("recent_units")).thenReturn(0d);
+        when(noDemand.getDouble("previous_units")).thenReturn(0d);
+        when(jdbc.query(any(PreparedStatementCreator.class), any(RowMapper.class))).thenAnswer(invocation -> {
+            RowMapper<?> mapper = invocation.getArgument(1);
+            return List.of(mapper.mapRow(stocked, 0), mapper.mapRow(noDemand, 1));
+        });
+
+        ReplenishmentPlan plan = new NativeReplenishmentService(jdbc).plan(tenant(55L, 87L));
+
+        assertEquals("VALID", plan.dataQualityStatus());
+        assertEquals(0, plan.supplierGapCount());
+        assertEquals(0, plan.itemsNeedingOrder());
+    }
+
+    @Test
     void reportsInventoryAndSupplierGapsSeparately() throws Exception {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
         ResultSet inventoryMissing = replenishmentRow(5L, "Shiraz", null, true);
         ResultSet supplierMissing = replenishmentRow(6L, "Beer", 4d, false);
+        when(supplierMissing.getDouble("recent_units")).thenReturn(28d);
         when(jdbc.query(any(PreparedStatementCreator.class), any(RowMapper.class))).thenAnswer(invocation -> {
             RowMapper<?> mapper = invocation.getArgument(1);
             return List.of(mapper.mapRow(inventoryMissing, 0), mapper.mapRow(supplierMissing, 1));
