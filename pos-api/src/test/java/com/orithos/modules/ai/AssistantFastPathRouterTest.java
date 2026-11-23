@@ -147,6 +147,28 @@ class AssistantFastPathRouterTest {
     }
 
     @Test
+    void routesWholeStoreValuationButNotPerProductOrGroupedQuestions() {
+        for (String question : new String[]{
+                "What is the total value of inventory?",
+                "What is our inventory worth?",
+                "How much is our stock worth?",
+                "total inventory value",
+                "库存总价值是多少？"
+        }) {
+            var match = AssistantFastPathRouter.maybeMatch(question);
+            assertNotNull(match, question);
+            assertEquals("report_stock_value", match.intent(), question);
+        }
+        for (String question : new String[]{
+                "What is the total value of inventory by supplier?",
+                "What is the value of inventory for Shiraz?"
+        }) {
+            var match = AssistantFastPathRouter.maybeMatch(question);
+            assertTrue(match == null || !"report_stock_value".equals(match.intent()), question);
+        }
+    }
+
+    @Test
     void routesAggregateStockQuestionsToAnExplicitDataQualityAnswer() {
         for (String question : new String[]{
                 "当前库存有多少件？",
