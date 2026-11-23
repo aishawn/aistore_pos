@@ -8,6 +8,7 @@ import com.orithos.modules.payment.PaymentMethod;
 import com.orithos.modules.payment.PaymentMethodMapper;
 import com.orithos.modules.product.Product;
 import com.orithos.modules.product.ProductPrice;
+import com.orithos.modules.product.ShopfrontProductOfferService;
 import com.orithos.modules.product.mapper.ProductMapper;
 import com.orithos.modules.register.RegisterMapper;
 import com.orithos.modules.register.RegisterSessionMapper;
@@ -36,9 +37,40 @@ class CheckoutPricingTest {
     private final RegisterMapper registerMapper = mock(RegisterMapper.class);
     private final RegisterSessionMapper registerSessionMapper = mock(RegisterSessionMapper.class);
     private final CompanySettingsService companySettings = mock(CompanySettingsService.class);
+    private final ShopfrontProductOfferService offers = mock(ShopfrontProductOfferService.class);
     private final CheckoutService service = new CheckoutService(saleMapper, mock(SalePaymentMapper.class),
             paymentMethodMapper, productMapper, registerMapper,
-            registerSessionMapper, new ObjectMapper(), companySettings, mock(EftposService.class));
+            registerSessionMapper, new ObjectMapper(), companySettings, null, mock(EftposService.class), offers);
+
+    @Test
+    void quotesFixedTotalAtExactQuantityAndPreservesGstAndManualDiscounts() {
+        when(productMapper.findSellableForOutlet(eq(42L), eq(3L), eq(12L), any())).thenReturn(product("5.99"));
+        when(productMapper.findPricesForOutlet(42L, 12L)).thenReturn(List.of(price("1", "5.99")));
+        when(saleMapper.findTaxRateId(42L, 3L, 12L)).thenReturn(9L);
+        when(saleMapper.findSellTaxPercent(42L, 3L, 12L)).thenReturn(new BigDecimal("10"));
+        when(registerMapper.findById(99L)).thenReturn(openRegister());
+        when(registerSessionMapper.findActiveSession(99L, 3L, 12L)).thenReturn(new RegisterSession());
+        when(offers.currentOffers(eq(3L), eq(12L), any())).thenReturn(java.util.Map.of(42L, List.of(
+                new ShopfrontProductOfferService.Offer("Four for twenty", new BigDecimal("4"),
+                        new BigDecimal("20"), null, null, java.time.Instant.now()))));
+
+        for (String quantity : List.of("3", "4", "5")) {
+            var request = request(42L, quantity, "0", null);
+            request.setRegisterId(99L);
+            var quote = service.quote(request);
+            assertEquals(new BigDecimal(switch (quantity) {
+                case "3" -> "17.97";
+                case "4" -> "20.00";
+                default -> "29.95";
+            }), quote.total());
+            if ("4".equals(quantity)) assertEquals(new BigDecimal("1.82"), quote.gst());
+        }
+        var manual = request(42L, "4", "0", null);
+        manual.setRegisterId(99L);
+        manual.getItems().getFirst().setDiscountPercent(new BigDecimal("10"));
+        assertEquals(new BigDecimal("21.56"), service.quote(manual).total());
+        verify(saleMapper, never()).insert(any());
+    }
 
     @BeforeEach
     void authenticateOutlet() {

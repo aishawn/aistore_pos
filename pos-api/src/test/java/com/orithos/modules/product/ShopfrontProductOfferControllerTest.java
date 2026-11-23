@@ -34,11 +34,11 @@ class ShopfrontProductOfferControllerTest {
         snapshot.add(customerOffer);
         var now = Instant.parse("2026-11-23T02:30:00Z");
 
-        assertEquals(List.of(new ShopfrontProductOfferController.Offer("Two for six", new BigDecimal("2"),
+        assertEquals(List.of(new ShopfrontProductOfferService.Offer("Two for six", new BigDecimal("2"),
                         new BigDecimal("6"), Instant.parse("2026-11-23T02:00:00Z"),
                         Instant.parse("2026-11-23T03:00:00Z"), now)),
-                ShopfrontProductOfferController.matchingOffers(snapshot, "sku", "shop", now, now));
-        assertEquals(List.of(), ShopfrontProductOfferController.matchingOffers(snapshot, "other-sku", "shop", now, now));
-        assertEquals(List.of(), ShopfrontProductOfferController.matchingOffers(snapshot, "sku", "other-shop", now, now));
+                ShopfrontProductOfferService.matchingOffers(snapshot, "sku", "shop", now, now));
+        assertEquals(List.of(), ShopfrontProductOfferService.matchingOffers(snapshot, "other-sku", "shop", now, now));
+        assertEquals(List.of(), ShopfrontProductOfferService.matchingOffers(snapshot, "sku", "other-shop", now, now));
     }
 }

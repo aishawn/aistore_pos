@@ -14,6 +14,7 @@ import com.orithos.modules.config.CompanySettingsKeys;
 import com.orithos.modules.payment.PaymentMethod;
 import com.orithos.modules.payment.PaymentMethodMapper;
 import com.orithos.modules.product.Product;
+import com.orithos.modules.product.ShopfrontProductOfferService;
 import com.orithos.modules.product.mapper.ProductMapper;
 import com.orithos.modules.pricing.FamilyPriceCalculator;
 import com.orithos.modules.pricing.TierPriceCalculator;
@@ -56,6 +57,7 @@ public class CheckoutService {
     private final CompanySettingsService companySettings;
     private final BusinessTimezoneService businessTimezone;
     private final EftposService eftposService;
+    private final ShopfrontProductOfferService shopfrontOffers;
 
     public CheckoutService(SaleMapper saleMapper, SalePaymentMapper paymentMapper,
                            PaymentMethodMapper paymentMethodMapper, ProductMapper productMapper,
@@ -63,7 +65,7 @@ public class CheckoutService {
                            ObjectMapper objectMapper, CompanySettingsService companySettings,
                            EftposService eftposService) {
         this(saleMapper, paymentMapper, paymentMethodMapper, productMapper, registerMapper,
-                registerSessionMapper, objectMapper, companySettings, null, eftposService);
+                registerSessionMapper, objectMapper, companySettings, null, eftposService, null);
     }
 
     @Autowired
@@ -72,7 +74,7 @@ public class CheckoutService {
                            RegisterMapper registerMapper, RegisterSessionMapper registerSessionMapper,
                            ObjectMapper objectMapper, CompanySettingsService companySettings,
                            BusinessTimezoneService businessTimezone,
-                           EftposService eftposService) {
+                           EftposService eftposService, ShopfrontProductOfferService shopfrontOffers) {
         this.saleMapper = saleMapper;
         this.paymentMapper = paymentMapper;
         this.paymentMethodMapper = paymentMethodMapper;
@@ -83,6 +85,7 @@ public class CheckoutService {
         this.companySettings = companySettings;
         this.businessTimezone = businessTimezone;
         this.eftposService = eftposService;
+        this.shopfrontOffers = shopfrontOffers;
     }
 
     private java.time.LocalDate today(Long vendorId) {
@@ -547,10 +550,24 @@ public class CheckoutService {
                     item.getUnitPrice(), tiers));
         }
         List<BigDecimal> totals = FamilyPriceCalculator.price(pricingLines, distribution, quantityRate, rounding);
+        Map<Long, List<ShopfrontProductOfferService.Offer>> offers = shopfrontOffers == null
+                ? Map.of() : shopfrontOffers.currentOffers(vendorId, outletId, products.keySet());
         for (int i = 0; i < req.getItems().size(); i++) {
             CheckoutRequest.Item item = req.getItems().get(i);
             BigDecimal discountFactor = BigDecimal.ONE.subtract(item.getDiscountPercent().movePointLeft(2));
-            item.setLineTotal(totals.get(i).multiply(discountFactor).setScale(2, RoundingMode.HALF_UP));
+            BigDecimal total = totals.get(i);
+            var lineOffers = offers.get(item.getProductId());
+            Long familyId = pricingLines.get(i).familyId();
+            if (lineOffers != null && item.getDiscountPercent().signum() == 0
+                    && pricingLines.stream().filter(line -> line.productId().equals(item.getProductId())
+                            || (familyId != null && familyId.equals(line.familyId())))
+                            .count() == 1) {
+                var matchingTotals = lineOffers.stream()
+                        .filter(offer -> offer.requiredUnits().compareTo(item.getQuantity()) == 0)
+                        .map(offer -> offer.total().setScale(2, RoundingMode.HALF_UP)).distinct().toList();
+                if (matchingTotals.size() == 1) total = total.min(matchingTotals.getFirst());
+            }
+            item.setLineTotal(total.multiply(discountFactor).setScale(2, RoundingMode.HALF_UP));
         }
     }
 
