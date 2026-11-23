@@ -107,9 +107,9 @@ public class ReportController {
             throw new org.springframework.web.server.ResponseStatusException(
                     org.springframework.http.HttpStatus.FORBIDDEN, "A store outlet is required.");
         }
-        if (to.isBefore(from) || ChronoUnit.DAYS.between(from, to) > 800) {
+        if (to.isBefore(from) || ChronoUnit.DAYS.between(from, to) > 366) {
             throw new org.springframework.web.server.ResponseStatusException(
-                    org.springframework.http.HttpStatus.BAD_REQUEST, "Choose a valid range of up to 801 days.");
+                    org.springframework.http.HttpStatus.BAD_REQUEST, "Choose a purchase report range of up to 367 calendar days.");
         }
         return ApiResult.ok(shopfrontPurchaseReportService.purchaseReport(vendorId, outletId, from, to, groupBy));
     }

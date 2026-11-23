@@ -209,6 +209,12 @@ export function NativePurchaseReportPage() {
       setLoading(false);
       return;
     }
+    if (Date.parse(to) - Date.parse(from) > 366 * 86_400_000) {
+      setReport(null);
+      setError("Choose a purchase report range of up to 367 calendar days.");
+      setLoading(false);
+      return;
+    }
     const controller = new AbortController();
     setLoading(true);
     setError(null);
