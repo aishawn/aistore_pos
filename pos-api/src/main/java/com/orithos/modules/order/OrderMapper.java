@@ -14,6 +14,19 @@ public interface OrderMapper {
 
     Order findByIdForVendor(@Param("id") Long id, @Param("vendorId") Long vendorId);
 
+    @Select("""
+            SELECT COUNT(*) AS "receivedLines",
+                   COUNT(*) FILTER (WHERE NOT EXISTS (
+                       SELECT 1 FROM purchase_receipt_batch b WHERE b.receipt_line_id = l.id
+                   )) AS "linesWithoutBatches"
+            FROM purchase_receipt r
+            JOIN purchase_receipt_line l ON l.receipt_id = r.id
+            WHERE r.vendor_id = #{vendorId} AND r.outlet_id = #{outletId}
+                AND r.status IN ('RECEIVED', 'PARTIALLY_RECEIVED')
+            """)
+    ReceiptExpiryReviewController.Coverage expiryReviewCoverage(@Param("vendorId") Long vendorId,
+                                                                 @Param("outletId") Long outletId);
+
     @Select("SELECT * FROM order_product WHERE order_id = #{orderId} ORDER BY id")
     List<OrderProduct> findProductsByOrderId(Long orderId);
 

@@ -46,11 +46,13 @@ public class ReceiptExpiryReviewController {
         LocalDate end = "expired".equals(status) ? today.minusDays(1) : through;
         List<Batch> rows = orders.findExpiryReview(vendorId, outletId, from, end, (page - 1L) * PAGE_SIZE);
         return ApiResult.ok(new Review(today, through, rows.stream().limit(PAGE_SIZE).toList(),
-                rows.size() > PAGE_SIZE, page));
+                rows.size() > PAGE_SIZE, page, orders.expiryReviewCoverage(vendorId, outletId)));
     }
 
     public record Review(LocalDate businessDate, LocalDate throughDate, List<Batch> batches,
-                         boolean truncated, int page) {}
+                         boolean truncated, int page, Coverage coverage) {}
+
+    public record Coverage(long receivedLines, long linesWithoutBatches) {}
 
     public record Batch(Long orderId, Long receiptLineId, Long productId, String productName,
                         String batchCode, LocalDate expiryDate, BigDecimal receivedUnits,

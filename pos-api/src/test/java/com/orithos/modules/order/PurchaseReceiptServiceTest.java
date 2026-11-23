@@ -48,9 +48,12 @@ class PurchaseReceiptServiceTest {
         var today = java.time.LocalDate.parse("2026-11-23");
         when(zone.today(5L)).thenReturn(today);
         when(orders.findExpiryReview(5L, 3L, null, today.plusDays(14), 0L)).thenReturn(List.of());
+        var coverage = new ReceiptExpiryReviewController.Coverage(5, 3);
+        when(orders.expiryReviewCoverage(5L, 3L)).thenReturn(coverage);
         var result = new ReceiptExpiryReviewController(orders, zone, permission).review(1, "all").data();
         assertEquals(today, result.businessDate());
         assertEquals(today.plusDays(14), result.throughDate());
+        assertEquals(coverage, result.coverage());
         verify(permission).requirePermission("stock.purchases");
         verify(orders).findExpiryReview(5L, 3L, null, today.plusDays(14), 0L);
     }

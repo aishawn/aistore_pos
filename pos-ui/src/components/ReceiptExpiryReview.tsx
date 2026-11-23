@@ -12,6 +12,7 @@ interface Review {
   throughDate: string;
   truncated: boolean;
   page: number;
+  coverage?: { receivedLines: number; linesWithoutBatches: number };
   batches: {
     orderId: number;
     receiptLineId: number;
@@ -62,7 +63,19 @@ export function ReceiptExpiryReview({ initialStatus }: { initialStatus: "all" | 
               : <>Shows received batches expiring through {formatAuDate(data.throughDate)}.</>}{" "}
             Check remaining quantities on the shelf.
           </p>
-          {!data.batches.length && <p className="mt-4 text-sm">No recorded batches in this review period.</p>}
+          {!data.batches.length && (
+            <p className="mt-4 text-sm">
+              {data.coverage?.receivedLines === 0
+                ? "No Orithos receipts with stock lines have been recorded for this store."
+                : "No recorded batches match this filter."}
+            </p>
+          )}
+          {data.coverage && data.coverage.linesWithoutBatches > 0 && (
+            <p className="mt-3 text-sm">
+              {data.coverage.linesWithoutBatches} of {data.coverage.receivedLines} receipt lines have no batch details.
+              Check the labels on the shelf and record batch details on future receipts where applicable.
+            </p>
+          )}
           <ul className="mt-2 divide-y divide-[var(--oh-border)]">
             {data.batches.map((batch) => (
               <li key={JSON.stringify([batch.receiptLineId, batch.batchCode])} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 py-2.5 text-sm">
