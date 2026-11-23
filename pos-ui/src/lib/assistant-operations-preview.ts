@@ -60,7 +60,7 @@ type Plan = {
   top: Product[]; itemsNeedingOrder: number; dataGapCount: number; dataGaps: string[];
   coverageDays: number; dataAsOf?: string | null; dataSource: string; storeScope: string;
   reportPeriodFrom: string; reportPeriodTo: string; reportTimeZone: string; reportDataStatus: string;
-  inventoryGapCount?: number; supplierGapCount?: number; actionableItemCount?: number;
+  inventoryGapCount?: number; supplierGapCount?: number; costGapCount?: number; actionableItemCount?: number;
 };
 type OpportunitiesBrief = {
   dataSource: string; storeScope: string; reportPeriodFrom: string; reportPeriodTo: string;
@@ -68,7 +68,7 @@ type OpportunitiesBrief = {
   sales: { revenue?: string | null; transactions: number; currency: string; reportDataStatus: string; dataAsOf?: string | null };
   replenishment: {
     coverageDays: number; itemsNeedingOrder: number; actionableItemCount: number;
-    dataGapCount: number; inventoryGapCount: number; supplierGapCount: number;
+    dataGapCount: number; inventoryGapCount: number; supplierGapCount: number; costGapCount?: number;
     top: Product[]; reportDataStatus: string; dataAsOf?: string | null;
     reportPeriodFrom?: string; reportPeriodTo?: string; reportTimeZone?: string;
   };
@@ -104,6 +104,14 @@ function asNumber(value: unknown): number {
 }
 
 
+function purchaseCostGapDetails(count: number | undefined, chinese: boolean): string {
+  if (!count || count < 1) return "";
+  if (chinese) return `另有 ${count} 个商品缺少有效采购成本。`;
+  return count === 1
+    ? " 1 product lacks a recorded purchase cost."
+    : ` ${count} products lack a recorded purchase cost.`;
+}
+
 async function readReplenishmentPlan(fetcher: typeof fetch, signal?: AbortSignal): Promise<Plan> {
   const response = await fetcher("/api/ai/assistant/replenishment-report", {
     method: "GET", credentials: "same-origin", cache: "no-store", signal,
@@ -119,6 +127,7 @@ async function readReplenishmentPlan(fetcher: typeof fetch, signal?: AbortSignal
       dataGaps?: string[];
       inventoryGapCount?: number;
       supplierGapCount?: number;
+      costGapCount?: number;
       coverageDays?: number;
       dataAsOf?: string | null;
       dataSource?: string;
@@ -310,9 +319,9 @@ async function buildLiveOperationsPreview(
           style: "currency", currency: brief.sales.currency || "AUD",
         }).format(revenueAmount);
       const eligible = brief.replenishment.top.filter((item) => finite(item.suggestedQuantity) && item.suggestedQuantity > 0);
-      const gapDetails = chinese
+      const gapDetails = (chinese
         ? `${brief.replenishment.inventoryGapCount} 个商品的库存需核对，${brief.replenishment.supplierGapCount} 个商品缺少供应商资料。`
-        : `${brief.replenishment.inventoryGapCount} products need inventory review; ${brief.replenishment.supplierGapCount} lack supplier details.`;
+        : `${brief.replenishment.inventoryGapCount} products need inventory review; ${brief.replenishment.supplierGapCount} lack supplier details.`) + purchaseCostGapDetails(brief.replenishment.costGapCount, chinese);
       const salesCard: AssistantCard = {
         type: "sales",
         title: chinese ? "本周销售" : "This week's sales",
@@ -468,13 +477,13 @@ async function buildLiveOperationsPreview(
       card.supplierGapCount = plan.supplierGapCount;
       card.inventoryGapCount = plan.inventoryGapCount;
       card.actionableItemCount = plan.actionableItemCount ?? plan.itemsNeedingOrder;
-      const gapDetails = plan.inventoryGapCount != null || plan.supplierGapCount != null
+      const gapDetails = (plan.inventoryGapCount != null || plan.supplierGapCount != null
         ? chinese
           ? `${plan.inventoryGapCount ?? 0} 个商品的库存需核对，${plan.supplierGapCount ?? 0} 个商品缺少供应商资料。`
           : `${plan.inventoryGapCount ?? 0} products need inventory review; ${plan.supplierGapCount ?? 0} lack supplier details.`
         : chinese
           ? `${plan.dataGapCount} 个商品因资料不完整被排除。`
-          : `${plan.dataGapCount} products were excluded for incomplete data.`;
+          : `${plan.dataGapCount} products were excluded for incomplete data.`) + purchaseCostGapDetails(plan.costGapCount, chinese);
       const topSummary = eligible.slice(0, 3).map((item) => `• ${replenishmentItemLabel(item, chinese)}`).join("\n");
       const scanLine = chinese
         ? `全店扫描（销售期间 ${analysisPeriod}）：${plan.actionableItemCount ?? plan.itemsNeedingOrder} 个 SKU 有建议量（覆盖 ${plan.coverageDays} 天）${plan.dataGapCount > 0 ? `；${plan.dataGapCount} 个需核对资料，暂未纳入` : ""}。`

@@ -44,7 +44,7 @@ class AiAssistantReadOnlyReportControllerTest {
                 new AssistantStoreOpportunitiesBriefResponse.OpportunitiesSalesSection(
                         "$1,200.00", 30, "AUD", "available", dataAsOf.toString()),
                 new AssistantStoreOpportunitiesBriefResponse.OpportunitiesReplenishmentSection(
-                        21, 4, 4, 2, 1, 1,
+                        21, 4, 4, 3, 1, 1, 1,
                         List.of(new ReplenishmentSuggestion(1, "Shiraz", "units", 12, 5d, 1d)),
                         "incomplete", dataAsOf.toString(), LocalDate.parse("2026-09-19"),
                         LocalDate.parse("2026-11-13"), "Australia/Adelaide"));
@@ -69,7 +69,7 @@ class AiAssistantReadOnlyReportControllerTest {
         Instant dataAsOf = Instant.parse("2026-11-12T07:30:00Z");
         ReplenishmentPlan plan = new ReplenishmentPlan(21, 2,
                 List.of(new ReplenishmentSuggestion(1, "Shiraz", "units", 12, 5d, 1d)),
-                "DATA_INCOMPLETE", List.of("Shiraz: supplier unavailable"), dataAsOf, 25, 4, 21,
+                "DATA_INCOMPLETE", List.of("Shiraz: supplier unavailable"), dataAsOf, 26, 4, 21, 1,
                 LocalDate.parse("2026-09-19"), LocalDate.parse("2026-11-13"), "Australia/Adelaide");
         when(tenantContextFactory.fromSecurity()).thenReturn(tenant);
         when(replenishmentService.plan(tenant)).thenReturn(plan);
@@ -87,7 +87,8 @@ class AiAssistantReadOnlyReportControllerTest {
         assertEquals("Australia/Adelaide", response.data().reportTimeZone());
         assertEquals("incomplete", response.data().reportDataStatus());
         assertEquals(dataAsOf.toString(), response.data().dataAsOf());
-        assertEquals(25, response.data().dataGapCount());
+        assertEquals(26, response.data().dataGapCount());
+        assertEquals(1, response.data().costGapCount());
         assertEquals(4, response.data().inventoryGapCount());
         assertEquals(21, response.data().supplierGapCount());
         verify(replenishmentService).plan(tenant);

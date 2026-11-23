@@ -142,11 +142,13 @@ public class NativeReplenishmentService {
                        COALESCE(s.previous_units, 0) AS previous_units,
                        s.sales_data_as_of,
                        supplier.has_supplier,
+                       cost.cost > 0 AS has_recorded_cost,
                        COALESCE(supplier.minimum_order, 1) AS minimum_order
                 FROM product p
                 LEFT JOIN product_inventory i ON i.product_id = p.id AND i.outlet_id = p.outlet_id
                 LEFT JOIN sales s ON s.product_id = p.id
                 LEFT JOIN supplier ON supplier.product_id = p.id AND supplier.outlet_id = p.outlet_id
+                LEFT JOIN ai_rpt_inventory_cost cost ON cost.product_id = p.id AND cost.outlet_id = p.outlet_id
                 WHERE p.outlet_id = ? AND p.deleted_at IS NULL AND p.status = 'ACTIVE'
                 ORDER BY p.name, p.id
                 """);
@@ -161,6 +163,7 @@ public class NativeReplenishmentService {
         }, (rs, rowNum) -> new Row(rs.getLong("id"), rs.getString("name"),
                 rs.getDouble("case_quantity"), asDouble(rs.getObject("on_hand")), rs.getDouble("on_order"),
                 rs.getDouble("recent_units"), rs.getDouble("previous_units"), rs.getBoolean("has_supplier"),
+                rs.getBoolean("has_recorded_cost"),
                 rs.getDouble("minimum_order"), timestampInstant(rs.getTimestamp("sales_data_as_of")),
                 timestampInstant(rs.getTimestamp("inventory_data_as_of"))));
 
@@ -169,11 +172,12 @@ public class NativeReplenishmentService {
         int dataGapCount = 0;
         int inventoryGapCount = 0;
         int supplierGapCount = 0;
+        int costGapCount = 0;
         Instant salesDataAsOf = rows.stream().map(Row::salesDataAsOf).filter(java.util.Objects::nonNull)
                 .max(Instant::compareTo).orElse(null);
         if (salesDataAsOf == null) {
             return new ReplenishmentPlan(cover, 0, List.of(), "NO_DATA",
-                    List.of("sales history unavailable"), null, rows.size(), 0, 0, from, today, zone.getId());
+                    List.of("sales history unavailable"), null, rows.size(), 0, 0, 0, from, today, zone.getId());
         }
         Instant inventoryDataAsOf = rows.stream().map(Row::inventoryDataAsOf).filter(java.util.Objects::nonNull)
                 .max(Instant::compareTo).orElse(null);
@@ -217,6 +221,12 @@ public class NativeReplenishmentService {
             double raw = Math.max(0d, demand * cover - available);
             double quantity = raw == 0 ? 0 : Math.ceil(Math.max(raw, minimum) / casePack) * casePack;
             if (quantity <= 0) continue;
+            if (!row.hasRecordedCost()) {
+                dataGapCount++;
+                costGapCount++;
+                gaps.add(row.name() + ": positive recorded purchase cost unavailable");
+                continue;
+            }
             suggestions.add(new ReplenishmentSuggestion(row.id(), row.name(), "units", quantity,
                     Math.max(0d, row.onHand()) / demand, demand, row.onHand(), available));
         }
@@ -228,11 +238,12 @@ public class NativeReplenishmentService {
                 .thenComparingLong(ReplenishmentSuggestion::productId));
         return new ReplenishmentPlan(cover, suggestions.size(), suggestions.stream().limit(limit).toList(),
                 gaps.isEmpty() ? "VALID" : "DATA_INCOMPLETE", gaps.stream().distinct().limit(20).toList(),
-                dataAsOf, dataGapCount, inventoryGapCount, supplierGapCount, from, today, zone.getId());
+                dataAsOf, dataGapCount, inventoryGapCount, supplierGapCount, costGapCount, from, today, zone.getId());
     }
 
     private record Row(long id, String name, double caseQuantity, Double onHand, double onOrder,
-                       double recentUnits, double previousUnits, boolean hasSupplier, double minimumOrder,
+                       double recentUnits, double previousUnits, boolean hasSupplier, boolean hasRecordedCost,
+                       double minimumOrder,
                        Instant salesDataAsOf, Instant inventoryDataAsOf) { }
 
     private record CacheKey(long vendorId, long outletId, int coverageDays, int suggestionLimit,

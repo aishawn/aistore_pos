@@ -29,6 +29,7 @@ public record AssistantStoreOpportunitiesBriefResponse(
             int dataGapCount,
             int inventoryGapCount,
             int supplierGapCount,
+            int costGapCount,
             List<ReplenishmentSuggestion> top,
             String reportDataStatus,
             String dataAsOf,

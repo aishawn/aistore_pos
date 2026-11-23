@@ -43,8 +43,8 @@ test("full catalogue suggestions survive unrelated review products", async () =>
       reportPeriodFrom: "2026-10-01", reportPeriodTo: "2026-11-13",
       reportTimeZone: "Australia/Adelaide", reportDataStatus: "incomplete",
       dataAsOf: "2026-11-13T01:00:00Z", coverageDays: 21, itemsNeedingOrder: 1,
-      dataGapCount: 1, dataGaps: ["Gift card: inventory unavailable"],
-      inventoryGapCount: 1, supplierGapCount: 0,
+      dataGapCount: 2, dataGaps: ["Gift card: inventory unavailable", "Wine: recorded cost unavailable"],
+      inventoryGapCount: 1, supplierGapCount: 0, costGapCount: 1,
       top: [{ productId: 501, name: "Beer", unit: "units", suggestedQuantity: 8 }],
     },
   }));
@@ -52,6 +52,7 @@ test("full catalogue suggestions survive unrelated review products", async () =>
   assert.equal(result?.cards?.[0].status, "partial");
   assert.match(result?.answer ?? "", /2026-10-01 to 2026-11-13 \(Australia\/Adelaide\)/);
   assert.match(result?.answer ?? "", /1 products need inventory review; 0 lack supplier details/);
+  assert.match(result?.answer ?? "", /1 product lacks a recorded purchase cost/);
   assert.equal(result?.cards?.[0].items?.[0].id, 501);
   assert.equal(result?.dataAsOf, "2026-11-13T01:00:00Z");
   assert.equal(result?.dataSource, "orithos_ledger");

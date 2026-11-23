@@ -57,6 +57,7 @@ public class StoreOpportunitiesBriefService {
                         plan.dataGapCount(),
                         plan.inventoryGapCount(),
                         plan.supplierGapCount(),
+                        plan.costGapCount(),
                         plan.top() == null ? List.of() : plan.top(),
                         replenishmentStatus,
                         replenishmentDataAsOf,

@@ -214,6 +214,7 @@ class NativeReplenishmentServiceTest {
             when(row.getDouble("recent_units")).thenReturn(0d);
             when(row.getDouble("previous_units")).thenReturn(0d);
             when(row.getBoolean("has_supplier")).thenReturn(true);
+            when(row.getBoolean("has_recorded_cost")).thenReturn(true);
             when(row.getDouble("minimum_order")).thenReturn(1d);
             when(row.getTimestamp("sales_data_as_of")).thenReturn(Timestamp.from(updatedAt));
             when(row.getTimestamp("inventory_data_as_of")).thenReturn(Timestamp.from(updatedAt));
@@ -244,6 +245,7 @@ class NativeReplenishmentServiceTest {
             when(row.getDouble("recent_units")).thenReturn(0d);
             when(row.getDouble("previous_units")).thenReturn(0d);
             when(row.getBoolean("has_supplier")).thenReturn(true);
+            when(row.getBoolean("has_recorded_cost")).thenReturn(true);
             when(row.getDouble("minimum_order")).thenReturn(1d);
             when(row.getTimestamp("sales_data_as_of")).thenReturn(null);
         } catch (java.sql.SQLException e) {
@@ -396,6 +398,27 @@ class NativeReplenishmentServiceTest {
         assertTrue(plan.dataGaps().stream().anyMatch(gap -> gap.contains("stock reconciliation")));
     }
 
+    @Test
+    void flagsReorderCandidateWhenRecordedCostIsMissing() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        ResultSet row = replenishmentRow(5L, "Shiraz", 0d, true);
+        when(row.getDouble("recent_units")).thenReturn(28d);
+        when(row.getBoolean("has_recorded_cost")).thenReturn(false);
+        when(jdbc.query(any(PreparedStatementCreator.class), any(RowMapper.class))).thenAnswer(invocation -> {
+            RowMapper<?> mapper = invocation.getArgument(1);
+            return List.of(mapper.mapRow(row, 0));
+        });
+
+        ReplenishmentPlan plan = new NativeReplenishmentService(jdbc).plan(tenant(55L, 87L));
+
+        assertEquals(0, plan.itemsNeedingOrder());
+        assertEquals(1, plan.dataGapCount());
+        assertEquals(0, plan.inventoryGapCount());
+        assertEquals(0, plan.supplierGapCount());
+        assertEquals(1, plan.costGapCount());
+        assertTrue(plan.dataGaps().getFirst().contains("cost"));
+    }
+
     private static ResultSet replenishmentRow(long id, String name, Double onHand, boolean supplier)
             throws Exception {
         ResultSet row = mock(ResultSet.class);
@@ -407,6 +430,7 @@ class NativeReplenishmentServiceTest {
         when(row.getDouble("recent_units")).thenReturn(0d);
         when(row.getDouble("previous_units")).thenReturn(0d);
         when(row.getBoolean("has_supplier")).thenReturn(supplier);
+        when(row.getBoolean("has_recorded_cost")).thenReturn(true);
         when(row.getDouble("minimum_order")).thenReturn(1d);
         when(row.getTimestamp("sales_data_as_of")).thenReturn(Timestamp.from(Instant.parse("2026-11-12T07:30:00Z")));
         when(row.getTimestamp("inventory_data_as_of")).thenReturn(Timestamp.from(Instant.now()));

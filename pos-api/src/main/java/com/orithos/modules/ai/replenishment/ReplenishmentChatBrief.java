@@ -153,6 +153,15 @@ public class ReplenishmentChatBrief {
     private static String incompleteDataGuidance(ReplenishmentPlan plan, boolean chinese) {
         int inventoryGaps = plan.inventoryGapCount();
         int supplierGaps = plan.supplierGapCount();
+        String guidance = inventoryAndSupplierGuidance(inventoryGaps, supplierGaps, chinese);
+        if (plan.costGapCount() == 0) return guidance;
+        String costGuidance = chinese
+                ? "另有 " + plan.costGapCount() + " 项缺少有效采购成本，请补齐成本记录。"
+                : plan.costGapCount() + " product(s) need a positive recorded purchase cost before ordering.";
+        return inventoryGaps == 0 && supplierGaps == 0 ? costGuidance : guidance + " " + costGuidance;
+    }
+
+    private static String inventoryAndSupplierGuidance(int inventoryGaps, int supplierGaps, boolean chinese) {
         if (inventoryGaps == 0 && supplierGaps == 0) {
             return chinese
                     ? "请人工核对库存记录和供应商资料后重试。"

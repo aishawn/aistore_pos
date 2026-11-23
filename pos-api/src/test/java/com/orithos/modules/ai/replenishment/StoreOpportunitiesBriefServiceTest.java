@@ -36,7 +36,7 @@ class StoreOpportunitiesBriefServiceTest {
         ReplenishmentPlan plan = new ReplenishmentPlan(21, 5,
                 List.of(new ReplenishmentSuggestion(1, "Cola", "units", 24, 2d, 1d)),
                 "DATA_INCOMPLETE", List.of("Wine: supplier unavailable"),
-                Instant.parse("2026-11-17T07:00:00Z"), 1, 0, 1,
+                Instant.parse("2026-11-17T07:00:00Z"), 2, 0, 1, 1,
                 LocalDate.parse("2026-09-23"), today, "Australia/Adelaide");
         when(replenishment.plan(tenant)).thenReturn(plan);
 
@@ -47,6 +47,7 @@ class StoreOpportunitiesBriefServiceTest {
         assertEquals("available", brief.sales().reportDataStatus());
         assertEquals("incomplete", brief.replenishment().reportDataStatus());
         assertEquals(5, brief.replenishment().actionableItemCount());
+        assertEquals(1, brief.replenishment().costGapCount());
         assertEquals(42L, brief.sales().transactions());
         assertEquals(weekStart, brief.reportPeriodFrom());
         assertEquals(LocalDate.parse("2026-09-23"), brief.replenishment().reportPeriodFrom());

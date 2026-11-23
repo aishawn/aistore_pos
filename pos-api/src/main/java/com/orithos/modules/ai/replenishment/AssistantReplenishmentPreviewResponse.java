@@ -18,6 +18,7 @@ public record AssistantReplenishmentPreviewResponse(
         List<String> dataGaps,
         int inventoryGapCount,
         int supplierGapCount,
+        int costGapCount,
         int actionableItemCount
 ) {
     public static AssistantReplenishmentPreviewResponse from(ReplenishmentPlan plan) {
@@ -37,6 +38,7 @@ public record AssistantReplenishmentPreviewResponse(
                 plan.dataGaps(),
                 plan.inventoryGapCount(),
                 plan.supplierGapCount(),
+                plan.costGapCount(),
                 Math.max(0, plan.itemsNeedingOrder())
         );
     }

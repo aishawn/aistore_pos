@@ -15,6 +15,7 @@ public record ReplenishmentPlan(
         int dataGapCount,
         int inventoryGapCount,
         int supplierGapCount,
+        int costGapCount,
         LocalDate periodFrom,
         LocalDate periodTo,
         String timeZone
@@ -40,7 +41,7 @@ public record ReplenishmentPlan(
                              String dataQualityStatus, List<String> dataGaps, Instant dataAsOf,
                              int dataGapCount, int inventoryGapCount, int supplierGapCount) {
         this(coverageDays, itemsNeedingOrder, top, dataQualityStatus, dataGaps, dataAsOf,
-                dataGapCount, inventoryGapCount, supplierGapCount, null, null, null);
+                dataGapCount, inventoryGapCount, supplierGapCount, 0, null, null, null);
     }
 
     public ReplenishmentPlan {
@@ -50,5 +51,6 @@ public record ReplenishmentPlan(
         dataGapCount = Math.max(dataGapCount, dataGaps.size());
         inventoryGapCount = Math.max(0, inventoryGapCount);
         supplierGapCount = Math.max(0, supplierGapCount);
+        costGapCount = Math.max(0, costGapCount);
     }
 }
