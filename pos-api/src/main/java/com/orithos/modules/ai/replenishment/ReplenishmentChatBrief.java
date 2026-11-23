@@ -236,9 +236,11 @@ public class ReplenishmentChatBrief {
         if (caseQuantity == null || !Double.isFinite(caseQuantity) || caseQuantity <= 1) return "";
         double cases = item.suggestedQuantity() / caseQuantity;
         if (Math.abs(cases - Math.rint(cases)) < 0.000001) {
+            String count = formatQty(Math.rint(cases));
             return chinese
-                    ? formatQty(Math.rint(cases)) + " 箱，每箱 " + formatQty(caseQuantity) + " 件"
-                    : formatQty(Math.rint(cases)) + " cases of " + formatQty(caseQuantity) + " units";
+                    ? count + " 箱，每箱 " + formatQty(caseQuantity) + " 件"
+                    : count + (Math.rint(cases) == 1 ? " case of " : " cases of ")
+                            + formatQty(caseQuantity) + " units";
         }
         return chinese
                 ? "箱规每箱 " + formatQty(caseQuantity) + " 件"

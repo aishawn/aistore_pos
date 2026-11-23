@@ -87,8 +87,11 @@ function replenishmentItemLabel(
     const caseSize = new Intl.NumberFormat(chinese ? "zh-CN" : "en-AU", { maximumFractionDigits: 3 })
       .format(item.caseQuantity);
     if (Math.abs(cases - Math.round(cases)) < 0.000001) {
-      const caseCount = new Intl.NumberFormat(chinese ? "zh-CN" : "en-AU").format(Math.round(cases));
-      parts.push(chinese ? `${caseCount} 箱 × 每箱 ${caseSize} 件` : `${caseCount} cases x ${caseSize} units/case`);
+      const roundedCases = Math.round(cases);
+      const caseCount = new Intl.NumberFormat(chinese ? "zh-CN" : "en-AU").format(roundedCases);
+      parts.push(chinese
+        ? `${caseCount} 箱 × 每箱 ${caseSize} 件`
+        : `${caseCount} ${roundedCases === 1 ? "case" : "cases"} x ${caseSize} units/case`);
     } else {
       parts.push(chinese ? `箱规每箱 ${caseSize} 件` : `case size ${caseSize} units`);
     }

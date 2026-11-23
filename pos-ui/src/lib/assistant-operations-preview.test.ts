@@ -114,6 +114,18 @@ test("replenishment cards show case quantities when the suggestion matches a kno
   assert.match(result?.cards?.[0].items?.[0].label ?? "", /4 cases x 6 units\/case/);
 });
 
+test("replenishment cards use singular wording for one case", async () => {
+  const result = await readOperationsPreview(question, null, undefined, mockFetch({ data: {
+    dataSource: "orithos_ledger", storeScope: "current_authenticated_store",
+    reportPeriodFrom: "2026-10-01", reportPeriodTo: "2026-11-13",
+    reportTimeZone: "Australia/Melbourne", reportDataStatus: "available",
+    dataAsOf: "2026-11-13T01:00:00Z", coverageDays: 21, itemsNeedingOrder: 1,
+    dataGapCount: 0, dataGaps: [],
+    top: [{ productId: 501, name: "Beer", suggestedQuantity: 24, caseQuantity: 24 }],
+  } }));
+  assert.match(result?.cards?.[0].items?.[0].label ?? "", /1 case x 24 units\/case/);
+});
+
 test("replenishment cards do not invent case counts for invalid or non-matching packs", async () => {
   for (const caseQuantity of [0, 6]) {
     await awaitOperationsPreviewInflight("replenishment");

@@ -35,13 +35,14 @@ class ReplenishmentChatBriefTest {
                 List.of(
                         new ReplenishmentSuggestion(1, "VB Cans", "Units", 24, 3.0, 2.0,
                                 3d, 3d, null, 6d),
-                        new ReplenishmentSuggestion(2, "Shiraz", "Units", 12, 5.0, 1.0))));
+                        new ReplenishmentSuggestion(2, "Shiraz", "Units", 12, 5.0, 1.0,
+                                5d, 5d, null, 12d))));
 
         String text = new ReplenishmentChatBrief(client).brief("What should I restock?", tenant);
 
         assertTrue(text.contains("Top restock suggestions (21d cover): 5 items need order."));
         assertTrue(text.contains("\n• VB Cans — order 24 (4 cases of 6 units) (≈3.0d left)"));
-        assertTrue(text.contains("\n• Shiraz — order 12"));
+        assertTrue(text.contains("\n• Shiraz — order 12 (1 case of 12 units)"));
         assertTrue(text.contains("\n\nTap below to review quantities"));
         assertFalse(text.contains("Opening the requested workflow"));
     }

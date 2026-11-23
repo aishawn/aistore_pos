@@ -394,7 +394,8 @@ public class AiCommandService {
             if (Math.abs(cases - Math.rint(cases)) < 0.000001) {
                 reason += chinese
                         ? "；采购包装 " + formatQuantity(item.caseQuantity()) + " 件/箱，共 " + (long) Math.rint(cases) + " 箱"
-                        : "; " + (long) Math.rint(cases) + " cases of " + formatQuantity(item.caseQuantity()) + " units";
+                        : "; " + (long) Math.rint(cases) + (Math.rint(cases) == 1 ? " case of " : " cases of ")
+                                + formatQuantity(item.caseQuantity()) + " units";
             } else {
                 reason += chinese
                         ? "；箱规每箱 " + formatQuantity(item.caseQuantity()) + " 件"
