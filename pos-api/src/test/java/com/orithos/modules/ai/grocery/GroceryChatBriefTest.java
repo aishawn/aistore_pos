@@ -21,6 +21,15 @@ class GroceryChatBriefTest {
     private final TenantContext tenant = new TenantContext(7L, 9L, 3L, List.of(3L), Set.of("ROLE_ADMIN"));
 
     @Test
+    void keepsAustralianBudgetsAndDoesNotTreatGingerAsGin() {
+        var request = GroceryChatBrief.fromQuestion("Ginger soft drink for a barbecue under A$20");
+        assertEquals("soft_drinks", request.category());
+        assertEquals("bbq", request.occasion());
+        assertEquals(new BigDecimal("20"), request.budgetMax());
+        assertEquals("snacks", GroceryChatBrief.fromQuestion("Snacks on sale under AUD 15").category());
+    }
+
+    @Test
     void returnsRealOrithosRowsAsStructuredItemsAndCompatibleAnswer() {
         when(reports.listRecommendationProducts(tenant)).thenReturn(new NativeAiReportQueryService.ProductCatalogResult(List.of(
                 Map.of("id", 11L, "name", "Harbour Lager", "category", "Beer", "list_price", new BigDecimal("12.50"),

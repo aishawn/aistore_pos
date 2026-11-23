@@ -20,7 +20,7 @@ import java.util.regex.Pattern;
 public class GroceryChatBrief {
 
     private static final Pattern BUDGET = Pattern.compile(
-            "(?i)(?:under|below|less than|最多|不超过|以内)\\s*\\$?(\\d+(?:\\.\\d{1,2})?)"
+            "(?i)(?:under|below|less than|最多|不超过|以内)\\s*(?:AUD\\s*|A?\\$\\s*)?(\\d+(?:\\.\\d{1,2})?)"
                     + "|\\$?(\\d+(?:\\.\\d{1,2})?)\\s*(?:元|澳元|刀)?\\s*(?:以内|以下)");
     private final GroceryRecommendService service;
 
@@ -104,10 +104,10 @@ public class GroceryChatBrief {
     static GroceryRecommendRequest fromQuestion(String question) {
         String q = question == null ? "" : question.toLowerCase(java.util.Locale.ROOT);
         String category = "not_sure";
-        if (hasAny(q, "beer", "lager", "ale", "啤酒")) category = "beer";
-        else if (hasAny(q, "spirit", "vodka", "whisky", "whiskey", "gin", "rum", "烈酒")) category = "spirits";
-        else if (hasAny(q, "soft drink", "soda", "cola", "water", "juice", "饮料", "矿泉水")) category = "soft_drinks";
-        else if (hasAny(q, "snack", "chips", "crisps", "nuts", "零食", "薯片")) category = "snacks";
+        if (hasAny(q, "beers?", "lagers?", "ales?", "啤酒")) category = "beer";
+        else if (hasAny(q, "spirits?", "vodka", "whisk(?:y|ey)", "gin", "rum", "烈酒")) category = "spirits";
+        else if (hasAny(q, "soft drinks?", "sodas?", "cola", "water", "juices?", "饮料", "矿泉水")) category = "soft_drinks";
+        else if (hasAny(q, "snacks?", "chips", "crisps", "nuts", "零食", "薯片")) category = "snacks";
         BigDecimal budget = null;
         Matcher matcher = BUDGET.matcher(question == null ? "" : question);
         if (matcher.find()) {
@@ -119,7 +119,13 @@ public class GroceryChatBrief {
     }
 
     private static boolean hasAny(String value, String... terms) {
-        for (String term : terms) if (value.contains(term)) return true;
+        for (String term : terms) {
+            if (term.matches("[\\x00-\\x7F]+")) {
+                if (Pattern.compile("\\b(?:" + term + ")\\b").matcher(value).find()) return true;
+            } else if (value.contains(term)) {
+                return true;
+            }
+        }
         return false;
     }
 }
