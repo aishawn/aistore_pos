@@ -151,7 +151,12 @@ public final class RemoteAiGateway implements AiGateway {
         body.put("model", model);
         if (multimodal) {
             body.put("input", Map.of("messages", List.of(message)));
-            body.put("parameters", Map.of("result_format", "message"));
+            Map<String, Object> parameters = new LinkedHashMap<>();
+            parameters.put("result_format", "message");
+            if ("qwen3.8-flash".equalsIgnoreCase(model.trim())) {
+                parameters.put("enable_thinking", false);
+            }
+            body.put("parameters", parameters);
             body.put("multiModel", true);
         } else body.put("messages", List.of(message));
         body.put("stream", false);

@@ -60,6 +60,13 @@ class RemoteAiGatewayProviderHttpTest {
             assertEquals("Bearer test-token", authorization.get());
             assertTrue(requestBody.get().contains("\"model\":\"qwen-flash\""));
             assertTrue(requestBody.get().contains("classify this"));
+
+            gateway.completeMedia(new AiTenantContext(1, 1, 1, "cid"), AiTask.VISION,
+                    "extract invoice fields", "image/jpeg", new byte[]{1, 2, 3}, null);
+            var visionRequest = new ObjectMapper().readTree(requestBody.get());
+            assertEquals("qwen3.8-flash", visionRequest.path("model").asText());
+            assertTrue(visionRequest.path("parameters").path("enable_thinking").isBoolean());
+            assertEquals(false, visionRequest.path("parameters").path("enable_thinking").asBoolean());
         } finally {
             server.stop(0);
         }
