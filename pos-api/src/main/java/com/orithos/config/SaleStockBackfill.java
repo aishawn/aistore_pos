@@ -16,10 +16,10 @@ import java.sql.Statement;
 
 /**
  * Links sale lines that only stored a product name, then applies stock once
- * for completed sales that never reduced inventory.
+ * for completed Orithos sales that never reduced inventory. Shopfront inventory is imported independently.
  */
 @Component
-@Order(26)
+@Order(36)
 public class SaleStockBackfill implements CommandLineRunner {
 
     private static final Logger log = LoggerFactory.getLogger(SaleStockBackfill.class);
@@ -47,8 +47,11 @@ public class SaleStockBackfill implements CommandLineRunner {
                 st.execute("""
                         UPDATE sale_item si
                         SET product_id = p.id
-                        FROM product p
-                        WHERE p.deleted_at IS NULL
+                        FROM product p, sale s
+                        WHERE s.id = si.sale_id
+                          AND s.source_system IS DISTINCT FROM 'shopfront'
+                          AND p.outlet_id = COALESCE(s.outlet_id, si.outlet_id, 1)
+                          AND p.deleted_at IS NULL
                           AND p.name = si.note
                           AND si.product_id IS NULL
                           AND si.note IS NOT NULL
@@ -68,6 +71,7 @@ public class SaleStockBackfill implements CommandLineRunner {
                 FROM sale s
                 JOIN sale_item si ON si.sale_id = s.id
                 WHERE s.status = 'COMPLETED'
+                  AND s.source_system IS DISTINCT FROM 'shopfront'
                   AND s.stock_applied = 0
                   AND si.product_id IS NOT NULL
                   AND si.quantity IS NOT NULL
