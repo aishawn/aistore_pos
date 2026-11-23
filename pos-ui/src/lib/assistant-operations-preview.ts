@@ -45,16 +45,22 @@ export function operationsPreviewIntent(question: string): OperationsPreview | n
 
 type Product = {
   productId: number; name: string; unit?: string; suggestedQuantity: number; daysOfStock?: number | null;
+  leadTimeDays?: number | null;
 };
-function replenishmentItemLabel(item: Product, chinese: boolean): string {
+function replenishmentItemLabel(item: Product, chinese: boolean, coverageDays: number): string {
   const quantity = chinese
     ? `建议 ${item.suggestedQuantity} ${item.unit === "units" ? "件" : item.unit ?? "件"}`
     : `suggested ${item.suggestedQuantity} ${item.unit ?? "units"}`;
-  if (!finite(item.daysOfStock)) return `${item.name} — ${quantity}`;
-  const days = new Intl.NumberFormat(chinese ? "zh-CN" : "en-AU", { maximumFractionDigits: 1 })
-    .format(item.daysOfStock);
-  const cover = chinese ? `现货约可售 ${days} 天` : `about ${days} days of stock on hand`;
-  return `${item.name} — ${quantity} · ${cover}`;
+  const parts = [`${item.name} — ${quantity}`];
+  if (finite(item.daysOfStock)) {
+    const days = new Intl.NumberFormat(chinese ? "zh-CN" : "en-AU", { maximumFractionDigits: 1 })
+      .format(item.daysOfStock);
+    parts.push(chinese ? `现货约可售 ${days} 天` : `about ${days} days of stock on hand`);
+  }
+  if (finite(item.leadTimeDays) && item.leadTimeDays > coverageDays) {
+    parts.push(chinese ? `按 ${item.leadTimeDays} 天供应商交期计算` : `covers a ${item.leadTimeDays}-day supplier lead time`);
+  }
+  return parts.join(" · ");
 }
 type Plan = {
   top: Product[]; itemsNeedingOrder: number; dataGapCount: number; dataGaps: string[];
@@ -343,7 +349,7 @@ async function buildLiveOperationsPreview(
       const replenishmentStatus = brief.replenishment.reportDataStatus === "no_data" ? "unavailable"
         : brief.replenishment.dataGapCount > 0 ? "partial"
           : eligible.length ? "ready" : "empty";
-      const topSummary = eligible.slice(0, 3).map((item) => `• ${replenishmentItemLabel(item, chinese)}`).join("\n");
+      const topSummary = eligible.slice(0, 3).map((item) => `• ${replenishmentItemLabel(item, chinese, brief.replenishment.coverageDays)}`).join("\n");
       const replenishmentCard: AssistantCard = {
         type: "replenishment",
         title: chinese ? "补货机会" : "Restock opportunities",
@@ -358,7 +364,7 @@ async function buildLiveOperationsPreview(
           : `${topSummary ? `Top restock picks:\n${topSummary}\n\n` : ""}Store-wide scan: ${brief.replenishment.actionableItemCount} SKUs have suggested order (${brief.replenishment.dataGapCount} excluded for data review). ${gapDetails}`,
         items: eligible.slice(0, 3).map((item) => ({
           id: item.productId,
-          label: replenishmentItemLabel(item, chinese),
+          label: replenishmentItemLabel(item, chinese, brief.replenishment.coverageDays),
         })),
         dataSource: brief.dataSource,
         storeScope: brief.storeScope,
@@ -484,7 +490,7 @@ async function buildLiveOperationsPreview(
         : chinese
           ? `${plan.dataGapCount} 个商品因资料不完整被排除。`
           : `${plan.dataGapCount} products were excluded for incomplete data.`) + purchaseCostGapDetails(plan.costGapCount, chinese);
-      const topSummary = eligible.slice(0, 3).map((item) => `• ${replenishmentItemLabel(item, chinese)}`).join("\n");
+      const topSummary = eligible.slice(0, 3).map((item) => `• ${replenishmentItemLabel(item, chinese, plan.coverageDays)}`).join("\n");
       const scanLine = chinese
         ? `全店扫描（销售期间 ${analysisPeriod}）：${plan.actionableItemCount ?? plan.itemsNeedingOrder} 个 SKU 有建议量（覆盖 ${plan.coverageDays} 天）${plan.dataGapCount > 0 ? `；${plan.dataGapCount} 个需核对资料，暂未纳入` : ""}。`
         : `Store-wide scan (sales period ${analysisPeriod}): ${plan.actionableItemCount ?? plan.itemsNeedingOrder} SKUs have suggested order (${plan.coverageDays}d cover)${plan.dataGapCount > 0 ? `; ${plan.dataGapCount} excluded for data review` : ""}.`;
@@ -516,7 +522,7 @@ async function buildLiveOperationsPreview(
         card.summary += chinese ? " 暂无可用数量，不能据此判断无需补货。" : " No eligible quantities are available; this does not mean no replenishment is needed.";
       }
       card.items = eligible.slice(0, 3).map((item) => ({
-        id: item.productId, label: replenishmentItemLabel(item, chinese),
+        id: item.productId, label: replenishmentItemLabel(item, chinese, plan.coverageDays),
       }));
     } else {
       const sales = await readWeekSales(fetcher, signal);

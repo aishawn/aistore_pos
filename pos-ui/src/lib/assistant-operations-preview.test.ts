@@ -45,7 +45,7 @@ test("full catalogue suggestions survive unrelated review products", async () =>
       dataAsOf: "2026-11-13T01:00:00Z", coverageDays: 21, itemsNeedingOrder: 1,
       dataGapCount: 3, dataGaps: ["Milk: negative stock; stock reconciliation needed", "Gift card: inventory unavailable", "Wine: recorded cost unavailable"],
       inventoryGapCount: 1, supplierGapCount: 0, costGapCount: 1,
-      top: [{ productId: 501, name: "Beer", unit: "units", suggestedQuantity: 8 }],
+      top: [{ productId: 501, name: "Beer", unit: "units", suggestedQuantity: 8, leadTimeDays: 30 }],
     },
   }));
   assert.equal(result?.threadId, "existing-thread");
@@ -54,6 +54,7 @@ test("full catalogue suggestions survive unrelated review products", async () =>
   assert.match(result?.answer ?? "", /1 products need inventory review; 0 lack supplier details/);
   assert.match(result?.answer ?? "", /1 product lacks a recorded purchase cost/);
   assert.equal(result?.cards?.[0].items?.[0].id, 501);
+  assert.match(result?.cards?.[0].items?.[0].label ?? "", /30-day supplier lead time/);
   assert.equal(result?.dataAsOf, "2026-11-13T01:00:00Z");
   assert.equal(result?.dataSource, "orithos_ledger");
   assert.equal(result?.storeScope, "current_authenticated_store");
