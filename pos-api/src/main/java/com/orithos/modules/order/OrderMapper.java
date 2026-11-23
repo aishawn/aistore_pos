@@ -31,6 +31,23 @@ public interface OrderMapper {
                                                   @Param("vendorId") Long vendorId,
                                                   @Param("outletId") Long outletId);
 
+    @Select("""
+            SELECT r.order_id AS "orderId", l.id AS "receiptLineId", l.product_id AS "productId",
+                   p.name AS "productName", b.batch_code AS "batchCode", b.expiry_date AS "expiryDate",
+                   b.inventory_quantity AS "receivedUnits"
+            FROM purchase_receipt r
+            JOIN purchase_receipt_line l ON l.receipt_id = r.id
+            JOIN purchase_receipt_batch b ON b.receipt_line_id = l.id
+            LEFT JOIN product p ON p.id = l.product_id AND p.outlet_id = r.outlet_id
+            WHERE r.vendor_id = #{vendorId} AND r.outlet_id = #{outletId}
+                AND r.status IN ('RECEIVED', 'PARTIALLY_RECEIVED') AND b.expiry_date <= #{through}
+            ORDER BY b.expiry_date, l.id, b.batch_code
+            LIMIT 101
+            """)
+    List<ReceiptExpiryReviewController.Batch> findExpiryReview(@Param("vendorId") Long vendorId,
+                                                              @Param("outletId") Long outletId,
+                                                              @Param("through") java.time.LocalDate through);
+
     @Select("SELECT po.* FROM purchase_order po JOIN outlet o ON o.id=po.outlet_id "
             + "WHERE po.id=#{id} AND o.vendor_id=#{vendorId} AND o.deleted_at IS NULL FOR UPDATE")
     Order lockPurchaseOrderForVendor(@Param("id") Long id, @Param("vendorId") Long vendorId);

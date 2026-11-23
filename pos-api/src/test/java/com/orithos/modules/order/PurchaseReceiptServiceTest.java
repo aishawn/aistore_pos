@@ -42,6 +42,20 @@ class PurchaseReceiptServiceTest {
     }
 
     @Test
+    void expiryReviewUsesStoreBusinessDateAndAuthenticatedOutlet() {
+        var zone = mock(BusinessTimezoneService.class);
+        var permission = mock(com.orithos.security.PermissionAccess.class);
+        var today = java.time.LocalDate.parse("2026-11-23");
+        when(zone.today(5L)).thenReturn(today);
+        when(orders.findExpiryReview(5L, 3L, today.plusDays(14))).thenReturn(List.of());
+        var result = new ReceiptExpiryReviewController(orders, zone, permission).review().data();
+        assertEquals(today, result.businessDate());
+        assertEquals(today.plusDays(14), result.throughDate());
+        verify(permission).requirePermission("stock.purchases");
+        verify(orders).findExpiryReview(5L, 3L, today.plusDays(14));
+    }
+
+    @Test
     void orderDetailReadsReceivedBatchesFromTheAuthenticatedStore() {
         var controller = new OrderController(orders, service, null, null);
         Order order = order("RECEIVED");

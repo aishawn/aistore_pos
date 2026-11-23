@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { ReceiptExpiryReview } from "@/components/ReceiptExpiryReview";
 import { useAuth } from "@/lib/auth";
 import { OdooPurchaseOrdersPage } from "@/components/OdooPurchaseOrdersPage";
 import { OrithosPurchaseOrdersPage } from "@/components/OrithosPurchaseOrdersPage";
@@ -12,6 +13,7 @@ import { SupplierDirectoryPage } from "@/components/OdooSupplierDirectoryPage";
 
 const views = [
   { key: "orders", label: "Purchase Orders", permission: "stock.purchases" },
+  { key: "expiry-review", label: "Expiry review", permission: "stock.purchases" },
   { key: "invoices", label: "Invoice scans", permission: "stock.invoices" },
   { key: "suppliers", label: "Suppliers", permission: "stock.suppliers" },
   { key: "replenishment", label: "Replenishment", permission: "stock.replenishment" },
@@ -52,6 +54,7 @@ export function PurchasingWorkspace() {
         {permitted && active === "orders" && <OrithosPurchaseOrdersPage embedded />}
         {permitted && transfers && <OdooPurchaseOrdersPage key={params.get("state") ?? "all"} embedded />}
         {permitted && active === "replenishment" && <OdooReplenishmentPage embedded />}
+        {permitted && active === "expiry-review" && <ReceiptExpiryReview />}
         {permitted && active === "invoices" && <InvoiceScansListPage embedded />}
         {permitted && active === "suppliers" && <SupplierDirectoryPage />}
       </div>
