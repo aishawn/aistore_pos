@@ -565,6 +565,14 @@ public class CheckoutService {
                 var matchingTotals = lineOffers.stream()
                         .filter(offer -> offer.requiredUnits().compareTo(item.getQuantity()) == 0)
                         .map(offer -> offer.total().setScale(2, RoundingMode.HALF_UP)).distinct().toList();
+                if (matchingTotals.isEmpty()) {
+                    matchingTotals = lineOffers.stream()
+                            .filter(offer -> offer.requiredUnits().compareTo(BigDecimal.ONE) > 0
+                                    && item.getQuantity().remainder(offer.requiredUnits()).signum() == 0)
+                            .map(offer -> offer.total().multiply(item.getQuantity().divideToIntegralValue(offer.requiredUnits()))
+                                    .setScale(2, RoundingMode.HALF_UP))
+                            .distinct().toList();
+                }
                 if (matchingTotals.size() == 1) total = total.min(matchingTotals.getFirst());
             }
             item.setLineTotal(total.multiply(discountFactor).setScale(2, RoundingMode.HALF_UP));

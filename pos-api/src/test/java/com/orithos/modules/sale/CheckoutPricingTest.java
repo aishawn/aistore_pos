@@ -54,13 +54,15 @@ class CheckoutPricingTest {
                 new ShopfrontProductOfferService.Offer("Four for twenty", new BigDecimal("4"),
                         new BigDecimal("20"), null, null, java.time.Instant.now()))));
 
-        for (String quantity : List.of("3", "4", "5")) {
+        for (String quantity : List.of("3", "4", "5", "8", "16")) {
             var request = request(42L, quantity, "0", null);
             request.setRegisterId(99L);
             var quote = service.quote(request);
             assertEquals(new BigDecimal(switch (quantity) {
                 case "3" -> "17.97";
                 case "4" -> "20.00";
+                case "8" -> "40.00";
+                case "16" -> "80.00";
                 default -> "29.95";
             }), quote.total());
             if ("4".equals(quantity)) assertEquals(new BigDecimal("1.82"), quote.gst());
