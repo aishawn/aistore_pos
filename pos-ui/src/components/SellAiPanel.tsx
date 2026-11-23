@@ -36,7 +36,7 @@ import { entityActionPage, isReadOnlyEntityOperation } from "@/lib/ai-entity-rou
 import { assistantCardCtaLabel, assistantCardTitle, assistantSaleActionHref, normalizeAssistantHref, resolveAssistantCardCta } from "@/lib/assistant-card-cta";
 import { assistantCardMetadataValue, messageMetadataAppliesToCards, restoredAssistantCardFields, retryQuestionForAssistantCards } from "@/lib/assistant-chat-history";
 import { assistantAbortOutcome, type AssistantAbortReason } from "@/lib/assistant-request-state";
-import { assistantCardDisplayStatus, assistantDataTimestampLabel, assistantDisplayDataSource, assistantProvenanceFields, assistantReportDataStatus, assistantReportDateRange, assistantReturnedSalesDateSummary, assistantRouteLabel, requestedSalesDateRange } from "@/lib/assistant-provenance";
+import { assistantCardDisplayStatus, assistantDataTimestampLabel, assistantDisplayDataSource, assistantProvenanceFields, assistantReportDataStatus, assistantReportDateRange, assistantReturnedSalesDateSummary, assistantRouteLabel, assistantStoreScopeLabel, requestedSalesDateRange } from "@/lib/assistant-provenance";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
 import { AiFabIcon } from "@/components/AiFabIcon";
@@ -480,6 +480,7 @@ export function SellAiPanel({
   } | null>(null);
   const suppressClickRef = useRef(false);
   const [mounted, setMounted] = useState(false);
+  const storeHost = mounted && typeof window !== "undefined" ? window.location.hostname : null;
   const [anchor, setAnchor] = useState<FloatAnchor>(defaultAnchor);
   const [mobileViewport, setMobileViewport] = useState(false);
   const [dragging, setDragging] = useState(false);
@@ -1514,7 +1515,7 @@ export function SellAiPanel({
                 const Icon = ui.icon;
                 return <button key={item.id} type="button" onClick={() => runQuickAction(item.quickActionKey)} disabled={busy} className="group min-h-[80px] disabled:cursor-wait disabled:opacity-60 rounded-2xl border border-white/85 bg-[var(--oh-surface-elevated)]/70 p-3 text-left shadow-[0_8px_24px_rgba(77,101,145,.08)] backdrop-blur transition hover:-translate-y-0.5 hover:bg-[var(--oh-surface-elevated)]/90 hover:shadow-[0_14px_32px_rgba(77,101,145,.14)] sm:p-4"><span className={cn("mb-2 flex h-8 w-8 items-center justify-center rounded-xl sm:mb-2 sm:h-9 sm:w-9", ui.tone === "orange" && "bg-[var(--oh-orange-light)] text-[var(--oh-primary)]", ui.tone === "blue" && "bg-[#eaf1ff] text-[#3973dc]", ui.tone === "green" && "bg-[#e7f8f3] text-[#209b7d]", ui.tone === "amber" && "bg-[#fff5e8] text-[#c76a16]")}><Icon size={19} /></span><span className="flex items-start justify-between gap-2"><span><span className="block text-[15px] font-semibold text-[#18263b] dark:text-[var(--oh-text)]">{item.title}</span><span className="mt-1 block text-[13px] leading-5 text-[var(--oh-muted)]">{item.description}</span></span><span className="text-xl text-[#7c8796] dark:text-[var(--oh-muted)] transition group-hover:translate-x-0.5">›</span></span></button>;
               })}</div>
-              {messages.length > 1 && <div className="mt-8"><DialogueView messages={messages} onOpenLink={followChatLink} onRetry={(question) => void runIntent(question, true)} onClear={clearChat} onCommandChange={updateCommandMessage} busy={busy} thinkingHint={thinkingHint} compact /></div>}
+              {messages.length > 1 && <div className="mt-8"><DialogueView messages={messages} onOpenLink={followChatLink} onRetry={(question) => void runIntent(question, true)} onClear={clearChat} onCommandChange={updateCommandMessage} busy={busy} thinkingHint={thinkingHint} compact storeHost={storeHost} /></div>}
             </div>
           )}
         </div>
@@ -1665,6 +1666,7 @@ export function SellAiPanel({
                   busy={busy}
                   thinkingHint={thinkingHint}
                   compact={fullscreenPanel}
+                  storeHost={storeHost}
                 />
               )}
             </div>
@@ -1874,6 +1876,7 @@ function DialogueView({
   busy,
   thinkingHint,
   compact = false,
+  storeHost,
 }: {
   messages: ChatMessage[];
   onOpenLink: (href: string) => void;
@@ -1883,6 +1886,7 @@ function DialogueView({
   busy?: boolean;
   thinkingHint?: string | null;
   compact?: boolean;
+  storeHost?: string | null;
 }) {
   const canClear = !busy && messages.length > 1;
   const diagnosticMessages = messages.filter((message) => message.role === "assistant" && message.diagnostics);
@@ -1973,6 +1977,7 @@ function DialogueView({
                   const chineseCard = /[\u3400-\u9fff]/.test(`${msg.question ?? ""} ${card.summary ?? ""}`);
                   const title = assistantCardTitle(card.type, card.title, chineseCard);
                   const metadata = messageMetadataAppliesToCards(cards) ? msg : {};
+                  const cardStoreScope = assistantCardMetadataValue(metadata, card, "storeScope");
                   const cardDataSource = assistantCardMetadataValue(metadata, card, "dataSource");
                   const cardPeriod = assistantCardMetadataValue(metadata, card, "reportPeriodFrom");
                   const cardPeriodTo = assistantCardMetadataValue(metadata, card, "reportPeriodTo");
@@ -1983,6 +1988,16 @@ function DialogueView({
                   const periodLabel = cardPeriod
                     ? assistantReportDateRange(cardPeriod, cardPeriodTo) ?? cardPeriod
                     : null;
+                  const cardProvenance = [
+                    cardStoreScope ? `${chineseCard ? "门店" : "Store"}: ${assistantStoreScopeLabel(cardStoreScope, chineseCard, storeHost)}` : null,
+                    cardDataSource ? `${chineseCard ? "数据来源" : "Source"}: ${assistantDisplayDataSource(cardDataSource, chineseCard) ?? cardDataSource}` : null,
+                    periodLabel ? `${chineseCard ? "期间" : "Period"}: ${periodLabel}` : null,
+                    cardTimeZone ? `${chineseCard ? "时区" : "Timezone"}: ${cardTimeZone}` : null,
+                    cardDataStatus ? `${chineseCard ? "数据状态" : "Data status"}: ${assistantReportDataStatus(cardDataStatus, chineseCard)}` : null,
+                    cardDataSource || periodLabel || cardTimeZone || cardDataStatus || cardDataAsOf
+                      ? `${chineseCard ? "数据时间" : "Data as of"}: ${assistantDataTimestampLabel(cardDataAsOf, chineseCard, cardTimeZone)}`
+                      : null,
+                  ].filter((part): part is string => Boolean(part));
                   return (
                   <section
                     key={`${card.type}-${cardIndex}`}
@@ -2007,13 +2022,9 @@ function DialogueView({
                         {card.summary}
                       </p>
                     ) : null}
-                    {(cardDataSource || periodLabel || cardTimeZone || cardDataStatus || cardDataAsOf) ? (
+                    {cardProvenance.length ? (
                       <p className="mt-1 text-[11px] text-[var(--oh-muted)]">
-                        {cardDataSource ? `${chineseCard ? "数据来源" : "Source"}: ${assistantDisplayDataSource(cardDataSource, chineseCard) ?? cardDataSource}` : ""}
-                        {periodLabel ? `${cardDataSource ? " · " : ""}${chineseCard ? "期间" : "Period"}: ${periodLabel}` : ""}
-                        {cardTimeZone ? `${cardDataSource || periodLabel ? " · " : ""}${chineseCard ? "时区" : "Timezone"}: ${cardTimeZone}` : ""}
-                        {cardDataStatus ? `${cardDataSource || periodLabel || cardTimeZone ? " · " : ""}${chineseCard ? "数据状态" : "Data status"}: ${assistantReportDataStatus(cardDataStatus, chineseCard)}` : ""}
-                        {`${cardDataSource || periodLabel || cardTimeZone || cardDataStatus ? " · " : ""}${chineseCard ? "数据时间" : "Data as of"}: ${assistantDataTimestampLabel(cardDataAsOf, chineseCard, cardTimeZone)}`}
+                        {cardProvenance.join(" · ")}
                       </p>
                     ) : null}
                     {card.items && card.items.length > 0 ? (
@@ -2175,7 +2186,7 @@ function DialogueView({
                   ? ` · ${/[\u3400-\u9fff]/.test(msg.question ?? msg.text) ? "报表期间" : "Report period"}: ${msg.reportPeriodRange}`
                   : ""}
                 {msg.storeScope
-                  ? ` · ${/[\u3400-\u9fff]/.test(msg.question ?? msg.text) ? "门店范围" : "Store scope"}: ${msg.storeScope}`
+                  ? ` · ${/[\u3400-\u9fff]/.test(msg.question ?? msg.text) ? "门店" : "Store"}: ${assistantStoreScopeLabel(msg.storeScope, /[\u3400-\u9fff]/.test(msg.question ?? msg.text), storeHost)}`
                   : ""}
                 {msg.diagnostics?.intent === "report_sales" && msg.table?.rows?.length ? (
                   <>

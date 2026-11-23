@@ -54,7 +54,7 @@ try {
   add("authenticated store login", true, { status: login.status() });
 
   const today = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Australia/Adelaide", year: "numeric", month: "2-digit", day: "2-digit",
+    timeZone: "Australia/Melbourne", year: "numeric", month: "2-digit", day: "2-digit",
   }).format(new Date());
   period = previousCompleteBusinessWeek(today);
   const reportResponse = await context.request.get(
@@ -67,7 +67,7 @@ try {
   const report = reportBody.data ?? reportBody;
   add("native overview returned the expected complete week", report.from === period.from
     && report.to === period.to && report.reportPeriodFrom === period.from
-    && report.reportPeriodTo === period.to && report.timeZone === "Australia/Adelaide"
+    && report.reportPeriodTo === period.to && report.timeZone === "Australia/Melbourne"
     && Number.isFinite(Number(report.revenue)), {
     expected: period,
     actual: { from: report.from, to: report.to, timeZone: report.timeZone,

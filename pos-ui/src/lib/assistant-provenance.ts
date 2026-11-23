@@ -116,6 +116,21 @@ export function assistantProvenanceFields(metadata: AssistantProvenanceMetadata)
   };
 }
 
+export function assistantStoreScopeLabel(
+  value: string | null | undefined,
+  chinese: boolean,
+  hostname?: string | null,
+): string | null {
+  const scope = value?.trim();
+  if (!scope) return null;
+  if (scope.toLowerCase() !== "current_authenticated_store") return scope;
+
+  const host = hostname?.toLowerCase().replace(/\.$/, "");
+  if (host === "skr.orithos.com.au") return chinese ? "SKR 门店" : "SKR store";
+  if (host === "demo.orithos.com.au") return chinese ? "Demo 门店" : "Demo store";
+  return chinese ? "当前门店" : "Current store";
+}
+
 export function assistantReportDataStatus(
   status: string | null | undefined,
   chinese: boolean,

@@ -10,6 +10,7 @@ import {
   assistantReportDataStatus,
   assistantReportDateRange,
   assistantRouteLabel,
+  assistantStoreScopeLabel,
   formatAssistantDataAsOf,
   latestReportDataDate,
   requestedSalesDateRange,
@@ -104,6 +105,16 @@ test("preserves API provenance fields for live responses and restored history", 
     reportDataStatus: null,
     reportPeriodRange: null,
   });
+});
+
+test("renders authenticated store scope as the current SKR or Demo store", () => {
+  assert.equal(assistantStoreScopeLabel("current_authenticated_store", false, "skr.orithos.com.au"), "SKR store");
+  assert.equal(assistantStoreScopeLabel("current_authenticated_store", true, "skr.orithos.com.au"), "SKR 门店");
+  assert.equal(assistantStoreScopeLabel("current_authenticated_store", false, "demo.orithos.com.au"), "Demo store");
+  assert.equal(assistantStoreScopeLabel("current_authenticated_store", true, "demo.orithos.com.au"), "Demo 门店");
+  assert.equal(assistantStoreScopeLabel("current_authenticated_store", false, "app.orithos.com.au"), "Current store");
+  assert.equal(assistantStoreScopeLabel("custom_scope", false, "skr.orithos.com.au"), "custom_scope");
+  assert.equal(assistantStoreScopeLabel(null, true, "skr.orithos.com.au"), null);
 });
 
 test("localizes report data states without changing unknown backend values", () => {
