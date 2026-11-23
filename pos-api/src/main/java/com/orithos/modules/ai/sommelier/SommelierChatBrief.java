@@ -95,7 +95,9 @@ public class SommelierChatBrief {
                             .append(chinese ? "（澳元，含 GST）" : " (AUD, GST included)");
                     if (card.onPromotion()) {
                         if (card.promotionEndsAt() == null) {
-                            sb.append(chinese ? "；促销截止日期未核实" : "; promotion end date unverified");
+                            sb.append("NO_END_DATE".equals(card.promotionEndDateStatus())
+                                    ? (chinese ? "；Shopfront 未列出促销截止日期" : "; no end date listed by Shopfront")
+                                    : (chinese ? "；促销截止日期未核实" : "; promotion end date unverified"));
                         } else {
                             sb.append(chinese ? "；促销截止 " : "; offer ends ").append(card.promotionEndsAt());
                         }

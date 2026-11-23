@@ -75,6 +75,19 @@ class SommelierChatBriefTest {
     }
 
     @Test
+    void briefReportsWhenShopfrontListsNoPromotionEndDate() {
+        SommelierService service = mock(SommelierService.class);
+        TenantContext tenant = new TenantContext(1L, 1L, 1L, List.of(1L), Set.of("ROLE_ADMIN"));
+        when(service.recommend(any(), any())).thenReturn(new RecommendResponse(
+                null, List.of(card("Great Value", "Local Shiraz", "18.00", true, null, "NO_END_DATE")), null));
+
+        String text = new SommelierChatBrief(service).brief("推荐一款红酒", tenant);
+
+        assertTrue(text.contains("Shopfront 未列出促销截止日期"));
+        assertFalse(text.contains("促销截止日期未核实"));
+    }
+
+    @Test
     void chineseWineStylesAreDetectedInsideNaturalPhrases() {
         var redWithSteak = SommelierChatBrief.fromQuestion("红酒配牛排");
         var whiteWithSeafood = SommelierChatBrief.fromQuestion("想喝白葡萄酒配海鲜");
@@ -130,10 +143,15 @@ class SommelierChatBriefTest {
 
     private static RecommendCard card(String badge, String name, String price,
                                       boolean onPromotion, String promotionEndsAt) {
+        return card(badge, name, price, onPromotion, promotionEndsAt, "UNVERIFIED");
+    }
+
+    private static RecommendCard card(String badge, String name, String price,
+                                      boolean onPromotion, String promotionEndsAt, String endDateStatus) {
         return new RecommendCard(
                 1L, name, "good", badge, new BigDecimal(price), new BigDecimal(price),
                 onPromotion, BigDecimal.ONE, null, 80, 50, 50, 50, 50, 80,
                 "red", null, null, null, List.of(), List.of(), List.of(), null, null, null, false,
-                promotionEndsAt);
+                promotionEndsAt, endDateStatus);
     }
 }

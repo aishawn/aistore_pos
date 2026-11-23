@@ -218,6 +218,7 @@ public class SommelierService {
         WineCandidate wine = scored.wine();
         WineProfile p = wine.profile();
         String why = previous == null ? null : WinePitchService.whyUpgrade(previous, wine);
+        PromotionInfo promotion = promotionInfo(wine, tenant);
         return new RecommendCard(
                 wine.productId(),
                 wine.name(),
@@ -244,13 +245,14 @@ public class SommelierService {
                 p == null ? null : p.finishNote(),
                 pitchService.template(wine, profile, "card"),
                 why,
-                p == null || p.inferred(), verifiedPromotionEndDate(wine, tenant)
+                p == null || p.inferred(), promotion.endsAt(), promotion.endDateStatus()
         );
     }
 
     private WineAssistantResponse toAssistant(WineCandidate wine, CustomerWineProfile profile,
                                               boolean withLongPitch, TenantContext tenant) {
         WineProfile p = wine.profile();
+        PromotionInfo promotion = promotionInfo(wine, tenant);
         return new WineAssistantResponse(
                 wine.productId(),
                 wine.name(),
@@ -275,17 +277,17 @@ public class SommelierService {
                 pitchService.template(wine, profile, "card"),
                 withLongPitch ? pitchService.template(wine, profile, "10s") : null,
                 withLongPitch ? pitchService.template(wine, profile, "30s") : null,
-                p == null || p.inferred(), verifiedPromotionEndDate(wine, tenant)
+                p == null || p.inferred(), promotion.endsAt(), promotion.endDateStatus()
         );
     }
 
-    private String verifiedPromotionEndDate(WineCandidate wine, TenantContext tenant) {
+    private PromotionInfo promotionInfo(WineCandidate wine, TenantContext tenant) {
         if (!wine.onPromotion() || shopfrontOffers == null || timezones == null || tenant == null
-                || wine.productId() == null || wine.sellPrice() == null) return null;
+                || wine.productId() == null || wine.sellPrice() == null) return PromotionInfo.unverified();
         try {
             var snapshot = shopfrontOffers.checkoutOffers(tenant.vendorId(), tenant.requireOutletId(),
                     List.of(wine.productId()));
-            if (snapshot.snapshotExpired()) return null;
+            if (snapshot == null || snapshot.snapshotExpired()) return PromotionInfo.unverified();
             BigDecimal sellPrice = wine.sellPrice().setScale(2, RoundingMode.HALF_UP);
             List<ShopfrontProductOfferService.Offer> singleBottleOffers = snapshot.offers()
                     .getOrDefault(wine.productId(), List.of()).stream()
@@ -293,14 +295,26 @@ public class SommelierService {
                     .toList();
             List<BigDecimal> distinctTotals = singleBottleOffers.stream()
                     .map(offer -> offer.total().setScale(2, RoundingMode.HALF_UP)).distinct().toList();
-            if (distinctTotals.size() != 1 || distinctTotals.getFirst().compareTo(sellPrice) != 0) return null;
+            if (distinctTotals.size() != 1 || distinctTotals.getFirst().compareTo(sellPrice) != 0) {
+                return PromotionInfo.unverified();
+            }
             List<Instant> endDates = singleBottleOffers.stream()
                     .filter(offer -> offer.total().setScale(2, RoundingMode.HALF_UP).compareTo(sellPrice) == 0)
                     .map(ShopfrontProductOfferService.Offer::endsAt).distinct().toList();
-            if (endDates.size() != 1 || endDates.getFirst() == null) return null;
-            return endDates.getFirst().atZone(timezones.zoneForVendor(tenant.vendorId())).toLocalDate().toString();
+            if (endDates.size() != 1) return PromotionInfo.unverified();
+            Instant end = endDates.getFirst();
+            if (end == null) return new PromotionInfo(null, "NO_END_DATE");
+            return new PromotionInfo(
+                    end.atZone(timezones.zoneForVendor(tenant.vendorId())).toLocalDate().toString(),
+                    "VERIFIED_END_DATE");
         } catch (RuntimeException unavailable) {
-            return null;
+            return PromotionInfo.unverified();
+        }
+    }
+
+    private record PromotionInfo(String endsAt, String endDateStatus) {
+        private static PromotionInfo unverified() {
+            return new PromotionInfo(null, "UNVERIFIED");
         }
     }
 

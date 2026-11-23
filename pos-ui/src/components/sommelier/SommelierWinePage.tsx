@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { SommelierShell } from "@/components/sommelier/SommelierShell";
-import { WineCard, formatMoney } from "@/components/sommelier/WineCard";
+import { WineCard, formatMoney, promotionEndLabel } from "@/components/sommelier/WineCard";
 import { useOptionalSellScreen } from "@/lib/sell-screen";
 import { RefreshIcon } from "@/components/icons";
 import {
@@ -188,7 +188,11 @@ export function SommelierWinePage({ productId }: { productId: string }) {
             {wine.onPromotion ? (
               <p className="mt-1 text-[13px] text-amber-700">On promotion · normally A${formatMoney(wine.listPrice).slice(1)}</p>
             ) : null}
-            {wine.onPromotion ? <p className="text-xs text-[var(--oh-muted)]">{wine.promotionEndsAt ? `Offer ends ${wine.promotionEndsAt}` : "Promotion end date unverified"}</p> : null}
+            {wine.onPromotion ? (
+              <p className="text-xs text-[var(--oh-muted)]">
+                {promotionEndLabel(wine.promotionEndsAt, wine.promotionEndDateStatus)}
+              </p>
+            ) : null}
           </div>
           <p className="text-[13px] text-[var(--oh-muted)]">
             In stock: {wine.stockQuantity} units

@@ -51,6 +51,39 @@ class SommelierRecommendationProvenanceTest {
     }
 
     @Test
+    void distinguishesVerifiedOfferWithoutEndDateFromUnverifiedPromotion() {
+        SommelierCatalogService catalog = mock(SommelierCatalogService.class);
+        WinePitchService pitch = mock(WinePitchService.class);
+        ShopfrontProductOfferService offers = mock(ShopfrontProductOfferService.class);
+        BusinessTimezoneService timezones = mock(BusinessTimezoneService.class);
+        WineCandidate wine = new WineCandidate(15L, "Test Shiraz", null, null, "Wine", null, null,
+                new BigDecimal("20.00"), new BigDecimal("20.00"), false, new BigDecimal("5"), true,
+                BigDecimal.ONE, WineProfile.empty("red"));
+        TenantContext tenant = new TenantContext(1L, 1L, 1L, List.of(1L), Set.of());
+        when(catalog.listWines(tenant)).thenReturn(List.of(wine));
+        when(catalog.findById(15L, tenant)).thenReturn(wine);
+        when(offers.checkoutOffers(1L, 1L, List.of(15L))).thenReturn(new ShopfrontProductOfferService.CheckoutOffers(
+                java.util.Map.of(15L, List.of(new ShopfrontProductOfferService.Offer("Bottle special",
+                        BigDecimal.ONE, new BigDecimal("16.00"), null, null,
+                        Instant.parse("2026-11-24T00:00:00Z")))), false));
+        when(pitch.template(any(), any(), eq("card"))).thenReturn("A suitable wine.");
+        SommelierService service = new SommelierService(catalog, pitch, mock(SommelierProductMapper.class),
+                new ObjectMapper(), offers, timezones);
+
+        var recommendation = service.recommend(new com.orithos.modules.ai.sommelier.dto.RecommendRequest(
+                "red", BigDecimal.ZERO, new BigDecimal("17.00"), null, null, null, null, null, List.of(), null), tenant)
+                .recommendations().getFirst();
+        var detail = service.wine(15L, tenant);
+
+        assertEquals(new BigDecimal("16.00"), recommendation.sellPrice());
+        assertEquals("NO_END_DATE", recommendation.promotionEndDateStatus());
+        assertNull(recommendation.promotionEndsAt());
+        assertEquals(new BigDecimal("16.00"), detail.sellPrice());
+        assertEquals("NO_END_DATE", detail.promotionEndDateStatus());
+        assertNull(detail.promotionEndsAt());
+    }
+
+    @Test
     void keepsDirectoryPriceForConflictingOrNonSingleBottleOffers() {
         SommelierCatalogService catalog = mock(SommelierCatalogService.class);
         WinePitchService pitch = mock(WinePitchService.class);

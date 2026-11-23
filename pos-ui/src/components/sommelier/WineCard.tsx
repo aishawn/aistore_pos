@@ -22,6 +22,11 @@ export function formatMoney(n: number | null | undefined) {
   return `$${v.toFixed(2).replace(/\.00$/, "")}`;
 }
 
+export function promotionEndLabel(endsAt: string | null | undefined, status: string | null | undefined) {
+  if (endsAt) return `Offer ends ${endsAt}`;
+  return status === "NO_END_DATE" ? "No end date listed by Shopfront" : "Promotion end date unverified";
+}
+
 export function WineCard({
   card,
   onHelp,
@@ -54,7 +59,11 @@ export function WineCard({
               On promotion · normally A${formatMoney(card.listPrice).slice(1)}
             </p>
           ) : null}
-          {card.onPromotion ? <p className="text-xs text-[var(--oh-muted)]">{card.promotionEndsAt ? `Offer ends ${card.promotionEndsAt}` : "Promotion end date unverified"}</p> : null}
+          {card.onPromotion ? (
+            <p className="text-xs text-[var(--oh-muted)]">
+              {promotionEndLabel(card.promotionEndsAt, card.promotionEndDateStatus)}
+            </p>
+          ) : null}
         </div>
         <div className="rounded-full bg-blue-50 px-2.5 py-1 text-[13px] font-semibold text-blue-800">
           Match {card.matchPct}%

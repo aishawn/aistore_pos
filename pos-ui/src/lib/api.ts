@@ -1405,6 +1405,7 @@ export interface SommelierRecommendCard {
   whyUpgrade: string | null;
   inferred: boolean;
   promotionEndsAt?: string | null;
+  promotionEndDateStatus?: "VERIFIED_END_DATE" | "NO_END_DATE" | "UNVERIFIED" | null;
 }
 
 export interface SommelierRecommendResponse {
@@ -1439,6 +1440,7 @@ export interface SommelierWine {
   pitch30s: string | null;
   inferred: boolean;
   promotionEndsAt?: string | null;
+  promotionEndDateStatus?: "VERIFIED_END_DATE" | "NO_END_DATE" | "UNVERIFIED" | null;
 }
 
 export function sommelierRecommend(profile: SommelierProfilePayload) {
