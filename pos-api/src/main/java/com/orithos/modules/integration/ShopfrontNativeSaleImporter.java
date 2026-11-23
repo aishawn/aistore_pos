@@ -22,6 +22,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 /**
  * Writes Shopfront sale payloads into the native Orithos {@code sale}/{@code sale_item}
@@ -33,6 +34,8 @@ public class ShopfrontNativeSaleImporter {
     public static final String SOURCE_SYSTEM = "shopfront";
 
     private static final Logger log = LoggerFactory.getLogger(ShopfrontNativeSaleImporter.class);
+
+    private static final Pattern COMPACT_OFFSET = Pattern.compile("(?<=\\d)([+-][0-9]{2})([0-9]{2})$");
 
     private final JdbcTemplate jdbc;
     public ShopfrontNativeSaleImporter(JdbcTemplate jdbc) {
@@ -408,7 +411,7 @@ public class ShopfrontNativeSaleImporter {
         if (raw == null || raw.isBlank()) {
             return null;
         }
-        String value = raw.trim();
+        String value = COMPACT_OFFSET.matcher(raw.trim()).replaceFirst("$1:$2");
         try {
             Instant instant = Instant.parse(value);
             return fromInstant(instant);

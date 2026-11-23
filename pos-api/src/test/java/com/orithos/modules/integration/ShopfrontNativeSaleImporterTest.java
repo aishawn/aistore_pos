@@ -43,6 +43,14 @@ class ShopfrontNativeSaleImporterTest {
     }
 
     @Test
+    void parsesShopfrontCompactOffsetAcrossMelbourneMidnight() {
+        var soldAt = ShopfrontNativeSaleImporter.parseSoldAt("2024-01-11T13:09:49+0000");
+        assertNotNull(soldAt);
+        assertEquals(LocalDate.of(2024, 1, 12), soldAt.businessDate());
+        assertEquals(java.time.Instant.parse("2024-01-11T13:09:49Z"), soldAt.createdAtUtc());
+    }
+
+    @Test
     void mirrorPromotionIsDisabledAndDoesNotReadPosMirrorTables() {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
         var importer = new ShopfrontNativeSaleImporter(jdbc);
