@@ -47,26 +47,8 @@ public class ReplenishmentWorkspaceService {
                 String.class, outletId);
 
         List<Row> rows = jdbc.query(connection -> {
-            var statement = connection.prepareStatement("""
-                WITH sales AS (
-                    SELECT si.product_id,
-                           SUM(si.quantity) FILTER (WHERE COALESCE(s.business_date, s.local_sold_at::date)
-                           >= (CURRENT_TIMESTAMP AT TIME ZONE ?)::date - 7) AS sold_7d,
-                           SUM(si.quantity) FILTER (WHERE COALESCE(s.business_date, s.local_sold_at::date)
-                           >= (CURRENT_TIMESTAMP AT TIME ZONE ?)::date - 28) AS recent_units,
-                           SUM(si.quantity) FILTER (WHERE COALESCE(s.business_date, s.local_sold_at::date)
-                               < (CURRENT_TIMESTAMP AT TIME ZONE ?)::date - 28
-                               AND COALESCE(s.business_date, s.local_sold_at::date)
-                                   >= (CURRENT_TIMESTAMP AT TIME ZONE ?)::date - 56) AS previous_units
-                    FROM sale s
-                    JOIN sale_item si ON si.sale_id = s.id AND si.outlet_id = s.outlet_id
-                    WHERE s.outlet_id = ? AND s.status = 'COMPLETED' AND s.refund_reason IS NULL
-                      AND s.linked_sale_id IS NULL AND COALESCE(s.total_price, 0) >= 0
-                      AND COALESCE(s.business_date, s.local_sold_at::date)
-                          >= (CURRENT_TIMESTAMP AT TIME ZONE ?)::date - 56
-                    GROUP BY si.product_id
-                ),
-                barcode AS (
+            var statement = connection.prepareStatement(ReplenishmentSalesQuery.CTE + """
+                , barcode AS (
                     SELECT DISTINCT ON (product_id) product_id, code
                     FROM product_barcode
                     WHERE outlet_id = ?
@@ -112,15 +94,13 @@ public class ReplenishmentWorkspaceService {
                 ORDER BY p.name, p.id
                 """);
             statement.setQueryTimeout(QUERY_TIMEOUT_SECONDS);
-            String zone = businessTimezone.zoneForVendor(tenant.vendorId()).getId();
-            statement.setString(1, zone);
-            statement.setString(2, zone);
-            statement.setString(3, zone);
-            statement.setString(4, zone);
+            var zone = businessTimezone.zoneForVendor(tenant.vendorId());
+            statement.setObject(1, java.time.LocalDate.now(zone));
+            statement.setString(2, zone.getId());
+            statement.setLong(3, outletId);
+            statement.setString(4, zone.getId());
             statement.setLong(5, outletId);
-            statement.setString(6, zone);
-            statement.setLong(7, outletId);
-            statement.setLong(8, outletId);
+            statement.setLong(6, outletId);
             return statement;
         }, (rs, rowNum) -> mapRow(rs));
 
