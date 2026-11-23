@@ -7,6 +7,7 @@ import { EXPIRY_REVIEW_HREF, expiryReviewStatusForQuestion, looksLikeAssistantWr
 
 import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
 import { AssistantComposer } from "@/components/AssistantComposer";
+import { AssistantShopfrontSync } from "@/components/AssistantShopfrontSync";
 import { AiCommandPreviewCard } from "@/components/ai/AiCommandPreviewCard";
 import { OrithosLogo } from "@/components/OrithosLogo";
 import { createPortal } from "react-dom";
@@ -1497,6 +1498,7 @@ export function SellAiPanel({
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(255,255,255,.82),transparent_54%),linear-gradient(180deg,rgba(237,242,250,.2),rgba(237,242,250,.55))]" aria-hidden="true" />
         <header className="relative z-10 flex h-[72px] shrink-0 items-center justify-between px-5 sm:px-8 lg:px-10">
           <div className="flex items-center gap-2 md:hidden"><Link href="/dashboard" aria-label="Open Dashboard" title="Dashboard" className="inline-flex min-h-11 items-center rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)] focus-visible:ring-offset-2"><OrithosLogo /></Link></div>
+          <AssistantShopfrontSync />
           <div className="relative ml-auto flex items-center gap-2">
             <button type="button" onClick={() => void openHistory()} disabled={busy || historyLoading} aria-label="Chat history" title="Chat history" className="flex h-11 w-11 items-center justify-center rounded-full text-[var(--oh-muted)] transition hover:bg-[var(--oh-surface-elevated)]/70"><MoreHorizontal size={18} /></button>
           </div>
