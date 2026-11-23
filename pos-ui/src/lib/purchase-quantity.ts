@@ -19,3 +19,18 @@ export function formatPurchaseQuantity(quantity?: number | null, caseQuantity?: 
 export function positivePurchaseLines<T extends { quantity: number }>(lines: readonly T[]): T[] {
   return lines.filter((line) => Number.isFinite(line.quantity) && line.quantity > 0);
 }
+
+export function estimatePurchaseValue(lines: readonly { quantity: number; unitCost?: number | null }[]): {
+  subtotal: number; missingCosts: number;
+} {
+  let subtotal = 0;
+  let missingCosts = 0;
+  for (const line of positivePurchaseLines(lines)) {
+    if (line.unitCost == null || !Number.isFinite(line.unitCost) || line.unitCost <= 0) {
+      missingCosts += 1;
+      continue;
+    }
+    subtotal += line.quantity * line.unitCost;
+  }
+  return { subtotal, missingCosts };
+}

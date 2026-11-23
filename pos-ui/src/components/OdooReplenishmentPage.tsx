@@ -1,6 +1,6 @@
 "use client";
 
-import { formatPurchaseQuantity, positivePurchaseLines } from "@/lib/purchase-quantity";
+import { estimatePurchaseValue, formatPurchaseQuantity, positivePurchaseLines } from "@/lib/purchase-quantity";
 import { draftSupplierId } from "@/lib/purchase-draft-policy";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
@@ -135,6 +135,7 @@ type ListFilter = "suggestions" | "urgent" | "out_of_stock" | "review" | "missin
 
 const coverageOptions = [7, 14, 21, 28, 42];
 const number = new Intl.NumberFormat("en-AU", { maximumFractionDigits: 1 });
+const currency = new Intl.NumberFormat("en-AU", { style: "currency", currency: "AUD" });
 const MAX_RFQ_LINES = 100;
 const MAX_RFQ_QUANTITY = 100_000;
 const REPLENISHMENT_CACHE_PREFIX = "orithos-replenishment-cache-v3:";
@@ -183,7 +184,7 @@ function attentionLabel(level: ReplenishmentProduct["attentionLevel"]) {
   return level === "REVIEW" ? "Data review" : level === "HIGH" ? "Act now" : level === "MEDIUM" ? "Watch" : "Monitor";
 }
 
-type DraftRfqLine = { productId: number; name: string; unit: string; suggestedQuantity: number; quantity: number; reason: string; adjustmentReason: string };
+type DraftRfqLine = { productId: number; name: string; unit: string; suggestedQuantity: number; quantity: number; unitCost?: number | null; reason: string; adjustmentReason: string };
 
 function approvalReason(line: DraftRfqLine) {
   return line.adjustmentReason.trim() ? `Reviewer quantity adjustment: ${line.adjustmentReason.trim()}. Forecast rationale: ${line.reason}` : line.reason;
@@ -402,6 +403,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
   const rfqLineCount = Math.min(selectedSuggested.length, MAX_RFQ_LINES);
   const rfqSelectionTrimmed = selectedSuggested.length > MAX_RFQ_LINES;
   const selectedRfqLines = positivePurchaseLines(rfqLines);
+  const draftEstimate = estimatePurchaseValue(selectedRfqLines);
   const planCoverageDays = data?.coverageDays ?? coverageDays;
   const planReady = Boolean(data) && !loading && !refreshing && !error && data?.coverageDays === coverageDays;
   const draftRfqEnabled = data?.purchaseWorkflow?.draftEnabled === true;
@@ -461,6 +463,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
       unit: product.unit,
       suggestedQuantity: product.suggestedQuantity,
       quantity: product.suggestedQuantity,
+      unitCost: product.unitCost,
       reason: product.reason || product.reasonParts?.join(" ") || "",
       adjustmentReason: "",
     }));
@@ -868,7 +871,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
                         </div>
                       </div>
                       {product.suggestedQuantity > 0
-                        ? <span className="shrink-0 rounded-full bg-[var(--oh-orange-light)] px-2.5 py-1 text-xs font-bold tabular-nums text-[var(--oh-orange-dark)]">Order {formatPurchaseQuantity(product.suggestedQuantity, product.caseQuantity)}</span>
+                        ? <span className="shrink-0 rounded-full bg-[var(--oh-orange-light)] px-2.5 py-1 text-xs font-bold tabular-nums text-[var(--oh-orange-dark)]">Order {formatPurchaseQuantity(product.suggestedQuantity, (product.caseQuantity ?? 0) > 1 ? product.caseQuantity : null)}</span>
                         : <span className="shrink-0 rounded-full bg-[var(--oh-surface)] px-2.5 py-1 text-xs font-medium text-[var(--oh-muted)]">{product.recommendationStatus === "REVIEW_DATA" ? "Review data" : "No order"}</span>}
                     </div>
                     <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 rounded-md bg-[var(--oh-surface)] p-3 text-sm">
@@ -1016,7 +1019,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
                     )}
                     <td className="px-4 py-3 text-right">
                       {product.suggestedQuantity > 0
-                        ? <span className="inline-flex min-w-16 justify-center rounded-full bg-[var(--oh-orange-light)] px-2.5 py-1 text-xs font-bold tabular-nums text-[var(--oh-orange-dark)]">{formatPurchaseQuantity(product.suggestedQuantity, product.caseQuantity)}</span>
+                        ? <span className="inline-flex min-w-16 justify-center rounded-full bg-[var(--oh-orange-light)] px-2.5 py-1 text-xs font-bold tabular-nums text-[var(--oh-orange-dark)]">{formatPurchaseQuantity(product.suggestedQuantity, (product.caseQuantity ?? 0) > 1 ? product.caseQuantity : null)}</span>
                         : <span className="text-xs text-[var(--oh-muted)]">{product.recommendationStatus === "REVIEW_DATA" ? "Review data" : "No order"}</span>}
                     </td>
                     <td className="px-4 py-3 text-xs text-[var(--oh-muted)]">
@@ -1154,6 +1157,15 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
                   {!rfqLines.length && <p className="px-4 py-8 text-center text-sm text-[var(--oh-muted)]">No products selected for this RFQ.</p>}
                 </div>
               </div>
+              {selectedRfqLines.length > 0 && (
+                <p className="text-sm text-[var(--oh-text-secondary)]">
+                  {draftEstimate.missingCosts === selectedRfqLines.length
+                    ? "Estimated purchase cost unavailable"
+                    : "Estimated " + (draftEstimate.missingCosts ? "subtotal " : "purchase cost ") + currency.format(draftEstimate.subtotal)}
+                  {draftEstimate.missingCosts > 0 && " · " + draftEstimate.missingCosts + " at unverified cost"}
+                  {draftEstimate.subtotal > 0 && " · Based on recorded stock costs"}
+                </p>
+              )}
               {selectedSuggested.length > MAX_RFQ_LINES && <p className="text-xs leading-5 text-amber-900">This RFQ includes the first {MAX_RFQ_LINES} selected suggestions. Create another RFQ for the remaining products.</p>}
               <div className="rounded-md bg-[var(--oh-surface)] px-3 py-2.5 text-xs leading-5 text-[var(--oh-muted)]"><p className="font-semibold text-[var(--oh-text-secondary)]">Draft only</p><p className="mt-1">This creates an Orithos RFQ in draft status. It will not email the supplier or confirm an order. Review the supplier prices, taxes, delivery dates and quantities in Orithos before sending.</p></div>
               {rfqError && <p role="alert" className="rounded-md border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-900">{rfqError}</p>}

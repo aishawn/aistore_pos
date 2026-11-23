@@ -15,3 +15,11 @@ test("a zero quantity removes the line even when the assistant suggested orderin
   assert.deepEqual(purchaseQuantity.positivePurchaseLines([removed, accepted]), [accepted]);
   assert.deepEqual(purchaseQuantity.positivePurchaseLines([removed]), []);
 });
+
+test("purchase estimates cover the remaining lines and identify unknown costs", () => {
+  assert.deepEqual(purchaseQuantity.estimatePurchaseValue([
+    { quantity: 12, unitCost: 2.5 },
+    { quantity: 0, unitCost: null },
+    { quantity: 6, unitCost: null },
+  ]), { subtotal: 30, missingCosts: 1 });
+});
