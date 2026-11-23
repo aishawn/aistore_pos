@@ -86,8 +86,10 @@ class CheckoutPricingTest {
         }
         var offer = new ShopfrontProductOfferService.Offer("Two for 28", new BigDecimal("2"),
                 new BigDecimal("28.00"), null, null, java.time.Instant.now(), "campaign");
+        var duplicate = new ShopfrontProductOfferService.Offer("Same terms, next campaign", offer.requiredUnits(),
+                offer.total(), null, null, offer.syncedAt(), "campaign-2");
         when(offers.currentOffers(eq(3L), eq(12L), any(), eq(true)))
-                .thenReturn(java.util.Map.of(42L, List.of(offer), 43L, List.of(offer)));
+                .thenReturn(java.util.Map.of(42L, List.of(offer, duplicate), 43L, List.of(offer, duplicate)));
         when(registerMapper.findById(99L)).thenReturn(openRegister());
         when(registerSessionMapper.findActiveSession(99L, 3L, 12L)).thenReturn(new RegisterSession());
         var request = request(42L, "1", "0", null);

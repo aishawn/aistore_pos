@@ -591,6 +591,7 @@ public class CheckoutService {
         }
         Map<Integer, BigDecimal> result = new LinkedHashMap<>();
         java.util.Set<Integer> overlaps = new java.util.HashSet<>();
+        java.util.Set<Map<Integer, BigDecimal>> distinctAllocations = new java.util.HashSet<>();
         for (var group : groups.entrySet()) {
             var offer = group.getKey();
             var indexes = group.getValue();
@@ -620,6 +621,7 @@ public class CheckoutService {
                 shares.put(index, share);
             }
             if (shares.values().stream().reduce(BigDecimal.ZERO, BigDecimal::add).compareTo(offer.total()) != 0) continue;
+            if (!distinctAllocations.add(shares)) continue;
             shares.forEach((index, share) -> {
                 if (result.putIfAbsent(index, share) != null) overlaps.add(index);
             });
