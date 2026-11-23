@@ -94,11 +94,10 @@ class NativeReplenishmentServiceTest {
         verify(statement).setLong(3, 87L);
         verify(statement).setString(4, "Australia/Melbourne");
         verify(statement).setLong(5, 87L);
-        verify(statement).setLong(6, 87L);
     }
 
     @Test
-    void queryKeepsSalesDateIndexableAndAggregatesSuppliersOnce() throws Exception {
+    void queryKeepsSalesDateIndexableAndUsesThePurchaseSupplierSelection() throws Exception {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
         Connection connection = mock(Connection.class);
         PreparedStatement statement = mock(PreparedStatement.class);
@@ -126,17 +125,16 @@ class NativeReplenishmentServiceTest {
         assertTrue(sql.getValue().contains("<= period.today"));
         assertTrue(sql.getValue().contains("s.business_date IS NULL"));
         assertTrue(sql.getValue().contains("i.updated_at AS inventory_data_as_of"));
-        assertTrue(sql.getValue().contains("GROUP BY ps.product_id, ps.outlet_id"));
-        assertTrue(sql.getValue().contains("LEFT JOIN supplier"));
+        assertTrue(sql.getValue().contains("core.id, CASE WHEN links.link_count = 1 THEN links.only_id END"));
+        assertTrue(sql.getValue().contains("ps.supplier_id = chosen.id"));
+        assertTrue(sql.getValue().contains("p.track_inventory = 1"));
         assertTrue(sql.getValue().contains("ORDER BY COALESCE(s.sold_7d, 0) DESC"));
         assertFalse(sql.getValue().contains("EXISTS (SELECT 1 FROM product_supplier"));
-        assertFalse(sql.getValue().contains("(SELECT MAX(ps.minimum_order_quantity)"));
         verify(statement).setObject(1, java.time.LocalDate.parse("2026-11-23"));
         verify(statement).setString(2, "Australia/Adelaide");
         verify(statement).setLong(3, 87L);
         verify(statement).setString(4, "Australia/Adelaide");
         verify(statement).setLong(5, 87L);
-        verify(statement).setLong(6, 87L);
     }
 
     @Test

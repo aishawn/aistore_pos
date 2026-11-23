@@ -38,5 +38,26 @@ final class ReplenishmentSalesQuery {
                 )
                 """;
 
+    static final String SELECTED_MINIMUM_ORDER = """
+            COALESCE((SELECT MAX(ps.minimum_order_quantity) FROM product_supplier ps
+                      WHERE ps.product_id = p.id AND ps.outlet_id = p.outlet_id
+                        AND ps.supplier_id = chosen.id), 1) AS minimum_order
+            """;
+
+    static final String SUPPLIER_JOINS = """
+            LEFT JOIN LATERAL (
+                SELECT COUNT(DISTINCT ps.supplier_id) AS link_count, MIN(ps.supplier_id) AS only_id
+                FROM product_supplier ps
+                JOIN supplier linked ON linked.id = ps.supplier_id
+                    AND linked.outlet_id = ps.outlet_id AND linked.deleted_at IS NULL
+                WHERE ps.product_id = p.id AND ps.outlet_id = p.outlet_id
+            ) links ON TRUE
+            LEFT JOIN supplier core ON core.id = p.core_supplier_id
+                AND core.outlet_id = p.outlet_id AND core.deleted_at IS NULL
+            LEFT JOIN supplier chosen ON chosen.id = COALESCE(
+                core.id, CASE WHEN links.link_count = 1 THEN links.only_id END)
+                AND chosen.outlet_id = p.outlet_id AND chosen.deleted_at IS NULL
+            """;
+
     private ReplenishmentSalesQuery() {}
 }

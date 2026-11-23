@@ -69,26 +69,13 @@ public class ReplenishmentWorkspaceService {
                         WHERE pp.product_id = p.id AND pp.outlet_id = p.outlet_id) AS unit_price,
                        chosen.id AS supplier_id, chosen.name AS supplier_name, chosen.lead_time_days,
                        links.link_count AS supplier_link_count,
-                       COALESCE((SELECT MAX(ps.minimum_order_quantity) FROM product_supplier ps
-                                 WHERE ps.product_id = p.id AND ps.outlet_id = p.outlet_id
-                                   AND ps.supplier_id = chosen.id), 1) AS minimum_order
+                """ + ReplenishmentSalesQuery.SELECTED_MINIMUM_ORDER + """
                 FROM product p
                 LEFT JOIN product_inventory pi ON pi.product_id = p.id AND pi.outlet_id = p.outlet_id
                 LEFT JOIN product_cost pc ON pc.product_id = p.id AND pc.outlet_id = p.outlet_id
                 LEFT JOIN sales s ON s.product_id = p.id
                 LEFT JOIN barcode b ON b.product_id = p.id
-                LEFT JOIN LATERAL (
-                    SELECT COUNT(DISTINCT ps.supplier_id) AS link_count, MIN(ps.supplier_id) AS only_id
-                    FROM product_supplier ps
-                    JOIN supplier linked ON linked.id = ps.supplier_id
-                        AND linked.outlet_id = ps.outlet_id AND linked.deleted_at IS NULL
-                    WHERE ps.product_id = p.id AND ps.outlet_id = p.outlet_id
-                ) links ON TRUE
-                LEFT JOIN supplier core ON core.id = p.core_supplier_id
-                    AND core.outlet_id = p.outlet_id AND core.deleted_at IS NULL
-                LEFT JOIN supplier chosen ON chosen.id = COALESCE(
-                    core.id, CASE WHEN links.link_count = 1 THEN links.only_id END)
-                    AND chosen.outlet_id = p.outlet_id AND chosen.deleted_at IS NULL
+                """ + ReplenishmentSalesQuery.SUPPLIER_JOINS + """
                 WHERE p.outlet_id = ? AND p.deleted_at IS NULL AND p.status = 'ACTIVE'
                   AND p.track_inventory = 1
                 ORDER BY p.name, p.id

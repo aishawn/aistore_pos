@@ -129,27 +129,21 @@ public class NativeReplenishmentService {
         LocalDate from = today.minusDays(2L * PERIOD_DAYS - 1);
         List<Row> rows = jdbc.query(connection -> {
             var statement = connection.prepareStatement(ReplenishmentSalesQuery.CTE + """
-                , supplier AS (
-                    SELECT ps.product_id, ps.outlet_id, TRUE AS has_supplier,
-                           MAX(ps.minimum_order_quantity) AS minimum_order
-                    FROM product_supplier ps
-                    WHERE ps.outlet_id = ?
-                    GROUP BY ps.product_id, ps.outlet_id
-                )
                 SELECT p.id, p.name, p.case_quantity, i.quantity AS on_hand, i.updated_at AS inventory_data_as_of,
                        COALESCE(i.on_order, 0) AS on_order,
                        COALESCE(s.recent_units, 0) AS recent_units,
                        COALESCE(s.previous_units, 0) AS previous_units,
                        s.sales_data_as_of,
-                       supplier.has_supplier,
+                       chosen.id IS NOT NULL AS has_supplier,
                        cost.cost > 0 AS has_recorded_cost,
-                       COALESCE(supplier.minimum_order, 1) AS minimum_order
+                """ + ReplenishmentSalesQuery.SELECTED_MINIMUM_ORDER + """
                 FROM product p
                 LEFT JOIN product_inventory i ON i.product_id = p.id AND i.outlet_id = p.outlet_id
                 LEFT JOIN sales s ON s.product_id = p.id
-                LEFT JOIN supplier ON supplier.product_id = p.id AND supplier.outlet_id = p.outlet_id
                 LEFT JOIN ai_rpt_inventory_cost cost ON cost.product_id = p.id AND cost.outlet_id = p.outlet_id
+                """ + ReplenishmentSalesQuery.SUPPLIER_JOINS + """
                 WHERE p.outlet_id = ? AND p.deleted_at IS NULL AND p.status = 'ACTIVE'
+                  AND p.track_inventory = 1
                 ORDER BY COALESCE(s.sold_7d, 0) DESC, COALESCE(s.recent_units, 0) DESC, p.name, p.id
                 """);
             statement.setQueryTimeout(QUERY_TIMEOUT_SECONDS);
@@ -158,7 +152,6 @@ public class NativeReplenishmentService {
             statement.setLong(3, tenant.requireOutletId());
             statement.setString(4, zone.getId());
             statement.setLong(5, tenant.requireOutletId());
-            statement.setLong(6, tenant.requireOutletId());
             return statement;
         }, (rs, rowNum) -> new Row(rs.getLong("id"), rs.getString("name"),
                 rs.getDouble("case_quantity"), asDouble(rs.getObject("on_hand")), rs.getDouble("on_order"),
