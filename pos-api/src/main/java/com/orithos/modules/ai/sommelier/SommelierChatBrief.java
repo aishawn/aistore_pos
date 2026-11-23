@@ -78,7 +78,7 @@ public class SommelierChatBrief {
                         .append(chinese ? '）' : ')');
             }
             if (request.budgetMax() != null) {
-                sb.append(chinese ? "，预算不超过 $" : " under $")
+                sb.append(chinese ? "，预算不超过 A$" : " under A$")
                         .append(AssistantDisplayText.money(request.budgetMax()));
             }
             sb.append(chinese ? "：\n" : ":\n");
@@ -91,7 +91,15 @@ public class SommelierChatBrief {
                 sb.append("\n• ").append(badge).append(" — ").append(name);
                 BigDecimal price = card.sellPrice() != null ? card.sellPrice() : card.listPrice();
                 if (price != null) {
-                    sb.append(" — $").append(AssistantDisplayText.money(price));
+                    sb.append(" — A$").append(AssistantDisplayText.money(price))
+                            .append(chinese ? "（澳元，含 GST）" : " (AUD, GST included)");
+                    if (card.onPromotion()) {
+                        if (card.promotionEndsAt() == null) {
+                            sb.append(chinese ? "；促销截止日期未核实" : "; promotion end date unverified");
+                        } else {
+                            sb.append(chinese ? "；促销截止 " : "; offer ends ").append(card.promotionEndsAt());
+                        }
+                    }
                 }
             }
             sb.append(chinese ? "\n\n打开品鉴推荐页面查看全部酒款。" : "\n\nTap below to open the full wine assistant.");

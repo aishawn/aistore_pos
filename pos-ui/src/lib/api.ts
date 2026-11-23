@@ -1404,6 +1404,7 @@ export interface SommelierRecommendCard {
   pitch: string;
   whyUpgrade: string | null;
   inferred: boolean;
+  promotionEndsAt?: string | null;
 }
 
 export interface SommelierRecommendResponse {
@@ -1437,6 +1438,7 @@ export interface SommelierWine {
   pitch10s: string | null;
   pitch30s: string | null;
   inferred: boolean;
+  promotionEndsAt?: string | null;
 }
 
 export function sommelierRecommend(profile: SommelierProfilePayload) {

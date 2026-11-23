@@ -37,9 +37,9 @@ class SommelierChatBriefTest {
 
         String text = new SommelierChatBrief(service).brief("Recommend a red wine under $30", tenant);
 
-        assertTrue(text.contains("Here are in-stock picks (red) under $30.00:"));
-        assertTrue(text.contains("\n• Great Value — PIZZINI SANGIOVESE SHIRAZ 750M — $19.99"));
-        assertTrue(text.contains("\n• Best Match — RARE PENNY SHIRAZ — $13.63"));
+        assertTrue(text.contains("Here are in-stock picks (red) under A$30.00:"));
+        assertTrue(text.contains("\n• Great Value — PIZZINI SANGIOVESE SHIRAZ 750M — A$19.99 (AUD, GST included)"));
+        assertTrue(text.contains("\n• Best Match — RARE PENNY SHIRAZ — A$13.63 (AUD, GST included)"));
         assertTrue(text.contains("\n\nTap below to open the full wine assistant."));
         assertFalse(text.contains("R2 TEST"));
         assertFalse(text.contains("[R2-"));
@@ -55,10 +55,23 @@ class SommelierChatBriefTest {
 
         String text = new SommelierChatBrief(service).brief("推荐一款 30 元以内的红酒", tenant);
 
-        assertTrue(text.contains("为你推荐以下有库存的酒款（红葡萄酒），预算不超过 $30.00："));
-        assertTrue(text.contains("\n• 优选 — RARE PENNY SHIRAZ — $13.63"));
+        assertTrue(text.contains("为你推荐以下有库存的酒款（红葡萄酒），预算不超过 A$30.00："));
+        assertTrue(text.contains("\n• 优选 — RARE PENNY SHIRAZ — A$13.63（澳元，含 GST）"));
         assertTrue(text.contains("打开品鉴推荐页面查看全部酒款。"));
         assertFalse(text.contains("R2 TEST"));
+    }
+
+    @Test
+    void briefMakesPromotionEndDateUncertaintyExplicit() {
+        SommelierService service = mock(SommelierService.class);
+        TenantContext tenant = new TenantContext(1L, 1L, 1L, List.of(1L), Set.of("ROLE_ADMIN"));
+        when(service.recommend(any(), any())).thenReturn(new RecommendResponse(
+                null, List.of(card("Great Value", "Local Shiraz", "18.00", true, null)), null));
+
+        String text = new SommelierChatBrief(service).brief("Recommend a red wine", tenant);
+
+        assertTrue(text.contains("A$18.00 (AUD, GST included)"));
+        assertTrue(text.contains("promotion end date unverified"));
     }
 
     @Test
@@ -112,9 +125,15 @@ class SommelierChatBriefTest {
     }
 
     private static RecommendCard card(String badge, String name, String price) {
+        return card(badge, name, price, false, null);
+    }
+
+    private static RecommendCard card(String badge, String name, String price,
+                                      boolean onPromotion, String promotionEndsAt) {
         return new RecommendCard(
                 1L, name, "good", badge, new BigDecimal(price), new BigDecimal(price),
-                false, BigDecimal.ONE, null, 80, 50, 50, 50, 50, 80,
-                "red", null, null, null, List.of(), List.of(), List.of(), null, null, null, false);
+                onPromotion, BigDecimal.ONE, null, 80, 50, 50, 50, 50, 80,
+                "red", null, null, null, List.of(), List.of(), List.of(), null, null, null, false,
+                promotionEndsAt);
     }
 }

@@ -47,12 +47,14 @@ export function WineCard({
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-[13px] font-semibold text-[var(--oh-primary)]">{card.badge}</p>
-          <p className="mt-1 text-[26px] font-semibold leading-none text-[var(--oh-text)]">{formatMoney(card.sellPrice)}</p>
+          <p className="mt-1 text-[26px] font-semibold leading-none text-[var(--oh-text)]">A${formatMoney(card.sellPrice).slice(1)}</p>
+          <p className="mt-1 text-xs text-[var(--oh-muted)]">AUD · GST included</p>
           {card.onPromotion ? (
             <p className="mt-1 text-[13px] text-amber-700">
-              On promotion · normally {formatMoney(card.listPrice)}
+              On promotion · normally A${formatMoney(card.listPrice).slice(1)}
             </p>
           ) : null}
+          {card.onPromotion ? <p className="text-xs text-[var(--oh-muted)]">{card.promotionEndsAt ? `Offer ends ${card.promotionEndsAt}` : "Promotion end date unverified"}</p> : null}
         </div>
         <div className="rounded-full bg-blue-50 px-2.5 py-1 text-[13px] font-semibold text-blue-800">
           Match {card.matchPct}%

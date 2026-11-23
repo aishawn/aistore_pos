@@ -2,6 +2,7 @@ package com.orithos.modules.ai.sommelier;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.orithos.common.BusinessException;
+import com.orithos.common.BusinessTimezoneService;
 import com.orithos.modules.ai.report.TenantContext;
 import com.orithos.modules.ai.sommelier.dto.AskRequest;
 import com.orithos.modules.ai.sommelier.dto.AskResponse;
@@ -17,10 +18,15 @@ import com.orithos.modules.ai.sommelier.dto.SimilarRequest;
 import com.orithos.modules.ai.sommelier.dto.SimilarResponse;
 import com.orithos.modules.ai.sommelier.dto.WineAssistantResponse;
 import com.orithos.modules.ai.sommelier.mapper.SommelierProductMapper;
+import com.orithos.modules.product.ShopfrontProductOfferService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Autowired;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -35,16 +41,30 @@ public class SommelierService {
     private final WinePitchService pitchService;
     private final SommelierProductMapper mapper;
     private final ObjectMapper objectMapper;
+    private final ShopfrontProductOfferService shopfrontOffers;
+    private final BusinessTimezoneService timezones;
     private final WineMatcher matcher = new WineMatcher();
 
     public SommelierService(SommelierCatalogService catalog,
                             WinePitchService pitchService,
                             SommelierProductMapper mapper,
                             ObjectMapper objectMapper) {
+        this(catalog, pitchService, mapper, objectMapper, null, null);
+    }
+
+    @Autowired
+    public SommelierService(SommelierCatalogService catalog,
+                            WinePitchService pitchService,
+                            SommelierProductMapper mapper,
+                            ObjectMapper objectMapper,
+                            ShopfrontProductOfferService shopfrontOffers,
+                            BusinessTimezoneService timezones) {
         this.catalog = catalog;
         this.pitchService = pitchService;
         this.mapper = mapper;
         this.objectMapper = objectMapper;
+        this.shopfrontOffers = shopfrontOffers;
+        this.timezones = timezones;
     }
 
     public RecommendResponse recommend(RecommendRequest request, TenantContext tenant) {
@@ -59,9 +79,9 @@ public class SommelierService {
         }
         WineMatcher.TierPick pick = matcher.pickThree(scored);
         List<RecommendCard> cards = new ArrayList<>();
-        addCard(cards, pick.goodValue(), "good", "Great Value", profile, pick);
-        addCard(cards, pick.bestMatch(), "best", "Best Match", profile, pick);
-        addCard(cards, pick.premium(), "premium", "Premium Choice", profile, pick);
+        addCard(cards, pick.goodValue(), "good", "Great Value", profile, pick, tenant);
+        addCard(cards, pick.bestMatch(), "best", "Best Match", profile, pick, tenant);
+        addCard(cards, pick.premium(), "premium", "Premium Choice", profile, pick, tenant);
         return new RecommendResponse(profile, List.copyOf(cards), null);
     }
 
@@ -69,7 +89,7 @@ public class SommelierService {
         List<WineCandidate> hits = catalog.search(tenant, q);
         List<WineAssistantResponse> items = new ArrayList<>();
         for (WineCandidate wine : hits) {
-            items.add(toAssistant(wine, null, true));
+            items.add(toAssistant(wine, null, true, tenant));
         }
         return new IdentifyResponse(List.copyOf(items));
     }
@@ -95,7 +115,7 @@ public class SommelierService {
         }
         List<WineAssistantResponse> items = new ArrayList<>();
         for (WineCandidate wine : unique.values()) {
-            items.add(toAssistant(wine, null, true));
+            items.add(toAssistant(wine, null, true, tenant));
             if (items.size() >= 8) break;
         }
         String note = items.isEmpty()
@@ -115,7 +135,7 @@ public class SommelierService {
 
     public WineAssistantResponse wine(long id, TenantContext tenant) {
         WineCandidate wine = requireWine(id, tenant);
-        return toAssistant(wine, null, true);
+        return toAssistant(wine, null, true, tenant);
     }
 
     public PitchResponse pitch(PitchRequest request, TenantContext tenant) {
@@ -136,7 +156,7 @@ public class SommelierService {
         List<RecommendCard> cards = new ArrayList<>();
         String badge = direction.equals("cheaper") ? "Similar, cheaper" : "Upgrade";
         for (WineMatcher.ScoredWine s : scored) {
-            cards.add(toCard(s, direction, badge, null, current));
+            cards.add(toCard(s, direction, badge, null, current, tenant));
         }
         return new SimilarResponse(current.productId(), direction, List.copyOf(cards));
     }
@@ -158,7 +178,7 @@ public class SommelierService {
         for (WineMatcher.ScoredWine s : alts) {
             cards.add(toCard(s, direction == null ? "alt" : direction,
                     direction == null ? "Alternative" : ("cheaper".equals(direction) ? "Similar, cheaper" : "Upgrade"),
-                    null, wine));
+                    null, wine, tenant));
         }
         return new AskResponse(answer, List.copyOf(cards));
     }
@@ -181,7 +201,7 @@ public class SommelierService {
     }
 
     private void addCard(List<RecommendCard> cards, WineMatcher.ScoredWine scored, String tier, String badge,
-                         CustomerWineProfile profile, WineMatcher.TierPick pick) {
+                         CustomerWineProfile profile, WineMatcher.TierPick pick, TenantContext tenant) {
         if (scored == null) return;
         for (RecommendCard existing : cards) {
             if (existing.productId().equals(scored.wine().productId())) return;
@@ -189,11 +209,11 @@ public class SommelierService {
         WineCandidate previous = null;
         if ("premium".equals(tier) && pick.bestMatch() != null) previous = pick.bestMatch().wine();
         else if ("best".equals(tier) && pick.goodValue() != null) previous = pick.goodValue().wine();
-        cards.add(toCard(scored, tier, badge, profile, previous));
+        cards.add(toCard(scored, tier, badge, profile, previous, tenant));
     }
 
     private RecommendCard toCard(WineMatcher.ScoredWine scored, String tier, String badge,
-                                 CustomerWineProfile profile, WineCandidate previous) {
+                                 CustomerWineProfile profile, WineCandidate previous, TenantContext tenant) {
         WineCandidate wine = scored.wine();
         WineProfile p = wine.profile();
         String why = previous == null ? null : WinePitchService.whyUpgrade(previous, wine);
@@ -223,11 +243,12 @@ public class SommelierService {
                 p == null ? null : p.finishNote(),
                 pitchService.template(wine, profile, "card"),
                 why,
-                p == null || p.inferred()
+                p == null || p.inferred(), verifiedPromotionEndDate(wine, tenant)
         );
     }
 
-    private WineAssistantResponse toAssistant(WineCandidate wine, CustomerWineProfile profile, boolean withLongPitch) {
+    private WineAssistantResponse toAssistant(WineCandidate wine, CustomerWineProfile profile,
+                                              boolean withLongPitch, TenantContext tenant) {
         WineProfile p = wine.profile();
         return new WineAssistantResponse(
                 wine.productId(),
@@ -253,8 +274,33 @@ public class SommelierService {
                 pitchService.template(wine, profile, "card"),
                 withLongPitch ? pitchService.template(wine, profile, "10s") : null,
                 withLongPitch ? pitchService.template(wine, profile, "30s") : null,
-                p == null || p.inferred()
+                p == null || p.inferred(), verifiedPromotionEndDate(wine, tenant)
         );
+    }
+
+    private String verifiedPromotionEndDate(WineCandidate wine, TenantContext tenant) {
+        if (!wine.onPromotion() || shopfrontOffers == null || timezones == null || tenant == null
+                || wine.productId() == null || wine.sellPrice() == null) return null;
+        try {
+            var snapshot = shopfrontOffers.checkoutOffers(tenant.vendorId(), tenant.requireOutletId(),
+                    List.of(wine.productId()));
+            if (snapshot.snapshotExpired()) return null;
+            BigDecimal sellPrice = wine.sellPrice().setScale(2, RoundingMode.HALF_UP);
+            List<ShopfrontProductOfferService.Offer> singleBottleOffers = snapshot.offers()
+                    .getOrDefault(wine.productId(), List.of()).stream()
+                    .filter(offer -> offer.groupId() == null && offer.requiredUnits().compareTo(BigDecimal.ONE) == 0)
+                    .toList();
+            List<BigDecimal> distinctTotals = singleBottleOffers.stream()
+                    .map(offer -> offer.total().setScale(2, RoundingMode.HALF_UP)).distinct().toList();
+            if (distinctTotals.size() != 1 || distinctTotals.getFirst().compareTo(sellPrice) != 0) return null;
+            List<Instant> endDates = singleBottleOffers.stream()
+                    .filter(offer -> offer.total().setScale(2, RoundingMode.HALF_UP).compareTo(sellPrice) == 0)
+                    .map(ShopfrontProductOfferService.Offer::endsAt).distinct().toList();
+            if (endDates.size() != 1 || endDates.getFirst() == null) return null;
+            return endDates.getFirst().atZone(timezones.zoneForVendor(tenant.vendorId())).toLocalDate().toString();
+        } catch (RuntimeException unavailable) {
+            return null;
+        }
     }
 
     private WineCandidate requireWine(Long id, TenantContext tenant) {
