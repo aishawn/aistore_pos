@@ -98,7 +98,8 @@ public class ReportTemplateRegistry {
                                       FILTER (WHERE COALESCE(c.case_cost, c.cost, 0) > 0), 0)
                                AS store_inventory_value_total,
                              COUNT(*) FILTER (WHERE COALESCE(c.case_cost, c.cost, 0) > 0) AS valued_product_count,
-                             COUNT(*) FILTER (WHERE COALESCE(c.case_cost, c.cost, 0) <= 0) AS excluded_product_count
+                             COUNT(*) FILTER (WHERE COALESCE(c.case_cost, c.cost, 0) <= 0) AS excluded_product_count,
+                             MAX(i.updated_at) AS latest_inventory_observation
                       FROM ai_rpt_inventory i
                       JOIN ai_rpt_product_core p ON p.id = i.product_id AND p.outlet_id = i.outlet_id
                       LEFT JOIN ai_rpt_inventory_cost c ON c.product_id = i.product_id AND c.outlet_id = i.outlet_id
@@ -116,7 +117,11 @@ public class ReportTemplateRegistry {
                       LIMIT 8
                     )
                     SELECT t.id, t.name, t.on_hand, t.inventory_value,
-                           s.store_inventory_value_total, s.valued_product_count, s.excluded_product_count
+                           s.store_inventory_value_total, s.valued_product_count, s.excluded_product_count,
+                           to_char(s.latest_inventory_observation, 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS "dataAsOf",
+                           CASE WHEN s.excluded_product_count > 0 THEN 'incomplete'
+                                WHEN s.valued_product_count = 0 THEN 'no_data'
+                                ELSE 'available' END AS "reportDataStatus"
                     FROM store_summary s
                     LEFT JOIN top_products t ON TRUE
                     ORDER BY t.inventory_value DESC NULLS LAST, t.name
