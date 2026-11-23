@@ -31,5 +31,5 @@ test("formats assistant data timestamps in the store timezone across DST", () =>
 - [x] Pass `cardTimeZone` and `msg.reportTimeZone` from `SellAiPanel.tsx` to `assistantDataTimestampLabel` for card and message timestamps.
 - [x] Run the focused provenance test (17/17), all POS UI unit tests (346/346), TypeScript, and targeted ESLint (0 errors; 3 existing React effect warnings) for the touched files.
 - [x] Inspect `git diff --check` and the scoped diff; no whitespace errors were reported.
-- [ ] Commit only the three source/test files and this plan, and push `main` per the repository release policy.
-- [ ] Verify `/api/public/version` reports the pushed SHA for SKR and Demo and run read-only timestamp/display acceptance in both stores.
+- [x] Commit the three source/test files and this plan, and push `main` per the repository release policy (`b4519ed0638245c71074930fcfbe7f8daea9e0d0`).
+- [x] Verify `/api/public/version` reports the pushed SHA for SKR and Demo and run read-only timestamp/display acceptance in both stores (7/7 checks passed per store; no business writes).
