@@ -606,6 +606,11 @@ function NativeOrithosRegisterPage() {
               : cart.map(({ product, quantity: count }) => <div key={product.id} className="flex items-center gap-3 px-4 py-3"><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{product.name}</p><p className="mt-1 text-xs text-[var(--oh-muted)]">{money(product.price)} each</p></div><div className="flex items-center gap-2"><button type="button" aria-label={`Remove one ${product.name}`} onClick={() => changeQuantity(product.id, -1)} disabled={checkoutRecovery} className="grid size-8 place-items-center rounded border border-[var(--oh-border)] disabled:opacity-50">−</button><span className="w-5 text-center text-sm">{count}</span><button type="button" aria-label={`Add one ${product.name}`} onClick={() => changeQuantity(product.id, 1)} disabled={checkoutRecovery} className="grid size-8 place-items-center rounded border border-[var(--oh-border)] disabled:opacity-50">+</button></div><strong className="w-20 text-right text-sm">{money(product.price * count)}</strong></div>)}
           </div>
           <div className="border-t border-[var(--oh-border)] p-4">
+            {currentQuote?.promotionSnapshotExpired && (
+              <p role="status" className="mb-3 text-sm text-amber-800">
+                Shopfront promotions are out of date. This quote uses catalogue pricing.
+              </p>
+            )}
             <div className="mb-2 flex justify-between text-sm text-[var(--oh-muted)]"><span>Subtotal ex GST</span><span>{money(currentQuote?.subtotalExGst ?? 0)}</span></div>
             <div className="mb-3 flex justify-between text-sm text-[var(--oh-muted)]"><span>GST</span><span>{money(currentQuote?.gst ?? 0)}</span></div>
             <div className="mb-4 flex justify-between text-lg font-semibold"><span>Total</span><span>{money(currentQuote?.total ?? 0)}</span></div>

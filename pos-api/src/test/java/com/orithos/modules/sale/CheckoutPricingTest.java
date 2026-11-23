@@ -50,9 +50,9 @@ class CheckoutPricingTest {
         when(saleMapper.findSellTaxPercent(42L, 3L, 12L)).thenReturn(new BigDecimal("10"));
         when(registerMapper.findById(99L)).thenReturn(openRegister());
         when(registerSessionMapper.findActiveSession(99L, 3L, 12L)).thenReturn(new RegisterSession());
-        when(offers.currentOffers(eq(3L), eq(12L), any(), eq(true))).thenReturn(java.util.Map.of(42L, List.of(
+        when(offers.checkoutOffers(eq(3L), eq(12L), any())).thenReturn(new ShopfrontProductOfferService.CheckoutOffers(java.util.Map.of(42L, List.of(
                 new ShopfrontProductOfferService.Offer("Four for twenty", new BigDecimal("4"),
-                        new BigDecimal("20"), null, null, java.time.Instant.now()))));
+                        new BigDecimal("20"), null, null, java.time.Instant.now()))), false));
 
         for (String quantity : List.of("3", "4", "5", "8", "16")) {
             var request = request(42L, quantity, "0", null);
@@ -88,8 +88,9 @@ class CheckoutPricingTest {
                 new BigDecimal("28.00"), null, null, java.time.Instant.now(), "campaign");
         var duplicate = new ShopfrontProductOfferService.Offer("Same terms, next campaign", offer.requiredUnits(),
                 offer.total(), null, null, offer.syncedAt(), "campaign-2");
-        when(offers.currentOffers(eq(3L), eq(12L), any(), eq(true)))
-                .thenReturn(java.util.Map.of(42L, List.of(offer, duplicate), 43L, List.of(offer, duplicate)));
+        when(offers.checkoutOffers(eq(3L), eq(12L), any()))
+                .thenReturn(new ShopfrontProductOfferService.CheckoutOffers(
+                        java.util.Map.of(42L, List.of(offer, duplicate), 43L, List.of(offer, duplicate)), false));
         when(registerMapper.findById(99L)).thenReturn(openRegister());
         when(registerSessionMapper.findActiveSession(99L, 3L, 12L)).thenReturn(new RegisterSession());
         var request = request(42L, "1", "0", null);
@@ -105,6 +106,8 @@ class CheckoutPricingTest {
 
     @BeforeEach
     void authenticateOutlet() {
+        when(offers.checkoutOffers(eq(3L), eq(12L), any()))
+                .thenReturn(new ShopfrontProductOfferService.CheckoutOffers(java.util.Map.of(), false));
         when(companySettings.cashRoundTo(3L)).thenReturn(new BigDecimal("0.05"));
         when(productMapper.findPricesForOutlet(anyLong(), eq(12L))).thenReturn(List.of(price("1", "3.25")));
         SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
@@ -179,12 +182,15 @@ class CheckoutPricingTest {
         when(productMapper.findSellableForOutlet(42L, 3L, 12L, new BigDecimal("2"))).thenReturn(product);
         when(saleMapper.findTaxRateId(42L, 3L, 12L)).thenReturn(9L);
         when(saleMapper.findSellTaxPercent(42L, 3L, 12L)).thenReturn(new BigDecimal("10"));
+        when(offers.checkoutOffers(eq(3L), eq(12L), any()))
+                .thenReturn(new ShopfrontProductOfferService.CheckoutOffers(java.util.Map.of(), true));
 
         CheckoutRequest request = request(42L, "2", "999.00", "1998.00");
         request.setRegisterId(99L);
         var quote = service.quote(request);
 
         assertEquals(new BigDecimal("6.50"), quote.total());
+        assertTrue(quote.promotionSnapshotExpired());
         assertEquals(new BigDecimal("0.59"), quote.gst());
         assertEquals(new BigDecimal("5.91"), quote.subtotalExGst());
         assertEquals("Outlet wine", quote.lines().get(0).name());

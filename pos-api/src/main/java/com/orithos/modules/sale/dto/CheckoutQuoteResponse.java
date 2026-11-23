@@ -8,7 +8,8 @@ public record CheckoutQuoteResponse(
         List<Line> lines,
         BigDecimal subtotalExGst,
         BigDecimal gst,
-        BigDecimal total) {
+        BigDecimal total,
+        boolean promotionSnapshotExpired) {
     public record Line(Long productId, String name, BigDecimal quantity,
                        BigDecimal unitPrice, BigDecimal discountPercent, BigDecimal total, BigDecimal taxRate,
                        BigDecimal gst) {}

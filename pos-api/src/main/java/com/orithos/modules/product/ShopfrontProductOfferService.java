@@ -30,11 +30,15 @@ public class ShopfrontProductOfferService {
     }
 
     public Map<Long, List<Offer>> currentOffers(long vendorId, long outletId, Collection<Long> productIds) {
-        return currentOffers(vendorId, outletId, productIds, false);
+        return loadOffers(vendorId, outletId, productIds, false).offers();
     }
 
-    public Map<Long, List<Offer>> currentOffers(long vendorId, long outletId, Collection<Long> productIds, boolean forCheckout) {
-        if (productIds.isEmpty()) return Map.of();
+    public CheckoutOffers checkoutOffers(long vendorId, long outletId, Collection<Long> productIds) {
+        return loadOffers(vendorId, outletId, productIds, true);
+    }
+
+    private CheckoutOffers loadOffers(long vendorId, long outletId, Collection<Long> productIds, boolean forCheckout) {
+        if (productIds.isEmpty()) return new CheckoutOffers(Map.of(), false);
         return jdbc.query("""
                 WITH mappings AS (
                     SELECT p.id, m.source_product_id, sm.shopfront_outlet
@@ -51,7 +55,10 @@ public class ShopfrontProductOfferService {
                 WHERE s.outlet_id = :outlet AND EXISTS (SELECT 1 FROM mappings)
                 """, Map.of("vendor", vendorId, "outlet", outletId, "products", productIds), rs -> {
             Map<Long, List<Offer>> result = new LinkedHashMap<>();
-            if (!rs.next()) return result;
+            if (!rs.next()) return new CheckoutOffers(Map.of(), false);
+            Instant syncedAt = rs.getObject("snapshot_at", OffsetDateTime.class).toInstant();
+            Instant now = Instant.now();
+            if (forCheckout && snapshotExpired(syncedAt, now)) return new CheckoutOffers(Map.of(), true);
             JsonNode snapshot;
             JsonNode mappings;
             try {
@@ -60,8 +67,6 @@ public class ShopfrontProductOfferService {
             } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
                 throw new IllegalStateException("Invalid Shopfront promotion snapshot", e);
             }
-            Instant syncedAt = rs.getObject("snapshot_at", OffsetDateTime.class).toInstant();
-            Instant now = Instant.now();
             for (JsonNode mapping : mappings) {
                 var offers = matchingOffers(snapshot, mapping.path("source_product_id").asText(),
                         mapping.path("shopfront_outlet").asText(), syncedAt, now, forCheckout);
@@ -69,7 +74,7 @@ public class ShopfrontProductOfferService {
             }
             result.replaceAll((id, offers) -> offers.stream().distinct().sorted(
                     Comparator.comparing(Offer::requiredUnits).thenComparing(Offer::total).thenComparing(Offer::name)).toList());
-            return result;
+            return new CheckoutOffers(result, false);
         });
     }
 
@@ -80,7 +85,7 @@ public class ShopfrontProductOfferService {
     static List<Offer> matchingOffers(JsonNode snapshot, String sourceId, String sourceOutlet,
                                       Instant syncedAt, Instant now, boolean forCheckout) {
         List<Offer> result = new ArrayList<>();
-        if (forCheckout && (syncedAt.isAfter(now) || syncedAt.isBefore(now.minus(CHECKOUT_SNAPSHOT_MAX_AGE)))) {
+        if (forCheckout && snapshotExpired(syncedAt, now)) {
             return result;
         }
         if (sourceOutlet == null || sourceOutlet.isBlank()) return result;
@@ -141,6 +146,12 @@ public class ShopfrontProductOfferService {
         if (node == null || node.isNull()) return null;
         return OffsetDateTime.parse(node.asText().replaceFirst("([+-]\\d{2})(\\d{2})$", "$1:$2")).toInstant();
     }
+
+    private static boolean snapshotExpired(Instant syncedAt, Instant now) {
+        return syncedAt.isAfter(now) || syncedAt.isBefore(now.minus(CHECKOUT_SNAPSHOT_MAX_AGE));
+    }
+
+    public record CheckoutOffers(Map<Long, List<Offer>> offers, boolean snapshotExpired) {}
 
     public record Offer(String name, BigDecimal requiredUnits, BigDecimal total, Instant startsAt, Instant endsAt,
                         Instant syncedAt, String groupId) {

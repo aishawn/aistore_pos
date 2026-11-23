@@ -114,7 +114,7 @@ public class CheckoutService {
             throw new BusinessException(40900, "An open Orithos register session is required for a quote.");
         }
 
-        prepareSellItems(req, vendorId, outletId);
+        boolean promotionSnapshotExpired = prepareSellItems(req, vendorId, outletId);
         BigDecimal total = calculateTotal(req.getItems());
         BigDecimal gst = gstForItems(req.getItems());
         List<CheckoutQuoteResponse.Line> lines = req.getItems().stream().map(item -> {
@@ -124,7 +124,8 @@ public class CheckoutService {
                     item.getUnitPrice(), item.getDiscountPercent(), lineTotal, rate,
                     GstMath.includedGst(lineTotal, rate));
         }).toList();
-        return new CheckoutQuoteResponse(lines, total.subtract(gst).setScale(2, RoundingMode.HALF_UP), gst, total);
+        return new CheckoutQuoteResponse(lines, total.subtract(gst).setScale(2, RoundingMode.HALF_UP), gst, total,
+                promotionSnapshotExpired);
     }
 
     @Transactional
@@ -475,7 +476,7 @@ public class CheckoutService {
         return rate;
     }
 
-    void prepareSellItems(CheckoutRequest req, Long vendorId, Long outletId) {
+    boolean prepareSellItems(CheckoutRequest req, Long vendorId, Long outletId) {
         if (req.getCustomerId() != null
                 && saleMapper.customerHasAssignedPriceList(req.getCustomerId(), outletId) > 0) {
             throw new BusinessException(40900,
@@ -550,8 +551,10 @@ public class CheckoutService {
                     item.getUnitPrice(), tiers));
         }
         List<BigDecimal> totals = FamilyPriceCalculator.price(pricingLines, distribution, quantityRate, rounding);
-        Map<Long, List<ShopfrontProductOfferService.Offer>> offers = shopfrontOffers == null
-                ? Map.of() : shopfrontOffers.currentOffers(vendorId, outletId, products.keySet(), true);
+        var checkoutOffers = shopfrontOffers == null
+                ? new ShopfrontProductOfferService.CheckoutOffers(Map.of(), false)
+                : shopfrontOffers.checkoutOffers(vendorId, outletId, products.keySet());
+        var offers = checkoutOffers.offers();
         Map<Integer, BigDecimal> groupTotals = mixedOfferTotals(req.getItems(), pricingLines, totals, offers);
         for (int i = 0; i < req.getItems().size(); i++) {
             CheckoutRequest.Item item = req.getItems().get(i);
@@ -578,6 +581,7 @@ public class CheckoutService {
             }
             item.setLineTotal(total.multiply(discountFactor).setScale(2, RoundingMode.HALF_UP));
         }
+        return checkoutOffers.snapshotExpired();
     }
 
     private static Map<Integer, BigDecimal> mixedOfferTotals(List<CheckoutRequest.Item> items,

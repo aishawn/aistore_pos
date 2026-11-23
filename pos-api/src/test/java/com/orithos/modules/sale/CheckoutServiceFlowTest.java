@@ -114,9 +114,9 @@ class CheckoutServiceFlowTest {
                 mock(EftposService.class), offers);
         var offer = new ShopfrontProductOfferService.Offer("Fixture promotion", BigDecimal.ONE,
                 new BigDecimal("9.00"), null, null, java.time.Instant.now());
-        var matching = java.util.Map.of(42L, List.of(offer));
-        when(offers.currentOffers(eq(3L), eq(12L), any(), eq(true)))
-                .thenReturn(matching, java.util.Map.of(), matching);
+        var matching = new ShopfrontProductOfferService.CheckoutOffers(java.util.Map.of(42L, List.of(offer)), false);
+        when(offers.checkoutOffers(eq(3L), eq(12L), any()))
+                .thenReturn(matching, new ShopfrontProductOfferService.CheckoutOffers(java.util.Map.of(), true), matching);
         when(sessions.findActiveSession(99L, 3L, 12L)).thenReturn(session);
 
         var quote = service.quote(cashRequest("9.00"));

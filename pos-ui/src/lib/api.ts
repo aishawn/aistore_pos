@@ -683,6 +683,7 @@ export interface CheckoutResponse {
 }
 
 export interface CheckoutQuote {
+  promotionSnapshotExpired?: boolean;
   lines: Array<{
     productId: number;
     name: string;

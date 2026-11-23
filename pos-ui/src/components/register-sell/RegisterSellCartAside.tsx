@@ -331,6 +331,11 @@ export function RegisterSellCartAside({
           <span>Subtotal {money(subtotal)}</span>
           <span className="text-right">GST {quoteLoading ? "…" : money(taxTotal)}</span>
         </div>
+        {quoteIsCurrent && quote?.promotionSnapshotExpired && (
+          <p role="status" className="mb-3 text-xs text-amber-800">
+            Shopfront promotions are out of date. This quote uses catalogue pricing.
+          </p>
+        )}
         {showQuoteRetry && quoteError && (
           <div role="alert" className="mb-3 grid gap-1.5 text-left text-xs text-red-800">
             <span>{quoteError}</span>

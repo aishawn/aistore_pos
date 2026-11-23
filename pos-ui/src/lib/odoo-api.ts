@@ -465,6 +465,7 @@ export interface OdooCheckoutResult {
 }
 
 export interface OdooCheckoutQuote {
+  promotionSnapshotExpired?: boolean;
   signature: string;
   priceSource?: string;
   currency?: string;
@@ -661,6 +662,7 @@ function mapCheckoutQuote(native: CheckoutQuote): OdooCheckoutQuote {
   });
   return {
     signature,
+    promotionSnapshotExpired: native.promotionSnapshotExpired,
     priceSource: "orithos",
     currency: "AUD",
     subtotal: Number(native.subtotalExGst),
