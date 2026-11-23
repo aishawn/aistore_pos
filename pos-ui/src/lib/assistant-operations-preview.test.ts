@@ -202,7 +202,7 @@ test("sales week reads native overview without storeScope on the payload", async
 
 test("sales are read from the calendar week endpoint, preserving currency/refunds", async () => {
   const result = await readOperationsPreview("Show me this week's sales performance", null, undefined, async (url, init) => {
-    assert.ok(String(url).startsWith("/api/reports/native-overview?"));
+    assert.equal(String(url), "/api/reports/native-overview?period=this_week");
     return mockFetch({
       data: {
         dataSource: "orithos_ledger", storeScope: "current_authenticated_store",

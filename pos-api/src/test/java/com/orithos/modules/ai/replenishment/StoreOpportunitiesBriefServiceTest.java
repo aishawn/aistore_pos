@@ -25,7 +25,8 @@ class StoreOpportunitiesBriefServiceTest {
         NativeReplenishmentService replenishment = mock(NativeReplenishmentService.class);
         TenantContext tenant = new TenantContext(9L, 3L, 21L, List.of(21L), Set.of(TenantContext.PERM_QUERY));
         LocalDate today = LocalDate.parse("2026-11-17");
-        LocalDate weekStart = today.with(java.time.DayOfWeek.MONDAY);
+        LocalDate weekStart = LocalDate.parse("2026-11-15");
+        when(reports.weekStart(today, 9L)).thenReturn(weekStart);
 
         when(reports.nativeOverview(eq(9L), eq(21L), eq(weekStart), eq(today))).thenReturn(Map.of(
                 "revenue", "$1,240.00",
@@ -47,7 +48,7 @@ class StoreOpportunitiesBriefServiceTest {
         assertEquals("incomplete", brief.replenishment().reportDataStatus());
         assertEquals(5, brief.replenishment().actionableItemCount());
         assertEquals(42L, brief.sales().transactions());
-        assertEquals(LocalDate.parse("2026-11-16"), brief.reportPeriodFrom());
+        assertEquals(weekStart, brief.reportPeriodFrom());
         assertEquals(LocalDate.parse("2026-09-23"), brief.replenishment().reportPeriodFrom());
         assertEquals("Australia/Adelaide", brief.replenishment().reportTimeZone());
         verify(reports).nativeOverview(9L, 21L, weekStart, today);

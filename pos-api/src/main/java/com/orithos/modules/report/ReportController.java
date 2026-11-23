@@ -52,8 +52,10 @@ public class ReportController {
     }
 
     @GetMapping("/native-overview")
-    public ApiResult<Map<String, Object>> nativeOverview(@RequestParam LocalDate from,
-                                                          @RequestParam LocalDate to) {
+    public ApiResult<Map<String, Object>> nativeOverview(
+            @RequestParam(required = false) LocalDate from,
+            @RequestParam(required = false) LocalDate to,
+            @RequestParam(required = false) String period) {
         if (!permissionAccess.hasPermission("reports.dashboard")) {
             permissionAccess.requirePermission("sell.checkout");
         }
@@ -62,6 +64,13 @@ public class ReportController {
         if (outletId == null || vendorId == null) {
             throw new org.springframework.web.server.ResponseStatusException(
                     org.springframework.http.HttpStatus.FORBIDDEN, "A store outlet is required.");
+        }
+        if ("this_week".equals(period) && from == null && to == null) {
+            to = reportQueryService.today(vendorId);
+            from = reportQueryService.weekStart(to, vendorId);
+        } else if (period != null || from == null || to == null) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.BAD_REQUEST, "Choose a period or an explicit date range.");
         }
         if (to.isBefore(from) || ChronoUnit.DAYS.between(from, to) > 365) {
             throw new org.springframework.web.server.ResponseStatusException(

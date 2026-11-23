@@ -5,7 +5,6 @@ import com.orithos.modules.report.ReportQueryService;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
-import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
@@ -30,7 +29,7 @@ public class StoreOpportunitiesBriefService {
         }
         ReplenishmentPlan plan = replenishmentService.plan(tenant);
         LocalDate today = plan.periodTo();
-        LocalDate weekStart = today.with(DayOfWeek.MONDAY);
+        LocalDate weekStart = reportQueryService.weekStart(today, tenant.vendorId());
         Map<String, Object> overview = reportQueryService.nativeOverview(tenant.vendorId(), outletId, weekStart, today);
 
         String salesStatus = stringValue(overview.get("reportDataStatus"));

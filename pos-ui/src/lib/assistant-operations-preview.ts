@@ -1,5 +1,4 @@
 import type { AssistantResponse, AssistantCard } from "./api";
-import { storeWeekStart } from "./assistant-business-period.ts";
 import {
   awaitOperationsPreviewInflight,
   prefetchOperationsPreviews as prefetchSnapshots,
@@ -104,9 +103,6 @@ function asNumber(value: unknown): number {
   return typeof value === "number" ? value : Number(value);
 }
 
-function storeDay(timezone: string) {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
-}
 
 async function readReplenishmentPlan(fetcher: typeof fetch, signal?: AbortSignal): Promise<Plan> {
   const response = await fetcher("/api/ai/assistant/replenishment-report", {
@@ -195,12 +191,7 @@ function parseCurrencyAmount(revenue: string | number | null | undefined): numbe
 }
 
 async function readWeekSales(fetcher: typeof fetch, signal?: AbortSignal): Promise<Sales> {
-  const timezone = "Australia/Adelaide";
-  const today = storeDay(timezone);
-  const weekStart = storeWeekStart(new Date(), timezone);
-  const from = new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit" }).format(weekStart);
-  const params = new URLSearchParams({ from, to: today });
-  const response = await fetcher(`/api/reports/native-overview?${params}`, {
+  const response = await fetcher("/api/reports/native-overview?period=this_week", {
     method: "GET", credentials: "same-origin", cache: "no-store", signal,
   });
   if (!response.ok) throw new PreviewReadError("Business data unavailable", response.status);
@@ -215,7 +206,7 @@ async function readWeekSales(fetcher: typeof fetch, signal?: AbortSignal): Promi
   const dataSource = row?.dataSource ?? row?.source;
   const reportPeriodFrom = row?.reportPeriodFrom ?? row?.from;
   const reportPeriodTo = row?.reportPeriodTo ?? row?.to;
-  const reportTimeZone = row?.reportTimeZone ?? row?.timeZone ?? timezone;
+  const reportTimeZone = row?.reportTimeZone ?? row?.timeZone;
   const reportDataStatus = row?.reportDataStatus;
   if (!row || dataSource !== "orithos_ledger" || !finite(row.revenue) || !finite(row.transactions)
     || !reportPeriodFrom || !reportPeriodTo || !reportTimeZone || !reportDataStatus) {
