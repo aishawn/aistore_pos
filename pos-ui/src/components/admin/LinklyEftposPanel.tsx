@@ -261,7 +261,7 @@ export function LinklyEftposPanel({ canEdit }: Props) {
     }
 
     setDiagBusy(true);
-    let health: Awaited<ReturnType<typeof refreshDiagnostics>>["health"] = "unknown";
+    let health: Awaited<ReturnType<typeof refreshDiagnostics>>["health"];
     try {
       ({ health } = await refreshDiagnostics(baseUrl));
     } finally {
