@@ -22,6 +22,8 @@ import {
 import { getOdooQuoteTimeoutMessage, ODOO_QUOTE_TIMEOUT_MS } from "./odoo-quote-timeout";
 import { mapNativeProduct, type NativeProductRow } from "./native-product-mapping";
 
+import { positivePurchaseLines } from "./purchase-quantity";
+
 const DEFAULT_STORE_TIMEZONE = "Australia/Melbourne";
 
 function validStoreTimezone(value: string | undefined): string {
@@ -1467,13 +1469,15 @@ export async function createOdooDraftRfq(input: {
   method: string;
   lines: Array<{ productId: number; quantity: number; suggestedQuantity: number; reason: string }>;
 }): Promise<OdooDraftRfq> {
+  const lines = positivePurchaseLines(input.lines);
+  if (!lines.length) throw new Error("Keep at least one product with a quantity above zero.");
   return createNativePurchaseOrder({
     supplierId: input.supplierId,
     reference: `Replenishment ${input.coverageDays}d`,
     invoiceNumber: nativePurchaseInvoiceNumber("REPL"),
-    lines: input.lines.map((line) => ({
+    lines: lines.map((line) => ({
       productId: line.productId,
-      quantity: line.quantity || line.suggestedQuantity,
+      quantity: line.quantity,
       note: line.reason || null,
     })),
     idempotencyKey: input.requestId,

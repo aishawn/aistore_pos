@@ -1,5 +1,6 @@
 "use client";
 
+import { positivePurchaseLines } from "@/lib/purchase-quantity";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
@@ -390,7 +391,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
   );
   const rfqLineCount = Math.min(selectedSuggested.length, MAX_RFQ_LINES);
   const rfqSelectionTrimmed = selectedSuggested.length > MAX_RFQ_LINES;
-  const selectedRfqLines = rfqLines.filter((line) => line.quantity > 0);
+  const selectedRfqLines = positivePurchaseLines(rfqLines);
   const planCoverageDays = data?.coverageDays ?? coverageDays;
   const planReady = Boolean(data) && !loading && !refreshing && !error && data?.coverageDays === coverageDays;
   const draftRfqEnabled = data?.purchaseWorkflow?.draftEnabled === true;
@@ -509,7 +510,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
         supplierId,
         coverageDays,
         method: data?.forecast?.modelSelection ?? "rules_v1_weighted_velocity",
-        lines: rfqLines.map((line) => ({ productId: line.productId, quantity: line.quantity, suggestedQuantity: line.suggestedQuantity, reason: approvalReason(line) })),
+        lines: selectedRfqLines.map((line) => ({ productId: line.productId, quantity: line.quantity, suggestedQuantity: line.suggestedQuantity, reason: approvalReason(line) })),
       });
       const supplier = rfqSuppliers.find((item) => item.id === supplierId);
       let displayResult = result;

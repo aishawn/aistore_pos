@@ -15,3 +15,7 @@ export function formatPurchaseQuantity(quantity?: number | null, caseQuantity?: 
   if (items === 0) return `${cases} ${caseLabel}`;
   return `${cases} ${caseLabel} + ${displayNumber(items)} items`;
 }
+
+export function positivePurchaseLines<T extends { quantity: number }>(lines: readonly T[]): T[] {
+  return lines.filter((line) => Number.isFinite(line.quantity) && line.quantity > 0);
+}
