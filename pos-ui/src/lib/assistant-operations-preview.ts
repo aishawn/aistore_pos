@@ -444,6 +444,11 @@ async function buildLiveOperationsPreview(
           : "Based on this week's sales and replenishment preview: restock top movers first, then review category performance and pricing on the dashboard.",
         dataSource: brief.dataSource,
         storeScope: brief.storeScope,
+        reportPeriodFrom: brief.reportPeriodFrom,
+        reportPeriodTo: brief.reportPeriodTo,
+        reportTimeZone: brief.reportTimeZone,
+        reportDataStatus: brief.reportDataStatus,
+        dataAsOf: brief.dataAsOf ?? undefined,
       };
       const restockFrom = brief.replenishment.reportPeriodFrom;
       const restockTo = brief.replenishment.reportPeriodTo;
