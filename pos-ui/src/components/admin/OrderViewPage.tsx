@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import Link from "next/link";
+import { ReceiptBatchEditor, receiptBatchPayload, type ReceiptBatchDraft } from "@/components/ReceiptBatchEditor";
 import { useRouter } from "next/navigation";
 import { PackageCheck } from "lucide-react";
 import { useApi } from "@/hooks/useApi";
@@ -78,6 +79,7 @@ function DetailField({ label, value }: { label: string; value: React.ReactNode }
 
 function PurchaseReceiptPanel({ order, onReceived }: { order: OrderDetail; onReceived: () => void }) {
   const [quantities, setQuantities] = useState<Record<string, string>>({});
+  const [batchesByLine, setBatchesByLine] = useState<Record<string, ReceiptBatchDraft[]>>({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -86,9 +88,16 @@ function PurchaseReceiptPanel({ order, onReceived }: { order: OrderDetail; onRec
   if (order.type !== "ORDER" || !["OPEN", "SENT", "PARTIALLY_RECEIVED"].includes(order.status) || !outstanding.length) return null;
 
   async function receive() {
-    const lines = outstanding
-      .map((line) => ({ orderProductId: Number(line.id), quantity: Number(quantities[line.id] ?? 0) }))
-      .filter((line) => Number.isFinite(line.quantity) && line.quantity > 0);
+    let lines;
+    try {
+      lines = outstanding.map((line) => {
+        const quantity = Number(quantities[line.id] ?? 0);
+        return { orderProductId: Number(line.id), quantity, batches: receiptBatchPayload(batchesByLine[line.id] ?? [], quantity) };
+      }).filter((line) => Number.isFinite(line.quantity) && line.quantity > 0);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Invalid batch quantities.");
+      return;
+    }
     if (!lines.length) {
       setError("Enter a quantity for at least one line.");
       return;
@@ -102,6 +111,8 @@ function PurchaseReceiptPanel({ order, onReceived }: { order: OrderDetail; onRec
         headers: { "Idempotency-Key": idempotencyKey.current },
       });
       idempotencyKey.current = null;
+      setQuantities({});
+      setBatchesByLine({});
       setSuccess(result.status === "RECEIVED" ? "Purchase order fully received." : "Partial receipt recorded.");
       onReceived();
     } catch (cause) {
@@ -121,13 +132,19 @@ function PurchaseReceiptPanel({ order, onReceived }: { order: OrderDetail; onRec
         <div className="grid grid-cols-[1fr_100px] gap-3 text-xs font-semibold text-[var(--oh-muted)]"><span>Product ID · outstanding</span><span>Receive items</span></div>
         {outstanding.map((line) => {
           const remaining = Number(line.orderedQuantity ?? 0) - Number(line.receivedQuantity ?? 0);
-          return <label key={line.id} className="grid grid-cols-[1fr_100px] items-center gap-3 text-sm">
+          return <div key={line.id} className="space-y-2">
+            <label className="grid grid-cols-[1fr_100px] items-center gap-3 text-sm">
             <span className="min-w-0 truncate">{display(line.productId)} · {formatPurchaseQuantity(remaining, line.caseQuantity)}</span>
             <input type="number" min="0" max={remaining} step="0.0001" inputMode="decimal" aria-label={`Receive quantity for product ${line.productId}`} value={quantities[line.id] ?? ""} onChange={(event) => {
               idempotencyKey.current = null;
               setQuantities((current) => ({ ...current, [line.id]: event.target.value }));
             }} className="h-10 w-full rounded-md border border-[var(--oh-border)] px-2 text-right tabular-nums" />
-          </label>;
+            </label>
+            <ReceiptBatchEditor batches={batchesByLine[line.id] ?? []} disabled={busy} onChange={(next) => {
+              idempotencyKey.current = null;
+              setBatchesByLine((current) => ({ ...current, [line.id]: next }));
+            }} />
+          </div>;
         })}
         {error && <p role="alert" className="text-sm text-rose-700">{error}</p>}
         {success && <p role="status" className="text-sm text-emerald-700">{success}</p>}
