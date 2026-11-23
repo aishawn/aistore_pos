@@ -16,6 +16,7 @@ import { AiTransitionOverlay } from "@/components/AiTransitionOverlay";
 import { AiAssistantProvider } from "@/lib/ai-assistant";
 import { SellScreenProvider } from "@/lib/sell-screen";
 import { StoreDateTimeProvider } from "@/lib/store-date-time-context";
+import { FrontendUpdateNotice } from "@/components/FrontendUpdateNotice";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
 import {
   controlPlaneLandingPath,
@@ -272,6 +273,7 @@ function AppShellChrome({
       >
         <div className="flex h-screen overflow-hidden bg-[var(--oh-surface)] font-sans print:block print:h-auto print:overflow-visible">
           <div className="flex min-w-0 flex-1 flex-col print:w-full">
+            <FrontendUpdateNotice />
             {userMenu}
             {skipLink}
             {main}
@@ -299,6 +301,7 @@ function AppShellChrome({
         />
       )}
       <div className="flex min-w-0 flex-1 flex-col print:w-full">
+        <FrontendUpdateNotice />
         <Header
           userName={userName}
           sidebarOpen={isMobileViewport ? mobileSidebarOpen : sidebarOpen}
