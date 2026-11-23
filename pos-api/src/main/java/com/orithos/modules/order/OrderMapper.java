@@ -17,6 +17,20 @@ public interface OrderMapper {
     @Select("SELECT * FROM order_product WHERE order_id = #{orderId} ORDER BY id")
     List<OrderProduct> findProductsByOrderId(Long orderId);
 
+    @Select("""
+            SELECT r.id AS "receiptId", l.order_product_id AS "orderProductId", b.batch_code AS "batchCode",
+                   b.expiry_date AS "expiryDate", b.inventory_quantity AS "inventoryQuantity"
+            FROM purchase_receipt r
+            JOIN purchase_receipt_line l ON l.receipt_id = r.id
+            JOIN purchase_receipt_batch b ON b.receipt_line_id = l.id
+            WHERE r.order_id = #{orderId} AND r.vendor_id = #{vendorId} AND r.outlet_id = #{outletId}
+                AND r.status IN ('RECEIVED', 'PARTIALLY_RECEIVED')
+            ORDER BY b.expiry_date, r.id, l.order_product_id, b.batch_code
+            """)
+    List<Order.ReceivedBatch> findReceivedBatches(@Param("orderId") Long orderId,
+                                                  @Param("vendorId") Long vendorId,
+                                                  @Param("outletId") Long outletId);
+
     @Select("SELECT po.* FROM purchase_order po JOIN outlet o ON o.id=po.outlet_id "
             + "WHERE po.id=#{id} AND o.vendor_id=#{vendorId} AND o.deleted_at IS NULL FOR UPDATE")
     Order lockPurchaseOrderForVendor(@Param("id") Long id, @Param("vendorId") Long vendorId);

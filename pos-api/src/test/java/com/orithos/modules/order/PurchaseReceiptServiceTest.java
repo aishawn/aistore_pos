@@ -42,6 +42,17 @@ class PurchaseReceiptServiceTest {
     }
 
     @Test
+    void orderDetailReadsReceivedBatchesFromTheAuthenticatedStore() {
+        var controller = new OrderController(orders, service, null, null);
+        Order order = order("RECEIVED");
+        when(orders.findByIdForVendor(12L, 5L)).thenReturn(order);
+        var batch = new Order.ReceivedBatch(44L, 71L, "L01", java.time.LocalDate.parse("2026-11-28"), new BigDecimal("6"));
+        when(orders.findReceivedBatches(12L, 5L, 3L)).thenReturn(List.of(batch));
+
+        assertEquals(List.of(batch), controller.get(12L).data().getReceivedBatches());
+    }
+
+    @Test
     void recordsPartialReceiptAndInventoryMovementAtomicallyThroughService() {
         var expiry = java.time.LocalDate.parse("2026-11-30");
         var request = new PurchaseReceiptRequest(List.of(new PurchaseReceiptRequest.Line(71L, new BigDecimal("4"),

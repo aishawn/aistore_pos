@@ -47,4 +47,8 @@ public class Order {
 
     /** Populated on detail fetch via a second mapper query. */
     private List<OrderProduct> products;
+    private List<ReceivedBatch> receivedBatches;
+
+    public record ReceivedBatch(Long receiptId, Long orderProductId, String batchCode,
+                                LocalDate expiryDate, BigDecimal inventoryQuantity) {}
 }

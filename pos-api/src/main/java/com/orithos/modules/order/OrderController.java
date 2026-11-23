@@ -73,9 +73,14 @@ public class OrderController {
 
     @GetMapping("/{id}")
     public ApiResult<Order> get(@PathVariable Long id) {
-        Order order = mapper.findByIdForVendor(id, requireVendor());
+        Long vendorId = requireVendor();
+        Order order = mapper.findByIdForVendor(id, vendorId);
         if (order != null) {
             order.setProducts(mapper.findProductsByOrderId(id));
+            if ("ORDER".equals(order.getType()) && order.getOutletId() != null
+                    && order.getOutletId().equals(CurrentUser.outletId())) {
+                order.setReceivedBatches(mapper.findReceivedBatches(id, vendorId, order.getOutletId()));
+            }
         }
         return ApiResult.ok(order);
     }

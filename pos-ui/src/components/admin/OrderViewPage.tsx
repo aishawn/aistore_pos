@@ -39,6 +39,13 @@ interface OrderDetail {
   totalCost?: number;
   lineCount?: number;
   products?: OrderProduct[];
+  receivedBatches?: {
+    receiptId: number;
+    orderProductId: number;
+    batchCode: string;
+    expiryDate: string;
+    inventoryQuantity: number;
+  }[];
 }
 
 const STATUS_STYLES: Record<string, string> = {
@@ -261,6 +268,24 @@ export function OrderViewPage({ orderId }: { orderId: string }) {
                     </div>
                   )}
                 </section>
+                {!!order.receivedBatches?.length && (
+                  <section aria-labelledby="received-batches-heading" className="rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-4 sm:p-5">
+                    <h2 id="received-batches-heading" className="text-sm font-semibold">Received batches</h2>
+                    <ul className="mt-2 divide-y divide-[var(--oh-border)]">
+                      {order.receivedBatches.map((batch) => {
+                        const product = products.find((line) => String(line.id) === String(batch.orderProductId));
+                        return (
+                          <li key={JSON.stringify([batch.receiptId, batch.orderProductId, batch.batchCode])} className="flex flex-wrap justify-between gap-x-4 gap-y-1 py-2 text-sm">
+                            <span className="break-all font-medium">{batch.batchCode}</span>
+                            <span className="text-[var(--oh-text-secondary)]">
+                              Product {product?.productId ?? "—"} · Receipt {batch.receiptId} · Expires {formatAuDate(batch.expiryDate)} · {formatPurchaseQuantity(batch.inventoryQuantity, 1)}
+                            </span>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </section>
+                )}
                 <PurchaseReceiptPanel order={order} onReceived={reload} />
               </>
             )}
