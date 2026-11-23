@@ -44,6 +44,26 @@ class GroceryRecommendServiceTest {
     }
 
     @Test
+    void usesStoreCategoriesWhenNamesContainMisleadingWords() {
+        when(reports.listRecommendationProducts(tenant)).thenReturn(catalog(
+                row(1, "A&w Root Beer Bt 355ml", "SOFT DRINKS", "2.99", "22"),
+                row(2, "BEN&JERRYS DULCE DELISH SUNDALE 427ML", "ICE CONFEC", "14.99", "5"),
+                row(3, "BUNDY OP & COLA 6% 375ML", "premix", "9.99", "62"),
+                row(4, "BENTSPOKE BARLEY GRIFFIN 375ML", "BEER", "6.99", "34"),
+                row(5, "Remarkably Named Soda", null, "4.99", "6")));
+
+        assertEquals(List.of(4L), recommendationIds("beer"));
+        assertEquals(List.of(1L), recommendationIds("soft_drinks"));
+        assertEquals(List.of(3L), recommendationIds("spirits"));
+        assertEquals(List.of(2L), recommendationIds("snacks"));
+    }
+
+    private List<Long> recommendationIds(String category) {
+        return service.recommend(new GroceryRecommendRequest(category, null, null, null), tenant)
+                .recommendations().stream().map(GroceryRecommendCard::productId).toList();
+    }
+
+    @Test
     void returnsAnExplicitEmptyResultWhenNoInStockItemsMatch() {
         when(reports.listRecommendationProducts(tenant)).thenReturn(catalog(
                 row(1, "House Lager", "Beer", "12.00", "0")));

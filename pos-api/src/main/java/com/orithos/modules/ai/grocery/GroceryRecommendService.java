@@ -29,8 +29,7 @@ public class GroceryRecommendService {
         List<GroceryRecommendCard> candidates = new ArrayList<>();
         for (Map<String, Object> row : result.rows()) {
             String name = string(row.get("name"));
-            String sourceCategory = string(row.get("category"));
-            String category = categoryFor(name + " " + sourceCategory);
+            String category = categoryFor(string(row.get("category")));
             if (category == null || (!"not_sure".equals(profile.category())
                     && !profile.category().equals(category))) continue;
 
@@ -93,20 +92,18 @@ public class GroceryRecommendService {
         return picks;
     }
 
-    private static String categoryFor(String value) {
-        String text = value.toLowerCase(Locale.ROOT);
-        if (hasAny(text, "wine", "champagne", "葡萄酒", "红酒", "白葡萄酒", "香槟")) return null;
-        if (hasAny(text, "beer", "lager", "ale", "stout", "ipa", "cider", "啤酒")) return "beer";
-        if (hasAny(text, "vodka", "whisky", "whiskey", "gin", "rum", "tequila", "brandy", "spirit", "spirits", "liqueur",
-                "白酒", "威士忌", "伏特加", "金酒", "朗姆")) return "spirits";
-        if (hasAny(text, "snack", "chips", "crisps", "nuts", "cracker", "chocolate", "confection", "零食", "薯片")) return "snacks";
-        if (hasAny(text, "soft drink", "soft_drink", "soda", "cola", "water", "juice", "energy drink", "mixer", "饮料", "矿泉水")) return "soft_drinks";
-        return null;
-    }
-
-    private static boolean hasAny(String text, String... terms) {
-        for (String term : terms) if (text.contains(term)) return true;
-        return false;
+    private static String categoryFor(String sourceCategory) {
+        return switch (sourceCategory.toLowerCase(Locale.ROOT)) {
+            case "beer", "beers", "craft beer", "lager", "ale", "stout", "ipa", "cider", "啤酒" -> "beer";
+            case "spirits", "spirit", "premix", "premix spirits", "ready to drink", "rtd", "soju",
+                 "vodka", "whisky", "whiskey", "gin", "rum", "tequila", "brandy", "liqueur",
+                 "烈酒", "白酒", "威士忌", "伏特加", "金酒", "朗姆" -> "spirits";
+            case "soft drink", "soft drinks", "soft_drinks", "soda", "cola", "water", "juice",
+                 "energy drink", "energy drinks", "mixer", "mixers", "饮料", "矿泉水" -> "soft_drinks";
+            case "snack", "snacks", "nuts chips", "chips", "crisps", "nuts", "crackers", "chocolate",
+                 "biscuits", "confectionery", "confectionry", "ice confec", "零食", "薯片" -> "snacks";
+            default -> null;
+        };
     }
 
     private static String label(String category) {
