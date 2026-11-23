@@ -70,6 +70,7 @@ export function OrithosPurchaseOrdersPage({ embedded = false }: { embedded?: boo
   const [createOpen, setCreateOpen] = useState(false);
   const [receivingOrderId, setReceivingOrderId] = useState<string | number | null>(null);
   const [quantities, setQuantities] = useState<Record<string, string>>({});
+  const [batchesByLine, setBatchesByLine] = useState<Record<string, { id: string; code: string; expiryDate: string; quantity: string }[]>>({});
   const [receiveBusy, setReceiveBusy] = useState(false);
   const [receiveError, setReceiveError] = useState<string | null>(null);
   const receiptKey = useRef<string | null>(null);
@@ -102,8 +103,25 @@ export function OrithosPurchaseOrdersPage({ embedded = false }: { embedded?: boo
   }
 
   async function receiveOrder() {
+    const invalidBatch = Object.entries(batchesByLine).some(([id, batches]) => {
+      if (!batches.length) return false;
+      const quantity = Number(quantities[id]);
+      return !Number.isFinite(quantity)
+        || batches.some((batch) => !batch.code.trim() || !batch.expiryDate || !(Number(batch.quantity) > 0))
+        || Math.abs(batches.reduce((total, batch) => total + Number(batch.quantity), 0) - quantity) > 1e-8;
+    });
+    if (invalidBatch) {
+      setReceiveError("Enter each batch code and expiry date. Batch quantities must add up to the received quantity.");
+      return;
+    }
     const lines = (receivingOrder.data?.products ?? [])
-      .map((line) => ({ orderProductId: Number(line.id), quantity: Number(quantities[line.id] ?? 0) }))
+      .map((line) => ({
+        orderProductId: Number(line.id),
+        quantity: Number(quantities[line.id] ?? 0),
+        batches: (batchesByLine[line.id] ?? []).map(({ code, expiryDate, quantity }) => ({
+          code: code.trim(), expiryDate, quantity: Number(quantity),
+        })),
+      }))
       .filter((line) => Number.isFinite(line.quantity) && line.quantity > 0);
     if (!lines.length) {
       setReceiveError("Enter a quantity for at least one line.");
@@ -122,6 +140,7 @@ export function OrithosPurchaseOrdersPage({ embedded = false }: { embedded?: boo
       receiptKey.current = null;
       setReceivingOrderId(null);
       setQuantities({});
+      setBatchesByLine({});
       result.reload();
     } catch (cause) {
       setReceiveError(cause instanceof Error ? cause.message : "Receipt failed.");
@@ -300,6 +319,7 @@ export function OrithosPurchaseOrdersPage({ embedded = false }: { embedded?: boo
                               setReceivingOrderId(order.id);
                               setReceiveError(null);
                               setQuantities({});
+                              setBatchesByLine({});
                             }}
                             className="inline-flex min-h-9 items-center gap-1.5 font-semibold text-emerald-700 hover:underline"
                           >
@@ -354,10 +374,49 @@ export function OrithosPurchaseOrdersPage({ embedded = false }: { embedded?: boo
           {receivingOrder.data && <div className="space-y-3">
             {receivingLines.map((line) => {
               const outstanding = Number(line.orderedQuantity ?? 0) - Number(line.receivedQuantity ?? 0);
-              return <label key={line.id} className="grid grid-cols-[minmax(0,1fr)_120px] items-center gap-3 text-sm">
+              const batches = batchesByLine[line.id] ?? [];
+              return <div key={line.id} className="space-y-2 border-b border-[var(--oh-border)] pb-3">
+                <label className="grid grid-cols-[minmax(0,1fr)_120px] items-center gap-3 text-sm">
                 <span className="min-w-0"><span className="block truncate font-medium">{line.productName || `Product ${line.productId}`}</span><span className="text-xs text-[var(--oh-muted)]">Outstanding {formatPurchaseQuantity(outstanding, line.caseQuantity)}</span></span>
                 <input type="number" min="0" max={outstanding} step="0.0001" inputMode="decimal" aria-label={`Receive items for ${line.productName || line.productId}`} value={quantities[line.id] ?? ""} onChange={(event) => { receiptKey.current = null; setQuantities((current) => ({ ...current, [line.id]: event.target.value })); }} className="h-11 w-full rounded-md border border-[var(--oh-border)] px-3 text-right tabular-nums" />
-              </label>;
+                </label>
+                {batches.map((batch, index) => (
+                  <fieldset key={batch.id} disabled={receiveBusy} className="grid gap-2 rounded-md bg-[var(--oh-surface)] p-2 sm:grid-cols-3">
+                    <legend className="px-1 text-xs font-semibold">Batch {index + 1}</legend>
+                    {(["code", "expiryDate", "quantity"] as const).map((field) => (
+                      <label key={field} className="min-w-0 text-xs">
+                        {{ code: "Batch code", expiryDate: "Expiry date", quantity: "Received quantity" }[field]}
+                        <input
+                          type={{ code: "text", expiryDate: "date", quantity: "number" }[field]}
+                          maxLength={field === "code" ? 120 : undefined}
+                          step={field === "quantity" ? "0.0001" : undefined}
+                          className="mt-1 h-10 w-full rounded-md border border-[var(--oh-border)] px-2 text-sm"
+                          value={batch[field]}
+                          onChange={(event) => {
+                            receiptKey.current = null;
+                            const value = event.target.value;
+                            setBatchesByLine((current) => ({
+                              ...current,
+                              [line.id]: current[line.id].map((entry) => entry.id === batch.id ? { ...entry, [field]: value } : entry),
+                            }));
+                          }}
+                        />
+                      </label>
+                    ))}
+                    <button type="button" onClick={() => {
+                      receiptKey.current = null;
+                      setBatchesByLine((current) => ({
+                        ...current, [line.id]: current[line.id].filter((entry) => entry.id !== batch.id),
+                      }));
+                    }} className="justify-self-start px-1 py-2 text-xs font-semibold">Remove batch</button>
+                  </fieldset>
+                ))}
+                <button type="button" disabled={receiveBusy} onClick={() => {
+                  receiptKey.current = null;
+                  const batch = { id: crypto.randomUUID(), code: "", expiryDate: "", quantity: "" };
+                  setBatchesByLine((current) => ({ ...current, [line.id]: [...(current[line.id] ?? []), batch] }));
+                }} className="px-1 py-2 text-xs font-semibold text-[var(--oh-primary)]">Add batch and expiry</button>
+              </div>;
             })}
           </div>}
           {receiveError && <p role="alert" className="mt-4 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">{receiveError}</p>}

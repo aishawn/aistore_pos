@@ -125,6 +125,7 @@ public class OrderService {
             BigDecimal packSize = line.getCaseQuantity() == null ? BigDecimal.ONE : line.getCaseQuantity();
             if (packSize.signum() <= 0) throw new BusinessException("Purchase order case quantity is invalid.");
             BigDecimal inventoryQuantity = requested.quantity().multiply(packSize);
+            List<PurchaseReceiptRequest.Batch> batches = validatedReceiptBatches(requested);
 
             PurchaseReceiptLine receiptLine = new PurchaseReceiptLine();
             receiptLine.setReceiptId(receipt.getId());
@@ -135,6 +136,12 @@ public class OrderService {
             receiptLine.setUnitCost(line.getOrderedCost());
             if (orderMapper.insertReceiptLine(receiptLine) != 1 || receiptLine.getId() == null) {
                 throw new IllegalStateException("Purchase receipt line could not be recorded.");
+            }
+            for (var batch : batches) {
+                if (orderMapper.insertReceiptBatch(receiptLine.getId(), batch.code().trim(),
+                        batch.expiryDate(), batch.quantity().multiply(packSize)) != 1) {
+                    throw new IllegalStateException("Purchase receipt batch could not be recorded.");
+                }
             }
             if (productMapper.adjustInventory(line.getProductId(), order.getOutletId(), inventoryQuantity) != 1) {
                 throw new IllegalStateException("Inventory could not be updated for the purchase receipt.");
@@ -175,7 +182,14 @@ public class OrderService {
     static String receiptRequestHash(Long orderId, PurchaseReceiptRequest request) {
         String canonical = orderId + ":" + request.lines().stream()
                 .sorted(Comparator.comparing(line -> line == null ? null : line.orderProductId(), Comparator.nullsFirst(Long::compareTo)))
-                .map(line -> line == null ? "null" : line.orderProductId() + "=" + line.quantity())
+                .map(line -> {
+                    if (line == null) return "null";
+                    String batches = validatedReceiptBatches(line).stream()
+                            .map(batch -> java.util.HexFormat.of().formatHex(batch.code().trim().getBytes(StandardCharsets.UTF_8))
+                                    + ":" + batch.expiryDate() + ":" + batch.quantity().stripTrailingZeros().toPlainString())
+                            .sorted().collect(java.util.stream.Collectors.joining(","));
+                    return line.orderProductId() + "=" + line.quantity() + (batches.isEmpty() ? "" : "[" + batches + "]");
+                })
                 .reduce((left, right) -> left + ";" + right).orElse("");
         try {
             byte[] digest = MessageDigest.getInstance("SHA-256").digest(canonical.getBytes(StandardCharsets.UTF_8));
@@ -183,6 +197,25 @@ public class OrderService {
         } catch (NoSuchAlgorithmException e) {
             throw new IllegalStateException("SHA-256 is unavailable.", e);
         }
+    }
+
+    private static List<PurchaseReceiptRequest.Batch> validatedReceiptBatches(PurchaseReceiptRequest.Line line) {
+        List<PurchaseReceiptRequest.Batch> batches = line.batches();
+        if (batches == null || batches.isEmpty()) return List.of();
+        BigDecimal total = BigDecimal.ZERO;
+        Set<String> codes = new HashSet<>();
+        for (var batch : batches) {
+            if (batch == null || batch.code() == null || batch.code().isBlank() || batch.code().trim().length() > 120
+                    || batch.expiryDate() == null || batch.quantity() == null || batch.quantity().signum() <= 0
+                    || batch.quantity().scale() > 4 || !codes.add(batch.code().trim())) {
+                throw new BusinessException("Each batch needs a unique code, expiry date and positive quantity.");
+            }
+            total = total.add(batch.quantity());
+        }
+        if (line.quantity() == null || total.compareTo(line.quantity()) != 0) {
+            throw new BusinessException("Batch quantities must add up to the received line quantity.");
+        }
+        return batches;
     }
 
     private static String directReceiveRequestHash(CreateReceiveRequest request) {

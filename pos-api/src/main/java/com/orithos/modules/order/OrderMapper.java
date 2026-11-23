@@ -42,6 +42,14 @@ public interface OrderMapper {
             + "ON CONFLICT (vendor_id, idempotency_key) DO NOTHING")
     int insertReceipt(PurchaseReceipt receipt);
 
+    @Insert("""
+            INSERT INTO purchase_receipt_batch (receipt_line_id, batch_code, expiry_date, inventory_quantity)
+            VALUES (#{lineId}, #{code}, #{expiryDate}, #{quantity})
+            """)
+    int insertReceiptBatch(@Param("lineId") Long lineId, @Param("code") String code,
+                           @Param("expiryDate") java.time.LocalDate expiryDate,
+                           @Param("quantity") java.math.BigDecimal quantity);
+
     @Update("UPDATE purchase_receipt SET status=#{status} WHERE id=#{id} AND vendor_id=#{vendorId}")
     int updateReceiptEventStatus(@Param("id") Long id, @Param("vendorId") Long vendorId,
                                  @Param("status") String status);
