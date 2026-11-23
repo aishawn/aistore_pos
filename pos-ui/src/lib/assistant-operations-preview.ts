@@ -45,7 +45,7 @@ export function operationsPreviewIntent(question: string): OperationsPreview | n
 
 type Product = {
   productId: number; name: string; unit?: string; suggestedQuantity: number; daysOfStock?: number | null;
-  leadTimeDays?: number | null;
+  leadTimeDays?: number | null; caseQuantity?: number | null;
 };
 export function replenishmentExpectedArrivalDate(
   dataAsOf: string | null | undefined,
@@ -82,6 +82,17 @@ function replenishmentItemLabel(
     ? `建议 ${item.suggestedQuantity} ${item.unit === "units" ? "件" : item.unit ?? "件"}`
     : `suggested ${item.suggestedQuantity} ${item.unit ?? "units"}`;
   const parts = [`${item.name} — ${quantity}`];
+  if (finite(item.caseQuantity) && item.caseQuantity > 1) {
+    const cases = item.suggestedQuantity / item.caseQuantity;
+    const caseSize = new Intl.NumberFormat(chinese ? "zh-CN" : "en-AU", { maximumFractionDigits: 3 })
+      .format(item.caseQuantity);
+    if (Math.abs(cases - Math.round(cases)) < 0.000001) {
+      const caseCount = new Intl.NumberFormat(chinese ? "zh-CN" : "en-AU").format(Math.round(cases));
+      parts.push(chinese ? `${caseCount} 箱 × 每箱 ${caseSize} 件` : `${caseCount} cases x ${caseSize} units/case`);
+    } else {
+      parts.push(chinese ? `箱规每箱 ${caseSize} 件` : `case size ${caseSize} units`);
+    }
+  }
   if (finite(item.daysOfStock)) {
     const days = new Intl.NumberFormat(chinese ? "zh-CN" : "en-AU", { maximumFractionDigits: 1 })
       .format(item.daysOfStock);

@@ -86,6 +86,8 @@ public class ReplenishmentChatBrief {
             for (ReplenishmentSuggestion item : plan.top()) {
                 sb.append("\n• ").append(AssistantDisplayText.productName(item.name()))
                         .append(chinese ? " — 建议订购 " : " — order ").append(formatQty(item.suggestedQuantity()));
+                String pack = packDescription(item, chinese);
+                if (!pack.isEmpty()) sb.append(chinese ? "（" : " (").append(pack).append(chinese ? "）" : ")");
                 if (item.daysOfStock() != null) {
                     sb.append(chinese ? "（约剩 " : " (≈").append(formatDays(item.daysOfStock()))
                             .append(chinese ? " 天）" : "d left)");
@@ -227,6 +229,20 @@ public class ReplenishmentChatBrief {
             return String.valueOf((long) Math.rint(qty));
         }
         return String.format(java.util.Locale.ROOT, "%.1f", qty);
+    }
+
+    private static String packDescription(ReplenishmentSuggestion item, boolean chinese) {
+        Double caseQuantity = item.caseQuantity();
+        if (caseQuantity == null || !Double.isFinite(caseQuantity) || caseQuantity <= 1) return "";
+        double cases = item.suggestedQuantity() / caseQuantity;
+        if (Math.abs(cases - Math.rint(cases)) < 0.000001) {
+            return chinese
+                    ? formatQty(Math.rint(cases)) + " 箱，每箱 " + formatQty(caseQuantity) + " 件"
+                    : formatQty(Math.rint(cases)) + " cases of " + formatQty(caseQuantity) + " units";
+        }
+        return chinese
+                ? "箱规每箱 " + formatQty(caseQuantity) + " 件"
+                : "case size " + formatQty(caseQuantity) + " units";
     }
 
     private static String formatDays(double days) {

@@ -389,6 +389,18 @@ public class AiCommandService {
                 + BigDecimal.valueOf(item.unitsPerDay()).setScale(3, RoundingMode.HALF_UP).toPlainString()
                 + (chinese ? " 件/天；库存覆盖约 " : " units/day; stock cover ≈")
                 + daysOfStock + (chinese ? " 天" : " days");
+        if (item.caseQuantity() != null && Double.isFinite(item.caseQuantity()) && item.caseQuantity() > 1) {
+            double cases = item.suggestedQuantity() / item.caseQuantity();
+            if (Math.abs(cases - Math.rint(cases)) < 0.000001) {
+                reason += chinese
+                        ? "；采购包装 " + formatQuantity(item.caseQuantity()) + " 件/箱，共 " + (long) Math.rint(cases) + " 箱"
+                        : "; " + (long) Math.rint(cases) + " cases of " + formatQuantity(item.caseQuantity()) + " units";
+            } else {
+                reason += chinese
+                        ? "；箱规每箱 " + formatQuantity(item.caseQuantity()) + " 件"
+                        : "; case size " + formatQuantity(item.caseQuantity()) + " units";
+            }
+        }
         String before;
         if (item.forecastAvailable() == null) {
             before = daysOfStock + (chinese ? " 天库存" : " days cover");
@@ -406,6 +418,10 @@ public class AiCommandService {
         return new CommandItem(item.productId(), item.name(), "quantity", before,
                 BigDecimal.valueOf(item.suggestedQuantity()).stripTrailingZeros().toPlainString(),
                 reason, "READY");
+    }
+
+    private static String formatQuantity(double quantity) {
+        return BigDecimal.valueOf(quantity).stripTrailingZeros().toPlainString();
     }
 
     /**

@@ -459,6 +459,7 @@ class NativeReplenishmentServiceTest {
         var plan = new NativeReplenishmentService(jdbc, () -> now).plan(tenant(55L, 87L), 21);
 
         assertEquals(24d, plan.top().getFirst().suggestedQuantity());
+        assertEquals(6d, plan.top().getFirst().caseQuantity());
     }
 
     private static ResultSet replenishmentRow(long id, String name, Double onHand, boolean supplier)

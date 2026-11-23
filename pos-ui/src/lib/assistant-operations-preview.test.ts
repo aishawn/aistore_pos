@@ -1,6 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { ageOperationsPreviewSnapshot, clearOperationsPreviewSnapshots } from "./assistant-operations-snapshot-cache.ts";
+import {
+  ageOperationsPreviewSnapshot,
+  awaitOperationsPreviewInflight,
+  clearOperationsPreviewSnapshots,
+} from "./assistant-operations-snapshot-cache.ts";
 import {
   assistantRequestTimeoutMs,
   assistantTimeoutMessage,
@@ -11,7 +15,8 @@ import {
 import { storeWeekStart } from "./assistant-business-period.ts";
 
 const question = "Analyse low stock items and suggest what to reorder";
-test.beforeEach(() => {
+test.beforeEach(async () => {
+  await awaitOperationsPreviewInflight("replenishment");
   clearOperationsPreviewSnapshots();
 });
 test("complete replenishment reads have a bounded independent budget and actionable timeout", () => {
@@ -95,6 +100,36 @@ test("replenishment cards disclose an unknown arrival date when lead time is mis
     dataGapCount: 0, dataGaps: [], top: [{ productId: 501, name: "Beer", suggestedQuantity: 8 }],
   } }));
   assert.match(result?.cards?.[0].items?.[0].label ?? "", /supplier lead time not recorded; arrival date unknown/);
+});
+
+test("replenishment cards show case quantities when the suggestion matches a known case pack", async () => {
+  const result = await readOperationsPreview(question, null, undefined, mockFetch({ data: {
+    dataSource: "orithos_ledger", storeScope: "current_authenticated_store",
+    reportPeriodFrom: "2026-10-01", reportPeriodTo: "2026-11-13",
+    reportTimeZone: "Australia/Melbourne", reportDataStatus: "available",
+    dataAsOf: "2026-11-13T01:00:00Z", coverageDays: 21, itemsNeedingOrder: 1,
+    dataGapCount: 0, dataGaps: [],
+    top: [{ productId: 501, name: "Beer", suggestedQuantity: 24, caseQuantity: 6 }],
+  } }));
+  assert.match(result?.cards?.[0].items?.[0].label ?? "", /4 cases x 6 units\/case/);
+});
+
+test("replenishment cards do not invent case counts for invalid or non-matching packs", async () => {
+  for (const caseQuantity of [0, 6]) {
+    await awaitOperationsPreviewInflight("replenishment");
+    clearOperationsPreviewSnapshots();
+    const result = await readOperationsPreview(question, null, undefined, mockFetch({ data: {
+      dataSource: "orithos_ledger", storeScope: "current_authenticated_store",
+      reportPeriodFrom: "2026-10-01", reportPeriodTo: "2026-11-13",
+      reportTimeZone: "Australia/Melbourne", reportDataStatus: "available",
+      dataAsOf: null, coverageDays: 21, itemsNeedingOrder: 1,
+      dataGapCount: 0, dataGaps: [],
+      top: [{ productId: 501, name: "Beer", suggestedQuantity: 8, caseQuantity }],
+    } }));
+    const label = result?.cards?.[0].items?.[0].label ?? "";
+    assert.doesNotMatch(label, /cases x/);
+    if (caseQuantity === 6) assert.match(label, /case size 6 units/);
+  }
 });
 
 test("replenishment cards disclose an unknown arrival date when the data timestamp is missing", async () => {

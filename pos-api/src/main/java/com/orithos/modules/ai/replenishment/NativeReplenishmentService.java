@@ -221,7 +221,8 @@ public class NativeReplenishmentService {
                 continue;
             }
             suggestions.add(new ReplenishmentSuggestion(row.id(), row.name(), "units", quantity,
-                    Math.max(0d, row.onHand()) / demand, demand, row.onHand(), available, row.leadTimeDays()));
+                    Math.max(0d, row.onHand()) / demand, demand, row.onHand(), available,
+                    row.leadTimeDays(), row.caseQuantity() > 0 ? row.caseQuantity() : null));
         }
         suggestions.sort(Comparator
                 .comparing(ReplenishmentSuggestion::daysOfStock, Comparator.nullsLast(Comparator.naturalOrder()))

@@ -33,13 +33,14 @@ class ReplenishmentChatBriefTest {
                 21,
                 5,
                 List.of(
-                        new ReplenishmentSuggestion(1, "VB Cans", "Units", 24, 3.0, 2.0),
+                        new ReplenishmentSuggestion(1, "VB Cans", "Units", 24, 3.0, 2.0,
+                                3d, 3d, null, 6d),
                         new ReplenishmentSuggestion(2, "Shiraz", "Units", 12, 5.0, 1.0))));
 
         String text = new ReplenishmentChatBrief(client).brief("What should I restock?", tenant);
 
         assertTrue(text.contains("Top restock suggestions (21d cover): 5 items need order."));
-        assertTrue(text.contains("\n• VB Cans — order 24 (≈3.0d left)"));
+        assertTrue(text.contains("\n• VB Cans — order 24 (4 cases of 6 units) (≈3.0d left)"));
         assertTrue(text.contains("\n• Shiraz — order 12"));
         assertTrue(text.contains("\n\nTap below to review quantities"));
         assertFalse(text.contains("Opening the requested workflow"));
@@ -50,12 +51,13 @@ class ReplenishmentChatBriefTest {
         NativeReplenishmentService client = mock(NativeReplenishmentService.class);
         TenantContext tenant = new TenantContext(1L, 1L, 1L, List.of(1L), Set.of("ROLE_ADMIN"));
         when(client.plan(tenant)).thenReturn(new ReplenishmentPlan(
-                21, 5, List.of(new ReplenishmentSuggestion(1, "Shiraz", "Units", 12, 5.0, 1.0))));
+                21, 5, List.of(new ReplenishmentSuggestion(1, "Shiraz", "Units", 12, 5.0, 1.0,
+                        4d, 4d, null, 6d))));
 
         String text = new ReplenishmentChatBrief(client).brief("哪些商品需要补货？", tenant);
 
         assertTrue(text.contains("建议补货（覆盖 21 天）：5 个商品需要补货。"));
-        assertTrue(text.contains("\n• Shiraz — 建议订购 12（约剩 5.0 天）"));
+        assertTrue(text.contains("\n• Shiraz — 建议订购 12（2 箱，每箱 6 件）（约剩 5.0 天）"));
         assertTrue(text.contains("数据来源：Orithos 库存与销售账本；账本最新可用数据时间：未知。"));
         assertTrue(text.contains("打开补货页面审核数量并确认订单。"));
     }

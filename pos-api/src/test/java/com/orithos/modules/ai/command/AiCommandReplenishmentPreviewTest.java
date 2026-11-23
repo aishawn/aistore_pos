@@ -16,7 +16,8 @@ class AiCommandReplenishmentPreviewTest {
     @Test
     void previewShowsReadOnlyQuantityAndCoverageEvidence() {
         ReplenishmentPlan plan = new ReplenishmentPlan(21, 1,
-                List.of(new ReplenishmentSuggestion(123, "VB Cans", "Units", 19, 3.0, 1.0, 2.0, 3.0)),
+                List.of(new ReplenishmentSuggestion(123, "VB Cans", "Units", 24, 3.0, 1.0,
+                        2.0, 3.0, null, 6d)),
                 "VALID", List.of(), Instant.parse("2026-11-01T00:00:00Z"));
 
         AiCommandService.Parsed parsed = AiCommandService.replenishmentPreview("给 VB Cans 补货", plan);
@@ -26,8 +27,9 @@ class AiCommandReplenishmentPreviewTest {
         assertEquals(123L, parsed.items().getFirst().id());
         assertEquals("quantity", parsed.items().getFirst().field());
         assertEquals("现有 2 Units；预计可用 3 Units；约 3.0 天覆盖", parsed.items().getFirst().before());
-        assertEquals("19", parsed.items().getFirst().after());
+        assertEquals("24", parsed.items().getFirst().after());
         assertTrue(parsed.items().getFirst().reason().contains("日均销量 1.000 件/天"));
+        assertTrue(parsed.items().getFirst().reason().contains("4 箱"));
         assertTrue(parsed.summary().contains("数据时间 2026-11-01T00:00:00Z"));
         assertTrue(parsed.changes().containsKey("request"));
         assertTrue(parsed.excluded().isEmpty());
