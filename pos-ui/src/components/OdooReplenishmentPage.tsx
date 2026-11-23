@@ -1,6 +1,7 @@
 "use client";
 
-import { positivePurchaseLines } from "@/lib/purchase-quantity";
+import { formatPurchaseQuantity, positivePurchaseLines } from "@/lib/purchase-quantity";
+import { draftSupplierId } from "@/lib/purchase-draft-policy";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
@@ -41,6 +42,10 @@ type ReplenishmentProduct = {
   trendPercent: number | null;
   trend: "new" | "up" | "down" | "steady" | null;
   onHand: number;
+  onOrder?: number;
+  caseQuantity?: number | null;
+  supplierId?: number | null;
+  supplierName?: string | null;
   forecastStock: number;
   daysOfStock: number | null;
   daysOfStockAfterReplenishment?: number | null;
@@ -132,7 +137,7 @@ const coverageOptions = [7, 14, 21, 28, 42];
 const number = new Intl.NumberFormat("en-AU", { maximumFractionDigits: 1 });
 const MAX_RFQ_LINES = 100;
 const MAX_RFQ_QUANTITY = 100_000;
-const REPLENISHMENT_CACHE_PREFIX = "orithos-replenishment-cache-v2:";
+const REPLENISHMENT_CACHE_PREFIX = "orithos-replenishment-cache-v3:";
 const REPLENISHMENT_CACHE_MAX_AGE_MS = 48 * 60 * 60 * 1000;
 
 function compareRfqPriority(a: ReplenishmentProduct, b: ReplenishmentProduct) {
@@ -144,16 +149,8 @@ function compareRfqPriority(a: ReplenishmentProduct, b: ReplenishmentProduct) {
   return a.id - b.id;
 }
 
-function defaultRfqSelectionIds(products: ReplenishmentProduct[]) {
-  return products
-    .filter((product) => product.suggestedQuantity > 0 && product.recommendationStatus === "READY")
-    .sort(compareRfqPriority)
-    .slice(0, MAX_RFQ_LINES)
-    .map((product) => product.id);
-}
-
 function isRfqReady(product: ReplenishmentProduct) {
-  return product.suggestedQuantity > 0 && product.recommendationStatus === "READY";
+  return product.supplierId != null && product.suggestedQuantity > 0 && product.recommendationStatus === "READY";
 }
 
 function riskLabel(risk: ReplenishmentProduct["risk"]) {
@@ -206,6 +203,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
   const [data, setData] = useState<ReplenishmentData | null>(null);
   const [coverageDays, setCoverageDays] = useState(21);
   const [exceptionOnly, setExceptionOnly] = useState(false);
+  const [supplierFilter, setSupplierFilter] = useState("");
   const [listFilter, setListFilter] = useState<ListFilter>("suggestions");
   const [query, setQuery] = useState("");
   const [showMoreColumns, setShowMoreColumns] = useState(false);
@@ -252,6 +250,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
     previousBrowserIdentity.current = browserIdentity;
     autoRefreshGeneration.current = null;
     setData(null);
+    setSupplierFilter("");
     setSelectedIds(new Set());
     setLoading(true);
   }, [browserIdentity]);
@@ -272,7 +271,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
       const generatedAt = Date.parse(cached.data.generatedAt);
       if (!Number.isFinite(generatedAt) || Date.now() - generatedAt > REPLENISHMENT_CACHE_MAX_AGE_MS) return;
       setData(cached.data);
-      setSelectedIds(new Set(defaultRfqSelectionIds(cached.data.products)));
+      setSelectedIds(new Set());
       setLoading(false);
     } catch { /* Ignore malformed browser cache and fetch a fresh plan. */ }
   }, [authReady, cacheKey, user]);
@@ -300,7 +299,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
       setData(payload);
       setStoreTimezone(payload.salesHistory?.timezone ?? "Australia/Adelaide");
       try { window.localStorage.setItem(cacheKey, JSON.stringify({ savedAt: Date.now(), data: payload })); } catch { /* Storage is optional. */ }
-      setSelectedIds(new Set(defaultRfqSelectionIds(payload.products)));
+      setSelectedIds(new Set());
     } catch (cause) {
       if (revision === requestRevision.current) {
       setError(cause instanceof DOMException && cause.name === "AbortError"
@@ -354,8 +353,19 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
   ).length;
   const hasRecentSales = data?.products.some((product) => product.soldUnits > 0) ?? false;
 
+  const supplierGroups = useMemo(() => {
+    const groups = new Map<number, string>();
+    for (const product of data?.products ?? []) {
+      if (product.supplierId != null && product.supplierName) groups.set(product.supplierId, product.supplierName);
+    }
+    return [...groups.entries()].sort((left, right) => left[1].localeCompare(right[1], "en-AU"));
+  }, [data]);
+
   const filteredItems = useMemo(() => {
-    const base = data?.products ?? [];
+    const products = data?.products ?? [];
+    const base = supplierFilter
+      ? products.filter((product) => String(product.supplierId) === supplierFilter)
+      : products;
     const byFilter = listFilter === "suggestions"
       ? base.filter((product) => product.suggestedQuantity > 0 && product.recommendationStatus === "READY")
       : listFilter === "urgent"
@@ -378,9 +388,9 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
         || product.name.toLowerCase().includes(normalized)
         || product.sku.toLowerCase().includes(normalized);
     });
-  }, [data, listFilter, query]);
+  }, [data, listFilter, query, supplierFilter, coverageDays]);
 
-  const pageKey = `${data?.generatedAt ?? ""}|${listFilter}|${query}`;
+  const pageKey = `${data?.generatedAt ?? ""}|${listFilter}|${supplierFilter}|${query}`;
   const pageCount = Math.max(1, Math.ceil(filteredItems.length / 100));
   const currentPage = pagination.key === pageKey ? Math.min(pagination.page, pageCount) : 1;
   const pageItems = useMemo(() => filteredItems.slice((currentPage - 1) * 100, currentPage * 100), [filteredItems, currentPage]);
@@ -395,7 +405,8 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
   const planCoverageDays = data?.coverageDays ?? coverageDays;
   const planReady = Boolean(data) && !loading && !refreshing && !error && data?.coverageDays === coverageDays;
   const draftRfqEnabled = data?.purchaseWorkflow?.draftEnabled === true;
-  const canCreateRfq = draftRfqEnabled && planReady && selectedSuggested.length > 0;
+  const selectedSupplierId = draftSupplierId(selectedSuggested);
+  const canCreateRfq = draftRfqEnabled && planReady && selectedSupplierId != null;
 
   const visibleSelectableIds = useMemo(
     () => pageItems.filter(isRfqReady).map((product) => product.id),
@@ -442,7 +453,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
   }
 
   function openRfqDialog() {
-    if (!canCreateRfq) return;
+    if (!canCreateRfq || selectedSupplierId == null) return;
     rfqRequestId.current = crypto.randomUUID();
     const lines = [...selectedSuggested].sort(compareRfqPriority).slice(0, MAX_RFQ_LINES).map((product) => ({
       productId: product.id,
@@ -458,10 +469,10 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
     setRfqError(null);
     setCreatedRfq(null);
     setRfqOpen(true);
-    void loadRfqSuppliers();
+    void loadRfqSuppliers(selectedSupplierId);
   }
 
-  async function loadRfqSuppliers() {
+  async function loadRfqSuppliers(supplierId: number) {
     const revision = ++rfqSupplierRevision.current;
     setRfqLoadingSuppliers(true);
     setRfqSupplierError(null);
@@ -470,8 +481,10 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
     try {
       const suppliers = await getRetailSuppliers();
       if (revision !== rfqSupplierRevision.current) return;
-      setRfqSuppliers(suppliers);
-      if (suppliers.length === 1) setRfqSupplierId(String(suppliers[0].id));
+      const matched = suppliers.filter((supplier) => supplier.id === supplierId);
+      setRfqSuppliers(matched);
+      if (matched.length) setRfqSupplierId(String(supplierId));
+      else setRfqSupplierError("The mapped supplier is unavailable in the current store.");
     } catch (cause) {
       if (revision === rfqSupplierRevision.current) {
         setRfqSupplierError(cause instanceof Error ? cause.message : "Could not load Orithos suppliers.");
@@ -485,7 +498,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
     event.preventDefault();
     if (rfqInFlight.current) return;
     const supplierId = Number(rfqSupplierId);
-    if (!Number.isSafeInteger(supplierId) || supplierId < 1) {
+    if (!Number.isSafeInteger(supplierId) || supplierId < 1 || supplierId !== selectedSupplierId) {
       setRfqError("Choose a supplier for this draft RFQ.");
       return;
     }
@@ -739,6 +752,9 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
               {selectedSuggested.length > 0 ? ` · ${number.format(selectedSuggested.length)} selected` : ""}
               {rfqSelectionTrimmed ? ` · draft uses top ${MAX_RFQ_LINES} by priority` : draftRfqEnabled ? ` · up to ${MAX_RFQ_LINES} per draft` : ""}
             </p>
+            {selectedSuggested.length > 0 && selectedSupplierId == null && (
+              <p className="mt-1 text-xs text-amber-800">Select products from one supplier for this draft RFQ.</p>
+            )}
             {rfqSelectionTrimmed && (
               <p className="mt-1 text-xs text-amber-800">Only the highest-priority {MAX_RFQ_LINES} lines go into one draft RFQ. Deselect lines or run another draft for the rest.</p>
             )}
@@ -759,6 +775,18 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
                 </button>
               ) : null}
             </label>
+            <select
+                value={supplierFilter}
+                onChange={(event) => {
+                  setSupplierFilter(event.target.value);
+                  setSelectedIds(new Set());
+                }}
+                aria-label="Filter by supplier"
+                className="h-10 w-full rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm text-[var(--oh-text)] lg:w-[200px] lg:flex-none"
+              >
+                <option value="">All suppliers</option>
+                {supplierGroups.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
+              </select>
             <select
                 value={listFilter}
                 onChange={(event) => setListFilter(event.target.value as ListFilter)}
@@ -832,7 +860,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <h3 className="break-words font-semibold leading-5 text-[var(--oh-text)]" title={product.name}>{label}</h3>
-                        <p className="mt-1 text-xs text-[var(--oh-muted)]">{skuShort ? <span title={product.sku || undefined}>SKU {skuShort} · </span> : ""}{product.unit}</p>
+                        <p className="mt-1 text-xs text-[var(--oh-muted)]">{skuShort ? <span title={product.sku || undefined}>SKU {skuShort} · </span> : ""}{product.unit}{product.supplierName ? " · " + product.supplierName : ""}</p>
                         <div className="mt-2 flex flex-wrap gap-1.5">
                           <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${riskClass(product.risk)}`}>{riskLabel(product.risk)}</span>
                           {product.attentionLevel && <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${attentionClass(product.attentionLevel)}`} title={product.attentionReasons?.join(", ")}>{attentionLabel(product.attentionLevel)}</span>}
@@ -840,7 +868,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
                         </div>
                       </div>
                       {product.suggestedQuantity > 0
-                        ? <span className="shrink-0 rounded-full bg-[var(--oh-orange-light)] px-2.5 py-1 text-xs font-bold tabular-nums text-[var(--oh-orange-dark)]">Order {number.format(product.suggestedQuantity)} {product.unit}</span>
+                        ? <span className="shrink-0 rounded-full bg-[var(--oh-orange-light)] px-2.5 py-1 text-xs font-bold tabular-nums text-[var(--oh-orange-dark)]">Order {formatPurchaseQuantity(product.suggestedQuantity, product.caseQuantity)}</span>
                         : <span className="shrink-0 rounded-full bg-[var(--oh-surface)] px-2.5 py-1 text-xs font-medium text-[var(--oh-muted)]">{product.recommendationStatus === "REVIEW_DATA" ? "Review data" : "No order"}</span>}
                     </div>
                     <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 rounded-md bg-[var(--oh-surface)] p-3 text-sm">
@@ -849,7 +877,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
                       {showMoreColumns && (
                         <>
                           <Metric label="Forecast / day" value={number.format(product.unitsPerDay)} />
-                          <Metric label="Forecast stock" value={number.format(product.forecastStock)} />
+                          <Metric label="On order" value={product.onOrder == null ? "—" : number.format(product.onOrder)} />
                           <Metric label="Stock cover" value={product.daysOfStock === null ? "—" : `${number.format(product.daysOfStock)} days`} />
                           <Metric label="After suggested order" value={product.daysOfStockAfterReplenishment === null || product.daysOfStockAfterReplenishment === undefined ? "—" : `${number.format(product.daysOfStockAfterReplenishment)} days`} />
                           <Metric label="Supplier lead time" value={product.leadTimeDays === null || product.leadTimeDays === undefined ? "Unknown" : `${number.format(product.leadTimeDays)} days`} />
@@ -919,7 +947,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
                 <th scope="col" className="px-4 py-3 text-right">On hand</th>
                 {showMoreColumns && (
                   <>
-                    <th scope="col" className="px-4 py-3 text-right">Forecast stock</th>
+                    <th scope="col" className="px-4 py-3 text-right">On order</th>
                     <th scope="col" className="px-4 py-3 text-right">Stock cover</th>
                   </>
                 )}
@@ -964,7 +992,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
                     </td>
                     <td className="px-4 py-2.5 align-top">
                       <span className="block font-medium leading-snug text-[var(--oh-text)]" title={product.name}>{label}</span>
-                      <span className="mt-0.5 block text-xs text-[var(--oh-muted)]">{skuShort ? <span title={product.sku || undefined}>SKU {skuShort} · </span> : ""}{product.unit}</span>
+                      <span className="mt-0.5 block text-xs text-[var(--oh-muted)]">{skuShort ? <span title={product.sku || undefined}>SKU {skuShort} · </span> : ""}{product.unit}{product.supplierName ? " · " + product.supplierName : ""}</span>
                       <div className="mt-1.5 flex flex-wrap gap-1">
                         <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold leading-tight ${riskClass(product.risk)}`}>{riskLabel(product.risk)}</span>
                         {product.attentionLevel && product.attentionLevel !== "LOW" && (
@@ -982,13 +1010,13 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
                     <td className={`px-4 py-3 text-right tabular-nums ${product.onHand <= 0 && product.soldUnits > 0 ? "font-semibold text-red-700" : "text-[var(--oh-text-secondary)]"}`}>{number.format(product.onHand)}</td>
                     {showMoreColumns && (
                       <>
-                        <td className="px-4 py-3 text-right tabular-nums text-[var(--oh-text-secondary)]" title="Orithos forecast quantity includes scheduled incoming and outgoing stock moves">{number.format(product.forecastStock)}</td>
+                        <td className="px-4 py-3 text-right tabular-nums text-[var(--oh-text-secondary)]" title="Units recorded as on order">{product.onOrder == null ? "—" : number.format(product.onOrder)}</td>
                         <td className="px-4 py-3 text-right tabular-nums text-[var(--oh-text-secondary)]">{product.daysOfStock === null ? "—" : `${number.format(product.daysOfStock)} days`}</td>
                       </>
                     )}
                     <td className="px-4 py-3 text-right">
                       {product.suggestedQuantity > 0
-                        ? <span className="inline-flex min-w-16 justify-center rounded-full bg-[var(--oh-orange-light)] px-2.5 py-1 text-xs font-bold tabular-nums text-[var(--oh-orange-dark)]">{number.format(product.suggestedQuantity)} {product.unit}</span>
+                        ? <span className="inline-flex min-w-16 justify-center rounded-full bg-[var(--oh-orange-light)] px-2.5 py-1 text-xs font-bold tabular-nums text-[var(--oh-orange-dark)]">{formatPurchaseQuantity(product.suggestedQuantity, product.caseQuantity)}</span>
                         : <span className="text-xs text-[var(--oh-muted)]">{product.recommendationStatus === "REVIEW_DATA" ? "Review data" : "No order"}</span>}
                     </td>
                     <td className="px-4 py-3 text-xs text-[var(--oh-muted)]">
@@ -1086,7 +1114,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
               {data?.forecast?.enabled
                 ? "Products with enough history are assigned a model using rolling backtests; intermittent products can use Croston or TSB, while short histories remain explicitly marked as insufficient and use the transparent rules fallback. The forecast interval shown in each row is a demand range, not a guarantee. "
                 : `Forecast daily demand combines the most recent ${data?.periodDays ?? 28} days (70%) with the previous ${data?.periodDays ?? 28} days (30%); if one period has no sales, the other period is used. `}
-              Suggested order = max(0, forecast demand × the larger of {planCoverageDays} days or supplier lead time − forecast stock), rounded up to a whole unit. “After suggested order” shows the estimated stock cover after adding that quantity. Forecast stock comes from Orithos and includes scheduled incoming and outgoing stock moves, helping avoid ordering units already on the way. Missing supplier lead time falls back to the coverage target. This estimate does not account for pack sizes, holidays or store-specific events. Use Explain on each row for the exact inputs behind a suggestion.
+              Suggested order uses weighted sales demand over {planCoverageDays} days, less units on hand and on order. A positive suggestion is raised to the supplier’s minimum quantity and rounded up to a full case when the pack size is known. Stock cover estimates how long shelf stock will last using recent demand. Use Explain for the inputs behind each suggestion.
             </p>
             <footer className="mt-5 flex justify-end">
               <button type="button" onClick={() => setMethodOpen(false)} className="min-h-11 rounded-md border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Close</button>
@@ -1109,7 +1137,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
                   {rfqSuppliers.map((supplier) => <option key={supplier.id} value={supplier.id}>{supplier.name}{supplier.email ? ` · ${supplier.email}` : ""}</option>)}
                 </select>
               </label>
-              {rfqSupplierError && <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-900"><span>{rfqSupplierError}</span><button type="button" onClick={() => void loadRfqSuppliers()} disabled={rfqLoadingSuppliers} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-red-300 bg-white px-3 font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700 disabled:opacity-60"><RefreshCw size={15} /> Retry suppliers</button></div>}
+              {rfqSupplierError && <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-900"><span>{rfqSupplierError}</span><button type="button" onClick={() => { if (selectedSupplierId != null) void loadRfqSuppliers(selectedSupplierId); }} disabled={rfqLoadingSuppliers} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-red-300 bg-white px-3 font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700 disabled:opacity-60"><RefreshCw size={15} /> Retry suppliers</button></div>}
               <div className="overflow-hidden rounded-lg border border-[var(--oh-border)]">
                 <div className="flex flex-wrap items-center justify-between gap-2 bg-[#f7f8f8] px-3 py-2 text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]"><span>Selected products</span><span>{selectedRfqLines.length} with quantity</span></div>
                 <div className="max-h-[38dvh] divide-y divide-[var(--oh-border)] overflow-y-auto">

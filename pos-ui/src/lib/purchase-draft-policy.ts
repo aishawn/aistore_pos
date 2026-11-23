@@ -13,3 +13,8 @@ export function isPurchaseDraftEnabled(hostname: string | null | undefined): boo
     .filter(Boolean);
   return allowedHosts.includes(host);
 }
+
+export function draftSupplierId(lines: readonly { supplierId?: number | null }[]): number | null {
+  const supplierId = lines[0]?.supplierId;
+  return supplierId != null && lines.every((line) => line.supplierId === supplierId) ? supplierId : null;
+}

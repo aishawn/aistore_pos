@@ -19,3 +19,11 @@ test("draft RFQs stay disabled unless both the feature and host allowlist are en
     if (oldHosts === undefined) delete process.env.AI_PURCHASE_DRAFT_ALLOWED_HOSTS; else process.env.AI_PURCHASE_DRAFT_ALLOWED_HOSTS = oldHosts;
   }
 });
+
+test("draft lines stay in one mapped supplier group", async () => {
+  const policy = await import("./purchase-draft-policy.ts");
+  assert.equal(policy.draftSupplierId([{ supplierId: 5 }, { supplierId: 5 }]), 5);
+  assert.equal(policy.draftSupplierId([{ supplierId: 5 }, { supplierId: 7 }]), null);
+  assert.equal(policy.draftSupplierId([{ supplierId: 5 }, { supplierId: null }]), null);
+  assert.equal(policy.draftSupplierId([]), null);
+});

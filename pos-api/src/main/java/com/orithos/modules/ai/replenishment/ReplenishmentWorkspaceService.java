@@ -85,15 +85,28 @@ public class ReplenishmentWorkspaceService {
                        END AS unit_cost,
                        (SELECT MIN(pp.price) FROM product_price pp
                         WHERE pp.product_id = p.id AND pp.outlet_id = p.outlet_id) AS unit_price,
-                       EXISTS (SELECT 1 FROM product_supplier ps
-                               WHERE ps.product_id = p.id AND ps.outlet_id = p.outlet_id) AS has_supplier,
+                       chosen.id AS supplier_id, chosen.name AS supplier_name,
+                       links.link_count AS supplier_link_count,
                        COALESCE((SELECT MAX(ps.minimum_order_quantity) FROM product_supplier ps
-                                 WHERE ps.product_id = p.id AND ps.outlet_id = p.outlet_id), 1) AS minimum_order
+                                 WHERE ps.product_id = p.id AND ps.outlet_id = p.outlet_id
+                                   AND ps.supplier_id = chosen.id), 1) AS minimum_order
                 FROM product p
                 LEFT JOIN product_inventory pi ON pi.product_id = p.id AND pi.outlet_id = p.outlet_id
                 LEFT JOIN product_cost pc ON pc.product_id = p.id AND pc.outlet_id = p.outlet_id
                 LEFT JOIN sales s ON s.product_id = p.id
                 LEFT JOIN barcode b ON b.product_id = p.id
+                LEFT JOIN LATERAL (
+                    SELECT COUNT(DISTINCT ps.supplier_id) AS link_count, MIN(ps.supplier_id) AS only_id
+                    FROM product_supplier ps
+                    JOIN supplier linked ON linked.id = ps.supplier_id
+                        AND linked.outlet_id = ps.outlet_id AND linked.deleted_at IS NULL
+                    WHERE ps.product_id = p.id AND ps.outlet_id = p.outlet_id
+                ) links ON TRUE
+                LEFT JOIN supplier core ON core.id = p.core_supplier_id
+                    AND core.outlet_id = p.outlet_id AND core.deleted_at IS NULL
+                LEFT JOIN supplier chosen ON chosen.id = COALESCE(
+                    core.id, CASE WHEN links.link_count = 1 THEN links.only_id END)
+                    AND chosen.outlet_id = p.outlet_id AND chosen.deleted_at IS NULL
                 WHERE p.outlet_id = ? AND p.deleted_at IS NULL AND p.status = 'ACTIVE'
                   AND p.track_inventory = 1
                 ORDER BY p.name, p.id
@@ -135,8 +148,12 @@ public class ReplenishmentWorkspaceService {
         }
 
         products.sort(Comparator
-                .comparingDouble(ReplenishmentWorkspaceView.ReplenishmentWorkspaceProduct::suggestedQuantity).reversed()
-                .thenComparing(ReplenishmentWorkspaceView.ReplenishmentWorkspaceProduct::name));
+                .comparing(ReplenishmentWorkspaceView.ReplenishmentWorkspaceProduct::daysOfStock,
+                        Comparator.nullsLast(Comparator.naturalOrder()))
+                .thenComparing(Comparator.comparingDouble(
+                        ReplenishmentWorkspaceView.ReplenishmentWorkspaceProduct::unitsPerDay).reversed())
+                .thenComparing(ReplenishmentWorkspaceView.ReplenishmentWorkspaceProduct::name)
+                .thenComparingLong(ReplenishmentWorkspaceView.ReplenishmentWorkspaceProduct::id));
 
         return new ReplenishmentWorkspaceView(
                 company,
@@ -194,7 +211,9 @@ public class ReplenishmentWorkspaceService {
         String status = "READY";
         String reason;
         if (onHand < 0) dataIssues.add("NEGATIVE_STOCK");
-        if (!row.hasSupplier()) dataIssues.add("SUPPLIER_MISSING");
+        if (row.supplierId() == null) {
+            dataIssues.add(row.supplierLinkCount() > 1 ? "SUPPLIER_SELECTION_REQUIRED" : "SUPPLIER_MISSING");
+        }
         if (row.unitCost() == null || row.unitCost() <= 0) dataIssues.add("REVIEW_COST_PRICE");
 
         boolean inventoryRepairOnly = demand <= 0 && onHand < 0 && quantity > 0;
@@ -215,11 +234,12 @@ public class ReplenishmentWorkspaceService {
             reason = buildReason(demand, cover, lead, onHand, row.onOrder(), quantity);
         }
 
-        if (!row.hasSupplier()) {
+        if (row.supplierId() == null) {
             status = "REVIEW_DATA";
             quantity = 0;
-        } else if (onHand == null) {
-            return null;
+            reason = row.supplierLinkCount() > 1
+                    ? "Choose a primary supplier before drafting an order."
+                    : "Link a supplier before drafting an order.";
         }
 
         String trend = trend(row.recentUnits(), row.previousUnits());
@@ -240,7 +260,7 @@ public class ReplenishmentWorkspaceService {
                 trend,
                 onHand,
                 forecastStock,
-                demand > 0 ? available / demand : null,
+                demand > 0 ? Math.max(0d, onHand) / demand : null,
                 status,
                 List.copyOf(dataIssues),
                 quantity,
@@ -251,7 +271,8 @@ public class ReplenishmentWorkspaceService {
                 row.unitPrice(),
                 risk,
                 attentionLevel,
-                List.copyOf(dataIssues));
+                List.copyOf(dataIssues), row.supplierId(), row.supplierName(),
+                row.caseQuantity() > 0 ? row.caseQuantity() : null, row.onOrder());
     }
 
     private static String buildReason(double demand, int cover, int lead, double onHand, double onOrder, double quantity) {
@@ -339,7 +360,8 @@ public class ReplenishmentWorkspaceService {
                 rs.getDouble("previous_units"),
                 asDouble(rs.getObject("unit_cost")),
                 asDouble(rs.getObject("unit_price")),
-                rs.getBoolean("has_supplier"),
+                rs.getObject("supplier_id", Long.class), rs.getString("supplier_name"),
+                rs.getLong("supplier_link_count"),
                 rs.getDouble("minimum_order"));
     }
 
@@ -355,7 +377,7 @@ public class ReplenishmentWorkspaceService {
 
     private record Row(long id, String name, String sku, double caseQuantity, Double onHand, double onOrder,
                        Instant inventoryUpdatedAt, double sold7d, double recentUnits, double previousUnits,
-                       Double unitCost, Double unitPrice, boolean hasSupplier, double minimumOrder) { }
+                       Double unitCost, Double unitPrice, Long supplierId, String supplierName, long supplierLinkCount, double minimumOrder) { }
 
     private record InventoryMeta(ReplenishmentWorkspaceView.InventoryHistory history) { }
 }
