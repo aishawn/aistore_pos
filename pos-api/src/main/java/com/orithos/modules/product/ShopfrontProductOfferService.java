@@ -7,6 +7,7 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeParseException;
@@ -19,6 +20,7 @@ import java.util.Collection;
 
 @Service
 public class ShopfrontProductOfferService {
+    private static final Duration CHECKOUT_SNAPSHOT_MAX_AGE = Duration.ofHours(2);
     private final NamedParameterJdbcTemplate jdbc;
     private final ObjectMapper json;
 
@@ -31,9 +33,8 @@ public class ShopfrontProductOfferService {
         return currentOffers(vendorId, outletId, productIds, false);
     }
 
-    public Map<Long, List<Offer>> currentOffers(long vendorId, long outletId, Collection<Long> productIds, boolean includeGroups) {
+    public Map<Long, List<Offer>> currentOffers(long vendorId, long outletId, Collection<Long> productIds, boolean forCheckout) {
         if (productIds.isEmpty()) return Map.of();
-        Instant now = Instant.now();
         return jdbc.query("""
                 WITH mappings AS (
                     SELECT p.id, m.source_product_id, sm.shopfront_outlet
@@ -60,9 +61,10 @@ public class ShopfrontProductOfferService {
                 throw new IllegalStateException("Invalid Shopfront promotion snapshot", e);
             }
             Instant syncedAt = rs.getObject("snapshot_at", OffsetDateTime.class).toInstant();
+            Instant now = Instant.now();
             for (JsonNode mapping : mappings) {
                 var offers = matchingOffers(snapshot, mapping.path("source_product_id").asText(),
-                        mapping.path("shopfront_outlet").asText(), syncedAt, now, includeGroups);
+                        mapping.path("shopfront_outlet").asText(), syncedAt, now, forCheckout);
                 if (!offers.isEmpty()) result.computeIfAbsent(mapping.path("id").asLong(), ignored -> new ArrayList<>()).addAll(offers);
             }
             result.replaceAll((id, offers) -> offers.stream().distinct().sorted(
@@ -75,9 +77,12 @@ public class ShopfrontProductOfferService {
         return matchingOffers(snapshot, sourceId, sourceOutlet, syncedAt, now, false);
     }
 
-    private static List<Offer> matchingOffers(JsonNode snapshot, String sourceId, String sourceOutlet,
-                                              Instant syncedAt, Instant now, boolean includeGroups) {
+    static List<Offer> matchingOffers(JsonNode snapshot, String sourceId, String sourceOutlet,
+                                      Instant syncedAt, Instant now, boolean forCheckout) {
         List<Offer> result = new ArrayList<>();
+        if (forCheckout && (syncedAt.isAfter(now) || syncedAt.isBefore(now.minus(CHECKOUT_SNAPSHOT_MAX_AGE)))) {
+            return result;
+        }
         if (sourceOutlet == null || sourceOutlet.isBlank()) return result;
         for (JsonNode promotion : snapshot) {
             if (!promotion.path("active").asBoolean()
@@ -97,7 +102,7 @@ public class ShopfrontProductOfferService {
                 if ((start != null && now.isBefore(start)) || (end != null && now.isAfter(end))) continue;
                 JsonNode criteria = promotion.path("criteria").get(0);
                 JsonNode items = criteria.path("items");
-                if (!items.isArray() || items.isEmpty() || (!includeGroups && items.size() != 1)) continue;
+                if (!items.isArray() || items.isEmpty() || (!forCheckout && items.size() != 1)) continue;
                 if (criteria.path("excludePricePoints").asBoolean() || criteria.path("excludeCountQuantity").asBoolean()
                         || criteria.path("discountEverydayPromotions").asBoolean() || criteria.path("mixedOnly").asBoolean()
                         || criteria.path("optional").asBoolean() || criteria.hasNonNull("buyAmountMax")

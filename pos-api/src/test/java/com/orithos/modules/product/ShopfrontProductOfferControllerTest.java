@@ -14,6 +14,21 @@ class ShopfrontProductOfferControllerTest {
     private final ObjectMapper json = new ObjectMapper();
 
     @Test
+    void ignoresExpiredAndFutureSnapshotsForCheckout() throws Exception {
+        var snapshot = json.readTree("""
+                [{"name":"No end date","active":true,"customerGroups":[],"outlets":[{"id":"shop"}],
+                  "criteria":[{"type":"SELL_TOTAL","quantityType":"EXACT","buyAmountType":"QUANTITY",
+                  "buyAmount":1,"discountAmount":6,"items":[{"item":{"__typename":"Product","id":"sku"}}]}]}]
+                """);
+        var now = Instant.parse("2026-11-23T02:30:00Z");
+        var cutoff = now.minusSeconds(7200);
+        assertEquals(1, ShopfrontProductOfferService.matchingOffers(snapshot, "sku", "shop", cutoff, now, true).size());
+        assertEquals(List.of(), ShopfrontProductOfferService.matchingOffers(snapshot, "sku", "shop", cutoff.minusSeconds(1), now, true));
+        assertEquals(List.of(), ShopfrontProductOfferService.matchingOffers(snapshot, "sku", "shop", now.plusSeconds(1), now, true));
+        assertEquals(1, ShopfrontProductOfferService.matchingOffers(snapshot, "sku", "shop", cutoff.minusSeconds(1), now).size());
+    }
+
+    @Test
     void reportsOnlyApplicableFixedTotalOffersAndHonoursOffsetDates() throws Exception {
         var promotion = (ObjectNode) json.readTree("""
                 {"name":"Two for six","active":true,"start":"2026-11-23T13:00:00+1100",
