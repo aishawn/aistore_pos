@@ -128,6 +128,7 @@ class NativeReplenishmentServiceTest {
         assertTrue(sql.getValue().contains("i.updated_at AS inventory_data_as_of"));
         assertTrue(sql.getValue().contains("GROUP BY ps.product_id, ps.outlet_id"));
         assertTrue(sql.getValue().contains("LEFT JOIN supplier"));
+        assertTrue(sql.getValue().contains("ORDER BY COALESCE(s.sold_7d, 0) DESC"));
         assertFalse(sql.getValue().contains("EXISTS (SELECT 1 FROM product_supplier"));
         assertFalse(sql.getValue().contains("(SELECT MAX(ps.minimum_order_quantity)"));
         verify(statement).setObject(1, java.time.LocalDate.parse("2026-11-23"));

@@ -43,7 +43,7 @@ test("full catalogue suggestions survive unrelated review products", async () =>
       reportPeriodFrom: "2026-10-01", reportPeriodTo: "2026-11-13",
       reportTimeZone: "Australia/Adelaide", reportDataStatus: "incomplete",
       dataAsOf: "2026-11-13T01:00:00Z", coverageDays: 21, itemsNeedingOrder: 1,
-      dataGapCount: 2, dataGaps: ["Gift card: inventory unavailable", "Wine: recorded cost unavailable"],
+      dataGapCount: 3, dataGaps: ["Milk: negative stock; stock reconciliation needed", "Gift card: inventory unavailable", "Wine: recorded cost unavailable"],
       inventoryGapCount: 1, supplierGapCount: 0, costGapCount: 1,
       top: [{ productId: 501, name: "Beer", unit: "units", suggestedQuantity: 8 }],
     },
@@ -63,6 +63,7 @@ test("full catalogue suggestions survive unrelated review products", async () =>
   assert.equal(result?.cards?.[0].reportDataStatus, "incomplete");
   assert.deepEqual(result?.writeRequests, []);
   assert.doesNotMatch(result?.answer ?? "", /Gift card/);
+  assert.match(result?.answer ?? "", /Negative stock to review: Milk/);
 });
 
 test("all review is not a claim that no replenishment is needed", async () => {

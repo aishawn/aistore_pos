@@ -502,6 +502,16 @@ async function buildLiveOperationsPreview(
       if (plan.reportDataStatus === "incomplete" && !plan.dataGapCount) {
         card.summary += chinese ? " 报表数据不完整，请人工复核。" : " Report data is incomplete; review manually.";
       }
+      const negativeStockSuffix = ": negative stock; stock reconciliation needed";
+      const negativeStockExamples = plan.dataGaps
+        .filter((gap) => gap.endsWith(negativeStockSuffix))
+        .slice(0, 3)
+        .map((gap) => gap.slice(0, -negativeStockSuffix.length));
+      if (negativeStockExamples.length > 0) {
+        card.summary += chinese
+          ? "\n负库存优先复核：" + negativeStockExamples.join("、")
+          : "\nNegative stock to review: " + negativeStockExamples.join(", ");
+      }
       if (!eligible.length && plan.dataGapCount > 0 && !hasNoData) {
         card.summary += chinese ? " 暂无可用数量，不能据此判断无需补货。" : " No eligible quantities are available; this does not mean no replenishment is needed.";
       }
