@@ -2013,7 +2013,7 @@ function DialogueView({
                         {periodLabel ? `${cardDataSource ? " · " : ""}${chineseCard ? "期间" : "Period"}: ${periodLabel}` : ""}
                         {cardTimeZone ? `${cardDataSource || periodLabel ? " · " : ""}${chineseCard ? "时区" : "Timezone"}: ${cardTimeZone}` : ""}
                         {cardDataStatus ? `${cardDataSource || periodLabel || cardTimeZone ? " · " : ""}${chineseCard ? "数据状态" : "Data status"}: ${assistantReportDataStatus(cardDataStatus, chineseCard)}` : ""}
-                        {`${cardDataSource || periodLabel || cardTimeZone || cardDataStatus ? " · " : ""}${chineseCard ? "数据时间" : "Data as of"}: ${assistantDataTimestampLabel(cardDataAsOf, chineseCard)}`}
+                        {`${cardDataSource || periodLabel || cardTimeZone || cardDataStatus ? " · " : ""}${chineseCard ? "数据时间" : "Data as of"}: ${assistantDataTimestampLabel(cardDataAsOf, chineseCard, cardTimeZone)}`}
                       </p>
                     ) : null}
                     {card.items && card.items.length > 0 ? (
@@ -2187,8 +2187,8 @@ function DialogueView({
                   <>
                     {(msg.dataSource || msg.source || msg.requestedDateRange || msg.reportPeriodRange) ? " · " : ""}
                     {/[\u3400-\u9fff]/.test(msg.question ?? msg.text)
-                      ? `数据时间：${assistantDataTimestampLabel(msg.dataAsOf, true)}`
-                      : `Data timestamp: ${assistantDataTimestampLabel(msg.dataAsOf, false)}`}
+                      ? `数据时间：${assistantDataTimestampLabel(msg.dataAsOf, true, msg.reportTimeZone)}`
+                      : `Data timestamp: ${assistantDataTimestampLabel(msg.dataAsOf, false, msg.reportTimeZone)}`}
                   </>
                 ) : null}
                 {msg.reportTimeZone

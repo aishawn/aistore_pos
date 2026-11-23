@@ -174,18 +174,28 @@ export function assistantCardDisplayStatus(
   };
 }
 
-export function formatAssistantDataAsOf(value: string): string {
+export function formatAssistantDataAsOf(value: string, timeZone?: string, locale = "en-AU"): string {
   if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
   const parsed = new Date(value);
-  return Number.isNaN(parsed.valueOf()) ? value : parsed.toLocaleString();
+  if (Number.isNaN(parsed.valueOf())) return value;
+  try {
+    return new Intl.DateTimeFormat(locale, {
+      timeZone,
+      dateStyle: "medium",
+      timeStyle: "short",
+    }).format(parsed);
+  } catch {
+    return value;
+  }
 }
 
 export function assistantDataTimestampLabel(
   value: string | null | undefined,
   chinese: boolean,
+  timeZone?: string | null,
 ): string {
   return value
-    ? formatAssistantDataAsOf(value)
+    ? formatAssistantDataAsOf(value, timeZone ?? undefined, chinese ? "zh-CN" : "en-AU")
     : chinese ? "数据时间未提供" : "Data timestamp unavailable";
 }
 

@@ -167,6 +167,12 @@ test("keeps date-only provenance timezone-stable", () => {
   assert.equal(formatAssistantDataAsOf("2026-11-02"), "2026-11-02");
 });
 
+test("formats assistant data timestamps in the store timezone across DST", () => {
+  assert.equal(formatAssistantDataAsOf("2026-11-23T15:00:00Z", "Australia/Melbourne"), "24 Nov 2026, 2:00 am");
+  assert.equal(formatAssistantDataAsOf("2026-07-23T15:00:00Z", "Australia/Melbourne"), "24 July 2026, 1:00 am");
+  assert.equal(formatAssistantDataAsOf("2026-11-23T15:00:00Z", "Invalid/Timezone"), "2026-11-23T15:00:00Z");
+});
+
 test("states when the backend does not provide a trusted data timestamp", () => {
   assert.equal(assistantDataTimestampLabel(null, true), "数据时间未提供");
   assert.equal(assistantDataTimestampLabel(undefined, false), "Data timestamp unavailable");
