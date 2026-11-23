@@ -44,6 +44,26 @@ import static org.mockito.Mockito.when;
 class ShopfrontIntegrationControllerTest {
 
     @Test
+    void stagesOnlyMappedOutletPromotionsForAnalytics() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        when(jdbc.queryForList(contains("shopfront_store_mapping"), eq("skr"))).thenReturn(
+                List.of(Map.of("outlet_id", "87", "shopfront_outlet", "mapped", "enabled", true)));
+        var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true, true);
+        var body = new ObjectMapper().readTree("""
+                {"store_key":"skr","entity_type":"promotions","snapshot_at":"2026-11-23T06:00:00Z",
+                 "items":[{"id":"p1","outlets":[{"id":"mapped"}]},
+                          {"id":"p2","outlets":[{"id":"different"}]}]}
+                """);
+
+        var result = controller.extendedRecords("token", body).data();
+
+        assertEquals(1, result.get("snapshot_count"));
+        assertEquals(false, result.get("business_write"));
+        verify(jdbc).update(contains("INSERT INTO shopfront_promotion_snapshot"), eq(87L),
+                any(), eq("[" + body.path("items").get(0) + "]"));
+    }
+
+    @Test
     void classificationLookupNeverReusesAnotherOutletsLinkedRow() throws Exception {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
         when(jdbc.queryForList(contains("SELECT id FROM category"), eq(Long.class), any(Object[].class)))

@@ -30,6 +30,7 @@ public class ShopfrontStoreMappingSchemaMigrator implements ApplicationRunner {
         ResourceDatabasePopulator populator = new ResourceDatabasePopulator();
         populator.setSeparator(ScriptUtils.EOF_STATEMENT_SEPARATOR);
         populator.addScript(new ClassPathResource("db/migration_shopfront_store_mapping_boolean_postgres.sql"));
+        populator.addScript(new ClassPathResource("db/migration_shopfront_promotion_snapshot.sql"));
         populator.execute(dataSource);
     }
 }

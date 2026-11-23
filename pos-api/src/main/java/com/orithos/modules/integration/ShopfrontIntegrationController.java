@@ -1962,6 +1962,9 @@ public class ShopfrontIntegrationController {
         if (items == null || !items.isArray()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "items array is required");
         }
+        if ("promotions".equals(entityType) && body.has("snapshot_at")) {
+            return ApiResult.ok(stagePromotionSnapshot(store, body, items));
+        }
         String lookupTable = switch (entityType.trim().toLowerCase(Locale.ROOT)) {
             case "brands", "brand" -> "brand";
             case "categories", "category" -> "category";
@@ -2026,6 +2029,53 @@ public class ShopfrontIntegrationController {
                 "promoted", promoted,
                 "skipped", skipped,
                 "business_write", promoted > 0));
+    }
+
+    private Map<String, Object> stagePromotionSnapshot(String store, JsonNode body, JsonNode items) {
+        OffsetDateTime observedAt;
+        try {
+            observedAt = OffsetDateTime.parse(body.path("snapshot_at").asText());
+        } catch (java.time.format.DateTimeParseException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A valid promotion snapshot_at is required");
+        }
+        var mappings = jdbc.queryForList("""
+                SELECT outlet_id, shopfront_outlet
+                FROM shopfront_store_mapping WHERE store_key = ? AND enabled = TRUE
+                """, store);
+        if (mappings.size() != 1) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "An enabled promotion outlet mapping is required");
+        }
+        var mapping = mappings.getFirst();
+        long outletId = longValue(mapping.get("outlet_id"));
+        Object sourceOutlet = mapping.get("shopfront_outlet");
+        if (outletId <= 0 || sourceOutlet == null || sourceOutlet.toString().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Both promotion outlet identities are required");
+        }
+        var scoped = objectMapper.createArrayNode();
+        Set<String> sourceIds = new HashSet<>();
+        for (JsonNode item : items) {
+            String id = item.path("id").asText("");
+            JsonNode outlets = item.path("outlets");
+            if (id.isBlank() || !sourceIds.add(id) || !outlets.isArray()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid promotion identity or outlet list");
+            }
+            for (JsonNode outlet : outlets) {
+                if (sourceOutlet.toString().equals(outlet.path("id").asText())) {
+                    scoped.add(item);
+                    break;
+                }
+            }
+        }
+        int written = jdbc.update("""
+                INSERT INTO shopfront_promotion_snapshot (outlet_id, snapshot_at, promotions)
+                VALUES (?, ?, CAST(? AS jsonb))
+                ON CONFLICT (outlet_id) DO UPDATE
+                SET snapshot_at = EXCLUDED.snapshot_at, promotions = EXCLUDED.promotions
+                WHERE shopfront_promotion_snapshot.snapshot_at < EXCLUDED.snapshot_at
+                """, outletId, observedAt, scoped.toString());
+        return Map.of("status", written == 1 ? "STAGED" : "SUPERSEDED",
+                "store_key", store, "entity_type", "promotions", "snapshot_count", scoped.size(),
+                "business_write", false);
     }
 
     @GetMapping("/snapshot")
