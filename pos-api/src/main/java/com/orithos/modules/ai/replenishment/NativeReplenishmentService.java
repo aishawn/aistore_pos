@@ -240,11 +240,14 @@ public class NativeReplenishmentService {
             double quantity = raw == 0 ? 0 : Math.ceil(Math.max(raw, minimum) / casePack) * casePack;
             if (quantity <= 0) continue;
             suggestions.add(new ReplenishmentSuggestion(row.id(), row.name(), "units", quantity,
-                    demand > 0 ? available / demand : null, demand, row.onHand(), available));
+                    demand > 0 ? Math.max(0d, row.onHand()) / demand : null, demand, row.onHand(), available));
         }
-        suggestions.sort(Comparator.comparingDouble(ReplenishmentSuggestion::suggestedQuantity).reversed()
+        suggestions.sort(Comparator
+                .comparing(ReplenishmentSuggestion::daysOfStock, Comparator.nullsLast(Comparator.naturalOrder()))
                 .thenComparing(Comparator.comparingDouble(ReplenishmentSuggestion::unitsPerDay).reversed())
-                .thenComparing(ReplenishmentSuggestion::name));
+                .thenComparing(Comparator.comparingDouble(ReplenishmentSuggestion::suggestedQuantity).reversed())
+                .thenComparing(ReplenishmentSuggestion::name)
+                .thenComparingLong(ReplenishmentSuggestion::productId));
         return new ReplenishmentPlan(cover, suggestions.size(), suggestions.stream().limit(limit).toList(),
                 gaps.isEmpty() ? "VALID" : "DATA_INCOMPLETE", gaps.stream().distinct().limit(20).toList(),
                 dataAsOf, dataGapCount, inventoryGapCount, supplierGapCount, from, today, zone.getId());

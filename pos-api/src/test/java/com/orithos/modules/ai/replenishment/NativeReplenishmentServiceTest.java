@@ -357,6 +357,27 @@ class NativeReplenishmentServiceTest {
         assertTrue(plan.top().isEmpty());
     }
 
+    @Test
+    void ranksImmediateShelfStockoutAheadOfLargeOrdersAndIgnoresUndatedArrivalsForShelfCover() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        ResultSet urgent = replenishmentRow(5L, "Shiraz", 0d, true);
+        ResultSet largeOrder = replenishmentRow(6L, "Beer", 30d, true);
+        when(urgent.getDouble("recent_units")).thenReturn(28d);
+        when(urgent.getDouble("on_order")).thenReturn(6d);
+        when(largeOrder.getDouble("recent_units")).thenReturn(280d);
+        when(jdbc.query(any(PreparedStatementCreator.class), any(RowMapper.class))).thenAnswer(invocation -> {
+            RowMapper<?> mapper = invocation.getArgument(1);
+            return List.of(mapper.mapRow(largeOrder, 0), mapper.mapRow(urgent, 1));
+        });
+
+        ReplenishmentPlan plan = new NativeReplenishmentService(jdbc).plan(tenant(55L, 87L));
+
+        assertEquals(List.of(5L, 6L), plan.top().stream().map(ReplenishmentSuggestion::productId).toList());
+        assertEquals(0d, plan.top().getFirst().daysOfStock());
+        assertEquals(6d, plan.top().getFirst().forecastAvailable());
+        assertEquals(18d, plan.top().getFirst().suggestedQuantity());
+    }
+
     private static ResultSet replenishmentRow(long id, String name, Double onHand, boolean supplier)
             throws Exception {
         ResultSet row = mock(ResultSet.class);
