@@ -41,12 +41,15 @@ public interface OrderMapper {
             LEFT JOIN product p ON p.id = l.product_id AND p.outlet_id = r.outlet_id
             WHERE r.vendor_id = #{vendorId} AND r.outlet_id = #{outletId}
                 AND r.status IN ('RECEIVED', 'PARTIALLY_RECEIVED') AND b.expiry_date <= #{through}
+                AND b.expiry_date >= COALESCE(#{from,jdbcType=DATE}, '-infinity'::date)
             ORDER BY b.expiry_date, l.id, b.batch_code
-            LIMIT 101
+            LIMIT 101 OFFSET #{offset}
             """)
     List<ReceiptExpiryReviewController.Batch> findExpiryReview(@Param("vendorId") Long vendorId,
                                                               @Param("outletId") Long outletId,
-                                                              @Param("through") java.time.LocalDate through);
+                                                              @Param("from") java.time.LocalDate from,
+                                                              @Param("through") java.time.LocalDate through,
+                                                              @Param("offset") long offset);
 
     @Select("SELECT po.* FROM purchase_order po JOIN outlet o ON o.id=po.outlet_id "
             + "WHERE po.id=#{id} AND o.vendor_id=#{vendorId} AND o.deleted_at IS NULL FOR UPDATE")

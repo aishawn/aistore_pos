@@ -6,7 +6,10 @@ import com.orithos.common.BusinessTimezoneService;
 import com.orithos.security.CurrentUser;
 import com.orithos.security.PermissionAccess;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -26,20 +29,28 @@ public class ReceiptExpiryReviewController {
     }
 
     @GetMapping("/api/orders/expiry-review")
-    public ApiResult<Review> review() {
+    public ApiResult<Review> review(@RequestParam(defaultValue = "1") int page,
+                                    @RequestParam(defaultValue = "all") String status) {
         permissions.requirePermission("stock.purchases");
         Long vendorId = CurrentUser.vendorId();
         Long outletId = CurrentUser.outletId();
         if (vendorId == null || outletId == null) {
             throw new BusinessException(40310, "Select a store before opening the expiry review.");
         }
+        if (page < 1 || !List.of("all", "upcoming", "expired").contains(status)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid expiry review page or status.");
+        }
         LocalDate today = timezone.today(vendorId);
         LocalDate through = today.plusDays(14);
-        List<Batch> rows = orders.findExpiryReview(vendorId, outletId, through);
-        return ApiResult.ok(new Review(today, through, rows.stream().limit(PAGE_SIZE).toList(), rows.size() > PAGE_SIZE));
+        LocalDate from = "upcoming".equals(status) ? today : null;
+        LocalDate end = "expired".equals(status) ? today.minusDays(1) : through;
+        List<Batch> rows = orders.findExpiryReview(vendorId, outletId, from, end, (page - 1L) * PAGE_SIZE);
+        return ApiResult.ok(new Review(today, through, rows.stream().limit(PAGE_SIZE).toList(),
+                rows.size() > PAGE_SIZE, page));
     }
 
-    public record Review(LocalDate businessDate, LocalDate throughDate, List<Batch> batches, boolean truncated) {}
+    public record Review(LocalDate businessDate, LocalDate throughDate, List<Batch> batches,
+                         boolean truncated, int page) {}
 
     public record Batch(Long orderId, Long receiptLineId, Long productId, String productName,
                         String batchCode, LocalDate expiryDate, BigDecimal receivedUnits) {}

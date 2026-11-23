@@ -47,12 +47,32 @@ class PurchaseReceiptServiceTest {
         var permission = mock(com.orithos.security.PermissionAccess.class);
         var today = java.time.LocalDate.parse("2026-11-23");
         when(zone.today(5L)).thenReturn(today);
-        when(orders.findExpiryReview(5L, 3L, today.plusDays(14))).thenReturn(List.of());
-        var result = new ReceiptExpiryReviewController(orders, zone, permission).review().data();
+        when(orders.findExpiryReview(5L, 3L, null, today.plusDays(14), 0L)).thenReturn(List.of());
+        var result = new ReceiptExpiryReviewController(orders, zone, permission).review(1, "all").data();
         assertEquals(today, result.businessDate());
         assertEquals(today.plusDays(14), result.throughDate());
         verify(permission).requirePermission("stock.purchases");
-        verify(orders).findExpiryReview(5L, 3L, today.plusDays(14));
+        verify(orders).findExpiryReview(5L, 3L, null, today.plusDays(14), 0L);
+    }
+
+    @Test
+    void expiryReviewPagesWithinTheSelectedDateRange() {
+        var zone = mock(BusinessTimezoneService.class);
+        var today = java.time.LocalDate.parse("2026-11-23");
+        when(zone.today(5L)).thenReturn(today);
+        var batch = new ReceiptExpiryReviewController.Batch(12L, 44L, 71L, "Milk", "A", today, BigDecimal.ONE);
+        when(orders.findExpiryReview(5L, 3L, today, today.plusDays(14), 100L))
+                .thenReturn(java.util.Collections.nCopies(101, batch));
+        var controller = new ReceiptExpiryReviewController(orders, zone, mock(com.orithos.security.PermissionAccess.class));
+
+        var result = controller.review(2, "upcoming").data();
+        assertEquals(2, result.page());
+        assertEquals(100, result.batches().size());
+        assertEquals(true, result.truncated());
+        controller.review(1, "expired");
+        verify(orders).findExpiryReview(5L, 3L, null, today.minusDays(1), 0L);
+        assertThrows(org.springframework.web.server.ResponseStatusException.class, () -> controller.review(0, "all"));
+        assertThrows(org.springframework.web.server.ResponseStatusException.class, () -> controller.review(1, "unknown"));
     }
 
     @Test
