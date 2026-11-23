@@ -256,7 +256,7 @@ export function OdooRegisterPage() {
   const selectedPaymentMethodIdRef = useRef<number | null>(null);
   const [hydratedDraftKey, setHydratedDraftKey] = useState<string | null>(null);
   const [eftposPaymentsEnabled, setEftposPaymentsEnabled] = useState(false);
-  const [cashOutWithoutSaleAllowed, setCashOutWithoutSaleAllowed] = useState(false);
+  const [cashOutWithoutSaleAllowed, setCashOutWithoutSaleAllowed] = useState(true);
   const [eftposPaymentNotice, setEftposPaymentNotice] = useState<string | null>(null);
   const [receiptHardwareNotice, setReceiptHardwareNotice] = useState<string | null>(null);
   const [customerDisplayOpen, setCustomerDisplayOpen] = useState(false);

@@ -67,7 +67,7 @@ class RegisterSessionServiceTest {
         RegisterSession session = openSession();
         when(sessions.lockSession(41L, 3L, 12L)).thenReturn(session);
         when(sessions.findMovementReplay(41L, 3L, 12L, "cashout-1")).thenReturn(null);
-        when(companySettings.getBoolean(CompanySettingsKeys.CASH_OUT_WITHOUT_SALE, false)).thenReturn(false);
+        when(companySettings.getBoolean(CompanySettingsKeys.CASH_OUT_WITHOUT_SALE, true)).thenReturn(false);
 
         assertThrows(BusinessException.class, () -> service.moveCash(
                 41L, "cashout-1", "CASH_OUT", new BigDecimal("5.00"), "Petty cash"));
@@ -80,7 +80,7 @@ class RegisterSessionServiceTest {
         RegisterSession session = openSession();
         when(sessions.lockSession(41L, 3L, 12L)).thenReturn(session);
         when(sessions.findMovementReplay(41L, 3L, 12L, "cashout-2")).thenReturn(null);
-        when(companySettings.getBoolean(CompanySettingsKeys.CASH_OUT_WITHOUT_SALE, false)).thenReturn(true);
+        when(companySettings.getBoolean(CompanySettingsKeys.CASH_OUT_WITHOUT_SALE, true)).thenReturn(true);
 
         RegisterCashMovement movement = service.moveCash(
                 41L, "cashout-2", "CASH_OUT", new BigDecimal("5.00"), "Petty cash");

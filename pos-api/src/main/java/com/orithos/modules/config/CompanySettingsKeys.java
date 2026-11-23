@@ -69,7 +69,7 @@ public final class CompanySettingsKeys {
         d.put("company.sell.cash_drawer_require_reason", "false");
         d.put("company.sell.cash_out_reasons", "[]");
         d.put("company.sell.cash_in_reasons", "[]");
-        d.put(CASH_OUT_WITHOUT_SALE, "false");
+        d.put(CASH_OUT_WITHOUT_SALE, "true");
         d.put(REQUIRE_NOTE_ON_PARKED_SALE, "false");
         d.put("company.sell.invoice_number_length", "8");
         // Outlets

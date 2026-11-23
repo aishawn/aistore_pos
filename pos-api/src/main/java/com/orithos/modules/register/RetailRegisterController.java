@@ -60,7 +60,7 @@ public class RetailRegisterController {
         return ApiResult.ok(new SalePolicy(
                 companySettings.getBoolean(CompanySettingsKeys.DISCOUNTS_REQUIRE_REASON, false),
                 companySettings.getBoolean(CompanySettingsKeys.REFUNDS_REQUIRE_REASON, true),
-                companySettings.getBoolean(CompanySettingsKeys.CASH_OUT_WITHOUT_SALE, false),
+                companySettings.getBoolean(CompanySettingsKeys.CASH_OUT_WITHOUT_SALE, true),
                 companySettings.getBoolean(CompanySettingsKeys.REQUIRE_NOTE_ON_PARKED_SALE, false),
                 companySettings.getString(CompanySettingsKeys.SALE_KEYS_POSITION, CurrentUser.vendorId(), "RIGHT")));
     }

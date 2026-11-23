@@ -122,7 +122,7 @@ public class RegisterSessionService {
             return prior;
         }
         if ("CASH_OUT".equals(normalizedType)
-                && !companySettings.getBoolean(CompanySettingsKeys.CASH_OUT_WITHOUT_SALE, false)) {
+                && !companySettings.getBoolean(CompanySettingsKeys.CASH_OUT_WITHOUT_SALE, true)) {
             throw conflict("Cash out without a sale is disabled for this company.");
         }
         if (session.getClosedAt() != null) throw conflict("Open register session not found.");

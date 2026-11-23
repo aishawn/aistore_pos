@@ -93,7 +93,7 @@ class RetailRegisterControllerTest {
                 new AuthUser(7L, "cashier", false, 12L, 3L), null));
         when(companySettings.getBoolean(CompanySettingsKeys.DISCOUNTS_REQUIRE_REASON, false)).thenReturn(true);
         when(companySettings.getBoolean(CompanySettingsKeys.REFUNDS_REQUIRE_REASON, true)).thenReturn(false);
-        when(companySettings.getBoolean(CompanySettingsKeys.CASH_OUT_WITHOUT_SALE, false)).thenReturn(true);
+        when(companySettings.getBoolean(CompanySettingsKeys.CASH_OUT_WITHOUT_SALE, true)).thenReturn(true);
         when(companySettings.getBoolean(CompanySettingsKeys.REQUIRE_NOTE_ON_PARKED_SALE, false)).thenReturn(true);
         when(companySettings.getString(CompanySettingsKeys.SALE_KEYS_POSITION, 3L, "RIGHT")).thenReturn("LEFT");
 
@@ -106,7 +106,7 @@ class RetailRegisterControllerTest {
         assertEquals("LEFT", response.data().saleKeysPosition());
         verify(companySettings).getBoolean(CompanySettingsKeys.DISCOUNTS_REQUIRE_REASON, false);
         verify(companySettings).getBoolean(CompanySettingsKeys.REFUNDS_REQUIRE_REASON, true);
-        verify(companySettings).getBoolean(CompanySettingsKeys.CASH_OUT_WITHOUT_SALE, false);
+        verify(companySettings).getBoolean(CompanySettingsKeys.CASH_OUT_WITHOUT_SALE, true);
         verify(companySettings).getBoolean(CompanySettingsKeys.REQUIRE_NOTE_ON_PARKED_SALE, false);
         verify(companySettings).getString(CompanySettingsKeys.SALE_KEYS_POSITION, 3L, "RIGHT");
     }
