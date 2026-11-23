@@ -378,6 +378,24 @@ class NativeReplenishmentServiceTest {
         assertEquals(18d, plan.top().getFirst().suggestedQuantity());
     }
 
+    @Test
+    void negativeOnHandWithoutSalesRequiresStockReviewAndDoesNotSuggestBuying() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        ResultSet noDemand = replenishmentRow(5L, "Shiraz", -13d, true);
+        ResultSet sold = replenishmentRow(6L, "Beer", -1d, true);
+        when(sold.getDouble("recent_units")).thenReturn(28d);
+        when(jdbc.query(any(PreparedStatementCreator.class), any(RowMapper.class))).thenAnswer(invocation -> {
+            RowMapper<?> mapper = invocation.getArgument(1);
+            return List.of(mapper.mapRow(noDemand, 0), mapper.mapRow(sold, 1));
+        });
+
+        ReplenishmentPlan plan = new NativeReplenishmentService(jdbc).plan(tenant(55L, 87L));
+
+        assertEquals(List.of(6L), plan.top().stream().map(ReplenishmentSuggestion::productId).toList());
+        assertEquals(1, plan.itemsNeedingOrder());
+        assertTrue(plan.dataGaps().stream().anyMatch(gap -> gap.contains("stock reconciliation")));
+    }
+
     private static ResultSet replenishmentRow(long id, String name, Double onHand, boolean supplier)
             throws Exception {
         ResultSet row = mock(ResultSet.class);

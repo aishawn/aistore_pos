@@ -51,7 +51,7 @@ test("full catalogue suggestions survive unrelated review products", async () =>
   assert.equal(result?.threadId, "existing-thread");
   assert.equal(result?.cards?.[0].status, "partial");
   assert.match(result?.answer ?? "", /2026-10-01 to 2026-11-13 \(Australia\/Adelaide\)/);
-  assert.match(result?.answer ?? "", /1 products lack inventory data; 0 lack supplier details/);
+  assert.match(result?.answer ?? "", /1 products need inventory review; 0 lack supplier details/);
   assert.equal(result?.cards?.[0].items?.[0].id, 501);
   assert.equal(result?.dataAsOf, "2026-11-13T01:00:00Z");
   assert.equal(result?.dataSource, "orithos_ledger");

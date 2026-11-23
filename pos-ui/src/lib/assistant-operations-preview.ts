@@ -311,8 +311,8 @@ async function buildLiveOperationsPreview(
         }).format(revenueAmount);
       const eligible = brief.replenishment.top.filter((item) => finite(item.suggestedQuantity) && item.suggestedQuantity > 0);
       const gapDetails = chinese
-        ? `${brief.replenishment.inventoryGapCount} 个商品缺少库存数据，${brief.replenishment.supplierGapCount} 个商品缺少供应商资料。`
-        : `${brief.replenishment.inventoryGapCount} products lack inventory data; ${brief.replenishment.supplierGapCount} lack supplier details.`;
+        ? `${brief.replenishment.inventoryGapCount} 个商品的库存需核对，${brief.replenishment.supplierGapCount} 个商品缺少供应商资料。`
+        : `${brief.replenishment.inventoryGapCount} products need inventory review; ${brief.replenishment.supplierGapCount} lack supplier details.`;
       const salesCard: AssistantCard = {
         type: "sales",
         title: chinese ? "本周销售" : "This week's sales",
@@ -345,8 +345,8 @@ async function buildLiveOperationsPreview(
         inventoryGapCount: brief.replenishment.inventoryGapCount,
         actionableItemCount: brief.replenishment.actionableItemCount,
         summary: chinese
-          ? `${topSummary ? `优先补货：\n${topSummary}\n\n` : ""}全店扫描：${brief.replenishment.actionableItemCount} 个 SKU 有建议量（${brief.replenishment.dataGapCount} 个因资料缺失未纳入）。${gapDetails}`
-          : `${topSummary ? `Top restock picks:\n${topSummary}\n\n` : ""}Store-wide scan: ${brief.replenishment.actionableItemCount} SKUs have suggested order (${brief.replenishment.dataGapCount} excluded for missing data). ${gapDetails}`,
+          ? `${topSummary ? `优先补货：\n${topSummary}\n\n` : ""}全店扫描：${brief.replenishment.actionableItemCount} 个 SKU 有建议量（${brief.replenishment.dataGapCount} 个需核对资料，暂未纳入）。${gapDetails}`
+          : `${topSummary ? `Top restock picks:\n${topSummary}\n\n` : ""}Store-wide scan: ${brief.replenishment.actionableItemCount} SKUs have suggested order (${brief.replenishment.dataGapCount} excluded for data review). ${gapDetails}`,
         items: eligible.slice(0, 3).map((item) => ({
           id: item.productId,
           label: replenishmentItemLabel(item, chinese),
@@ -470,15 +470,15 @@ async function buildLiveOperationsPreview(
       card.actionableItemCount = plan.actionableItemCount ?? plan.itemsNeedingOrder;
       const gapDetails = plan.inventoryGapCount != null || plan.supplierGapCount != null
         ? chinese
-          ? `${plan.inventoryGapCount ?? 0} 个商品缺少库存数据，${plan.supplierGapCount ?? 0} 个商品缺少供应商资料。`
-          : `${plan.inventoryGapCount ?? 0} products lack inventory data; ${plan.supplierGapCount ?? 0} lack supplier details.`
+          ? `${plan.inventoryGapCount ?? 0} 个商品的库存需核对，${plan.supplierGapCount ?? 0} 个商品缺少供应商资料。`
+          : `${plan.inventoryGapCount ?? 0} products need inventory review; ${plan.supplierGapCount ?? 0} lack supplier details.`
         : chinese
           ? `${plan.dataGapCount} 个商品因资料不完整被排除。`
           : `${plan.dataGapCount} products were excluded for incomplete data.`;
       const topSummary = eligible.slice(0, 3).map((item) => `• ${replenishmentItemLabel(item, chinese)}`).join("\n");
       const scanLine = chinese
-        ? `全店扫描（销售期间 ${analysisPeriod}）：${plan.actionableItemCount ?? plan.itemsNeedingOrder} 个 SKU 有建议量（覆盖 ${plan.coverageDays} 天）${plan.dataGapCount > 0 ? `；${plan.dataGapCount} 个因资料缺失未纳入` : ""}。`
-        : `Store-wide scan (sales period ${analysisPeriod}): ${plan.actionableItemCount ?? plan.itemsNeedingOrder} SKUs have suggested order (${plan.coverageDays}d cover)${plan.dataGapCount > 0 ? `; ${plan.dataGapCount} excluded for missing data` : ""}.`;
+        ? `全店扫描（销售期间 ${analysisPeriod}）：${plan.actionableItemCount ?? plan.itemsNeedingOrder} 个 SKU 有建议量（覆盖 ${plan.coverageDays} 天）${plan.dataGapCount > 0 ? `；${plan.dataGapCount} 个需核对资料，暂未纳入` : ""}。`
+        : `Store-wide scan (sales period ${analysisPeriod}): ${plan.actionableItemCount ?? plan.itemsNeedingOrder} SKUs have suggested order (${plan.coverageDays}d cover)${plan.dataGapCount > 0 ? `; ${plan.dataGapCount} excluded for data review` : ""}.`;
       card.summary = chinese
         ? hasNoData
           ? `所选销售期间 ${analysisPeriod} 没有可验证的销售历史，未生成补货数量。`

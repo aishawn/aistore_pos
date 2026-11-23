@@ -233,6 +233,14 @@ public class NativeReplenishmentService {
             double demand = recentPerDay > 0 && previousPerDay > 0
                     ? recentPerDay * 0.7 + previousPerDay * 0.3
                     : Math.max(recentPerDay, previousPerDay);
+            if (demand <= 0) {
+                if (row.onHand() < 0) {
+                    dataGapCount++;
+                    inventoryGapCount++;
+                    gaps.add(row.name() + ": negative stock without recent sales; stock reconciliation needed");
+                }
+                continue;
+            }
             double available = row.onHand() + row.onOrder();
             double casePack = Math.max(1d, row.caseQuantity());
             double minimum = Math.max(1d, row.minimumOrder());
@@ -240,7 +248,7 @@ public class NativeReplenishmentService {
             double quantity = raw == 0 ? 0 : Math.ceil(Math.max(raw, minimum) / casePack) * casePack;
             if (quantity <= 0) continue;
             suggestions.add(new ReplenishmentSuggestion(row.id(), row.name(), "units", quantity,
-                    demand > 0 ? Math.max(0d, row.onHand()) / demand : null, demand, row.onHand(), available));
+                    Math.max(0d, row.onHand()) / demand, demand, row.onHand(), available));
         }
         suggestions.sort(Comparator
                 .comparing(ReplenishmentSuggestion::daysOfStock, Comparator.nullsLast(Comparator.naturalOrder()))
