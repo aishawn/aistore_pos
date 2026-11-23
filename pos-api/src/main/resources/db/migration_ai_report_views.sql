@@ -27,11 +27,12 @@ SELECT
   p.category_id,
   c.name AS category_name,
   price.list_price,
-  barcode.codes AS barcode
+  barcode.codes AS barcode,
+  price.sale_quantity
 FROM product p
 LEFT JOIN category c ON c.id = p.category_id
 LEFT JOIN LATERAL (
-  SELECT pp.price AS list_price
+  SELECT pp.price AS list_price, pp.quantity AS sale_quantity
   FROM product_price pp
   WHERE pp.product_id = p.id AND pp.outlet_id = p.outlet_id
   ORDER BY pp.quantity, pp.id

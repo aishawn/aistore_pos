@@ -11,6 +11,7 @@ public record GroceryRecommendCard(
         BigDecimal listPrice,
         BigDecimal sellPrice,
         BigDecimal stockQuantity,
+        BigDecimal saleQuantity,
         BigDecimal caseQuantity,
         int matchPct,
         String reason

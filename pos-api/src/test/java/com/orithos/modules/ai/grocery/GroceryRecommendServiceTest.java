@@ -64,6 +64,22 @@ class GroceryRecommendServiceTest {
     }
 
     @Test
+    void usesWholePackPriceAndStockForPackOnlyProducts() {
+        var pack = row(1, "ASAHI SUPER DRY 10PK", "BEER", "3.499", "19");
+        pack.put("sale_quantity", new BigDecimal("10"));
+        var incompletePack = row(2, "Another 10PK", "BEER", "2.0", "9");
+        incompletePack.put("sale_quantity", new BigDecimal("10"));
+        when(reports.listRecommendationProducts(tenant)).thenReturn(catalog(pack, incompletePack));
+
+        assertEquals(List.of(), service.recommend(
+                new GroceryRecommendRequest("beer", null, new BigDecimal("34.98"), null), tenant).recommendations());
+        var card = service.recommend(
+                new GroceryRecommendRequest("beer", null, new BigDecimal("34.99"), null), tenant).recommendations().getFirst();
+        assertEquals(new BigDecimal("34.99"), card.sellPrice());
+        assertEquals(BigDecimal.ONE, card.stockQuantity());
+    }
+
+    @Test
     void returnsAnExplicitEmptyResultWhenNoInStockItemsMatch() {
         when(reports.listRecommendationProducts(tenant)).thenReturn(catalog(
                 row(1, "House Lager", "Beer", "12.00", "0")));

@@ -221,11 +221,11 @@ public class NativeAiReportQueryService {
             try {
                 List<Map<String, Object>> rows = dataSources.jdbc(tenant.requireOutletId()).queryForList("""
                         SELECT p.id, p.name, p.list_price, p.list_price AS sell_price,
-                               i.quantity, COALESCE(p.category_name, '') AS category
+                               p.sale_quantity, i.quantity, COALESCE(p.category_name, '') AS category
                         FROM ai_rpt_product p
                         JOIN ai_rpt_inventory i ON i.product_id = p.id AND i.outlet_id = p.outlet_id
                         WHERE p.outlet_id = ? AND p.status = 'ACTIVE'
-                          AND p.list_price > 0 AND i.quantity > 0
+                          AND p.list_price > 0 AND p.sale_quantity > 0 AND i.quantity >= p.sale_quantity
                         ORDER BY p.name, p.id
                         LIMIT ?
                         """, tenant.requireOutletId(), MAX_CATALOG_ROWS);

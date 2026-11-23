@@ -1,7 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useOptionalSellScreen } from "@/lib/sell-screen";
+import Link from "next/link";
 import type { GroceryRecommendCard } from "@/lib/api";
 import { formatMoney } from "@/components/sommelier/WineCard";
 
@@ -14,18 +13,8 @@ const CATEGORY_LABEL: Record<string, string> = {
 };
 
 export function ProductRecommendCard({ card }: { card: GroceryRecommendCard }) {
-  const sell = useOptionalSellScreen();
-  const router = useRouter();
-
-  function addToCart() {
-    sell?.addProduct({
-      id: String(card.productId),
-      name: card.name,
-      unitPrice: Number(card.sellPrice),
-      caseQuantity: card.caseQuantity && card.caseQuantity > 0 ? Number(card.caseQuantity) : undefined,
-    });
-    router.push("/");
-  }
+  const saleQuantity = Number(card.saleQuantity ?? 1);
+  const isPack = saleQuantity > 1;
 
   return (
     <article className="rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-4 shadow-[var(--oh-shadow-card)]">
@@ -35,6 +24,7 @@ export function ProductRecommendCard({ card }: { card: GroceryRecommendCard }) {
           <p className="mt-1 text-[26px] font-semibold leading-none text-[var(--oh-text)]">
             {formatMoney(card.sellPrice)}
           </p>
+          {isPack && <p className="mt-1 text-sm text-[var(--oh-muted)]">Per pack of {saleQuantity}</p>}
         </div>
         <div className="rounded-full bg-blue-50 px-2.5 py-1 text-[13px] font-semibold text-blue-800">
           Match {card.matchPct}%
@@ -49,15 +39,12 @@ export function ProductRecommendCard({ card }: { card: GroceryRecommendCard }) {
       <p className="mt-3 text-[14px] leading-6 text-[var(--oh-text-secondary)]">{card.reason}</p>
 
       <div className="mt-4">
-        <button
-          type="button"
-          onClick={addToCart}
-          className="min-h-11 w-full rounded-lg bg-[var(--oh-primary)] px-3 py-2.5 text-[14px] font-semibold text-white transition hover:bg-[var(--oh-primary-hover)]"
-        >
-          Add to cart
-        </button>
+        <Link
+          href={`/products/${card.productId}/view`}
+          className="inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-[var(--oh-primary)] px-3 py-2.5 text-[14px] font-semibold text-white transition hover:bg-[var(--oh-primary-hover)]"
+        >View product</Link>
       </div>
-      <p className="mt-2 text-[13px] text-[var(--oh-muted)]">In stock: {card.stockQuantity}</p>
+      <p className="mt-2 text-[13px] text-[var(--oh-muted)]">In stock: {card.stockQuantity} {isPack ? "packs" : "units"}</p>
     </article>
   );
 }

@@ -51,15 +51,20 @@ public class GroceryChatBrief {
                 answer.append("\n• ").append(card.badge()).append(" — ")
                         .append(AssistantDisplayText.productName(card.name())).append(" — $")
                         .append(AssistantDisplayText.money(card.sellPrice()));
+                String packaging = card.saleQuantity().compareTo(java.math.BigDecimal.ONE) > 0
+                        ? (chinese ? " / 每包 " : " / pack of ") + card.saleQuantity().stripTrailingZeros().toPlainString()
+                        : "";
+                answer.append(packaging);
                 Map<String, Object> item = new LinkedHashMap<>();
                 item.put("productId", card.productId());
                 item.put("name", AssistantDisplayText.productName(card.name()));
                 item.put("category", card.category());
                 item.put("price", card.sellPrice());
                 item.put("stockQuantity", card.stockQuantity());
+                item.put("saleQuantity", card.saleQuantity());
                 item.put("reason", card.reason());
                 item.put("label", card.badge() + " — " + AssistantDisplayText.productName(card.name())
-                        + " — $" + AssistantDisplayText.money(card.sellPrice()));
+                        + " — $" + AssistantDisplayText.money(card.sellPrice()) + packaging);
                 items.add(item);
             }
             answer.append(chinese ? "\n\n打开商品推荐页面查看完整结果。" : "\n\nOpen grocery recommendations to see the full results.");

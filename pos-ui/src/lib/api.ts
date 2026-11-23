@@ -1458,6 +1458,7 @@ export interface GroceryRecommendCard {
   listPrice: number;
   sellPrice: number;
   stockQuantity: number;
+  saleQuantity?: number;
   caseQuantity: number | null;
   matchPct: number;
   reason: string;

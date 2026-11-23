@@ -6,6 +6,7 @@ import com.orithos.modules.ai.report.TenantContext;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -33,8 +34,10 @@ public class GroceryRecommendService {
             if (category == null || (!"not_sure".equals(profile.category())
                     && !profile.category().equals(category))) continue;
 
-            BigDecimal sell = decimal(row.get("sell_price"));
-            BigDecimal quantity = decimal(row.get("quantity"));
+            BigDecimal saleQuantity = row.get("sale_quantity") == null ? BigDecimal.ONE : decimal(row.get("sale_quantity"));
+            if (saleQuantity.signum() <= 0) continue;
+            BigDecimal sell = salePrice(row.get("sell_price"), saleQuantity);
+            BigDecimal quantity = decimal(row.get("quantity")).divideToIntegralValue(saleQuantity).stripTrailingZeros();
             if (quantity.compareTo(BigDecimal.ZERO) <= 0) continue;
             BigDecimal min = profile.budgetMin();
             BigDecimal max = profile.budgetMax();
@@ -45,7 +48,7 @@ public class GroceryRecommendService {
             String badge = "not_sure".equals(profile.category()) ? "In-stock pick" : label(category);
             String reason = reason(category, sell, profile);
             candidates.add(new GroceryRecommendCard(id, name, "", badge, category,
-                    decimal(row.get("list_price")), sell, quantity, null,
+                    salePrice(row.get("list_price"), saleQuantity), sell, quantity, saleQuantity, null,
                     100, reason));
         }
 
@@ -87,7 +90,7 @@ public class GroceryRecommendService {
                     : i == 0 ? "Lowest price" : i == count - 1 ? "Higher price" : "Mid-range";
             picks.add(new GroceryRecommendCard(candidate.productId(), candidate.name(), tier, badge,
                     candidate.category(), candidate.listPrice(), candidate.sellPrice(), candidate.stockQuantity(),
-                    candidate.caseQuantity(), candidate.matchPct(), candidate.reason()));
+                    candidate.saleQuantity(), candidate.caseQuantity(), candidate.matchPct(), candidate.reason()));
         }
         return picks;
     }
@@ -136,6 +139,10 @@ public class GroceryRecommendService {
         if (value instanceof Number number) return new BigDecimal(number.toString());
         try { return value == null ? BigDecimal.ZERO : new BigDecimal(value.toString()); }
         catch (NumberFormatException ignored) { return BigDecimal.ZERO; }
+    }
+
+    private static BigDecimal salePrice(Object unitPrice, BigDecimal saleQuantity) {
+        return decimal(unitPrice).multiply(saleQuantity).setScale(2, RoundingMode.HALF_UP);
     }
 
     private static String string(Object value) { return value == null ? "" : value.toString().trim(); }
