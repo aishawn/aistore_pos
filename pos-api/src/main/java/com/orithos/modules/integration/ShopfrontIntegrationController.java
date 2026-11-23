@@ -23,6 +23,9 @@ import java.math.RoundingMode;
 import java.security.MessageDigest;
 import java.sql.Timestamp;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeParseException;
 import java.time.OffsetDateTime;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -3175,6 +3178,7 @@ public class ShopfrontIntegrationController {
                         jdbc.update("UPDATE purchase_order SET status=? WHERE id=? AND outlet_id=? AND type='ORDER'",
                                 status, existingOrderId, outletId);
                     }
+                    savePurchaseOrderEventTimes(existingOrderId, outletId, raw);
                     if (onlyStatusChanged) {
                         jdbc.update("UPDATE shopfront_purchase_order_business_mapping SET source_hash=?,updated_at=CURRENT_TIMESTAMP WHERE store_key=? AND source_id=? AND outlet_id=?",
                                 hash, store, sourceId, outletId);
@@ -3233,6 +3237,7 @@ public class ShopfrontIntegrationController {
                 jdbc.update("DELETE FROM order_product WHERE order_id=? AND outlet_id=?", orderId, outletId);
                 updated++;
             }
+            savePurchaseOrderEventTimes(orderId, outletId, raw);
             for (Object[] line : lineRows) {
                 jdbc.update("INSERT INTO order_product (order_id,product_id,supplier_id,supplier_code,case_quantity,ordered_quantity,received_quantity,base_cost,ordered_cost,outlet_id) VALUES (?,?,?,?,?,?,?,?,?,?)",
                         orderId, line[0], line[1], line[2], line[3], line[4], line[5], line[6], line[7], line[8]);
@@ -3430,7 +3435,32 @@ public class ShopfrontIntegrationController {
         return purchaseOrderImportHash(normalized, importedLines, skippedLines);
     }
 
+    private void savePurchaseOrderEventTimes(long orderId, long outletId, JsonNode raw) {
+        LocalDateTime sent = purchaseOrderEventTime(text(raw, "sentAt"));
+        LocalDateTime received = purchaseOrderEventTime(text(raw, "receivedAt"));
+        if (sent == null && received == null) return;
+        jdbc.update("""
+                UPDATE purchase_order SET sent_at = COALESCE(sent_at, ?), received_at = COALESCE(received_at, ?)
+                WHERE id = ? AND outlet_id = ? AND type = 'ORDER' AND entered_as = 'SHOPFRONT'
+                """, sent, received, orderId, outletId);
+    }
+
+    private static LocalDateTime purchaseOrderEventTime(String value) {
+        if (value == null || value.isBlank()) return null;
+        try {
+            return OffsetDateTime.parse(value.replaceFirst("([+-]\\d{2})(\\d{2})$", "$1:$2"))
+                    .withOffsetSameInstant(ZoneOffset.UTC).toLocalDateTime();
+        } catch (DateTimeParseException ex) {
+            return null;
+        }
+    }
+
     private String purchaseOrderImportHash(JsonNode raw, int importedLines, int skippedLines) {
+        if (raw.isObject()) {
+            var order = ((com.fasterxml.jackson.databind.node.ObjectNode) raw).deepCopy();
+            order.remove(List.of("sentAt", "receivedAt"));
+            raw = order;
+        }
         return purchaseOrderSourceHash(purchaseOrderSourceHash(raw) + ":" + PURCHASE_ORDER_IMPORT_VERSION
                 + ":imported=" + importedLines + ":skipped=" + skippedLines);
     }
