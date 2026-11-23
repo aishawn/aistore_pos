@@ -69,7 +69,7 @@ public class SommelierService {
 
     public RecommendResponse recommend(RecommendRequest request, TenantContext tenant) {
         CustomerWineProfile profile = toProfile(request);
-        List<WineCandidate> wines = catalog.listWines(tenant);
+        List<WineCandidate> wines = applySingleBottleOffers(catalog.listWines(tenant), tenant);
         List<WineMatcher.ScoredWine> scored = matcher.match(wines, profile);
         if (scored.isEmpty()) {
             String reason = wines.isEmpty()
@@ -86,7 +86,7 @@ public class SommelierService {
     }
 
     public IdentifyResponse identify(String q, TenantContext tenant) {
-        List<WineCandidate> hits = catalog.search(tenant, q);
+        List<WineCandidate> hits = applySingleBottleOffers(catalog.search(tenant, q), tenant);
         List<WineAssistantResponse> items = new ArrayList<>();
         for (WineCandidate wine : hits) {
             items.add(toAssistant(wine, null, true, tenant));
@@ -101,12 +101,13 @@ public class SommelierService {
                 unique.put(hit.productId(), hit);
             }
         }
-        for (WineCandidate hit : LabelCatalogMatcher.rank(catalog.listWines(tenant), read, 8)) {
+        for (WineCandidate hit : LabelCatalogMatcher.rank(
+                applySingleBottleOffers(catalog.listWines(tenant), tenant), read, 8)) {
             unique.putIfAbsent(hit.productId(), hit);
         }
         if (unique.size() < 3) {
             for (String q : read.searchQueries()) {
-                for (WineCandidate hit : catalog.search(tenant, q)) {
+                for (WineCandidate hit : applySingleBottleOffers(catalog.search(tenant, q), tenant)) {
                     unique.putIfAbsent(hit.productId(), hit);
                     if (unique.size() >= 8) break;
                 }
@@ -114,7 +115,7 @@ public class SommelierService {
             }
         }
         List<WineAssistantResponse> items = new ArrayList<>();
-        for (WineCandidate wine : unique.values()) {
+        for (WineCandidate wine : applySingleBottleOffers(new ArrayList<>(unique.values()), tenant)) {
             items.add(toAssistant(wine, null, true, tenant));
             if (items.size() >= 8) break;
         }
@@ -151,7 +152,7 @@ public class SommelierService {
         if (!direction.equals("cheaper") && !direction.equals("upgrade")) {
             throw new BusinessException(40000, "direction must be cheaper or upgrade");
         }
-        List<WineCandidate> wines = catalog.listWines(tenant);
+        List<WineCandidate> wines = applySingleBottleOffers(catalog.listWines(tenant), tenant);
         List<WineMatcher.ScoredWine> scored = matcher.similar(wines, current, direction);
         List<RecommendCard> cards = new ArrayList<>();
         String badge = direction.equals("cheaper") ? "Similar, cheaper" : "Upgrade";
@@ -171,7 +172,7 @@ public class SommelierService {
                 || q.contains("升级") || q.contains("更好")) ? "upgrade" : null);
         List<WineMatcher.ScoredWine> alts = List.of();
         if (direction != null) {
-            alts = matcher.similar(catalog.listWines(tenant), wine, direction);
+            alts = matcher.similar(applySingleBottleOffers(catalog.listWines(tenant), tenant), wine, direction);
         }
         String answer = pitchService.answer(wine, request.question(), alts, tenant);
         List<RecommendCard> cards = new ArrayList<>();
@@ -303,12 +304,43 @@ public class SommelierService {
         }
     }
 
+    private List<WineCandidate> applySingleBottleOffers(List<WineCandidate> wines, TenantContext tenant) {
+        if (wines == null || wines.isEmpty() || shopfrontOffers == null || tenant == null) return wines;
+        try {
+            List<Long> productIds = wines.stream().map(WineCandidate::productId).filter(id -> id != null).distinct().toList();
+            if (productIds.isEmpty()) return wines;
+            var snapshot = shopfrontOffers.checkoutOffers(tenant.vendorId(), tenant.requireOutletId(), productIds);
+            if (snapshot == null || snapshot.snapshotExpired()) return wines;
+            return wines.stream().map(wine -> applySingleBottleOffer(wine,
+                    snapshot.offers().getOrDefault(wine.productId(), List.of()))).toList();
+        } catch (RuntimeException unavailable) {
+            return wines;
+        }
+    }
+
+    private WineCandidate applySingleBottleOffer(WineCandidate wine,
+                                                   List<ShopfrontProductOfferService.Offer> offers) {
+        if (wine == null || wine.productId() == null || wine.sellPrice() == null || offers == null) return wine;
+        List<ShopfrontProductOfferService.Offer> singleBottleOffers = offers.stream()
+                .filter(offer -> offer.groupId() == null && offer.requiredUnits().compareTo(BigDecimal.ONE) == 0)
+                .toList();
+        List<BigDecimal> distinctTotals = singleBottleOffers.stream()
+                .map(offer -> offer.total().setScale(2, RoundingMode.HALF_UP)).distinct().toList();
+        if (distinctTotals.size() != 1) return wine;
+        BigDecimal offerPrice = distinctTotals.getFirst();
+        BigDecimal currentSellPrice = wine.sellPrice().setScale(2, RoundingMode.HALF_UP);
+        if (offerPrice.compareTo(currentSellPrice) >= 0) return wine;
+        return new WineCandidate(wine.productId(), wine.name(), wine.description(), wine.image(),
+                wine.categoryName(), wine.familyName(), wine.brandName(), wine.listPrice(), offerPrice, true,
+                wine.stockQuantity(), wine.trackInventory(), wine.caseQuantity(), wine.profile());
+    }
+
     private WineCandidate requireWine(Long id, TenantContext tenant) {
         WineCandidate wine = catalog.findById(id, tenant);
         if (wine == null) {
             throw new BusinessException(40400, "Product not found");
         }
-        return wine;
+        return applySingleBottleOffers(List.of(wine), tenant).getFirst();
     }
 
     static CustomerWineProfile toProfile(RecommendRequest request) {

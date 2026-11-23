@@ -24,6 +24,81 @@ import static org.mockito.Mockito.when;
 class SommelierRecommendationProvenanceTest {
 
     @Test
+    void appliesOnlyAnUnambiguousLowerSingleBottleOfferBeforeBudgetMatching() {
+        SommelierCatalogService catalog = mock(SommelierCatalogService.class);
+        WinePitchService pitch = mock(WinePitchService.class);
+        ShopfrontProductOfferService offers = mock(ShopfrontProductOfferService.class);
+        BusinessTimezoneService timezones = mock(BusinessTimezoneService.class);
+        WineCandidate wine = new WineCandidate(15L, "Test Shiraz", null, null, "Wine", null, null,
+                new BigDecimal("20.00"), new BigDecimal("20.00"), false, new BigDecimal("5"), true,
+                BigDecimal.ONE, WineProfile.empty("red"));
+        TenantContext tenant = new TenantContext(1L, 1L, 1L, List.of(1L), Set.of());
+        Instant end = Instant.parse("2026-11-25T00:00:00Z");
+        var offer = new ShopfrontProductOfferService.Offer("Bottle special", BigDecimal.ONE,
+                new BigDecimal("16.00"), null, end, Instant.parse("2026-11-24T00:00:00Z"));
+        when(catalog.listWines(tenant)).thenReturn(List.of(wine));
+        when(offers.checkoutOffers(1L, 1L, List.of(15L))).thenReturn(new ShopfrontProductOfferService.CheckoutOffers(
+                java.util.Map.of(15L, List.of(offer)), false));
+        when(timezones.zoneForVendor(1L)).thenReturn(java.time.ZoneId.of("Australia/Melbourne"));
+        when(pitch.template(any(), any(), eq("card"))).thenReturn("A suitable wine.");
+
+        var result = recommend(catalog, pitch, offers, timezones, tenant,
+                new BigDecimal("17.00"));
+
+        assertEquals(new BigDecimal("16.00"), result.recommendations().getFirst().sellPrice());
+        assertTrue(result.recommendations().getFirst().onPromotion());
+        assertEquals("2026-11-25", result.recommendations().getFirst().promotionEndsAt());
+    }
+
+    @Test
+    void keepsDirectoryPriceForConflictingOrNonSingleBottleOffers() {
+        SommelierCatalogService catalog = mock(SommelierCatalogService.class);
+        WinePitchService pitch = mock(WinePitchService.class);
+        ShopfrontProductOfferService offers = mock(ShopfrontProductOfferService.class);
+        TenantContext tenant = new TenantContext(1L, 1L, 1L, List.of(1L), Set.of());
+        WineCandidate wine = new WineCandidate(15L, "Test Shiraz", null, null, "Wine", null, null,
+                new BigDecimal("20.00"), new BigDecimal("20.00"), false, new BigDecimal("5"), true,
+                BigDecimal.ONE, WineProfile.empty("red"));
+        when(catalog.listWines(tenant)).thenReturn(List.of(wine));
+        when(pitch.template(any(), any(), eq("card"))).thenReturn("A suitable wine.");
+        var conflicting = List.of(
+                new ShopfrontProductOfferService.Offer("Bottle special", BigDecimal.ONE,
+                        new BigDecimal("16.00"), null, null, Instant.now()),
+                new ShopfrontProductOfferService.Offer("Other bottle special", BigDecimal.ONE,
+                        new BigDecimal("15.00"), null, null, Instant.now()));
+        when(offers.checkoutOffers(1L, 1L, List.of(15L))).thenReturn(new ShopfrontProductOfferService.CheckoutOffers(
+                java.util.Map.of(15L, conflicting), false));
+
+        var conflictingResult = recommend(catalog, pitch, offers, mock(BusinessTimezoneService.class), tenant,
+                new BigDecimal("21.00"));
+        assertEquals(new BigDecimal("20.00"), conflictingResult.recommendations().getFirst().sellPrice());
+        assertEquals(false, conflictingResult.recommendations().getFirst().onPromotion());
+
+        when(offers.checkoutOffers(1L, 1L, List.of(15L))).thenReturn(new ShopfrontProductOfferService.CheckoutOffers(
+                java.util.Map.of(15L, List.of(new ShopfrontProductOfferService.Offer("Six bottle deal",
+                        new BigDecimal("6"), new BigDecimal("16.00"), null, null, Instant.now()))), false));
+        var multiBottleResult = recommend(catalog, pitch, offers, mock(BusinessTimezoneService.class), tenant,
+                new BigDecimal("21.00"));
+        assertEquals(new BigDecimal("20.00"), multiBottleResult.recommendations().getFirst().sellPrice());
+
+        when(offers.checkoutOffers(1L, 1L, List.of(15L))).thenReturn(new ShopfrontProductOfferService.CheckoutOffers(
+                java.util.Map.of(15L, List.of(new ShopfrontProductOfferService.Offer("Stale bottle deal",
+                        BigDecimal.ONE, new BigDecimal("16.00"), null, null, Instant.now()))), true));
+        var staleResult = recommend(catalog, pitch, offers, mock(BusinessTimezoneService.class), tenant,
+                new BigDecimal("21.00"));
+        assertEquals(new BigDecimal("20.00"), staleResult.recommendations().getFirst().sellPrice());
+    }
+
+    private static com.orithos.modules.ai.sommelier.dto.RecommendResponse recommend(
+            SommelierCatalogService catalog, WinePitchService pitch, ShopfrontProductOfferService offers,
+            BusinessTimezoneService timezones, TenantContext tenant, BigDecimal budgetMax) {
+        return new SommelierService(catalog, pitch, mock(SommelierProductMapper.class),
+                new ObjectMapper(), offers, timezones).recommend(
+                new com.orithos.modules.ai.sommelier.dto.RecommendRequest(
+                        "red", BigDecimal.ZERO, budgetMax, null, null, null, null, null, List.of(), null), tenant);
+    }
+
+    @Test
     void exposesMatchingSingleBottleOfferEndDateInStoreTimezoneAndRejectsStaleOrMultiBottleDeals() {
         SommelierCatalogService catalog = mock(SommelierCatalogService.class);
         WinePitchService pitch = mock(WinePitchService.class);
