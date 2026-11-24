@@ -49,6 +49,14 @@ test("calculates GST-inclusive prices using the product's configured rate", () =
   assert.equal(result.suggestedGst, 1.15);
 });
 
+test("blocks margin repricing when on-hand inventory is negative", () => {
+  const result = buildSuggestion({ ...product, price: 5, cost: 4, stockQuantity: -13, taxRateId: 3 }, 0.3, [{ id: 3, amount: 10 }]);
+  assert.equal(result.status, "review_stock");
+  assert.equal(result.suggestedPrice, null);
+  assert.equal(result.suggestedListPrice, null);
+  assert.match(result.reason, /negative.*reconcile/i);
+});
+
 test("requires tax review when a product tax rate is absent", () => {
   const result = buildSuggestion(product, 0.3, []);
   assert.equal(result.status, "review_tax");

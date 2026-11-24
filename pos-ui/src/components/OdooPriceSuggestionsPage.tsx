@@ -19,6 +19,7 @@ const MARGIN_OPTIONS = [0.2, 0.25, 0.3, 0.35, 0.4];
 
 function statusLabel(status: SuggestionStatus) {
   if (status === "raise") return "Raise price";
+  if (status === "review_stock") return "Review stock";
   if (status === "review_cost") return "Review";
   if (status === "review_tax") return "Review tax";
   if (status === "fixed_price") return "Fixed denomination";
@@ -138,7 +139,7 @@ export function OdooPriceSuggestionsPage() {
   }, [data?.nextOffset, loading, loadingMore, refreshing, error, load]);
 
   const actionItems = useMemo(
-    () => data?.products.filter((product) => product.status === "raise" || product.status === "review_cost" || product.status === "review_tax" || product.status === "missing_cost" || product.status === "fixed_price") ?? [],
+    () => data?.products.filter((product) => product.status === "raise" || product.status === "review_stock" || product.status === "review_cost" || product.status === "review_tax" || product.status === "missing_cost" || product.status === "fixed_price") ?? [],
     [data],
   );
   const baseItems = useMemo(
@@ -291,6 +292,7 @@ export function OdooPriceSuggestionsPage() {
             <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as "all" | SuggestionStatus)} className="rounded bg-transparent font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)]">
               <option value="all">All</option>
               <option value="raise">Raise price</option>
+              <option value="review_stock">Review stock</option>
               <option value="review_cost">Review</option>
               <option value="review_tax">Review tax</option>
               <option value="missing_cost">Missing cost</option>

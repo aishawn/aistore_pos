@@ -1,7 +1,7 @@
 import { api, ApiError, type Page } from "@/lib/api";
 import { netMargin, simpleTaxTotals, suggestedListPrice, type SuggestionTax } from "@/lib/price-suggestion-math";
 
-export type SuggestionStatus = "ok" | "raise" | "review_cost" | "review_tax" | "missing_cost" | "fixed_price" | "unsaleable";
+export type SuggestionStatus = "ok" | "raise" | "review_stock" | "review_cost" | "review_tax" | "missing_cost" | "fixed_price" | "unsaleable";
 
 export type PriceSuggestionProduct = {
   id: number;
@@ -99,6 +99,9 @@ export function buildSuggestion(product: ProductRow, marginTarget: number, taxRa
       status: "fixed_price",
       reason: "This is a fixed-denomination or EPAY product. Confirm provider terms before changing its price; no margin-based price is suggested.",
     };
+  }
+  if (onHand < 0) {
+    return { ...base, status: "review_stock", reason: "On-hand inventory is negative. Reconcile the stock record before reviewing a price suggestion." };
   }
   if (cost == null || cost <= 0) {
     return { ...base, status: "missing_cost", reason: "Standard cost is missing in Orithos. No price suggestion is shown." };
