@@ -237,6 +237,9 @@ export function assistantDisplayDataSource(
 ): string | null {
   const trimmed = value?.trim();
   if (!trimmed) return null;
+  if (trimmed === "orithos_ledger") {
+    return chinese ? "Orithos 门店账本" : "Orithos ledger";
+  }
   if (INTERNAL_DATA_SOURCES.has(trimmed)) {
     return chinese ? "门店账本（会话缓存）" : "Orithos ledger (session cache)";
   }

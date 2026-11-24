@@ -198,5 +198,6 @@ test("states when the backend does not provide a trusted data timestamp", () => 
 
 test("hides internal assistant cache markers from data source labels", () => {
   assert.equal(assistantDisplayDataSource("stale_card_cache", false), "Orithos ledger (session cache)");
-  assert.equal(assistantDisplayDataSource("orithos_ledger", false), "orithos_ledger");
+  assert.equal(assistantDisplayDataSource("orithos_ledger", false), "Orithos ledger");
+  assert.equal(assistantDisplayDataSource("orithos_ledger", true), "Orithos 门店账本");
 });
