@@ -25,6 +25,10 @@ export type PriceSuggestionProduct = {
   suggestedListPrice?: number | null;
 };
 
+export function canBulkEditPriceSuggestion(product: Pick<PriceSuggestionProduct, "status">) {
+  return product.status !== "review_stock";
+}
+
 export type PriceSuggestionData = {
   company: string;
   historyDays: number;

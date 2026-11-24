@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildSuggestion } from "./price-suggestions-native.ts";
+import { buildSuggestion, canBulkEditPriceSuggestion } from "./price-suggestions-native.ts";
 
 const product = { id: 1, name: "GST-free groceries", price: 15, cost: 10, taxRateId: 2 };
 
@@ -55,6 +55,12 @@ test("blocks margin repricing when on-hand inventory is negative", () => {
   assert.equal(result.suggestedPrice, null);
   assert.equal(result.suggestedListPrice, null);
   assert.match(result.reason, /negative.*reconcile/i);
+  assert.equal(canBulkEditPriceSuggestion(result), false);
+});
+
+test("keeps the bulk price editor available for other review states", () => {
+  assert.equal(canBulkEditPriceSuggestion({ status: "review_tax" }), true);
+  assert.equal(canBulkEditPriceSuggestion({ status: "raise" }), true);
 });
 
 test("requires tax review when a product tax rate is absent", () => {
