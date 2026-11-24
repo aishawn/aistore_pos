@@ -45,7 +45,7 @@ export function operationsPreviewIntent(question: string): OperationsPreview | n
 
 type Product = {
   productId: number; name: string; unit?: string; suggestedQuantity: number; daysOfStock?: number | null;
-  leadTimeDays?: number | null; caseQuantity?: number | null;
+  onHand?: number | null; unitsPerDay?: number | null; leadTimeDays?: number | null; caseQuantity?: number | null;
 };
 export function replenishmentExpectedArrivalDate(
   dataAsOf: string | null | undefined,
@@ -74,7 +74,6 @@ export function replenishmentExpectedArrivalDate(
 function replenishmentItemLabel(
   item: Product,
   chinese: boolean,
-  coverageDays: number,
   dataAsOf: string | null | undefined,
   timeZone: string,
 ): string {
@@ -96,13 +95,19 @@ function replenishmentItemLabel(
       parts.push(chinese ? `箱规每箱 ${caseSize} 件` : `case size ${caseSize} units`);
     }
   }
-  if (finite(item.daysOfStock)) {
+  if (finite(item.onHand) && item.onHand <= 0) {
+    parts.push(chinese ? "当前缺货" : "out of stock");
+  } else if (finite(item.daysOfStock) && finite(item.unitsPerDay) && item.unitsPerDay > 0) {
     const days = new Intl.NumberFormat(chinese ? "zh-CN" : "en-AU", { maximumFractionDigits: 1 })
       .format(item.daysOfStock);
     parts.push(chinese ? `现货约可售 ${days} 天` : `about ${days} days of stock on hand`);
+  } else if (typeof item.unitsPerDay === "number" && item.unitsPerDay <= 0) {
+    parts.push(chinese ? "销售速度不足，无法估算库存覆盖天数" : "stock cover unavailable: no recorded sales pace");
   }
-  if (finite(item.leadTimeDays) && item.leadTimeDays > coverageDays) {
-    parts.push(chinese ? `按 ${item.leadTimeDays} 天供应商交期计算` : `covers a ${item.leadTimeDays}-day supplier lead time`);
+  if (finite(item.leadTimeDays) && item.leadTimeDays > 0) {
+    parts.push(chinese
+      ? `供应商记录交期约 ${item.leadTimeDays} 天（不是确认到货日期）`
+      : `supplier-recorded lead time: about ${item.leadTimeDays} days (not a confirmed arrival date)`);
   }
   const leadTimeDays = item.leadTimeDays;
   if (typeof leadTimeDays !== "number" || !Number.isInteger(leadTimeDays) || leadTimeDays < 0) {
@@ -110,7 +115,7 @@ function replenishmentItemLabel(
   } else {
     const arrivalDate = replenishmentExpectedArrivalDate(dataAsOf, leadTimeDays, timeZone);
     parts.push(arrivalDate
-      ? chinese ? `预计到货 ${arrivalDate}` : `estimated arrival ${arrivalDate}`
+      ? chinese ? `预计到货日期 ${arrivalDate}` : `estimated arrival date ${arrivalDate}`
       : chinese ? "数据时间或门店时区不可用，到货日未知" : "data timestamp or store timezone unavailable; arrival date unknown");
   }
   return parts.join(" · ");
@@ -404,7 +409,7 @@ async function buildLiveOperationsPreview(
           : eligible.length ? "ready" : "empty";
       const replenishmentTimeZone = brief.replenishment.reportTimeZone ?? brief.reportTimeZone;
       const topSummary = eligible.slice(0, 3).map((item) => `• ${replenishmentItemLabel(
-        item, chinese, brief.replenishment.coverageDays, brief.replenishment.dataAsOf, replenishmentTimeZone,
+        item, chinese, brief.replenishment.dataAsOf, replenishmentTimeZone,
       )}`).join("\n");
       const replenishmentCard: AssistantCard = {
         type: "replenishment",
@@ -421,7 +426,7 @@ async function buildLiveOperationsPreview(
         items: eligible.slice(0, 3).map((item) => ({
           id: item.productId,
           label: replenishmentItemLabel(
-            item, chinese, brief.replenishment.coverageDays, brief.replenishment.dataAsOf, replenishmentTimeZone,
+            item, chinese, brief.replenishment.dataAsOf, replenishmentTimeZone,
           ),
         })),
         dataSource: brief.dataSource,
@@ -559,7 +564,7 @@ async function buildLiveOperationsPreview(
           ? `${plan.dataGapCount} 个商品因资料不完整被排除。`
           : `${plan.dataGapCount} products were excluded for incomplete data.`) + purchaseCostGapDetails(plan.costGapCount, chinese);
       const topSummary = eligible.slice(0, 3).map((item) => `• ${replenishmentItemLabel(
-        item, chinese, plan.coverageDays, plan.dataAsOf, plan.reportTimeZone,
+        item, chinese, plan.dataAsOf, plan.reportTimeZone,
       )}`).join("\n");
       const scanLine = chinese
         ? `全店扫描（销售期间 ${analysisPeriod}）：${plan.actionableItemCount ?? plan.itemsNeedingOrder} 个 SKU 有建议量（覆盖 ${plan.coverageDays} 天）${plan.dataGapCount > 0 ? `；${plan.dataGapCount} 个需核对资料，暂未纳入` : ""}。`
@@ -593,7 +598,7 @@ async function buildLiveOperationsPreview(
       }
       card.items = eligible.slice(0, 3).map((item) => ({
         id: item.productId,
-        label: replenishmentItemLabel(item, chinese, plan.coverageDays, plan.dataAsOf, plan.reportTimeZone),
+        label: replenishmentItemLabel(item, chinese, plan.dataAsOf, plan.reportTimeZone),
       }));
     } else {
       const sales = await readWeekSales(fetcher, signal);

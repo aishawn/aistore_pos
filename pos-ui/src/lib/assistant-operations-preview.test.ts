@@ -65,8 +65,8 @@ test("full catalogue suggestions survive unrelated review products", async () =>
   assert.match(result?.answer ?? "", /1 products need inventory review; 0 lack supplier details/);
   assert.match(result?.answer ?? "", /1 product lacks a recorded purchase cost/);
   assert.equal(result?.cards?.[0].items?.[0].id, 501);
-  assert.match(result?.cards?.[0].items?.[0].label ?? "", /30-day supplier lead time/);
-  assert.match(result?.cards?.[0].items?.[0].label ?? "", /estimated arrival 2026-12-13/);
+  assert.match(result?.cards?.[0].items?.[0].label ?? "", /supplier-recorded lead time: about 30 days \(not a confirmed arrival date\)/);
+  assert.match(result?.cards?.[0].items?.[0].label ?? "", /estimated arrival date 2026-12-13/);
   assert.equal(result?.dataAsOf, "2026-11-13T01:00:00Z");
   assert.equal(result?.dataSource, "orithos_ledger");
   assert.equal(result?.storeScope, "current_authenticated_store");
@@ -100,6 +100,33 @@ test("replenishment cards disclose an unknown arrival date when lead time is mis
     dataGapCount: 0, dataGaps: [], top: [{ productId: 501, name: "Beer", suggestedQuantity: 8 }],
   } }));
   assert.match(result?.cards?.[0].items?.[0].label ?? "", /supplier lead time not recorded; arrival date unknown/);
+});
+
+test("replenishment cards show out of stock instead of zero days left", async () => {
+  const payload = { data: {
+    dataSource: "orithos_ledger", storeScope: "current_authenticated_store",
+    reportPeriodFrom: "2026-10-01", reportPeriodTo: "2026-11-13",
+    reportTimeZone: "Australia/Melbourne", reportDataStatus: "available",
+    dataAsOf: "2026-11-13T01:00:00Z", coverageDays: 21, itemsNeedingOrder: 1,
+    dataGapCount: 0, dataGaps: [],
+    top: [{ productId: 501, name: "Beer", suggestedQuantity: 8, onHand: 0, daysOfStock: 0, unitsPerDay: 0, leadTimeDays: 3 }],
+  } };
+  const result = await readOperationsPreview(question, null, undefined, mockFetch({ data: {
+    ...payload.data,
+  } }));
+  const label = result?.cards?.[0].items?.[0].label ?? "";
+  assert.match(label, /out of stock/);
+  assert.doesNotMatch(label, /0 days of stock on hand/);
+  assert.match(label, /supplier-recorded lead time: about 3 days \(not a confirmed arrival date\)/);
+  assert.match(label, /estimated arrival date 2026-11-16/);
+
+  await awaitOperationsPreviewInflight("replenishment");
+  clearOperationsPreviewSnapshots();
+  const chinese = await readOperationsPreview("哪些商品需要补货？", null, undefined, mockFetch(payload));
+  const chineseLabel = chinese?.cards?.[0].items?.[0].label ?? "";
+  assert.match(chineseLabel, /当前缺货/);
+  assert.match(chineseLabel, /供应商记录交期约 3 天（不是确认到货日期）/);
+  assert.match(chineseLabel, /预计到货日期 2026-11-16/);
 });
 
 test("replenishment cards show case quantities when the suggestion matches a known case pack", async () => {

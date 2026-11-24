@@ -88,7 +88,9 @@ public class ReplenishmentChatBrief {
                         .append(chinese ? " — 建议订购 " : " — order ").append(formatQty(item.suggestedQuantity()));
                 String pack = packDescription(item, chinese);
                 if (!pack.isEmpty()) sb.append(chinese ? "（" : " (").append(pack).append(chinese ? "）" : ")");
-                if (item.daysOfStock() != null && item.unitsPerDay() > 0) {
+                if (item.onHand() != null && item.onHand() <= 0) {
+                    sb.append(chinese ? "（当前缺货）" : " (out of stock)");
+                } else if (item.daysOfStock() != null && item.unitsPerDay() > 0) {
                     sb.append(chinese ? "（约剩 " : " (≈").append(formatDays(item.daysOfStock()))
                             .append(chinese ? " 天）" : "d left)");
                 } else if (item.unitsPerDay() <= 0) {
