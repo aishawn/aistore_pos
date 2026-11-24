@@ -55,6 +55,7 @@ public interface OrderMapper {
             WHERE r.vendor_id = #{vendorId} AND r.outlet_id = #{outletId}
                 AND r.status IN ('RECEIVED', 'PARTIALLY_RECEIVED') AND b.expiry_date <= #{through}
                 AND b.expiry_date >= COALESCE(#{from,jdbcType=DATE}, '-infinity'::date)
+                AND (#{dateType,jdbcType=VARCHAR} IS NULL OR b.date_type = #{dateType,jdbcType=VARCHAR})
                 AND (#{barcode,jdbcType=VARCHAR} IS NULL OR EXISTS (
                     SELECT 1 FROM product_barcode pb WHERE pb.outlet_id = r.outlet_id
                         AND pb.product_id = l.product_id AND pb.code = #{barcode,jdbcType=VARCHAR}
@@ -67,6 +68,7 @@ public interface OrderMapper {
                                                               @Param("from") java.time.LocalDate from,
                                                               @Param("through") java.time.LocalDate through,
                                                               @Param("barcode") String barcode,
+                                                              @Param("dateType") String dateType,
                                                               @Param("offset") long offset);
 
     @Select("SELECT po.* FROM purchase_order po JOIN outlet o ON o.id=po.outlet_id "

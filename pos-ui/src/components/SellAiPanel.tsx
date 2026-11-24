@@ -3,7 +3,7 @@
 import { assistantRequestTimeoutMs, assistantTimeoutMessage, operationsPreviewIntent, prefetchOperationsPreviewSnapshots, readOperationsPreview } from "@/lib/assistant-operations-preview";
 import { clearOperationsPreviewSnapshots } from "@/lib/assistant-operations-snapshot-cache";
 import { fallbackHrefForQuickAction, questionForQuickAction, shortcutForQuickAction, WORKSPACE_HERO_SHORTCUTS } from "@/lib/assistant-shortcuts";
-import { EXPIRY_REVIEW_HREF, expiryReviewStatusForQuestion, looksLikeAssistantWriteCommand } from "@/lib/assistant-command-routing";
+import { EXPIRY_REVIEW_HREF, expiryReviewDateTypeForQuestion, expiryReviewStatusForQuestion, looksLikeAssistantWriteCommand } from "@/lib/assistant-command-routing";
 
 import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
 import { AssistantComposer } from "@/components/AssistantComposer";
@@ -626,9 +626,14 @@ export function SellAiPanel({
   function tryLocalWorkspaceIntent(text: string): boolean {
     const t = text.trim();
     const expiryStatus = expiryReviewStatusForQuestion(t);
+    const expiryDateType = expiryReviewDateTypeForQuestion(t);
     if (expiryStatus) {
       const chinese = /[\u3400-\u9fff]/u.test(t);
-      const href = expiryStatus === "all" ? EXPIRY_REVIEW_HREF : EXPIRY_REVIEW_HREF + "&expiryStatus=" + expiryStatus;
+      const params = new URLSearchParams();
+      if (expiryStatus !== "all") params.set("expiryStatus", expiryStatus);
+      if (expiryDateType) params.set("dateType", expiryDateType);
+      const query = params.toString();
+      const href = EXPIRY_REVIEW_HREF + (query ? `&${query}` : "");
       openWorkspace(href, chinese
         ? "打开临期复核，查看对应的收货批次，并到货架核对剩余数量。"
         : "Open expiry review to see the matching received batches, then check remaining quantities on the shelf.",

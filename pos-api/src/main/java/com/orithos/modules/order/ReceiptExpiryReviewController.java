@@ -31,14 +31,16 @@ public class ReceiptExpiryReviewController {
     @GetMapping("/api/orders/expiry-review")
     public ApiResult<Review> review(@RequestParam(defaultValue = "1") int page,
                                     @RequestParam(defaultValue = "all") String status,
-                                    @RequestParam(defaultValue = "") String barcode) {
+                                    @RequestParam(defaultValue = "") String barcode,
+                                    @RequestParam(defaultValue = "all") String dateType) {
         permissions.requirePermission("stock.purchases");
         Long vendorId = CurrentUser.vendorId();
         Long outletId = CurrentUser.outletId();
         if (vendorId == null || outletId == null) {
             throw new BusinessException(40310, "Select a store before opening the expiry review.");
         }
-        if (page < 1 || !List.of("all", "upcoming", "expired").contains(status)) {
+        if (page < 1 || !List.of("all", "upcoming", "expired").contains(status)
+                || !List.of("all", "USE_BY", "BEST_BEFORE").contains(dateType)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid expiry review page or status.");
         }
         String code = barcode.strip();
@@ -49,8 +51,9 @@ public class ReceiptExpiryReviewController {
         LocalDate through = today.plusDays(14);
         LocalDate from = "upcoming".equals(status) ? today : null;
         LocalDate end = "expired".equals(status) ? today.minusDays(1) : through;
+        String selectedDateType = "all".equals(dateType) ? null : dateType;
         List<Batch> rows = orders.findExpiryReview(vendorId, outletId, from, end,
-                code.isEmpty() ? null : code, (page - 1L) * PAGE_SIZE);
+                code.isEmpty() ? null : code, selectedDateType, (page - 1L) * PAGE_SIZE);
         return ApiResult.ok(new Review(today, through, rows.stream().limit(PAGE_SIZE).toList(),
                 rows.size() > PAGE_SIZE, page, orders.expiryReviewCoverage(vendorId, outletId)));
     }

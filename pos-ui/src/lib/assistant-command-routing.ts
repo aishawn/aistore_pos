@@ -6,6 +6,7 @@ export function looksLikeAssistantWriteCommand(text: string): boolean {
 }
 
 export const EXPIRY_REVIEW_HREF = "/purchases?tab=expiry-review";
+export type ExpiryReviewDateType = "USE_BY" | "BEST_BEFORE";
 
 const expiryReviewNavigation = /^(?:(?:open|show(?: me)?|view) (?:the )?expiry review|(?:查看|打开|显示)临期复核)$/iu;
 const expiryReviewStockQuestion = /^(?:(?:which|what|any) (?:(?:batches|products|stock|items) )?(?:are |is )?(?:expiring soon|expires soon|near expiry|expired)|show(?: me)? (?:expired|near-expiry) (?:batches|products|stock|items))$/iu;
@@ -19,4 +20,10 @@ export function expiryReviewStatusForQuestion(text: string): ExpiryReviewStatus 
   if (expiryReviewNavigation.test(question)) return "all";
   if (!expiryReviewStockQuestion.test(question) && !expiryDateQuestion.test(question) && !expiryReviewChineseQuestion.test(question)) return null;
   return /\bexpired\b|过期/iu.test(question) ? "expired" : "upcoming";
+}
+
+export function expiryReviewDateTypeForQuestion(text: string): ExpiryReviewDateType | null {
+  const question = text.trim().replace(/[?？。.!！]+$/u, "").trim();
+  if (!expiryDateQuestion.test(question)) return null;
+  return /\bbest[- ]before\b/iu.test(question) ? "BEST_BEFORE" : "USE_BY";
 }

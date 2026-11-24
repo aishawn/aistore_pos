@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { expiryReviewStatusForQuestion, looksLikeAssistantWriteCommand } from "./assistant-command-routing.ts";
+import { expiryReviewDateTypeForQuestion, expiryReviewStatusForQuestion, looksLikeAssistantWriteCommand } from "./assistant-command-routing.ts";
 
 test("read-only replenishment questions do not enter the command parser", () => {
   for (const question of [
@@ -63,4 +63,10 @@ test("expiry questions open the matching review filter", () => {
   ] as const) {
     assert.equal(expiryReviewStatusForQuestion(question), expected, question);
   }
+});
+
+test("date-label questions keep use-by and best-before batches separate", () => {
+  assert.equal(expiryReviewDateTypeForQuestion("Which products have a use-by date within the next 14 days?"), "USE_BY");
+  assert.equal(expiryReviewDateTypeForQuestion("Which items have a best-before date within the next 7 days?"), "BEST_BEFORE");
+  assert.equal(expiryReviewDateTypeForQuestion("Which batches are expiring soon?"), null);
 });

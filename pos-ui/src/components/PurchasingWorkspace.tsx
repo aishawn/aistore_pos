@@ -26,6 +26,8 @@ export function PurchasingWorkspace() {
   const requested = params.get("tab") || "orders";
   const expiryParam = params.get("expiryStatus");
   const expiryStatus = expiryParam === "upcoming" || expiryParam === "expired" ? expiryParam : "all";
+  const dateTypeParam = params.get("dateType");
+  const expiryDateType = dateTypeParam === "USE_BY" || dateTypeParam === "BEST_BEFORE" ? dateTypeParam : null;
   const transfers = requested === "transfers" || requested === "transfer-new";
   const available = views.filter((view) => hasPermission(view.permission));
   const permitted = transfers ? hasPermission("stock.purchases") : available.some((view) => view.key === requested);
@@ -56,7 +58,7 @@ export function PurchasingWorkspace() {
         {permitted && active === "orders" && <OrithosPurchaseOrdersPage embedded />}
         {permitted && transfers && <OdooPurchaseOrdersPage key={params.get("state") ?? "all"} embedded />}
         {permitted && active === "replenishment" && <OdooReplenishmentPage embedded />}
-        {permitted && active === "expiry-review" && <ReceiptExpiryReview key={expiryStatus} initialStatus={expiryStatus} />}
+        {permitted && active === "expiry-review" && <ReceiptExpiryReview key={`${expiryStatus}-${expiryDateType ?? "all"}`} initialStatus={expiryStatus} initialDateType={expiryDateType} />}
         {permitted && active === "invoices" && <InvoiceScansListPage embedded />}
         {permitted && active === "suppliers" && <SupplierDirectoryPage />}
       </div>

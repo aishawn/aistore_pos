@@ -25,12 +25,16 @@ interface Review {
   }[];
 }
 
-export function ReceiptExpiryReview({ initialStatus }: { initialStatus: "all" | "upcoming" | "expired" }) {
+export function ReceiptExpiryReview({ initialStatus, initialDateType }: {
+  initialStatus: "all" | "upcoming" | "expired";
+  initialDateType: ReceiptDateType | null;
+}) {
   const [status, setStatus] = useState<string>(initialStatus);
+  const [dateType, setDateType] = useState<ReceiptDateType | "all">(initialDateType ?? "all");
   const [page, setPage] = useState(1);
   const [barcodeInput, setBarcodeInput] = useState("");
   const [barcode, setBarcode] = useState("");
-  const { data, loading, error, reload } = useApi<Review>("/api/orders/expiry-review", { status, page, barcode: barcode || undefined });
+  const { data, loading, error, reload } = useApi<Review>("/api/orders/expiry-review", { status, page, barcode: barcode || undefined, dateType: dateType === "all" ? undefined : dateType });
   return (
     <section aria-labelledby="expiry-review-heading" className="m-4 rounded-xl border border-[var(--oh-border)] bg-white p-4 sm:m-6 sm:p-5">
       <h2 id="expiry-review-heading" className="text-base font-semibold">Batches to check on the shelf</h2>
@@ -48,6 +52,23 @@ export function ReceiptExpiryReview({ initialStatus }: { initialStatus: "all" | 
           <option value="all">All batches in review</option>
           <option value="upcoming">Due within 14 days</option>
           <option value="expired">Past label date</option>
+        </select>
+      </label>
+      <label className="mt-3 flex flex-wrap items-center gap-2 text-sm">
+        Date label
+        <select
+          className="min-h-10 rounded-md border border-[var(--oh-border)] bg-white px-2"
+          value={dateType}
+          disabled={loading}
+          onChange={(event) => {
+            const value = event.target.value;
+            setDateType(value === "USE_BY" || value === "BEST_BEFORE" ? value : "all");
+            setPage(1);
+          }}
+        >
+          <option value="all">All labels</option>
+          <option value="USE_BY">Use by</option>
+          <option value="BEST_BEFORE">Best before</option>
         </select>
       </label>
       <form className="mt-3 flex flex-wrap items-end gap-2 text-sm" onSubmit={(event) => {
