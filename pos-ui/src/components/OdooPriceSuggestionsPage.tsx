@@ -336,18 +336,18 @@ export function OdooPriceSuggestionsPage() {
                     <span className="inline-flex justify-center rounded-full bg-[var(--oh-orange-light)] px-2.5 py-1 text-xs font-bold text-[var(--oh-orange-dark)]">
                       {statusLabel(product.status)}
                     </span>
-                    {canBulkEditPriceSuggestion(product) && <Link
+                    <Link
                       href={`/products?q=${encodeURIComponent(product.sku || product.name)}`}
                       className="inline-flex min-h-11 items-center justify-center rounded-md border border-[var(--oh-border)] px-3 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
                     >
                       Open product
-                    </Link>}
-                    <Link
+                    </Link>
+                    {canBulkEditPriceSuggestion(product) && <Link
                       href={`/stock/bulk-price-edit?search=${encodeURIComponent(product.sku || product.name)}${product.status === "raise" && product.suggestedListPrice != null ? `&productId=${product.id}&suggestedPrice=${product.suggestedListPrice}&expectedPrice=${product.currentListPrice}` : ""}`}
                       className="inline-flex min-h-11 items-center justify-center rounded-md border border-[var(--oh-border)] px-3 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
                     >
                       Bulk edit this product
-                    </Link>
+                    </Link>}
                     <button
                       type="button"
                       onClick={() => setExpandedId((current) => (current === product.id ? null : product.id))}
