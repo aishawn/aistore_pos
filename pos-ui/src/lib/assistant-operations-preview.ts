@@ -474,6 +474,11 @@ async function buildLiveOperationsPreview(
         llmFallback: false,
         dataSource: brief.dataSource,
         storeScope: brief.storeScope,
+        dataAsOf: brief.dataAsOf ?? undefined,
+        reportPeriodFrom: brief.reportPeriodFrom,
+        reportPeriodTo: brief.reportPeriodTo,
+        reportTimeZone: brief.reportTimeZone,
+        reportDataStatus: brief.reportDataStatus,
         fastPathId: "operations_opportunities",
       };
     } catch (error) {

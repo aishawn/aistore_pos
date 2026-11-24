@@ -353,11 +353,15 @@ test("opportunities keep sales and replenishment metadata independent", async ()
   assert.equal(overview?.reportTimeZone, "Australia/Melbourne");
   assert.equal(overview?.reportDataStatus, "incomplete");
   assert.equal(overview?.dataAsOf, "2026-11-23T03:00:00Z");
+  assert.equal(result?.reportPeriodFrom, "2026-11-23");
+  assert.equal(result?.reportPeriodTo, "2026-11-23");
+  assert.equal(result?.reportTimeZone, "Australia/Melbourne");
+  assert.equal(result?.reportDataStatus, "incomplete");
+  assert.equal(result?.dataAsOf, "2026-11-23T03:00:00Z");
   assert.equal(result?.cards?.find((card) => card.type === "sales")?.reportPeriodFrom, "2026-11-23");
   const restock = result?.cards?.find((card) => card.type === "replenishment");
   assert.equal(restock?.reportPeriodFrom, "2026-09-29");
   assert.equal(restock?.dataAsOf, undefined);
-  assert.equal(result?.reportPeriodFrom, undefined);
   assert.match(result?.answer ?? "", /Replenishment period: 2026-09-29 to 2026-11-23/);
   assert.deepEqual(result?.writeRequests, []);
 });
