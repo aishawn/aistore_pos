@@ -69,6 +69,58 @@ class ReplenishmentWorkspaceControllerTest {
     }
 
     @Test
+    void zeroDemandAndZeroStockAreNotPresentedAsReadyToOrderOrAnException() throws Exception {
+        var readyToOrder = singleProductWorkspace(0d, 0d, false);
+        var exceptions = singleProductWorkspace(0d, 0d, true);
+
+        org.junit.jupiter.api.Assertions.assertTrue(readyToOrder.products().isEmpty());
+        org.junit.jupiter.api.Assertions.assertTrue(exceptions.products().isEmpty());
+    }
+
+    @Test
+    void zeroStockWithVerifiedDemandStillGetsAReplenishmentSuggestion() throws Exception {
+        var plan = singleProductWorkspace(28d, 0d, false);
+
+        var product = plan.products().getFirst();
+        org.junit.jupiter.api.Assertions.assertEquals("READY", product.recommendationStatus());
+        org.junit.jupiter.api.Assertions.assertTrue(product.suggestedQuantity() > 0);
+    }
+
+    private static ReplenishmentWorkspaceView singleProductWorkspace(
+            double recentUnits, double previousUnits, boolean exceptionOnly) throws Exception {
+        var jdbc = mock(org.springframework.jdbc.core.JdbcTemplate.class);
+        var zones = mock(com.orithos.common.BusinessTimezoneService.class);
+        var row = mock(java.sql.ResultSet.class);
+        when(zones.zoneForVendor(1L)).thenReturn(java.time.ZoneId.of("Australia/Melbourne"));
+        when(row.getLong("id")).thenReturn(501L);
+        when(row.getString("name")).thenReturn("Test product");
+        when(row.getString("sku")).thenReturn("TEST-501");
+        when(row.getDouble("case_quantity")).thenReturn(6d);
+        when(row.getObject("on_hand")).thenReturn(0d);
+        when(row.getDouble("on_order")).thenReturn(0d);
+        when(row.getTimestamp("inventory_updated_at"))
+                .thenReturn(java.sql.Timestamp.from(java.time.Instant.now()));
+        when(row.getDouble("sold_7d")).thenReturn(recentUnits / 4d);
+        when(row.getDouble("recent_units")).thenReturn(recentUnits);
+        when(row.getDouble("previous_units")).thenReturn(previousUnits);
+        when(row.getObject("unit_cost")).thenReturn(2d);
+        when(row.getObject("unit_price")).thenReturn(4d);
+        when(row.getObject("supplier_id", Long.class)).thenReturn(7L);
+        when(row.getString("supplier_name")).thenReturn("Test supplier");
+        when(row.getLong("supplier_link_count")).thenReturn(1L);
+        when(row.getDouble("minimum_order")).thenReturn(1d);
+        when(jdbc.query(org.mockito.ArgumentMatchers.any(org.springframework.jdbc.core.PreparedStatementCreator.class),
+                org.mockito.ArgumentMatchers.any(org.springframework.jdbc.core.RowMapper.class)))
+                .thenAnswer(invocation -> {
+                    org.springframework.jdbc.core.RowMapper<?> mapper = invocation.getArgument(1);
+                    return List.of(mapper.mapRow(row, 0));
+                });
+
+        return new ReplenishmentWorkspaceService(jdbc, "false", zones)
+                .plan(new TenantContext(1L, 2L, 3L, List.of(3L), Set.of()), 21, exceptionOnly, false);
+    }
+
+    @Test
     void draftEnabledForSkrHost() {
         ReplenishmentWorkspaceService service = mock(ReplenishmentWorkspaceService.class);
         TenantContextFactory tenantFactory = mock(TenantContextFactory.class);

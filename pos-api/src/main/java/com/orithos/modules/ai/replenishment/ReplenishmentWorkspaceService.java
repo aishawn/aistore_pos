@@ -107,7 +107,7 @@ public class ReplenishmentWorkspaceService {
                 }
             }
             if (exceptionOnly && !isException(line)) continue;
-            if (!exceptionOnly && line.suggestedQuantity() <= 0 && line.onHand() > 0
+            if (!exceptionOnly && line.suggestedQuantity() <= 0
                     && !"REVIEW_DATA".equals(line.recommendationStatus())) {
                 continue;
             }
@@ -151,7 +151,6 @@ public class ReplenishmentWorkspaceService {
 
     private static boolean isException(ReplenishmentWorkspaceView.ReplenishmentWorkspaceProduct product) {
         return product.suggestedQuantity() > 0
-                || product.onHand() <= 0
                 || "REVIEW_DATA".equals(product.recommendationStatus())
                 || (product.soldUnits() > 0 && product.onHand() <= 0);
     }
@@ -168,8 +167,8 @@ public class ReplenishmentWorkspaceService {
         double available = onHand + row.onOrder();
         double forecastStock = available;
         int effectiveCoverage = ReplenishmentDecisionEngine.effectiveCoverage(cover, row.leadTimeDays());
-        double quantity = ReplenishmentDecisionEngine.coverageOrderQuantity(
-                demand, effectiveCoverage, available, row.caseQuantity(), row.minimumOrder());
+        double quantity = demand > 0 ? ReplenishmentDecisionEngine.coverageOrderQuantity(
+                demand, effectiveCoverage, available, row.caseQuantity(), row.minimumOrder()) : 0d;
 
         List<String> dataIssues = new ArrayList<>();
         String status = "READY";
