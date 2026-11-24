@@ -47,6 +47,26 @@ class ReportPeriodResolverTest {
     }
 
     @Test
+    void weekendSalesUseTheMostRecentCompleteSaturdayAndSundayInStoreTimezone() {
+        Clock clock = Clock.fixed(Instant.parse("2026-11-24T02:00:00Z"), ZoneOffset.UTC);
+        ReportPeriodResolver fixedResolver = new ReportPeriodResolver(clock);
+
+        ReportPeriodResolver.Window english = fixedResolver.resolve(Map.of(), "How did we trade over the weekend?");
+        ReportPeriodResolver.Window chinese = fixedResolver.resolve(Map.of(), "上周末营业额多少？");
+
+        assertEquals(LocalDate.of(2026, 11, 21), english.from().toLocalDate());
+        assertEquals(LocalDate.of(2026, 11, 23), english.toExclusive().toLocalDate());
+        assertEquals(2, english.days());
+        assertEquals(english, chinese);
+
+        Clock sundayClock = Clock.fixed(Instant.parse("2026-10-25T02:00:00Z"), ZoneOffset.UTC);
+        ReportPeriodResolver.Window sunday = new ReportPeriodResolver(sundayClock)
+                .resolve(Map.of(), "Weekend sales");
+        assertEquals(LocalDate.of(2026, 10, 17), sunday.from().toLocalDate());
+        assertEquals(LocalDate.of(2026, 10, 19), sunday.toExclusive().toLocalDate());
+    }
+
+    @Test
     void todayInQuestionBeatsWrongSlotDates() {
         ReportPeriodResolver.Window w = resolver.resolve(
                 Map.of("from", "2020-01-01", "to", "2020-01-01", "days", "8"), "今天销量");

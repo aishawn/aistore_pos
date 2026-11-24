@@ -55,6 +55,14 @@ public final class AssistantFastPathRouter {
                     + "上周(?:的)?(?:销售额?|营业额|流水|收入)(?:(?:是|有)?多少|怎么样|如何)?|"
                     + "上星期(?:的)?(?:销售额?|营业额|流水)(?:(?:是|有)?多少|怎么样|如何)?)[?.!。！？]*$",
             Pattern.CASE_INSENSITIVE);
+    private static final Pattern WEEKEND_SALES = Pattern.compile(
+            "^(?:(?:how did we trade|how did we do|how were we) (?:over )?(?:the )?(?:(?:last|past|previous) )?weekend|"
+                    + "(?:how much did we (?:make|take|sell)|what were (?:our )?(?:sales|takings|revenue|turnover)) (?:over|during|in) (?:the )?(?:(?:last|past|previous) )?weekend|"
+                    + "(?:sales|revenue|takings|turnover) (?:for |over |during )?(?:the )?(?:(?:last|past|previous) )?weekend|"
+                    + "(?:(?:last|past|previous) )?weekend (?:sales|revenue|takings|turnover)|"
+                    + "(?:上个|上|最近的)?周末(?:的)?(?:销售额?|营业额|流水|收入|生意|业绩)(?:如何|怎么样|多少)?|"
+                    + "(?:周末|上个周末|上周末)(?:生意|业绩)(?:如何|怎么样)?)[?.!。！？]*$",
+            Pattern.CASE_INSENSITIVE);
     private static final Pattern THIS_WEEK_SALES = Pattern.compile(
             "^(?:(?:what were|how (?:were|was)|show(?:\\s+me)?)\\s+(?:(?:our|the) )?(?:sales|revenue|takings|turnover)\\s+(?:for\\s+)?this\\s+week|"
                     + "(?:sales|revenue|takings|turnover)\\s+(?:for\\s+)?this\\s+week|"
@@ -398,6 +406,16 @@ public final class AssistantFastPathRouter {
             return new Match(
                     "report_sales",
                     "Last week's sales",
+                    Map.of(),
+                    "",
+                    "",
+                    "",
+                    "");
+        }
+        if (WEEKEND_SALES.matcher(normalized).matches()) {
+            return new Match(
+                    "report_sales",
+                    "Last completed weekend's sales",
                     Map.of(),
                     "",
                     "",

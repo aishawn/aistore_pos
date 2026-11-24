@@ -134,6 +134,11 @@ public class ReportPeriodResolver {
             LocalDate first = today.withDayOfMonth(1);
             return new Window(first.atStartOfDay(), today.plusDays(1).atStartOfDay(), 0);
         }
+        if (containsWeekendSalesPhrase(q)) {
+            LocalDate lastSunday = today.with(TemporalAdjusters.previous(DayOfWeek.SUNDAY));
+            LocalDate saturday = lastSunday.minusDays(1);
+            return new Window(saturday.atStartOfDay(), lastSunday.plusDays(1).atStartOfDay(), 2);
+        }
         if (contains(q, "上周", "last week")) {
             LocalDate start = today.minusWeeks(1).with(DayOfWeek.MONDAY);
             return new Window(start.atStartOfDay(), start.plusWeeks(1).atStartOfDay(), 7);
@@ -316,5 +321,13 @@ public class ReportPeriodResolver {
             }
         }
         return false;
+    }
+
+    private static boolean containsWeekendSalesPhrase(String q) {
+        return q.matches("(?s).*(?:how did we trade.{0,24}weekend|how did we do.{0,24}weekend|"
+                + "weekend\\s+(?:sales|revenue|takings|turnover)|"
+                + "(?:sales|revenue|takings|turnover)\\s+(?:for\\s+|over\\s+|during\\s+)?(?:the\\s+)?(?:(?:last|past|previous)\\s+)?weekend|"
+                + "(?:trade|trading|sales|营业额|销售额|流水|收入|生意|业绩).{0,24}周末|"
+                + "(?:周末|上个周末|上周末).{0,16}(?:营业额|销售额|流水|收入|生意|业绩)).*");
     }
 }
