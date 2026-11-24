@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -145,36 +146,49 @@ public class ReportRespondNode implements NodeAction {
         String refundDisclosure = refundDisclosure(row, chinese);
         String transactionCount = ReportAdhocRouter.asksForTicketCount(question)
                 ? transactionCountDisclosure(row, chinese) : "";
+        String normalizedQuestion = question == null ? "" : question.toLowerCase(Locale.ROOT);
+        boolean asksGstInclusiveSales = normalizedQuestion.contains("including gst")
+                || normalizedQuestion.contains("including goods and services tax")
+                || normalizedQuestion.matches("(?s).*\\bincl\\.?\\s*gst.*")
+                || normalizedQuestion.matches("(?s).*\\binc\\.?\\s*gst.*")
+                || normalizedQuestion.contains("含gst") || normalizedQuestion.contains("包含gst")
+                || normalizedQuestion.contains("含商品及服务税") || normalizedQuestion.contains("包含商品及服务税");
+        String gstBasisDisclosure = asksGstInclusiveSales
+                ? (chinese ? "（销售额含 GST）" : " (sales include GST)")
+                : "";
         if (Boolean.FALSE.equals(row.get("costAvailable")) || profit == null
                 || profit.toString().isBlank()) {
             if ("permission".equals(row.get("profitUnavailableReason"))) {
                 return chinese
-                        ? range + "营业额 AUD " + money(sales) + refundDisclosure + transactionCount + "；毛利暂不可用，因为当前账号没有查看成本数据的权限。数据来源：Orithos POS 报表。"
+                        ? range + "营业额 AUD " + money(sales) + refundDisclosure + gstBasisDisclosure + transactionCount + "；毛利暂不可用，因为当前账号没有查看成本数据的权限。数据来源：Orithos POS 报表。"
                         : "Sales for " + range + " were AUD " + money(sales)
                             + refundDisclosure
+                            + gstBasisDisclosure
                             + transactionCount
                             + "; gross profit is unavailable because your account cannot view cost data. Source: Orithos POS report.";
             }
             if ("tax".equals(row.get("profitUnavailableReason"))) {
                 return chinese
-                        ? range + "营业额 AUD " + money(sales) + refundDisclosure + transactionCount + "；毛利暂不可用，销售税额数据不完整。数据来源：Orithos POS 报表。"
+                        ? range + "营业额 AUD " + money(sales) + refundDisclosure + gstBasisDisclosure + transactionCount + "；毛利暂不可用，销售税额数据不完整。数据来源：Orithos POS 报表。"
                         : "Sales for " + range + " were AUD " + money(sales)
                             + refundDisclosure
+                            + gstBasisDisclosure
                             + transactionCount
                             + "; gross profit is unavailable because sale tax data is incomplete. Source: Orithos POS report.";
             }
             return chinese
-                    ? range + "营业额 AUD " + money(sales) + refundDisclosure + transactionCount + "；毛利暂不可用，销售成本数据不完整。数据来源：Orithos POS 报表。"
+                    ? range + "营业额 AUD " + money(sales) + refundDisclosure + gstBasisDisclosure + transactionCount + "；毛利暂不可用，销售成本数据不完整。数据来源：Orithos POS 报表。"
                     : "Sales for " + range + " were AUD " + money(sales)
                         + refundDisclosure
+                        + gstBasisDisclosure
                         + transactionCount
                         + "; gross profit is unavailable because sale cost data is incomplete. Source: Orithos POS report.";
         }
         String profitText = money(ReportQueryService.toDecimal(profit));
         return chinese
-                ? range + "营业额 AUD " + money(sales) + refundDisclosure + "，毛利 AUD " + profitText
+                ? range + "营业额 AUD " + money(sales) + refundDisclosure + gstBasisDisclosure + "，毛利 AUD " + profitText
                     + transactionCount + "（税前营业额减成本）。数据来源：Orithos POS 报表。"
-                : "Sales for " + range + " were AUD " + money(sales) + refundDisclosure + " and gross profit was AUD " + profitText
+                : "Sales for " + range + " were AUD " + money(sales) + refundDisclosure + gstBasisDisclosure + " and gross profit was AUD " + profitText
                     + transactionCount + " (ex-GST sales less cost). Source: Orithos POS report.";
     }
 

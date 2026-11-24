@@ -22,6 +22,10 @@ class AssistantFastPathRouterTest {
         assertEquals("report_sales", AssistantFastPathRouter.maybeMatch("sales for the last week").intent());
         assertEquals("report_sales", AssistantFastPathRouter.maybeMatch("sales last week").intent());
         assertEquals("report_sales", AssistantFastPathRouter.maybeMatch("How much was our revenue last week?").intent());
+        assertEquals("inclusive", AssistantFastPathRouter.maybeMatch("What were yesterday's sales including GST?")
+                .slots().get("sales_tax_basis"));
+        assertEquals("report_sales", AssistantFastPathRouter.maybeMatch("昨日营业额含 GST")
+                .intent());
         assertEquals("report_sales", AssistantFastPathRouter.maybeMatch("How did we trade over the weekend?").intent());
         assertEquals("report_sales", AssistantFastPathRouter.maybeMatch("Weekend sales").intent());
         assertEquals("report_sales", AssistantFastPathRouter.maybeMatch("上周末营业额多少？").intent());

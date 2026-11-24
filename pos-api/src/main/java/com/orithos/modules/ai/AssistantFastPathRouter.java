@@ -33,6 +33,11 @@ public final class AssistantFastPathRouter {
                     + "昨天销售额?|昨天卖了多少|昨天营业额?|昨天收入多少|(?:昨天|昨日)(?:的)?(?:销售额|营业额|流水|收入)(?:如何|怎么样|(?:是|有)?多少)?|"
                     + "昨天(?:生意|业绩)(?:如何|怎么样)|(?:昨天|昨日)(?:销售|营业)?(?:情况|表现)(?:如何|怎么样)?)[?.!。！？]*$",
             Pattern.CASE_INSENSITIVE);
+    private static final Pattern YESTERDAY_GST_SALES = Pattern.compile(
+            "^(?:what (?:were|was) (?:our )?yesterday'?s? (?:sales|revenue|takings|turnover) (?:including|incl\\.?|inc\\.?) gst|"
+                    + "yesterday'?s? (?:sales|revenue|takings|turnover) (?:including|incl\\.?|inc\\.?) gst|"
+                    + "(?:昨天|昨日)(?:的)?(?:销售额|营业额|流水|收入)(?:含|包含)\\s*(?:商品及服务税|gst))[?.!。！？]*$",
+            Pattern.CASE_INSENSITIVE);
     private static final Pattern YESTERDAY_PROFIT = Pattern.compile(
             "^(?:(?:what was|what is|what's|show(?: me)?|tell me) (?:our )?(?:gross )?(?:profit|margin) (?:for )?yesterday|"
                     + "yesterday'?s? (?:gross )?(?:profit|margin)|"
@@ -377,6 +382,16 @@ public final class AssistantFastPathRouter {
                     "report_sales",
                     "Yesterday's sales",
                     Map.of(),
+                    "",
+                    "",
+                    "",
+                    "");
+        }
+        if (YESTERDAY_GST_SALES.matcher(normalized).matches()) {
+            return new Match(
+                    "report_sales",
+                    "Yesterday's sales including GST",
+                    Map.of("sales_tax_basis", "inclusive"),
                     "",
                     "",
                     "",

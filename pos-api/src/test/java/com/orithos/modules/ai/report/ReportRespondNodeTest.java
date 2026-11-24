@@ -59,6 +59,17 @@ class ReportRespondNodeTest {
     }
 
     @Test
+    void gstInclusiveQuestionDisclosesSalesAndProfitTaxBasisSeparately() {
+        OverAllState state = state("", List.of(Map.of("sales", 125.50, "grossProfit", 40.25,
+                "costAvailable", true, "transactions", 4)), "2026-10-16", "2026-10-16");
+        when(state.value("intent", String.class)).thenReturn(Optional.of("report_sales"));
+        when(state.value("question", String.class)).thenReturn(Optional.of("What were yesterday's sales including GST?"));
+
+        assertEquals("Sales for 2026-10-16 were AUD 125.50 (sales include GST) and gross profit was AUD 40.25 (ex-GST sales less cost). Source: Orithos POS report.",
+                node.apply(state).get("answer"));
+    }
+
+    @Test
     void authoritativeSalesAnswerIncludesTransactionCountWhenRequested() {
         OverAllState state = state("", List.of(Map.of("sales", 125.50, "grossProfit", 40.25,
                 "costAvailable", true, "transactions", 4)), "2026-10-16", "2026-10-16");
