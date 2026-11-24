@@ -28,7 +28,7 @@ class PricingChatBriefTest {
 
         assertTrue(text.contains("Prices that need review"));
         assertTrue(text.contains("\n• Shiraz Reserve — $24.99 → suggest $27.95"));
-        assertTrue(text.contains("\n\nTap below to open price review"));
+        assertTrue(text.contains("Tap below to open price review"));
         assertTrue(text.contains("Staff confirm"));
     }
 
@@ -44,6 +44,32 @@ class PricingChatBriefTest {
         assertTrue(text.contains("以下价格需要复核（目标净毛利约 30%）："));
         assertTrue(text.contains("\n• Shiraz Reserve — $24.99 → 建议 $27.95"));
         assertTrue(text.contains("任何价格变更都需要员工在页面确认"));
+    }
+
+    @Test
+    void fairPriceQuestionUsesOnlyTheRequestedProduct() {
+        NativePriceSuggestionService client = mock(NativePriceSuggestionService.class);
+        TenantContext tenant = new TenantContext(1L, 1L, 1L, List.of(1L), Set.of("ROLE_ADMIN"));
+        when(client.review(tenant, "Shiraz")).thenReturn(new PriceReviewBrief(
+                0.30, List.of(new PriceReviewItem(1, "Barossa Shiraz", 8, 24.99, 27.95, "raise")), 2));
+
+        String text = new PricingChatBrief(client).brief("What is a fair price for Shiraz?", tenant);
+
+        assertTrue(text.contains("Barossa Shiraz"));
+        assertTrue(text.contains("store cost and tax data, not market pricing"));
+        verify(client).review(tenant, "Shiraz");
+    }
+
+    @Test
+    void fairPriceQuestionDoesNotReturnUnrelatedPopularProductsWhenThereIsNoMatch() {
+        NativePriceSuggestionService client = mock(NativePriceSuggestionService.class);
+        TenantContext tenant = new TenantContext(1L, 1L, 1L, List.of(1L), Set.of("ROLE_ADMIN"));
+        when(client.review(tenant, "Not in catalogue")).thenReturn(new PriceReviewBrief(0.30, List.of(), 0));
+
+        String text = new PricingChatBrief(client).brief("What is a fair price for Not in catalogue?", tenant);
+
+        assertTrue(text.contains("couldn't match"));
+        assertTrue(text.contains("exact product name or barcode"));
     }
 
     @Test

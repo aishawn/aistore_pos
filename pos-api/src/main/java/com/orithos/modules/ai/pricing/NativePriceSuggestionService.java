@@ -22,12 +22,21 @@ public class NativePriceSuggestionService {
         this.businessTimezone = businessTimezone;
     }
 
-    public PriceReviewBrief review(TenantContext tenant) { return review(tenant, DEFAULT_MARGIN); }
+    public PriceReviewBrief review(TenantContext tenant) { return review(tenant, DEFAULT_MARGIN, null); }
+
+    public PriceReviewBrief review(TenantContext tenant, String productSearch) {
+        return review(tenant, DEFAULT_MARGIN, productSearch);
+    }
 
     public PriceReviewBrief review(TenantContext tenant, double marginTarget) {
+        return review(tenant, marginTarget, null);
+    }
+
+    public PriceReviewBrief review(TenantContext tenant, double marginTarget, String productSearch) {
         if (tenant == null || tenant.requireOutletId() == null || !tenant.canQueryCost()) return null;
         double margin = marginTarget > 0 && marginTarget < 1 ? marginTarget : DEFAULT_MARGIN;
-        List<Row> rows = jdbc.query("""
+        String search = productSearch == null || productSearch.isBlank() ? null : productSearch.trim();
+        String sql = """
                 WITH sold AS (
                     SELECT si.product_id, SUM(si.quantity) AS units
                     FROM sale s JOIN sale_item si ON si.sale_id = s.id AND si.outlet_id = s.outlet_id
@@ -53,14 +62,19 @@ public class NativePriceSuggestionService {
                 LEFT JOIN tax_rate tr ON tr.id = p.tax_rate_id AND tr.outlet_id = p.outlet_id AND tr.deleted_at IS NULL
                 LEFT JOIN sold s ON s.product_id = p.id
                 WHERE p.outlet_id = ? AND p.deleted_at IS NULL AND p.status = 'ACTIVE'
+                """ + (search == null ? "" : " AND p.name ILIKE ?\n") + """
                 ORDER BY sold_units DESC, p.name, p.id
                 LIMIT 80
-                """, (rs, rowNum) -> new Row(rs.getLong("id"), rs.getString("name"),
+                """;
+        Object[] queryArguments = search == null
+                ? new Object[]{tenant.requireOutletId(),
+                    businessTimezone.zoneForVendor(tenant.vendorId()).getId(), tenant.requireOutletId()}
+                : new Object[]{tenant.requireOutletId(),
+                    businessTimezone.zoneForVendor(tenant.vendorId()).getId(), tenant.requireOutletId(),
+                    "%" + search + "%"};
+        List<Row> rows = jdbc.query(sql, (rs, rowNum) -> new Row(rs.getLong("id"), rs.getString("name"),
                 number(rs.getObject("current_price")), number(rs.getObject("unit_cost")),
-                number(rs.getObject("tax_percent")), number(rs.getObject("sold_units"))),
-                tenant.requireOutletId(),
-                businessTimezone.zoneForVendor(tenant.vendorId()).getId(),
-                tenant.requireOutletId());
+                number(rs.getObject("tax_percent")), number(rs.getObject("sold_units"))), queryArguments);
 
         List<PriceReviewItem> reviews = new ArrayList<>();
         for (Row row : rows) {
@@ -91,9 +105,10 @@ public class NativePriceSuggestionService {
             }
         }
         return new PriceReviewBrief(margin, reviews.stream()
-                .filter(row -> "raise".equals(row.status()) || row.status().startsWith("review_"))
+                .filter(row -> "raise".equals(row.status()) || row.status().startsWith("review_")
+                        || "missing_cost".equals(row.status()))
                 .sorted(Comparator.comparingDouble(PriceReviewItem::soldUnits).reversed().thenComparing(PriceReviewItem::name))
-                .limit(3).toList());
+                .limit(3).toList(), rows.size());
     }
 
     private static Double number(Object value) {

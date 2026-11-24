@@ -36,4 +36,22 @@ class NativePriceSuggestionServiceTest {
         verify(jdbc).query(anyString(), any(RowMapper.class), arguments.capture());
         assertArrayEquals(new Object[]{87L, "Australia/Melbourne", 87L}, arguments.getValue());
     }
+
+    @Test
+    void scopesProductPriceReviewToTheRequestedProduct() {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        BusinessTimezoneService timezone = mock(BusinessTimezoneService.class);
+        when(timezone.zoneForVendor(1L)).thenReturn(ZoneId.of("Australia/Melbourne"));
+        when(jdbc.query(anyString(), any(RowMapper.class), any(Object[].class))).thenReturn(List.of());
+        NativePriceSuggestionService service = new NativePriceSuggestionService(jdbc, timezone);
+        TenantContext tenant = new TenantContext(1L, 1L, 87L, List.of(87L), Set.of("ROLE_ADMIN"));
+
+        service.review(tenant, "Shiraz");
+
+        ArgumentCaptor<String> sql = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<Object[]> arguments = ArgumentCaptor.forClass(Object[].class);
+        verify(jdbc).query(sql.capture(), any(RowMapper.class), arguments.capture());
+        org.junit.jupiter.api.Assertions.assertTrue(sql.getValue().contains("p.name ILIKE ?"));
+        assertArrayEquals(new Object[]{87L, "Australia/Melbourne", 87L, "%Shiraz%"}, arguments.getValue());
+    }
 }
