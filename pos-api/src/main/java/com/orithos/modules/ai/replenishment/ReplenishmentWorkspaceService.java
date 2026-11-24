@@ -161,7 +161,8 @@ public class ReplenishmentWorkspaceService {
 
         double recentPerDay = row.recentUnits() / (double) RECENT_PERIOD_DAYS;
         double previousPerDay = row.previousUnits() / (double) RECENT_PERIOD_DAYS;
-        double demand = recentPerDay > 0 && previousPerDay > 0
+        boolean recentDemandGap = row.recentUnits() <= 0 && row.previousUnits() > 0;
+        double demand = recentDemandGap ? 0d : recentPerDay > 0 && previousPerDay > 0
                 ? recentPerDay * 0.7 + previousPerDay * 0.3
                 : Math.max(recentPerDay, previousPerDay);
         double available = onHand + row.onOrder();
@@ -178,12 +179,17 @@ public class ReplenishmentWorkspaceService {
             dataIssues.add(row.supplierLinkCount() > 1 ? "SUPPLIER_SELECTION_REQUIRED" : "SUPPLIER_MISSING");
         }
         if (row.unitCost() == null || row.unitCost() <= 0) dataIssues.add("REVIEW_COST_PRICE");
+        if (recentDemandGap) dataIssues.add("RECENT_DEMAND_GAP");
 
         if (onHand < 0) {
             dataIssues.add("INVENTORY_RECORD_REPAIR");
             status = "REVIEW_DATA";
             quantity = 0;
             reason = "Negative on-hand stock. Reconcile the stock count, sales and receipts before drafting a replenishment order.";
+        } else if (recentDemandGap) {
+            status = "REVIEW_DATA";
+            quantity = 0;
+            reason = "Sales were zero in the most recent 28 days after earlier demand. Confirm whether the item was out of stock or discontinued before ordering.";
         } else if (quantity <= 0) {
             status = "NO_DEMAND";
             reason = demand > 0 ? "Stock covers the effective coverage target." : "No verifiable demand in the sales window.";
@@ -196,7 +202,7 @@ public class ReplenishmentWorkspaceService {
             reason = buildReason(demand, effectiveCoverage, onHand, row.onOrder(), quantity);
         }
 
-        if (onHand >= 0 && row.supplierId() == null) {
+        if (onHand >= 0 && row.supplierId() == null && !recentDemandGap) {
             status = "REVIEW_DATA";
             quantity = 0;
             reason = row.supplierLinkCount() > 1

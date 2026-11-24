@@ -86,6 +86,21 @@ class ReplenishmentWorkspaceControllerTest {
         org.junit.jupiter.api.Assertions.assertTrue(product.suggestedQuantity() > 0);
     }
 
+    @Test
+    void zeroRecentSalesWithEarlierDemandRequiresReviewInsteadOfReusingOldVelocity() throws Exception {
+        var readyToOrder = singleProductWorkspace(0d, 24d, false);
+        var exceptions = singleProductWorkspace(0d, 24d, true);
+
+        org.junit.jupiter.api.Assertions.assertEquals("REVIEW_DATA",
+                readyToOrder.products().getFirst().recommendationStatus());
+        org.junit.jupiter.api.Assertions.assertEquals(0d, readyToOrder.products().getFirst().suggestedQuantity());
+        var product = exceptions.products().getFirst();
+        org.junit.jupiter.api.Assertions.assertEquals("REVIEW_DATA", product.recommendationStatus());
+        org.junit.jupiter.api.Assertions.assertEquals(0d, product.suggestedQuantity());
+        assertTrue(product.dataIssues().contains("RECENT_DEMAND_GAP"));
+        assertTrue(product.reason().contains("Confirm whether the item was out of stock or discontinued"));
+    }
+
     private static ReplenishmentWorkspaceView singleProductWorkspace(
             double recentUnits, double previousUnits, boolean exceptionOnly) throws Exception {
         var jdbc = mock(org.springframework.jdbc.core.JdbcTemplate.class);
