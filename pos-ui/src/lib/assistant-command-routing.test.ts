@@ -25,6 +25,8 @@ test("explicit replenishment writes and other edits still enter command preview"
 test("expiry review recognises scoped English and Chinese questions", () => {
   for (const question of [
     "Which batches are expiring soon?",
+    "Which products have a use-by date within the next 14 days?",
+    "Which items have a best-before date within the next 7 days?",
     "Open expiry review.",
     "What stock expires soon?",
     "Show expired products",
@@ -38,6 +40,8 @@ test("expiry review recognises scoped English and Chinese questions", () => {
   for (const question of [
     "Update the expiry date",
     "Which contracts are expiring soon?",
+    "What does a use-by date mean?",
+    "Which contracts have a use-by date within the next 14 days?",
     "Show expired products and remove them",
     "把临期商品下架",
     "查询库存 苹果",
@@ -49,6 +53,8 @@ test("expiry review recognises scoped English and Chinese questions", () => {
 test("expiry questions open the matching review filter", () => {
   for (const [question, expected] of [
     ["Open expiry review.", "all"],
+    ["Which products have a use-by date within the next 14 days?", "upcoming"],
+    ["Which items have a best-before date within the next 7 days?", "upcoming"],
     ["What stock expires soon?", "upcoming"],
     ["临期商品有哪些？", "upcoming"],
     ["Show expired products", "expired"],
