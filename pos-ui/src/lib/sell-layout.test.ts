@@ -27,8 +27,8 @@ test("sale keys BOTTOM places checkout above shortcuts", () => {
   });
 });
 
-test("unknown sale keys positions fall back to RIGHT", () => {
-  assert.deepEqual(getSellLayoutClasses("default"), getSellLayoutClasses("RIGHT"));
+test("unknown sale keys positions fall back to LEFT", () => {
+  assert.deepEqual(getSellLayoutClasses("default"), getSellLayoutClasses("LEFT"));
 });
 
 test("configured checkout placement overrides the cart panel defaults", () => {
