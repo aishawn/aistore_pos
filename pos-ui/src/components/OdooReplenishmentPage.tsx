@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { negativeStockReviewQueue } from "@/lib/replenishment-safety";
-import { inventoryHistoryFieldLabel, inventoryHistoryHasQualityGaps, inventoryHistoryNeedsAttention } from "@/lib/inventory-history-quality";
+import { inventoryHistoryFieldLabel, inventoryHistoryHasDailySamples, inventoryHistoryHasQualityGaps, inventoryHistoryNeedsAttention } from "@/lib/inventory-history-quality";
 import {
   AlertCircle,
   CalendarRange,
@@ -350,6 +350,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
   const totalOrderReadyUnits = orderReadyItems.reduce((sum, product) => sum + product.suggestedQuantity, 0);
   const totalSuggestedUnits = suggestedItems.reduce((sum, product) => sum + product.suggestedQuantity, 0);
   const negativeStockCount = data?.reviewIssueCounts?.NEGATIVE_STOCK ?? 0;
+  const hasDailyInventorySamples = inventoryHistoryHasDailySamples(data?.inventoryHistory);
   const inventoryQualityGaps = inventoryHistoryHasQualityGaps(data?.inventoryHistory);
   const outOfStockWithDemand = (data?.products ?? []).filter((product) => product.onHand <= 0 && product.soldUnits > 0).length;
   const urgentRiskCount = (data?.products ?? []).filter((product) => product.risk === "HIGH" || (product.onHand <= 0 && product.soldUnits > 0)).length;
@@ -615,7 +616,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
             <span>{planCoverageDays}-day coverage</span>
             {data?.generatedAt ? <span>· Updated {formatStoreDateTime(data.generatedAt, storeTimezone)}</span> : null}
             <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${data?.inventoryHistory?.status === "FRESH" ? "bg-emerald-50 text-emerald-800" : "bg-amber-50 text-amber-900"}`}>
-              Capture {data?.inventoryHistory?.status === "FRESH" ? "fresh" : "check"}
+              Stock data {data?.inventoryHistory?.status === "FRESH" ? "current" : "check"}
             </span>
             {inventoryQualityGaps && <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-900">Data quality check</span>}
             <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${draftRfqEnabled ? "bg-sky-50 text-sky-800" : "bg-slate-100 text-slate-700"}`}>{draftRfqEnabled ? "Draft RFQ" : "Preview"}</span>
@@ -666,14 +667,16 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
 
       {data?.exceptionMode && <p role="status" className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">Showing {data.exceptionCount ?? data.products.length} exception items requiring attention. Purchase actions remain subject to manual review.</p>}
 
-      {data && inventoryHistoryNeedsAttention(data.inventoryHistory) && <section aria-label="Daily inventory history" className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
-        <p className="font-semibold">Daily inventory history · {({ FRESH: "Up to date", STALE: "Capture overdue", REVIEW: "Needs review", UNAVAILABLE: "Not verified" })[data.inventoryHistory?.status ?? "UNAVAILABLE"]}{inventoryQualityGaps ? " · Data quality needs review" : ""}</p>
+      {data && (inventoryHistoryNeedsAttention(data.inventoryHistory) || !hasDailyInventorySamples) && <section aria-label="Current stock data" className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+        <p className="font-semibold">Current stock data · {({ FRESH: "Records updated", STALE: "Update overdue", REVIEW: "Coverage needs review", UNAVAILABLE: "Not verified" })[data.inventoryHistory?.status ?? "UNAVAILABLE"]}{inventoryQualityGaps ? " · Data quality needs review" : ""}</p>
         {data.inventoryHistory?.lastSuccessAt ? <>
-          <p className="mt-1">Last successful capture {formatStoreEpoch(Date.parse(data.inventoryHistory.lastSuccessAt), data.inventoryHistory.businessTimezone ?? storeTimezone)} · {data.inventoryHistory.capturedProducts?.toLocaleString("en-AU")} / {data.inventoryHistory.expectedProducts?.toLocaleString("en-AU")} products ({Math.round((data.inventoryHistory.productCoverage ?? 0) * 100)}%).</p>
+          <p className="mt-1">Latest stock record update {formatStoreEpoch(Date.parse(data.inventoryHistory.lastSuccessAt), data.inventoryHistory.businessTimezone ?? storeTimezone)} · {data.inventoryHistory.capturedProducts?.toLocaleString("en-AU")} / {data.inventoryHistory.expectedProducts?.toLocaleString("en-AU")} products have a quantity ({Math.round((data.inventoryHistory.productCoverage ?? 0) * 100)}%).</p>
           <details open={inventoryQualityGaps} className="mt-2">
-            <summary className="cursor-pointer font-medium underline underline-offset-2">Capture details and data quality</summary>
-            <p className="mt-2">Latest business date {data.inventoryHistory.latestBusinessDate ?? "unknown"}; {data.inventoryHistory.observedDays} observed daily captures from {data.inventoryHistory.firstBusinessDate ?? "unknown"} · {data.inventoryHistory.gapDays} missing dates · {data.inventoryHistory.invalidSnapshots ?? 0} invalid snapshots. Collection is building an inventory history; this does not establish forecast accuracy.</p>
-            <p className="mt-1">Capture timezone: {data.inventoryHistory.businessTimezone}. Confirm it matches the store location.</p>
+            <summary className="cursor-pointer font-medium underline underline-offset-2">Coverage and data quality</summary>
+            <p className="mt-2">{hasDailyInventorySamples
+              ? `${data.inventoryHistory.observedDays} dated inventory observations from ${data.inventoryHistory.firstBusinessDate} to ${data.inventoryHistory.latestBusinessDate}; ${data.inventoryHistory.gapDays ?? 0} missing dates · ${data.inventoryHistory.invalidSnapshots ?? 0} invalid snapshots.`
+              : "Daily inventory history is not available here. These figures describe current stock records only; they do not verify a daily snapshot series or forecast accuracy."}</p>
+            <p className="mt-1">Store business timezone: {data.inventoryHistory.businessTimezone}. Used to display stock update times and sales periods.</p>
             <p className="mt-1">Product data requiring review: {Object.entries(data.inventoryHistory.missingFields ?? {}).map(([field, count]) => `${inventoryHistoryFieldLabel(field)}: ${count}`).join(" · ") || "none"}. Warehouse quantity fields requiring review: {data.inventoryHistory.missingWarehouseQuantityFields ?? 0}.</p>
             {data.inventoryHistory.supplierLeadTimeCoverage && <p className="mt-1">Supplier lead time source: {data.inventoryHistory.supplierLeadTimeCoverage.quality ?? "unknown"}; {data.inventoryHistory.supplierLeadTimeCoverage.productsWithLeadTime ?? 0} of {data.inventoryHistory.expectedProducts ?? 0} products have a lead time ({data.inventoryHistory.supplierLeadTimeCoverage.productsMissingLeadTime ?? 0} missing). Missing lead times use the coverage target and require review.</p>}
             {data.inventoryHistory.lastAttemptStatus === "FAILED" && <p className="mt-1 font-semibold">The latest capture failed. The last successful history is retained; ask an administrator to check collection.</p>}

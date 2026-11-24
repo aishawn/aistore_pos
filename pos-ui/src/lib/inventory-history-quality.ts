@@ -14,6 +14,11 @@ export function inventoryHistoryNeedsAttention(history?: InventoryHistoryStatus 
   return !history || history.status !== "FRESH" || inventoryHistoryHasQualityGaps(history);
 }
 
+export function inventoryHistoryHasDailySamples(history?: InventoryHistoryStatus | null): boolean {
+  return Boolean(history?.firstBusinessDate && history.latestBusinessDate
+    && typeof history.observedDays === "number" && history.observedDays > 0);
+}
+
 export function inventoryHistoryFieldLabel(field: string): string {
   const labels: Record<string, string> = {
     availableQty: "negative on-hand stock",
