@@ -32,7 +32,7 @@ function csvCell(value: string | number | null) {
 }
 
 function downloadSuggestions(products: PriceSuggestionProduct[]) {
-  const headers = ["Product", "SKU", "Status", "Standard cost (AUD)", "Current shelf incl GST (AUD)", "Suggested shelf incl GST (AUD)", "Current net margin", "Suggested net margin", "Sold units (28d)", "On hand", "Reason", "Current net", "Current GST", "Suggested net", "Suggested GST"];
+  const headers = ["Product", "SKU", "Status", "Standard cost (AUD)", "Current shelf incl tax (AUD)", "Suggested shelf incl tax (AUD)", "Current net margin", "Suggested net margin", "Sold units (28d)", "On hand", "Reason", "Current net", "Current tax", "Suggested net", "Suggested tax"];
   const rows = products.map((product) => [
     product.name,
     product.sku,
@@ -184,7 +184,7 @@ export function OdooPriceSuggestionsPage() {
           <p className="text-xs font-semibold uppercase tracking-[.12em] text-[var(--oh-muted)]">AI Workspace</p>
           <h1 className="mt-1 text-xl font-semibold text-[var(--oh-text)]">Price Suggestions</h1>
           <p className="mt-1 max-w-2xl text-sm text-[var(--oh-muted)]">
-            Shelf suggestions use Orithos taxes and a target margin on net sales excluding GST.
+            Shelf suggestions use each product&apos;s Orithos tax rate and a target margin on net sales excluding tax.
             You apply any change in Products or Bulk Price Edit — this page never writes prices.
             {lastLoadedAt !== null && (
               <span className="ml-2">Last refreshed {formatStoreEpoch(lastLoadedAt, storeTimezone)}.</span>
@@ -317,8 +317,8 @@ export function OdooPriceSuggestionsPage() {
                       {product.sku || "No SKU"} · Sold {number.format(product.soldUnits)} · On hand {number.format(product.onHand)}
                     </p>
                     {product.currentNetPrice != null && <p className="mt-1 text-xs text-[var(--oh-muted)]">
-                      Current net {money.format(product.currentNetPrice)} · GST {money.format(product.currentGst ?? 0)}
-                      {product.suggestedNetPrice != null && product.suggestedPrice != null ? ` · Suggested net ${money.format(product.suggestedNetPrice)} · GST ${money.format(product.suggestedGst ?? 0)}` : ""}
+                      Current net {money.format(product.currentNetPrice)} · Tax {money.format(product.currentGst ?? 0)}
+                      {product.suggestedNetPrice != null && product.suggestedPrice != null ? ` · Suggested net ${money.format(product.suggestedNetPrice)} · Tax ${money.format(product.suggestedGst ?? 0)}` : ""}
                     </p>}
                     <p className="mt-2 text-sm text-[var(--oh-text-secondary)]">
                       Cost {product.cost == null ? "—" : money.format(product.cost)}
