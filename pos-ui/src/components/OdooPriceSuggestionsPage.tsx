@@ -314,7 +314,7 @@ export function OdooPriceSuggestionsPage() {
                   <div className="min-w-0">
                     <p className="font-semibold text-[var(--oh-text)]" title={product.name}>{friendlyProductName(product.name)}</p>
                     <p className="mt-0.5 text-xs text-[var(--oh-muted)]">
-                      {product.sku || "No SKU"} · Sold {number.format(product.soldUnits)} · On hand {number.format(product.onHand)}
+                      {product.sku || "No SKU"} · Sold {product.soldUnits == null ? "—" : number.format(product.soldUnits)} · On hand {number.format(product.onHand)}
                     </p>
                     {product.currentNetPrice != null && <p className="mt-1 text-xs text-[var(--oh-muted)]">
                       Current net {money.format(product.currentNetPrice)} · Tax {money.format(product.currentGst ?? 0)}

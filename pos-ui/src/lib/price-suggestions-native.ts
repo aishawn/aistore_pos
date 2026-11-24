@@ -8,7 +8,7 @@ export type PriceSuggestionProduct = {
   name: string;
   sku: string;
   unit: string;
-  soldUnits: number;
+  soldUnits: number | null;
   onHand: number;
   cost: number | null;
   currentPrice: number | null;
@@ -44,6 +44,7 @@ type ProductRow = {
   cost?: number | null;
   taxRateId?: number | null;
   stockQuantity?: number | null;
+  performance30d?: Array<number | string | null> | null;
   barcodes?: Array<{ code?: string | null }> | null;
 };
 
@@ -59,6 +60,13 @@ function cents(value: number) {
   return Math.round((value + Number.EPSILON) * 100) / 100;
 }
 
+function soldUnitsLast28Days(series?: ProductRow["performance30d"]) {
+  if (!series || series.length < 28) return null;
+  const recent = series.slice(-28).map((value) => value == null ? NaN : Number(value));
+  if (recent.some((value) => !Number.isFinite(value))) return null;
+  return cents(recent.reduce((sum, value) => sum + value, 0));
+}
+
 export function buildSuggestion(product: ProductRow, marginTarget: number, taxRates: TaxRateRow[]): PriceSuggestionProduct {
   const cost = product.cost == null ? null : Number(product.cost);
   const shelf = product.price == null ? null : Number(product.price);
@@ -68,7 +76,7 @@ export function buildSuggestion(product: ProductRow, marginTarget: number, taxRa
     name: product.name,
     sku: sku(product),
     unit: "units",
-    soldUnits: 0,
+    soldUnits: soldUnitsLast28Days(product.performance30d),
     onHand,
     cost,
     currentPrice: shelf,

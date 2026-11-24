@@ -11,6 +11,20 @@ test("uses a product's zero-percent GST rate without inventing GST", () => {
   assert.equal(result.currentMargin, 1 / 3);
   assert.equal(result.status, "ok");
   assert.equal(result.suggestedPrice, null);
+  assert.equal(result.soldUnits, null);
+});
+
+test("totals actual units from the latest 28 of the product performance series", () => {
+  const result = buildSuggestion({
+    ...product,
+    performance30d: [9000, 9000, ...Array.from({ length: 28 }, () => 3)],
+  }, 0.3, [{ id: 2, amount: 0 }]);
+  assert.equal(result.soldUnits, 84);
+});
+
+test("does not turn missing or incomplete sales history into zero units", () => {
+  const result = buildSuggestion({ ...product, performance30d: [1, 2, 3] }, 0.3, [{ id: 2, amount: 0 }]);
+  assert.equal(result.soldUnits, null);
 });
 
 test("calculates GST-inclusive prices using the product's configured rate", () => {
