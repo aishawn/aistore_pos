@@ -1420,7 +1420,7 @@ export function SellAiPanel({
       "Top selling products": { href: "/reports/sales", note: "Opened top selling products." },
       "Customer insights": { href: "/customers", note: "Opened customer insights." },
       "Stock recommendations": { href: "/stock/replenishment", note: "Opened stock recommendations." },
-      "Price optimisation": { href: "/stock/capped-pricing", note: "Opened price optimisation." },
+      "Price optimisation": { href: "/stock/price-suggestions", note: "Opened price suggestions." },
       "Find a wine": { href: "/sommelier", note: "Opened wine recommendations." },
     };
     const destination = destinations[label];

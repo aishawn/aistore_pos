@@ -251,7 +251,7 @@ public final class WorkflowRouteRouter {
         if ((PRICING.matcher(normalized).find() || PRICING_NATURAL.matcher(normalized).find())
                 && !READ_ONLY_ACTION.matcher(normalized).find()
                 && !WORKFLOW_REPORT_CONTEXT.matcher(normalized).find()) {
-            return new Override("navigate", "/stock/capped-pricing");
+            return new Override("navigate", "/stock/price-suggestions");
         }
         if (GROCERY_RECOMMEND.matcher(normalized).find()
                 && !WINE_KEYWORD.matcher(normalized).find()

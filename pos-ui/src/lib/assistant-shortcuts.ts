@@ -81,7 +81,7 @@ const QUICK_ACTION_REGISTRY: Record<string, AssistantShortcut> = {
     quickActionKey: "Which prices should I review?",
     canonicalQuestion: "Which prices should I review?",
     mode: "assistant_fast",
-    fallbackHref: "/stock/capped-pricing",
+    fallbackHref: "/stock/price-suggestions",
   },
   "Recommend a red wine under $30": {
     id: "qa_wine",

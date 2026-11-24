@@ -11,6 +11,7 @@ test("resolves legacy write intents to the correct page CTA by entity", () => {
     ["buying_period", "/stock/buying-periods"],
     ["gift_card", "/giftcards"],
     ["bulk_price_edit", "/stock/bulk-price-edit"],
+    ["capped_pricing", "/stock/price-suggestions"],
     ["product", "/products"],
     ["customer", "/customers"],
   ]);

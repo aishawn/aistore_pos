@@ -68,24 +68,24 @@ class WorkflowRouteRouterTest {
         assertRoute("补货清单", "/stock/replenishment");
         assertRoute("Show me the suggested purchase lines", "/stock/replenishment");
         assertRoute("库存预警有哪些", "/stock/replenishment");
-        assertRoute("帮我看看哪些商品需要调价", "/stock/capped-pricing");
-        assertRoute("Can you review prices for me?", "/stock/capped-pricing");
-        assertRoute("What should I charge for Shiraz?", "/stock/capped-pricing");
-        assertRoute("How much should I charge for Shiraz?", "/stock/capped-pricing");
-        assertRoute("Which products should I reprice?", "/stock/capped-pricing");
-        assertRoute("Show me the price suggestions", "/stock/capped-pricing");
-        assertRoute("给我看看价格建议", "/stock/capped-pricing");
-        assertRoute("Which items need a price review?", "/stock/capped-pricing");
-        assertRoute("Which prices need checking?", "/stock/capped-pricing");
-        assertRoute("哪些价格需要复核", "/stock/capped-pricing");
-        assertRoute("What should I price Shiraz at?", "/stock/capped-pricing");
-        assertRoute("What price should I set for Shiraz?", "/stock/capped-pricing");
-        assertRoute("What is a fair price for Shiraz?", "/stock/capped-pricing");
-        assertRoute("Which prices look off?", "/stock/capped-pricing");
-        assertRoute("Should I raise the Shiraz price?", "/stock/capped-pricing");
-        assertRoute("Which prices need attention?", "/stock/capped-pricing");
-        assertRoute("Suggest a price for Shiraz", "/stock/capped-pricing");
-        assertRoute("哪些商品价格不对", "/stock/capped-pricing");
+        assertRoute("帮我看看哪些商品需要调价", "/stock/price-suggestions");
+        assertRoute("Can you review prices for me?", "/stock/price-suggestions");
+        assertRoute("What should I charge for Shiraz?", "/stock/price-suggestions");
+        assertRoute("How much should I charge for Shiraz?", "/stock/price-suggestions");
+        assertRoute("Which products should I reprice?", "/stock/price-suggestions");
+        assertRoute("Show me the price suggestions", "/stock/price-suggestions");
+        assertRoute("给我看看价格建议", "/stock/price-suggestions");
+        assertRoute("Which items need a price review?", "/stock/price-suggestions");
+        assertRoute("Which prices need checking?", "/stock/price-suggestions");
+        assertRoute("哪些价格需要复核", "/stock/price-suggestions");
+        assertRoute("What should I price Shiraz at?", "/stock/price-suggestions");
+        assertRoute("What price should I set for Shiraz?", "/stock/price-suggestions");
+        assertRoute("What is a fair price for Shiraz?", "/stock/price-suggestions");
+        assertRoute("Which prices look off?", "/stock/price-suggestions");
+        assertRoute("Should I raise the Shiraz price?", "/stock/price-suggestions");
+        assertRoute("Which prices need attention?", "/stock/price-suggestions");
+        assertRoute("Suggest a price for Shiraz", "/stock/price-suggestions");
+        assertRoute("哪些商品价格不对", "/stock/price-suggestions");
         assertRoute("Recommend a red wine under $30", "/sommelier");
         assertRoute("Something light under 25 dollars", "/sommelier");
         assertRoute("聚会想要清爽一点的酒", "/sommelier");
@@ -183,7 +183,7 @@ class WorkflowRouteRouterTest {
     @Test
     void handlesCaseAndPunctuationWithoutChangingRoutes() {
         assertRoute("  REORDER, please!  ", "/stock/replenishment");
-        assertRoute("PRICE REVIEW?", "/stock/capped-pricing");
+        assertRoute("PRICE REVIEW?", "/stock/price-suggestions");
         assertRoute("推荐适合聚会的白葡萄酒。", "/sommelier");
         assertRoute("请识别这张发票。", "/invoices");
     }

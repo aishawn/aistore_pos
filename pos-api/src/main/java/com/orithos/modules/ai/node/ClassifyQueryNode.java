@@ -377,7 +377,7 @@ public class ClassifyQueryNode implements NodeAction {
             summary = workflowResult.answer();
             assistantCard = workflowResult.card();
         } else if ("/sommelier".equals(route) || "/stock/replenishment".equals(route)
-                || "/stock/capped-pricing".equals(route)) {
+                || "/stock/capped-pricing".equals(route) || "/stock/price-suggestions".equals(route)) {
             summary = workflowChatSummary(route, question);
         }
 
@@ -415,7 +415,7 @@ public class ClassifyQueryNode implements NodeAction {
                 return brief.brief(question, tenant);
             }
         }
-        if ("/stock/capped-pricing".equals(route) && pricingChatBrief != null) {
+        if (("/stock/capped-pricing".equals(route) || "/stock/price-suggestions".equals(route)) && pricingChatBrief != null) {
             PricingChatBrief brief = pricingChatBrief.getIfAvailable();
             if (brief != null) {
                 return brief.brief(question, tenant);
@@ -448,7 +448,7 @@ public class ClassifyQueryNode implements NodeAction {
 
     private static String writeRouteForQuestion(String question, boolean stockTarget, boolean priceTarget) {
         // Mutation review destinations stay deterministic even when a classifier is unavailable.
-        if (priceTarget) return "/stock/capped-pricing";
+        if (priceTarget) return "/stock/price-suggestions";
         if (isInvoiceWriteTarget(question)) return "/invoices";
         if (isStocktakeTarget(question)) return "/stocktake";
         if (isCustomerBalanceTarget(question)) return "/customers/balances";

@@ -29,7 +29,7 @@ export const AI_ENTITY_LIST_ROUTE: Readonly<Record<AiEntity, string>> = {
   balance: "/customers/balances",
   gift_card: "/giftcards",
   buying_period: "/stock/buying-periods",
-  capped_pricing: "/stock/capped-pricing",
+  capped_pricing: "/stock/price-suggestions",
   bulk_price_edit: "/stock/bulk-price-edit",
 };
 

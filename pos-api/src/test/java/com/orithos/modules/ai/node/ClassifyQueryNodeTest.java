@@ -610,10 +610,10 @@ class ClassifyQueryNodeTest {
                 {"Upload an invoice", "/invoices"},
                 {"上传这张账单", "/invoices"},
                 {"Submit replenishment suggestions", "/stock/replenishment"},
-                {"Apply these prices", "/stock/capped-pricing"},
-                {"Update the price", "/stock/capped-pricing"},
-                {"更新这个商品售价", "/stock/capped-pricing"},
-                {"Execute pricing", "/stock/capped-pricing"},
+                {"Apply these prices", "/stock/price-suggestions"},
+                {"Update the price", "/stock/price-suggestions"},
+                {"更新这个商品售价", "/stock/price-suggestions"},
+                {"Execute pricing", "/stock/price-suggestions"},
                 {"Buy these items now", "/orders"},
                 {"Order these products", "/orders"},
                 {"Cancel this purchase order", "/orders"},
@@ -635,14 +635,14 @@ class ClassifyQueryNodeTest {
                 {"Order 50 units of beer", "/orders"},
                 {"现在帮我把啤酒订 50 件", "/orders"},
                 {"下单啤酒 12 箱", "/orders"},
-                {"保存这些价格建议", "/stock/capped-pricing"},
-                  {"Set these prices now", "/stock/capped-pricing"},
-                  {"Apply the new prices", "/stock/capped-pricing"},
-                  {"直接调价", "/stock/capped-pricing"},
-                  {"Change these prices", "/stock/capped-pricing"},
-                  {"设置这些价格", "/stock/capped-pricing"},
-                {"直接把价格改了", "/stock/capped-pricing"},
-                {"帮我把葡萄酒售价改了", "/stock/capped-pricing"}
+                {"保存这些价格建议", "/stock/price-suggestions"},
+                  {"Set these prices now", "/stock/price-suggestions"},
+                  {"Apply the new prices", "/stock/price-suggestions"},
+                  {"直接调价", "/stock/price-suggestions"},
+                  {"Change these prices", "/stock/price-suggestions"},
+                  {"设置这些价格", "/stock/price-suggestions"},
+                {"直接把价格改了", "/stock/price-suggestions"},
+                {"帮我把葡萄酒售价改了", "/stock/price-suggestions"}
         }) {
             OverAllState state = mock(OverAllState.class);
             when(state.value("question", String.class)).thenReturn(Optional.of(sample[0]));
@@ -675,7 +675,7 @@ class ClassifyQueryNodeTest {
         assertEquals("/products", ClassifyQueryNode.resolveGuidedActionRoute("Update it", "unknown", "products"));
         assertEquals("/customers", ClassifyQueryNode.resolveGuidedActionRoute("Update it", "customer", "products"));
         assertEquals("/stock/replenishment", ClassifyQueryNode.resolveGuidedActionRoute("Update it", null, " STOCK "));
-        assertEquals("/stock/capped-pricing", ClassifyQueryNode.resolveGuidedActionRoute(
+        assertEquals("/stock/price-suggestions", ClassifyQueryNode.resolveGuidedActionRoute(
                 "Set these prices now", "customer", "customers"));
         assertEquals("/", ClassifyQueryNode.resolveGuidedActionRoute("Update it", "unknown", "unknown"));
         assertEquals("/", ClassifyQueryNode.resolveGuidedActionRoute("Update it", null, null));
@@ -709,7 +709,7 @@ class ClassifyQueryNodeTest {
         ClassifyQueryNode node = new ClassifyQueryNode(chatClient, config, sanitizer, properties);
 
         for (String[] sample : new String[][] {
-                {"帮我看看哪些商品需要调价", "/stock/capped-pricing"},
+                {"帮我看看哪些商品需要调价", "/stock/price-suggestions"},
                 {"查看批量改价", "/stock/bulk-price-edit"}
         }) {
             OverAllState state = mock(OverAllState.class);
@@ -1008,7 +1008,7 @@ class ClassifyQueryNodeTest {
         Map<String, Object> result = node.apply(state);
 
         assertEquals("navigate", result.get("intent"));
-        assertEquals("/stock/capped-pricing", result.get("ui_route"));
+        assertEquals("/stock/price-suggestions", result.get("ui_route"));
         assertTrue(String.valueOf(result.get("intent_summary")).contains("Prices that need review"));
         assertFalse(String.valueOf(result.get("intent_summary")).contains("Opening the requested workflow"));
         verifyNoInteractions(chatClient, config, sanitizer, properties);
@@ -1065,22 +1065,22 @@ class ClassifyQueryNodeTest {
         assertDeterministicResult(node, "Did the supplier invoice arrive?", "qa", "/purchases?tab=invoices");
         assertDeterministicResult(node, "How many supplier bills did we receive?", "qa", "/purchases?tab=invoices");
         assertDeterministicResult(node, "查看批量改价", "navigate", "/stock/bulk-price-edit");
-        assertDeterministicResult(node, "Can you review prices for Shiraz?", "navigate", "/stock/capped-pricing");
-        assertDeterministicResult(node, "Show me the price suggestions", "navigate", "/stock/capped-pricing");
-        assertDeterministicResult(node, "Suggest a price for Shiraz", "navigate", "/stock/capped-pricing");
-        assertDeterministicResult(node, "给我看看价格建议", "navigate", "/stock/capped-pricing");
+        assertDeterministicResult(node, "Can you review prices for Shiraz?", "navigate", "/stock/price-suggestions");
+        assertDeterministicResult(node, "Show me the price suggestions", "navigate", "/stock/price-suggestions");
+        assertDeterministicResult(node, "Suggest a price for Shiraz", "navigate", "/stock/price-suggestions");
+        assertDeterministicResult(node, "给我看看价格建议", "navigate", "/stock/price-suggestions");
         assertDeterministicResult(node, "What do we need to buy?", "navigate", "/stock/replenishment");
         assertDeterministicResult(node, "我应该买什么？", "navigate", "/stock/replenishment");
         assertDeterministicResult(node, "Restock list please", "navigate", "/stock/replenishment");
         assertDeterministicResult(node, "哪些商品快没货", "navigate", "/stock/replenishment");
         assertDeterministicResult(node, "补货清单", "navigate", "/stock/replenishment");
-        assertDeterministicResult(node, "Which prices need checking?", "navigate", "/stock/capped-pricing");
-        assertDeterministicResult(node, "哪些价格需要复核", "navigate", "/stock/capped-pricing");
+        assertDeterministicResult(node, "Which prices need checking?", "navigate", "/stock/price-suggestions");
+        assertDeterministicResult(node, "哪些价格需要复核", "navigate", "/stock/price-suggestions");
         assertDeterministicResult(node, "What should I top up?", "navigate", "/stock/replenishment");
         assertDeterministicResult(node, "What needs a reorder?", "navigate", "/stock/replenishment");
         assertDeterministicResult(node, "帮我看下哪些要补货", "navigate", "/stock/replenishment");
-        assertDeterministicResult(node, "What is a fair price for Shiraz?", "navigate", "/stock/capped-pricing");
-        assertDeterministicResult(node, "Which prices look off?", "navigate", "/stock/capped-pricing");
+        assertDeterministicResult(node, "What is a fair price for Shiraz?", "navigate", "/stock/price-suggestions");
+        assertDeterministicResult(node, "Which prices look off?", "navigate", "/stock/price-suggestions");
         assertDeterministicResult(node, "Snap this supplier invoice", "navigate", "/invoices");
         assertDeterministicResult(node, "Red wine for steak", "navigate", "/sommelier");
         assertDeterministicResult(node, "Can you suggest something in stock for steak?", "navigate", "/sommelier");
