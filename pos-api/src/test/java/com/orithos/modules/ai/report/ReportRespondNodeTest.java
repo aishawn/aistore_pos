@@ -70,6 +70,17 @@ class ReportRespondNodeTest {
     }
 
     @Test
+    void chineseGstInclusiveQuestionWithWhitespaceDisclosesSalesTaxBasis() {
+        OverAllState state = state("", List.of(Map.of("sales", 125.50, "grossProfit", 40.25,
+                "costAvailable", true, "transactions", 4)), "2026-10-16", "2026-10-16");
+        when(state.value("intent", String.class)).thenReturn(Optional.of("report_sales"));
+        when(state.value("question", String.class)).thenReturn(Optional.of("昨天营业额含 GST"));
+
+        assertEquals("2026-10-16营业额 AUD 125.50（销售额含 GST），毛利 AUD 40.25（税前营业额减成本）。数据来源：Orithos POS 报表。",
+                node.apply(state).get("answer"));
+    }
+
+    @Test
     void authoritativeSalesAnswerIncludesTransactionCountWhenRequested() {
         OverAllState state = state("", List.of(Map.of("sales", 125.50, "grossProfit", 40.25,
                 "costAvailable", true, "transactions", 4)), "2026-10-16", "2026-10-16");

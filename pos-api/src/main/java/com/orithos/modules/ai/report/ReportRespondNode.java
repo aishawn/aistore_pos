@@ -147,12 +147,13 @@ public class ReportRespondNode implements NodeAction {
         String transactionCount = ReportAdhocRouter.asksForTicketCount(question)
                 ? transactionCountDisclosure(row, chinese) : "";
         String normalizedQuestion = question == null ? "" : question.toLowerCase(Locale.ROOT);
+        String compactQuestion = normalizedQuestion.replaceAll("\\s+", "");
         boolean asksGstInclusiveSales = normalizedQuestion.contains("including gst")
                 || normalizedQuestion.contains("including goods and services tax")
                 || normalizedQuestion.matches("(?s).*\\bincl\\.?\\s*gst.*")
                 || normalizedQuestion.matches("(?s).*\\binc\\.?\\s*gst.*")
-                || normalizedQuestion.contains("含gst") || normalizedQuestion.contains("包含gst")
-                || normalizedQuestion.contains("含商品及服务税") || normalizedQuestion.contains("包含商品及服务税");
+                || compactQuestion.contains("含gst") || compactQuestion.contains("包含gst")
+                || compactQuestion.contains("含商品及服务税") || compactQuestion.contains("包含商品及服务税");
         String gstBasisDisclosure = asksGstInclusiveSales
                 ? (chinese ? "（销售额含 GST）" : " (sales include GST)")
                 : "";
