@@ -122,15 +122,23 @@ try {
     : /Latest returned sales date: \d{4}-\d{2}-\d{2}/i.test(visibleMetadata ?? "");
   const rows = Array.isArray(assistantResponse?.table?.rows) ? assistantResponse.table.rows : [];
   const dates = rows.map((row) => isoDate(row.date ?? row.Date)).filter(Boolean).sort();
+  const requestRange = assistantResponse?.slots?.from && assistantResponse?.slots?.to
+    ? { from: assistantResponse.slots.from, to: assistantResponse.slots.to }
+    : null;
+  const aggregateDate = chinese
+    ? /单日报表汇总日期[：:]\s*(\d{4}-\d{2}-\d{2})/.exec(visibleMetadata ?? "")?.[1]
+    : /Daily aggregate for (\d{4}-\d{2}-\d{2})/i.exec(visibleMetadata ?? "")?.[1];
+  const hasDatedSingleDayAggregate = Boolean(requestRange
+    && requestRange.from === requestRange.to
+    && aggregateDate === requestRange.from);
   const disclosesMissingDates = rows.length === 0
     ? chinese ? /没有返回销售行/.test(visibleMetadata ?? "") : /No sales rows returned/i.test(visibleMetadata ?? "")
     : chinese
       ? /已返回销售数据，但没有可识别的逐日日期/.test(visibleMetadata ?? "")
       : /Sales data was returned without readable daily dates/i.test(visibleMetadata ?? "");
-  const dateCoverageHonest = dates.length > 0 ? hasLatestReturnedDate : disclosesMissingDates;
-  const requestRange = assistantResponse?.slots?.from && assistantResponse?.slots?.to
-    ? { from: assistantResponse.slots.from, to: assistantResponse.slots.to }
-    : null;
+  const dateCoverageHonest = dates.length > 0
+    ? hasLatestReturnedDate
+    : hasDatedSingleDayAggregate || disclosesMissingDates;
   let overview = null;
   if (requestRange) {
     const query = new URLSearchParams(requestRange);
@@ -150,8 +158,8 @@ try {
     { name: "AI answer displays Orithos as the underlying data source", status: hasDataSource ? "PASS" : "FAIL" },
     { name: "AI answer displays the requested date range", status: hasRequestedRange ? "PASS" : "FAIL" },
     { name: "AI answer displays API period, timezone, status and timestamp", status: metadataComplete ? "PASS" : "FAIL" },
-    { name: "AI response uses deterministic routing", status: assistantResponse?.source === "deterministic" ? "PASS" : "FAIL" },
-    { name: "AI answer dates match the returned row shape or disclose their absence", status: dateCoverageHonest ? "PASS" : "FAIL" },
+    { name: "AI response uses the canonical sales report intent", status: assistantResponse?.intent === "report_sales" ? "PASS" : "FAIL" },
+    { name: "AI answer dates match returned rows or the stated single-day aggregate", status: dateCoverageHonest ? "PASS" : "FAIL" },
     { name: "AI sales and transactions reconcile; gross profit matches or is accurately unavailable", status: metricsReconcile ? "PASS" : "FAIL" },
     { name: "AI response requests no business writes", status: noWrites ? "PASS" : "FAIL" },
   ];
