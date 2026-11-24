@@ -309,6 +309,15 @@ public class ClassifyQueryNode implements NodeAction {
                     fast.route(), fast.action());
         }
 
+        String reportIntent = ReportAdhocRouter.maybeOverride(question, null);
+        if ("report_sales".equals(reportIntent) || "report_aov".equals(reportIntent)) {
+            log.info("Report fast-path intent={} (skipped classify LLM)", reportIntent);
+            String summary = "report_sales".equals(reportIntent)
+                    ? isChinese(question) ? "正在查询销售报表。" : "Opening the sales report."
+                    : isChinese(question) ? "正在查询客单价报表。" : "Opening the average-ticket report.";
+            return shortcutResult(reportIntent, summary, Map.of(), "", "", "", "");
+        }
+
         if (isStoreGrowthUtterance(question)) {
             log.info("Store-growth fast-path (skipped classify LLM)");
             return storeGrowthShortcut(question);

@@ -7,6 +7,9 @@ import com.orithos.modules.ai.configstore.IntentSanitizeService;
 import com.orithos.modules.ai.AssistantTenantContext;
 import com.orithos.modules.ai.report.NativeAiReportQueryService;
 import com.orithos.modules.ai.report.TenantContext;
+import com.orithos.modules.ai.gateway.AiCompletion;
+import com.orithos.modules.ai.gateway.AiGateway;
+import com.orithos.modules.ai.gateway.AiTask;
 import com.orithos.modules.ai.pricing.PricingChatBrief;
 import com.orithos.modules.ai.replenishment.ReplenishmentChatBrief;
 import com.orithos.modules.ai.sommelier.SommelierChatBrief;
@@ -20,12 +23,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.time.Duration;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -107,6 +112,46 @@ class ClassifyQueryNodeTest {
         }
         verify(reports, never()).countSellableProducts(tenant);
         verifyNoInteractions(chatClient, config, sanitizer, properties);
+    }
+
+    @Test
+    void explicitSalesAndTicketMetricsRouteWithoutCallingClassifier() {
+        ChatClient chatClient = mock(ChatClient.class);
+        IntentConfigService config = mock(IntentConfigService.class);
+        IntentSanitizeService sanitizer = mock(IntentSanitizeService.class);
+        AiProperties properties = mock(AiProperties.class);
+        AiGateway gateway = mock(AiGateway.class);
+        IntentConfigService.Snapshot snapshot = new IntentConfigService.Snapshot(
+                true, List.of(), Map.of(), List.of(), Map.of(), Map.of(), Map.of(), List.of());
+        when(config.getSnapshot()).thenReturn(snapshot);
+        when(gateway.<String>complete(any(), eq(AiTask.CLASSIFICATION), any(), anyString(), eq(String.class)))
+                .thenReturn(new AiCompletion<>("{\"intent\":\"report_aov\",\"summary\":\"Average ticket\"}",
+                        "test", "test", 0, 0, Duration.ZERO, false));
+        when(sanitizer.sanitize(any())).thenReturn(new IntentSanitizeService.SanitizedIntent(
+                "report_aov", "Average ticket", Map.of(), null, null, null, null));
+        ClassifyQueryNode node = new ClassifyQueryNode(
+                chatClient, config, sanitizer, properties, null, null, null, null, null, gateway);
+
+        for (String question : new String[]{
+                "What were yesterday's sales, gross profit and transaction count?",
+                "昨天销售额、毛利和交易笔数是多少？",
+                "What was the average ticket and transaction count yesterday?"
+        }) {
+            OverAllState state = mock(OverAllState.class);
+            when(state.value("question", String.class)).thenReturn(Optional.of(question));
+            when(state.value("vendor_id", Number.class)).thenReturn(Optional.of(9L));
+            when(state.value("user_id", Number.class)).thenReturn(Optional.of(8L));
+            when(state.value("outlet_id", Number.class)).thenReturn(Optional.of(7L));
+
+            Map<String, Object> result = node.apply(state);
+
+            String expectedIntent = question.contains("average ticket") ? "report_aov" : "report_sales";
+            assertEquals(expectedIntent, result.get("intent"), question);
+            assertEquals("deterministic", result.get("route_source"), question);
+            assertFalse(Boolean.parseBoolean(String.valueOf(result.get("llm_fallback"))), question);
+        }
+
+        verifyNoInteractions(chatClient, config, sanitizer, properties, gateway);
     }
 
     @Test
