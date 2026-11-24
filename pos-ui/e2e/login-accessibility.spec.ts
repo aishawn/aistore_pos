@@ -57,7 +57,7 @@ test("hardware setup reports bridge availability without enabling Linkly payment
     await expect(paymentsToggle).not.toBeChecked();
     await expect(page.getByRole("button", { name: "Test $1.00" })).toBeDisabled();
   } else {
-    await expect(page.getByText("Backend service is unavailable")).toBeVisible();
+    await expect(page.locator("#hardware-eftpos").getByText("Backend service is unavailable")).toBeVisible();
   }
 
   const scannerInput = page.getByLabel("Scan test");
