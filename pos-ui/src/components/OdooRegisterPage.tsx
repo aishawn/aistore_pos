@@ -1201,14 +1201,15 @@ export function OdooRegisterPage() {
     }
   }
 
-  async function recoverStaleEftposAttempt() {
-    if (!selectedConfig || eftposRecoveryBusy) return;
+  async function recoverStaleEftposAttempt(registerId = selectedConfig?.id) {
+    if (!registerId || eftposRecoveryBusy) return;
     setEftposRecoveryBusy(true);
     try {
-      await cancelActiveEftposAttempt(selectedConfig.id);
+      await cancelActiveEftposAttempt(registerId);
       setEftposRecoveryAvailable(false);
+      setPendingCheckout(null);
+      setEftposPaymentNotice(null);
       setError(null);
-      setEftposPaymentNotice("The previous EFTPOS attempt was cancelled. You can try this sale again.");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not cancel the previous EFTPOS attempt.");
     } finally {
@@ -1223,6 +1224,9 @@ export function OdooRegisterPage() {
     {eftposPaymentNotice && <p role="status" className="text-sm font-medium text-amber-900">{eftposPaymentNotice}</p>}
     <p className="break-all text-sm">Order reference: {pendingCheckout.orderUuid}</p>
     <button type="button" disabled={busy || !isOnline} onClick={() => void checkout()} className="min-h-11 rounded bg-green-800 px-4 text-white disabled:opacity-50">{busy ? "Checking…" : "Check saved order"}</button>
+    <button type="button" disabled={busy || eftposRecoveryBusy} onClick={() => void recoverStaleEftposAttempt(pendingCheckout.configId)} className="min-h-11 rounded border border-red-300 px-4 text-red-800 disabled:opacity-50">
+      {eftposRecoveryBusy ? "Cancelling pending attempt…" : "Cancel pending EFTPOS attempt"}
+    </button>
     <Link href="/history" target="_blank" className="min-h-11 underline">Open sales history in another tab</Link>
     <p className="text-sm">If the result remains unknown, a store administrator must reconcile the order and payment in Orithos before another sale is attempted.</p>
   </main>;
