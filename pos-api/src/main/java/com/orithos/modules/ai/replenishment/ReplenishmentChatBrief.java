@@ -88,13 +88,19 @@ public class ReplenishmentChatBrief {
                         .append(chinese ? " — 建议订购 " : " — order ").append(formatQty(item.suggestedQuantity()));
                 String pack = packDescription(item, chinese);
                 if (!pack.isEmpty()) sb.append(chinese ? "（" : " (").append(pack).append(chinese ? "）" : ")");
-                if (item.daysOfStock() != null) {
+                if (item.daysOfStock() != null && item.unitsPerDay() > 0) {
                     sb.append(chinese ? "（约剩 " : " (≈").append(formatDays(item.daysOfStock()))
                             .append(chinese ? " 天）" : "d left)");
+                } else if (item.unitsPerDay() <= 0) {
+                    sb.append(chinese ? "（销售速度不足，无法估算库存覆盖天数）"
+                            : " (stock cover unavailable: no recorded sales pace)");
                 }
-                if (item.leadTimeDays() != null && item.leadTimeDays() > plan.coverageDays()) {
-                    sb.append(chinese ? "，按供应商交期覆盖 " : ", covers the supplier's ")
-                            .append(item.leadTimeDays()).append(chinese ? " 天" : "-day lead time");
+                if (item.leadTimeDays() != null && item.leadTimeDays() > 0) {
+                    sb.append(chinese ? "；供应商记录交期约 " : "; supplier-recorded lead time: about ")
+                            .append(item.leadTimeDays())
+                            .append(chinese ? " 天（不是确认到货日期）" : " days (not a confirmed arrival date)");
+                } else {
+                    sb.append(chinese ? "；供应商交期未记录，到货时间未知" : "; supplier lead time not recorded, arrival timing unknown");
                 }
             }
             sb.append(chinese ? "\n\n打开补货页面审核数量并确认订单。"

@@ -64,6 +64,43 @@ class ReplenishmentChatBriefTest {
     }
 
     @Test
+    void briefDisclosesUnknownArrivalAndUnavailableStockCoverInBothLanguages() {
+        NativeReplenishmentService client = mock(NativeReplenishmentService.class);
+        TenantContext tenant = new TenantContext(1L, 1L, 1L, List.of(1L), Set.of("ROLE_ADMIN"));
+        when(client.plan(tenant)).thenReturn(new ReplenishmentPlan(21, 1,
+                List.of(new ReplenishmentSuggestion(1, "VB Cans", "Units", 24, 0d, 0d,
+                        0d, 0d, null, 24d))));
+        ReplenishmentChatBrief brief = new ReplenishmentChatBrief(client);
+
+        String english = brief.brief("What should I restock, and when will it arrive?", tenant);
+        String chinese = brief.brief("哪些商品需要补货，什么时候到货？", tenant);
+
+        assertTrue(english.contains("stock cover unavailable: no recorded sales pace"));
+        assertTrue(english.contains("supplier lead time not recorded, arrival timing unknown"));
+        assertFalse(english.contains("0.0d left"));
+        assertTrue(chinese.contains("销售速度不足，无法估算库存覆盖天数"));
+        assertTrue(chinese.contains("供应商交期未记录，到货时间未知"));
+        assertFalse(chinese.contains("约剩 0 天"));
+    }
+
+    @Test
+    void briefLabelsRecordedLeadTimeAsAnEstimateNotAConfirmedArrival() {
+        NativeReplenishmentService client = mock(NativeReplenishmentService.class);
+        TenantContext tenant = new TenantContext(1L, 1L, 1L, List.of(1L), Set.of("ROLE_ADMIN"));
+        when(client.plan(tenant)).thenReturn(new ReplenishmentPlan(21, 1,
+                List.of(new ReplenishmentSuggestion(1, "Shiraz", "Units", 12, 5d, 2d,
+                        10d, 10d, 3, 6d))));
+        ReplenishmentChatBrief brief = new ReplenishmentChatBrief(client);
+
+        String english = brief.brief("What should I restock?", tenant);
+        String chinese = brief.brief("哪些商品需要补货？", tenant);
+
+        assertTrue(english.contains("supplier-recorded lead time: about 3 days (not a confirmed arrival date)"));
+        assertTrue(chinese.contains("供应商记录交期约 3 天（不是确认到货日期）"));
+        assertFalse(english.contains("arrival timing unknown"));
+    }
+
+    @Test
     void briefMarksMissingPlanUnavailableAndOffersRetry() {
         NativeReplenishmentService client = mock(NativeReplenishmentService.class);
         TenantContext tenant = new TenantContext(1L, 1L, 1L, List.of(1L), Set.of("ROLE_ADMIN"));
