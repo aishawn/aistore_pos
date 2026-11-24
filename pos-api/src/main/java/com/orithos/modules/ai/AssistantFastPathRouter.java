@@ -782,6 +782,9 @@ public final class AssistantFastPathRouter {
         return question.trim()
                 .toLowerCase(Locale.ROOT)
                 .replaceAll("[\\u3000\\s]+", " ")
+                .replace('\u2018', '\'')
+                .replace('\u2019', '\'')
+                .replace('\uff07', '\'')
                 .replace('？', '?')
                 .replace('！', '!')
                 .replace('。', '.');
