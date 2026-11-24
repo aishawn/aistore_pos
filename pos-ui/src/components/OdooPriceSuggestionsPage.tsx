@@ -21,6 +21,7 @@ function statusLabel(status: SuggestionStatus) {
   if (status === "raise") return "Raise price";
   if (status === "review_cost") return "Review";
   if (status === "review_tax") return "Review tax";
+  if (status === "fixed_price") return "Fixed denomination";
   if (status === "missing_cost") return "Missing cost";
   if (status === "unsaleable") return "No shelf price";
   return "On target";
@@ -137,7 +138,7 @@ export function OdooPriceSuggestionsPage() {
   }, [data?.nextOffset, loading, loadingMore, refreshing, error, load]);
 
   const actionItems = useMemo(
-    () => data?.products.filter((product) => product.status === "raise" || product.status === "review_cost" || product.status === "review_tax" || product.status === "missing_cost") ?? [],
+    () => data?.products.filter((product) => product.status === "raise" || product.status === "review_cost" || product.status === "review_tax" || product.status === "missing_cost" || product.status === "fixed_price") ?? [],
     [data],
   );
   const baseItems = useMemo(
@@ -240,7 +241,7 @@ export function OdooPriceSuggestionsPage() {
       <section aria-busy={refreshing} className="rounded-xl border border-[var(--oh-border)] bg-white">
         <div className="flex flex-col gap-2 border-b border-[var(--oh-border)] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-sm font-semibold text-[var(--oh-text)]">{showAll ? "All POS products" : "Suggested price changes"}</h2>
+            <h2 className="text-sm font-semibold text-[var(--oh-text)]">{showAll ? "All POS products" : "Items to review"}</h2>
             <p className="mt-1 text-xs text-[var(--oh-muted)]">Suggestions are read-only. Costs and taxes require review.</p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -293,6 +294,7 @@ export function OdooPriceSuggestionsPage() {
               <option value="review_cost">Review</option>
               <option value="review_tax">Review tax</option>
               <option value="missing_cost">Missing cost</option>
+              <option value="fixed_price">Fixed denomination</option>
               <option value="unsaleable">No shelf price</option>
               <option value="ok">On target</option>
             </select>

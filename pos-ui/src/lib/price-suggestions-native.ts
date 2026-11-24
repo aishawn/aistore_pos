@@ -1,7 +1,7 @@
 import { api, ApiError, type Page } from "@/lib/api";
 import { netMargin, simpleTaxTotals, suggestedListPrice, type SuggestionTax } from "@/lib/price-suggestion-math";
 
-export type SuggestionStatus = "ok" | "raise" | "review_cost" | "review_tax" | "missing_cost" | "unsaleable";
+export type SuggestionStatus = "ok" | "raise" | "review_cost" | "review_tax" | "missing_cost" | "fixed_price" | "unsaleable";
 
 export type PriceSuggestionProduct = {
   id: number;
@@ -40,6 +40,8 @@ export type PriceSuggestionData = {
 type ProductRow = {
   id: number;
   name: string;
+  type?: string | null;
+  categoryName?: string | null;
   price?: number | null;
   cost?: number | null;
   taxRateId?: number | null;
@@ -90,6 +92,13 @@ export function buildSuggestion(product: ProductRow, marginTarget: number, taxRa
   };
   if (shelf == null || shelf <= 0) {
     return { ...base, status: "unsaleable", reason: "No GST-inclusive shelf price is configured in Orithos." };
+  }
+  if (product.type?.toUpperCase() === "INTEGRATED" || product.categoryName?.trim().toUpperCase() === "EPAY") {
+    return {
+      ...base,
+      status: "fixed_price",
+      reason: "This is a fixed-denomination or EPAY product. Confirm provider terms before changing its price; no margin-based price is suggested.",
+    };
   }
   if (cost == null || cost <= 0) {
     return { ...base, status: "missing_cost", reason: "Standard cost is missing in Orithos. No price suggestion is shown." };

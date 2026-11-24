@@ -27,6 +27,19 @@ test("does not turn missing or incomplete sales history into zero units", () => 
   assert.equal(result.soldUnits, null);
 });
 
+test("does not suggest margin repricing for EPAY fixed-denomination products", () => {
+  const result = buildSuggestion({ ...product, categoryName: "EPAY" }, 0.3, [{ id: 2, amount: 0 }]);
+  assert.equal(result.status, "fixed_price");
+  assert.equal(result.suggestedPrice, null);
+  assert.match(result.reason, /provider terms/i);
+});
+
+test("does not suggest repricing for integrated denomination products", () => {
+  const result = buildSuggestion({ ...product, type: "INTEGRATED" }, 0.3, [{ id: 2, amount: 0 }]);
+  assert.equal(result.status, "fixed_price");
+  assert.equal(result.suggestedPrice, null);
+});
+
 test("calculates GST-inclusive prices using the product's configured rate", () => {
   const result = buildSuggestion({ ...product, price: 10, cost: 8, taxRateId: 3 }, 0.3, [{ id: 3, amount: 10 }]);
   assert.equal(result.currentNetPrice, 9.09);
