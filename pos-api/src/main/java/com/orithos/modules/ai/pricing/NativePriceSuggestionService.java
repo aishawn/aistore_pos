@@ -58,8 +58,9 @@ public class NativePriceSuggestionService {
                 """, (rs, rowNum) -> new Row(rs.getLong("id"), rs.getString("name"),
                 number(rs.getObject("current_price")), number(rs.getObject("unit_cost")),
                 number(rs.getObject("tax_percent")), number(rs.getObject("sold_units"))),
+                tenant.requireOutletId(),
                 businessTimezone.zoneForVendor(tenant.vendorId()).getId(),
-                tenant.requireOutletId(), tenant.requireOutletId());
+                tenant.requireOutletId());
 
         List<PriceReviewItem> reviews = new ArrayList<>();
         for (Row row : rows) {
