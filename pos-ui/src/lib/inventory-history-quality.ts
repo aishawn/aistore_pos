@@ -13,3 +13,15 @@ export function inventoryHistoryHasQualityGaps(history?: InventoryHistoryStatus 
 export function inventoryHistoryNeedsAttention(history?: InventoryHistoryStatus | null): boolean {
   return !history || history.status !== "FRESH" || inventoryHistoryHasQualityGaps(history);
 }
+
+export function inventoryHistoryFieldLabel(field: string): string {
+  const labels: Record<string, string> = {
+    availableQty: "negative on-hand stock",
+    virtualAvailableQty: "forecast stock",
+    incomingQty: "incoming stock",
+    outgoingQty: "outgoing stock",
+    cost: "cost",
+    leadTimeDays: "supplier lead time",
+  };
+  return labels[field] ?? field;
+}

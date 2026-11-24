@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { negativeStockReviewQueue } from "@/lib/replenishment-safety";
-import { inventoryHistoryHasQualityGaps, inventoryHistoryNeedsAttention } from "@/lib/inventory-history-quality";
+import { inventoryHistoryFieldLabel, inventoryHistoryHasQualityGaps, inventoryHistoryNeedsAttention } from "@/lib/inventory-history-quality";
 import {
   AlertCircle,
   CalendarRange,
@@ -671,10 +671,10 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
         {data.inventoryHistory?.lastSuccessAt ? <>
           <p className="mt-1">Last successful capture {formatStoreEpoch(Date.parse(data.inventoryHistory.lastSuccessAt), data.inventoryHistory.businessTimezone ?? storeTimezone)} · {data.inventoryHistory.capturedProducts?.toLocaleString("en-AU")} / {data.inventoryHistory.expectedProducts?.toLocaleString("en-AU")} products ({Math.round((data.inventoryHistory.productCoverage ?? 0) * 100)}%).</p>
           <details open={inventoryQualityGaps} className="mt-2">
-            <summary className="cursor-pointer font-medium underline underline-offset-2">Capture details and missing fields</summary>
+            <summary className="cursor-pointer font-medium underline underline-offset-2">Capture details and data quality</summary>
             <p className="mt-2">Latest business date {data.inventoryHistory.latestBusinessDate ?? "unknown"}; {data.inventoryHistory.observedDays} observed daily captures from {data.inventoryHistory.firstBusinessDate ?? "unknown"} · {data.inventoryHistory.gapDays} missing dates · {data.inventoryHistory.invalidSnapshots ?? 0} invalid snapshots. Collection is building an inventory history; this does not establish forecast accuracy.</p>
             <p className="mt-1">Capture timezone: {data.inventoryHistory.businessTimezone}. Confirm it matches the store location.</p>
-            <p className="mt-1">Missing product fields: {Object.entries(data.inventoryHistory.missingFields ?? {}).map(([field, count]) => `${({ availableQty: "on hand", virtualAvailableQty: "forecast stock", incomingQty: "incoming", outgoingQty: "outgoing", cost: "cost", leadTimeDays: "supplier lead time" } as Record<string, string>)[field] ?? field}: ${count}`).join(" · ")}. Missing warehouse quantity fields: {data.inventoryHistory.missingWarehouseQuantityFields ?? 0}.</p>
+            <p className="mt-1">Product data requiring review: {Object.entries(data.inventoryHistory.missingFields ?? {}).map(([field, count]) => `${inventoryHistoryFieldLabel(field)}: ${count}`).join(" · ") || "none"}. Warehouse quantity fields requiring review: {data.inventoryHistory.missingWarehouseQuantityFields ?? 0}.</p>
             {data.inventoryHistory.supplierLeadTimeCoverage && <p className="mt-1">Supplier lead time source: {data.inventoryHistory.supplierLeadTimeCoverage.quality ?? "unknown"}; {data.inventoryHistory.supplierLeadTimeCoverage.productsWithLeadTime ?? 0} of {data.inventoryHistory.expectedProducts ?? 0} products have a lead time ({data.inventoryHistory.supplierLeadTimeCoverage.productsMissingLeadTime ?? 0} missing). Missing lead times use the coverage target and require review.</p>}
             {data.inventoryHistory.lastAttemptStatus === "FAILED" && <p className="mt-1 font-semibold">The latest capture failed. The last successful history is retained; ask an administrator to check collection.</p>}
           </details>
