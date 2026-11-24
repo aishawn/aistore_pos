@@ -29,7 +29,8 @@ export function getSellLayoutClasses(position: string | null | undefined): SellL
     case "BOTTOM":
       return BOTTOM_LAYOUT;
     case "RIGHT":
-    default:
       return RIGHT_LAYOUT;
+    default:
+      return LEFT_LAYOUT;
   }
 }

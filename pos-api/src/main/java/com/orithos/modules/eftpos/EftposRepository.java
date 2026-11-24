@@ -205,6 +205,26 @@ public class EftposRepository {
         return count != null && count > 0;
     }
 
+    public Optional<AttemptRow> findLatestActiveAttempt(long vendorId, long registerId) {
+        try {
+            return Optional.ofNullable(jdbc.queryForObject(
+                    """
+                    SELECT id, vendor_id, outlet_id, register_id, order_uuid, amount_cents, currency,
+                           quote_signature, status, provider_reference, connector_challenge
+                    FROM eftpos_payment_attempt
+                    WHERE vendor_id = ? AND register_id = ? AND status IN ('PENDING', 'UNKNOWN')
+                    ORDER BY updated_at DESC, id DESC
+                    LIMIT 1
+                    """,
+                    ATTEMPT_MAPPER,
+                    vendorId,
+                    registerId
+            ));
+        } catch (EmptyResultDataAccessException ex) {
+            return Optional.empty();
+        }
+    }
+
     public long insertAttempt(AttemptRow attempt) {
         return jdbc.queryForObject(
                 """

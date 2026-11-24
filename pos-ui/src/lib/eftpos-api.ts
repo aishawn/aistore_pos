@@ -100,3 +100,7 @@ export function simulateEftposApproval(registerId: number, attemptId: number): P
     {},
   );
 }
+
+export function cancelActiveEftposAttempt(registerId: number): Promise<EftposAttempt> {
+  return api.post<EftposAttempt>(`/api/retail/registers/${registerId}/eftpos/attempts/cancel-active`, {});
+}

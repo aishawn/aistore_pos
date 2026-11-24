@@ -182,6 +182,17 @@ public class EftposService {
         return toAttemptView(repository.findAttemptById(scope.vendorId(), attempt.id()).orElseThrow(), binding);
     }
 
+    @Transactional
+    public EftposAttemptView cancelActiveAttempt(long registerId) {
+        Scope scope = scope();
+        requireRegister(registerId, scope);
+        EftposRepository.AttemptRow attempt = repository.findLatestActiveAttempt(scope.vendorId(), registerId)
+                .orElseThrow(() -> new BusinessException(40400, "No in-progress EFTPOS attempt found for this register."));
+        repository.updateAttemptStatus(scope.vendorId(), attempt.id(), EftposPaymentStatuses.CANCELLED, "CANCELLED_BY_REGISTER");
+        EftposRepository.BindingRow binding = bindingForRegister(scope.vendorId(), registerId);
+        return toAttemptView(repository.findAttemptById(scope.vendorId(), attempt.id()).orElseThrow(), binding);
+    }
+
     public void requireApprovedAttemptForCheckout(String orderUuid, Long registerId, BigDecimal expectedTotal) {
         if (!properties.isEnforceCardCapture()) return;
         Long vendorId = CurrentUser.vendorId();

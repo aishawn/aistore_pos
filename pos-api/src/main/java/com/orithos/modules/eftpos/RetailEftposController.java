@@ -46,6 +46,11 @@ public class RetailEftposController {
         return ApiResult.ok(service.getAttemptByOrderUuid(registerId, orderUuid));
     }
 
+    @PostMapping("/attempts/cancel-active")
+    public ApiResult<EftposAttemptView> cancelActiveAttempt(@PathVariable Long registerId) {
+        return ApiResult.ok(service.cancelActiveAttempt(registerId));
+    }
+
     @PostMapping("/attempts/{attemptId}/simulate-approval")
     public ApiResult<EftposAttemptView> simulateApproval(
             @PathVariable Long registerId,

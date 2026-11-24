@@ -66,7 +66,7 @@ import {
   readRegisterStartupPromptAck,
   writeRegisterStartupPromptAck,
 } from "@/lib/register-startup";
-import { getRegisterEftposBinding } from "@/lib/eftpos-api";
+import { cancelActiveEftposAttempt, getRegisterEftposBinding } from "@/lib/eftpos-api";
 import { ensureEftposApprovedBeforeCheckout } from "@/lib/eftpos-checkout";
 import { LocalQzBridge } from "@/components/LocalQzBridge";
 
@@ -216,7 +216,9 @@ export function OdooRegisterPage() {
   const [cashOutReasons, setCashOutReasons] = useState<string[]>([]);
   const [discountReasonRequired, setDiscountReasonRequired] = useState<boolean | null>(null);
   const [parkedSaleNoteRequired, setParkedSaleNoteRequired] = useState<boolean | null>(null);
-  const [saleKeysPosition, setSaleKeysPosition] = useState("RIGHT");
+  const [saleKeysPosition, setSaleKeysPosition] = useState("LEFT");
+  const [eftposRecoveryAvailable, setEftposRecoveryAvailable] = useState(false);
+  const [eftposRecoveryBusy, setEftposRecoveryBusy] = useState(false);
   const [parkNoteDialog, setParkNoteDialog] = useState<{ switchToRegisterId: number | null } | null>(null);
   const [parkNoteInput, setParkNoteInput] = useState("");
   const [parkNoteError, setParkNoteError] = useState<string | null>(null);
@@ -292,13 +294,13 @@ export function OdooRegisterPage() {
         setDiscountReasonRequired(policy.discountsRequireReason);
         setCashOutWithoutSaleAllowed(policy.allowCashOutWithoutSale);
         setParkedSaleNoteRequired(typeof policy.requireNoteOnParkedSale === "boolean" ? policy.requireNoteOnParkedSale : null);
-        setSaleKeysPosition(policy.saleKeysPosition);
+        setSaleKeysPosition("LEFT");
       })
       .catch(() => {
         if (!active) return;
         setDiscountReasonRequired(null);
         setParkedSaleNoteRequired(null);
-        setSaleKeysPosition("RIGHT");
+        setSaleKeysPosition("LEFT");
       });
     return () => { active = false; };
   }, []);
@@ -1178,6 +1180,9 @@ export function OdooRegisterPage() {
       checkoutFingerprint.current = null;
     } catch (cause) {
       setEftposPaymentNotice(null);
+      const eftposBlocked = cause instanceof Error
+        && /already has an in-progress EFTPOS attempt/i.test(cause.message);
+      setEftposRecoveryAvailable(eftposBlocked);
       const terminalPending = cause instanceof Error
         && /pending on the terminal|Do not charge again|declined or cancelled/i.test(cause.message);
       if (cause instanceof RetailCheckoutPendingError) setPendingCheckout(cause.order);
@@ -1193,6 +1198,21 @@ export function OdooRegisterPage() {
     } finally {
       checkoutBusy.current = false;
       setBusy(false);
+    }
+  }
+
+  async function recoverStaleEftposAttempt() {
+    if (!selectedConfig || eftposRecoveryBusy) return;
+    setEftposRecoveryBusy(true);
+    try {
+      await cancelActiveEftposAttempt(selectedConfig.id);
+      setEftposRecoveryAvailable(false);
+      setError(null);
+      setEftposPaymentNotice("The previous EFTPOS attempt was cancelled. You can try this sale again.");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not cancel the previous EFTPOS attempt.");
+    } finally {
+      setEftposRecoveryBusy(false);
     }
   }
 
@@ -1633,7 +1653,14 @@ export function OdooRegisterPage() {
       )}
       {error && (
         <div role="alert" className="mb-3 flex items-start justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-900">
-          <span>{error}</span>
+          <div className="min-w-0 flex-1">
+            <p>{error}</p>
+            {eftposRecoveryAvailable && (
+              <button type="button" onClick={() => void recoverStaleEftposAttempt()} disabled={eftposRecoveryBusy} className="mt-2 min-h-10 rounded-md bg-red-800 px-3 font-semibold text-white hover:bg-red-900 disabled:opacity-60">
+                {eftposRecoveryBusy ? "Cancelling previous attempt…" : "Cancel previous EFTPOS attempt"}
+              </button>
+            )}
+          </div>
           <button type="button" onClick={() => setError(null)} aria-label="Dismiss" className="grid h-11 w-11 shrink-0 place-items-center rounded-md font-bold hover:bg-red-100">×</button>
         </div>
       )}
