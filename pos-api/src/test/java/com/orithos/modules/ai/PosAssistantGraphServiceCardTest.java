@@ -149,8 +149,8 @@ class PosAssistantGraphServiceCardTest {
         assertEquals("pricing", card.type());
         assertEquals("ready", card.status());
         assertEquals(3, card.items().size());
-        assertEquals("Open price review", card.ctaLabel());
-        assertEquals("/stock/capped-pricing", card.ctaRoute());
+        assertEquals("Open price suggestions", card.ctaLabel());
+        assertEquals("/stock/price-suggestions", card.ctaRoute());
     }
 
     @Test
@@ -308,7 +308,7 @@ class PosAssistantGraphServiceCardTest {
         for (String[] sample : new String[][]{
                 {"/sommelier", "Wine recommendations are unavailable right now. Open Sommelier to retry."},
                 {"/stock/replenishment", "Replenishment suggestions are unavailable right now. Open replenishment to retry."},
-                {"/stock/capped-pricing", "Price review suggestions are unavailable right now. Open price review to retry."}
+                {"/stock/price-suggestions", "Price review suggestions are unavailable right now. Open price review to retry."}
         }) {
             AssistantCard card = PosAssistantGraphService.cardsFor(
                     "navigate", new UiAction("", "", sample[0], "navigate"), sample[1]).getFirst();
@@ -346,7 +346,7 @@ class PosAssistantGraphServiceCardTest {
         for (String[] sample : new String[][]{
                 {"/sommelier", "Wine recommendations are unavailable right now.", "品鉴推荐暂不可用，请稍后重试。"},
                 {"/stock/replenishment", "Supply-chain data unavailable.", "补货建议暂不可用，请稍后重试。"},
-                {"/stock/capped-pricing", "Price review not available.", "价格复核建议暂不可用，请稍后重试。"},
+                {"/stock/price-suggestions", "Price review not available.", "价格复核建议暂不可用，请稍后重试。"},
                 {"/recommend/grocery", "Grocery recommendations are unavailable.", "商品推荐暂不可用，请稍后重试。"}
         }) {
             AssistantCard card = PosAssistantGraphService.cardsFor(
@@ -412,7 +412,7 @@ class PosAssistantGraphServiceCardTest {
     void mapsActualEmptyBriefResponsesToEmptyCardsInsteadOfReadyCards() {
         for (String[] sample : new String[][]{
                 {"/stock/replenishment", "哪些商品需要补货？", "当前库存可覆盖目标周期，暂时没有补货数量建议。打开补货页面查看。"},
-                {"/stock/capped-pricing", "哪些价格需要复核？", "近期样本中没有需要提高毛利的价格建议。打开价格复核页面查看。"},
+                {"/stock/price-suggestions", "哪些价格需要复核？", "近期样本中没有需要提高毛利的价格建议。打开价格复核页面查看。"},
                 {"/sommelier", "推荐一款红酒", "目前没有符合条件的酒款：Nothing in stock matches that type and budget. 打开品鉴推荐页面调整条件。"},
                 {"/sommelier", "推荐一款红酒", "当前目录中没有匹配的酒款。可以调整类型或预算，或打开品鉴推荐页面查看。"},
                 {"/sommelier", "Recommend wine", "No wine products are in this store's catalogue yet."},
@@ -591,7 +591,7 @@ class PosAssistantGraphServiceCardTest {
                 Map.entry("/pricelists", "Open price lists"),
                 Map.entry("/giftcards", "Open gift cards"),
                 Map.entry("/stock/replenishment", "Open replenishment"),
-                Map.entry("/stock/capped-pricing", "Open price review"),
+                Map.entry("/stock/capped-pricing", "Open price suggestions"),
                 Map.entry("/stock/buying-periods", "Open buying periods"),
                 Map.entry("/stocktake", "Open stocktake"),
                 Map.entry("/invoices", "Open supplier invoices"),
@@ -607,8 +607,9 @@ class PosAssistantGraphServiceCardTest {
 
             assertEquals("guided_action", card.type(), route);
             assertEquals("ready", card.status(), route);
-            assertEquals(route, card.ctaRoute(), route);
-            assertEquals(route, card.cta().route(), route);
+            String expectedRoute = "/stock/capped-pricing".equals(route) ? "/stock/price-suggestions" : route;
+            assertEquals(expectedRoute, card.ctaRoute(), route);
+            assertEquals(expectedRoute, card.cta().route(), route);
             assertEquals(label, card.cta().label(), route);
         });
     }

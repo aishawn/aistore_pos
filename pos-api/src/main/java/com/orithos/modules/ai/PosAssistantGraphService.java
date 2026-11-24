@@ -107,10 +107,11 @@ public class PosAssistantGraphService {
                 slots = copy;
             }
 
+            String route = normalizeAssistantRoute(stringValue(data, "ui_route"));
             UiAction ui = new UiAction(
                     emptyToNull(stringValue(data, "ui_panel")),
                     emptyToNull(stringValue(data, "ui_view")),
-                    emptyToNull(stringValue(data, "ui_route")),
+                    emptyToNull(route),
                     emptyToNull(stringValue(data, "ui_action"))
             );
 
@@ -264,7 +265,7 @@ public class PosAssistantGraphService {
                 : "/sommelier".equals(route) ? "sommelier"
                 : "/recommend/grocery".equals(route) ? "recommend"
                 : "/stock/replenishment".equals(route) ? "replenishment"
-                : "/stock/capped-pricing".equals(route) ? "pricing" : null;
+                : "/stock/capped-pricing".equals(route) || "/stock/price-suggestions".equals(route) ? "pricing" : null;
         if (type == null) return List.of();
 
         String text = answer == null ? "" : answer;
@@ -326,10 +327,10 @@ public class PosAssistantGraphService {
         String unavailableReason = unavailableReason(type, text, chinese);
         String routeTarget = "product_count".equals(type) ? "/products"
                 : "stock_history".equals(type) ? "/stock/list"
-                : "guided_action".equals(type) ? route == null || route.isBlank() ? "/" : route
+                : "guided_action".equals(type) ? route == null || route.isBlank() ? "/" : normalizeAssistantRoute(route)
                 : "/sommelier".equals(route) ? "/sommelier"
                 : "/recommend/grocery".equals(route) ? "/recommend/grocery"
-                : "/stock/capped-pricing".equals(route) ? "/stock/capped-pricing"
+                : "/stock/capped-pricing".equals(route) || "/stock/price-suggestions".equals(route) ? "/stock/price-suggestions"
                 : "/stock/replenishment";
         List<Map<String, Object>> items = unavailable || empty ? List.of() : parsedItems;
         String source = "sommelier".equals(type) || "recommend".equals(type) ? "catalogue"
@@ -469,14 +470,14 @@ public class PosAssistantGraphService {
         if (chinese) {
             return switch (type) {
                 case "product_count" -> "打开商品目录";
-                case "pricing" -> "打开价格复核";
+                case "pricing" -> "打开价格建议";
                 case "sommelier" -> "打开品鉴推荐";
                 case "recommend" -> "打开商品推荐";
                 default -> "打开补货建议";
             };
         }
         return "product_count".equals(type) ? "Open products"
-                : "pricing".equals(type) ? "Open price review"
+                : "pricing".equals(type) ? "Open price suggestions"
                 : "sommelier".equals(type) ? "Open Sommelier"
                 : "recommend".equals(type) ? "Open grocery recommendations" : "Open replenishment";
     }
@@ -493,7 +494,7 @@ public class PosAssistantGraphService {
                 case "/pricelists" -> "打开价目表";
                 case "/giftcards" -> "打开礼品卡";
                 case "/stock/replenishment" -> "打开补货页面";
-                case "/stock/capped-pricing" -> "打开价格复核";
+                case "/stock/capped-pricing", "/stock/price-suggestions" -> "打开价格建议";
                 case "/stock/buying-periods" -> "打开采购周期";
                 case "/stocktake" -> "打开库存盘点";
                 case "/invoices", "/invoices/scan" -> "打开供应商发票";
@@ -513,7 +514,7 @@ public class PosAssistantGraphService {
             case "/pricelists" -> "Open price lists";
             case "/giftcards" -> "Open gift cards";
             case "/stock/replenishment" -> "Open replenishment";
-            case "/stock/capped-pricing" -> "Open price review";
+            case "/stock/capped-pricing", "/stock/price-suggestions" -> "Open price suggestions";
             case "/stock/buying-periods" -> "Open buying periods";
             case "/stocktake" -> "Open stocktake";
             case "/invoices" -> "Open supplier invoices";
@@ -523,6 +524,10 @@ public class PosAssistantGraphService {
             case "/" -> "Open workspace";
             default -> "Open workflow";
         };
+    }
+
+    private static String normalizeAssistantRoute(String route) {
+        return "/stock/capped-pricing".equals(route) ? "/stock/price-suggestions" : route;
     }
 
     private static String emptyReason(String type, boolean chinese) {
