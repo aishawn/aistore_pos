@@ -2,6 +2,8 @@ package com.orithos.modules.ai.pricing;
 
 import com.orithos.modules.ai.AssistantDisplayText;
 import com.orithos.modules.ai.report.TenantContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
@@ -13,6 +15,8 @@ import org.springframework.stereotype.Component;
 @ConditionalOnProperty(name = "app.ai.enabled", havingValue = "true")
 public class PricingChatBrief {
 
+    private static final Logger log = LoggerFactory.getLogger(PricingChatBrief.class);
+
     private final NativePriceSuggestionService client;
 
     public PricingChatBrief(NativePriceSuggestionService client) {
@@ -22,11 +26,13 @@ public class PricingChatBrief {
     public String brief(String question, TenantContext tenant) {
         boolean chinese = isChinese(question);
         if (tenant == null) {
+            log.warn("Price review brief unavailable: tenant context is missing");
             return unavailableMessage(question);
         }
         try {
             PriceReviewBrief review = client.review(tenant);
             if (review == null) {
+                log.warn("Price review brief unavailable: outlet missing or cost permission denied");
                 return unavailableMessage(question);
             }
             if (review.top() == null || review.top().isEmpty()) {
@@ -57,6 +63,14 @@ public class PricingChatBrief {
                     : "\n\nTap below to open price review. Staff confirm any change on the page.");
             return sb.toString();
         } catch (Exception e) {
+            Throwable rootCause = e;
+            while (rootCause.getCause() != null && rootCause.getCause() != rootCause) {
+                rootCause = rootCause.getCause();
+            }
+            String sqlState = rootCause instanceof java.sql.SQLException sqlException
+                    ? sqlException.getSQLState() : "n/a";
+            log.warn("Price review brief query failed: exceptionType={}, rootCauseType={}, sqlState={}",
+                    e.getClass().getSimpleName(), rootCause.getClass().getSimpleName(), sqlState);
             return unavailableMessage(question);
         }
     }
