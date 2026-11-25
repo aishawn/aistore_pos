@@ -168,8 +168,11 @@ class AssistantFastPathRouterTest {
                 "What is the total value of inventory?",
                 "What is our inventory worth?",
                 "How much is our stock worth?",
+                "What is our current stock valuation?",
+                "What is our inventory value including inactive products?",
                 "total inventory value",
-                "库存总价值是多少？"
+                "库存总价值是多少？",
+                "当前库存估值是多少？"
         }) {
             var match = AssistantFastPathRouter.maybeMatch(question);
             assertNotNull(match, question);

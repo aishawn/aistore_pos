@@ -128,10 +128,12 @@ public final class AssistantFastPathRouter {
                     + "(?:(?:what(?:\\s+is|'s))\\s+)?(?:(?:the|our|my)\\s+)?(?:total\\s+)?(?:inventory|stock)\\s+value|"
                     + "(?:what(?:\\s+is|'s)\\s+)?(?:(?:the|our)\\s+)?(?:total\\s+)?value\\s+of\\s+(?:(?:our|the)\\s+)?(?:inventory|stock)|"
                     + "(?:what|how\\s+much)(?:\\s+is|'s)\\s+(?:(?:our|the|my)\\s+)?(?:inventory|stock)\\s+worth|"
+                    + "(?:what(?:\\s+is|'s)|how\\s+much\\s+is)\\s+(?:(?:our|the|my)\\s+)?(?:(?:current|on.hand)\\s+)?(?:inventory|stock)\\s+(?:value|valuation)(?:\\s+including\\s+(?:inactive|discontinued)\\s+(?:products?|items?|stock))?|"
                     + "(?:哪些|什么)(?:库存|商品|产品)(?:占用|占用了|占着|压着)(?:最多|最高)(?:现金|资金|钱)|"
                     + "(?:当前|现在)(?:库存|存货)(?:占用|占了|压了)(?:多少|多少钱)(?:现金|资金|钱)?|"
                     + "库存(?:现金|资金)占用(?:最多|最高|排名)?|"
                     + "(?:库存|存货)(?:总)?价值(?:多少|是多少|有多高)?|"
+                    + "(?:当前|现在)?(?:库存|存货)(?:的)?(?:总)?估值(?:多少|是多少|有多高)?|"
                     + "哪些(?:商品|产品)?库存价值(?:最高|最大))[?.!。！？]*$",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern AGGREGATE_STOCK_QUESTION = Pattern.compile(
