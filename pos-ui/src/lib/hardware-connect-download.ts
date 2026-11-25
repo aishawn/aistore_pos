@@ -1,6 +1,6 @@
 /** Rolling GitHub release asset (stable filename; version in install.json). */
 export const ORITHOS_HC_OFFICIAL_WINDOWS_URL =
-  "https://github.com/aishawn/aistore_pos/releases/download/hardware-connect-latest/OrithosHardwareConnect-Setup.exe";
+  "https://pub-c6dcd3f101764011bf5facc4662cc384.r2.dev/downloads/OrithosHardwareConnect-Setup.exe";
 
 const HC_SETUP_ROUTE_PATH = "/downloads/orithos-hardware-connect-setup";
 const HC_ONECLICK_ROUTE_PATH = "/downloads/orithos-hardware-connect-oneclick";
