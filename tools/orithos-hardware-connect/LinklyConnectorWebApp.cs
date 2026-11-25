@@ -184,7 +184,7 @@ internal static class LinklyConnectorWebApp
                 return Results.Problem(message, statusCode: StatusCodes.Status503ServiceUnavailable);
             }
 
-            var forwarded = await TryForwardToLinklyTcpAsync(linklyAdapter.BaseUrl, "/v1/query", body!, json, cancellationToken);
+            var forwarded = await ForwardToLinklyAdapterAsync(linklyAdapter.BaseUrl, "/v1/query", body!, json, cancellationToken);
             return forwarded!;
         });
 
@@ -225,7 +225,7 @@ internal static class LinklyConnectorWebApp
             }
 
             body = body with { Currency = "AUD" };
-            var forwarded = await TryForwardToLinklyTcpAsync(linklyAdapter.BaseUrl, "/v1/purchase", body, json, cancellationToken);
+            var forwarded = await ForwardToLinklyAdapterAsync(linklyAdapter.BaseUrl, "/v1/purchase", body, json, cancellationToken);
             return forwarded!;
         });
 
@@ -234,28 +234,38 @@ internal static class LinklyConnectorWebApp
         await app.WaitForShutdownAsync(cancellationToken);
     }
 
-    private static async Task<IResult?> TryForwardToLinklyTcpAsync(
-        string linklyTcpBase,
+    private static Task<IResult> ForwardToLinklyAdapterAsync(
+        string adapterBaseUrl,
         string path,
         ConnectorTxnRequest body,
         JsonSerializerOptions json,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken) =>
+        ForwardToLinklyAdapterAsync(adapterBaseUrl, path, body, json, cancellationToken, CallbackClient, TimeSpan.FromSeconds(30));
+
+    internal static async Task<IResult> ForwardToLinklyAdapterAsync(
+        string adapterBaseUrl,
+        string path,
+        ConnectorTxnRequest body,
+        JsonSerializerOptions json,
+        CancellationToken cancellationToken,
+        HttpClient callbackClient,
+        TimeSpan timeout)
     {
         try
         {
-            using var requestTimeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            requestTimeout.CancelAfter(TimeSpan.FromSeconds(30));
-            using var request = new HttpRequestMessage(HttpMethod.Post, $"{linklyTcpBase}{path}");
+            using var requestCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            requestCts.CancelAfter(timeout);
+            using var request = new HttpRequestMessage(HttpMethod.Post, $"{adapterBaseUrl}{path}");
             request.Content = JsonContent.Create(body, options: json);
-            using var response = await CallbackClient.SendAsync(
+            using var response = await callbackClient.SendAsync(
                 request,
                 HttpCompletionOption.ResponseHeadersRead,
-                requestTimeout.Token);
-            await using var responseStream = await response.Content.ReadAsStreamAsync(requestTimeout.Token);
+                requestCts.Token);
+            await using var responseStream = await response.Content.ReadAsStreamAsync(requestCts.Token);
             var text = await BoundedResponseReader.ReadAsync(
                 responseStream,
                 response.Content.Headers.ContentLength,
-                requestTimeout.Token);
+                requestCts.Token);
             return Results.Content(text, "application/json", statusCode: (int)response.StatusCode);
         }
         catch (Exception ex)
@@ -268,7 +278,7 @@ internal static class LinklyConnectorWebApp
 
     private sealed record ConnectorConfigRequest(string? OrithosApiUrl, string? ConnectorToken);
 
-    private sealed record ConnectorTxnRequest(
+    internal sealed record ConnectorTxnRequest(
         long AttemptId,
         string? OrderUuid,
         string? ConnectorChallenge,
