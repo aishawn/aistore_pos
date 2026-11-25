@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Reflection;
 using Microsoft.Win32;
 
 namespace Orithos.HardwareConnect;
@@ -57,8 +58,14 @@ internal static class RegisterAgentInstaller
         return DefaultSettingsUrl;
     }
 
-    public static void Install(string? settingsUrl = null)
+    public static void Install(string? settingsUrl = null, IProgress<InstallProgress>? progress = null)
     {
+        progress?.Report(new InstallProgress("Preparing", 5));
+        if (IsRunningFromInstallDir())
+        {
+            throw new InvalidOperationException("Close the running tray app and launch the downloaded setup file to update Hardware Connect.");
+        }
+
         var resolvedSettingsUrl = ResolveSettingsUrl(settingsUrl);
         var sourceDir = Path.GetDirectoryName(Environment.ProcessPath ?? AppContext.BaseDirectory);
         if (string.IsNullOrWhiteSpace(sourceDir))
@@ -72,39 +79,82 @@ internal static class RegisterAgentInstaller
             throw new InvalidOperationException("Could not locate the installer executable.");
         }
 
-        Directory.CreateDirectory(InstallDir);
-        StopRunningAgent();
-        Thread.Sleep(500);
-
-        File.Copy(runningExe, InstalledExePath, overwrite: true);
-
-        foreach (var file in Directory.EnumerateFiles(sourceDir))
+        var hadInstalledAgent = IsInstalled();
+        if (hadInstalledAgent)
         {
-            var name = Path.GetFileName(file);
-            if (string.Equals(name, "install.ps1", StringComparison.OrdinalIgnoreCase)
-                || string.Equals(name, "uninstall.ps1", StringComparison.OrdinalIgnoreCase)
-                || string.Equals(name, "REGISTER-README.txt", StringComparison.OrdinalIgnoreCase)
-                || string.Equals(name, "Install-Orithos-Hardware-Connect.cmd", StringComparison.OrdinalIgnoreCase)
-                || string.Equals(name, "Uninstall-Orithos-Hardware-Connect.cmd", StringComparison.OrdinalIgnoreCase)
-                || name.EndsWith("-Setup.exe", StringComparison.OrdinalIgnoreCase)
-                || name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+            var candidateVersion = Assembly.GetExecutingAssembly().GetName().Version ?? new Version(1, 0, 0, 0);
+            var installedVersionText = FileVersionInfo.GetVersionInfo(InstalledExePath).FileVersion;
+            var installedVersion = InstallVersionPolicy.ParseInstalledVersion(installedVersionText);
+            InstallVersionPolicy.EnsureNotDowngrade(candidateVersion, installedVersion);
+        }
+
+        var installParent = Path.GetDirectoryName(InstallDir)!;
+        var stagingDirectory = Path.Combine(installParent, $".HardwareConnect-staging-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(stagingDirectory);
+        try
+        {
+            File.Copy(runningExe, Path.Combine(stagingDirectory, "OrithosHardwareConnect.exe"));
+            foreach (var assetName in new[] { "orithos-hc-logo.png", "orithos-hc.ico" })
             {
-                continue;
+                var sourceAsset = Path.Combine(sourceDir, "assets", assetName);
+                if (!File.Exists(sourceAsset)) continue;
+                var stagedAsset = Path.Combine(stagingDirectory, "assets", assetName);
+                Directory.CreateDirectory(Path.GetDirectoryName(stagedAsset)!);
+                File.Copy(sourceAsset, stagedAsset);
             }
 
-            File.Copy(file, Path.Combine(InstallDir, name), overwrite: true);
+            progress?.Report(new InstallProgress("StoppingAgent", 30));
+            StopRunningAgent();
+            try
+            {
+                var payloadFiles = Directory.EnumerateFiles(stagingDirectory, "*", SearchOption.AllDirectories)
+                    .Select(path => Path.GetRelativePath(stagingDirectory, path))
+                    .ToArray();
+                progress?.Report(new InstallProgress("ReplacingFiles", 55));
+                InstallFileTransaction.ReplaceFiles(stagingDirectory, InstallDir, payloadFiles);
+
+                if (!File.Exists(InstalledExePath))
+                {
+                    throw new InvalidOperationException($"Could not install agent at {InstalledExePath}.");
+                }
+
+                progress?.Report(new InstallProgress("RegisteringStartup", 82));
+                RegisterStartup(InstalledExePath);
+                Environment.SetEnvironmentVariable(SettingsUrlEnv, resolvedSettingsUrl, EnvironmentVariableTarget.User);
+                RegisterProgramsAndFeatures(InstalledExePath);
+            }
+            catch (InstallRollbackException)
+            {
+                throw;
+            }
+            catch (Exception installFailure)
+            {
+                if (hadInstalledAgent && File.Exists(InstalledExePath))
+                {
+                    try
+                    {
+                        LaunchInstalledAgent();
+                    }
+                    catch (Exception restartFailure)
+                    {
+                        throw new AggregateException("The update failed and the previous agent could not be restarted.", installFailure, restartFailure);
+                    }
+                }
+
+                throw;
+            }
         }
-
-        CopyAssetsDirectory(Path.Combine(sourceDir, "assets"), Path.Combine(InstallDir, "assets"));
-
-        if (!File.Exists(InstalledExePath))
+        finally
         {
-            throw new InvalidOperationException($"Could not install agent at {InstalledExePath}.");
+            try
+            {
+                if (Directory.Exists(stagingDirectory)) Directory.Delete(stagingDirectory, recursive: true);
+            }
+            catch
+            {
+                /* A later setup run can remove abandoned staging files. */
+            }
         }
-
-        RegisterStartup(InstalledExePath);
-        Environment.SetEnvironmentVariable(SettingsUrlEnv, resolvedSettingsUrl, EnvironmentVariableTarget.User);
-        RegisterProgramsAndFeatures(InstalledExePath);
     }
 
     public static void Uninstall()
@@ -113,43 +163,10 @@ internal static class RegisterAgentInstaller
         DeleteScheduledTask();
         DeleteRunKey();
         StopRunningAgent();
-        Thread.Sleep(500);
-
-        if (Directory.Exists(InstallDir))
-        {
-            try
-            {
-                Directory.Delete(InstallDir, recursive: true);
-            }
-            catch
-            {
-                foreach (var file in Directory.EnumerateFiles(InstallDir, "*", SearchOption.AllDirectories))
-                {
-                    try
-                    {
-                        File.SetAttributes(file, FileAttributes.Normal);
-                        File.Delete(file);
-                    }
-                    catch
-                    {
-                        /* best effort */
-                    }
-                }
-
-                try
-                {
-                    Directory.Delete(InstallDir, recursive: true);
-                }
-                catch
-                {
-                    /* leave partial tree; user can delete folder manually */
-                }
-            }
-        }
-
         Environment.SetEnvironmentVariable(SettingsUrlEnv, null, EnvironmentVariableTarget.User);
         Environment.SetEnvironmentVariable("ORITHOS_CONNECTOR_TOKEN", null, EnvironmentVariableTarget.User);
         Environment.SetEnvironmentVariable("ORITHOS_API_URL", null, EnvironmentVariableTarget.User);
+        ScheduleInstallDirectoryDeletion();
     }
 
     public static void RequestUninstallFromTray()
@@ -183,16 +200,81 @@ internal static class RegisterAgentInstaller
 
     private static void StopRunningAgent()
     {
+        var currentProcessId = Environment.ProcessId;
         foreach (var process in Process.GetProcessesByName("OrithosHardwareConnect"))
         {
-            try
+            using (process)
             {
-                process.Kill(entireProcessTree: true);
+                string? executablePath;
+                try
+                {
+                    executablePath = process.MainModule?.FileName;
+                }
+                catch
+                {
+                    continue;
+                }
+
+                if (!AgentProcessPolicy.ShouldStop(process.Id, executablePath, InstalledExePath, currentProcessId)) continue;
+                try
+                {
+                    if (!process.HasExited) process.Kill(entireProcessTree: true);
+                }
+                catch (InvalidOperationException) when (process.HasExited)
+                {
+                }
+
+                if (!process.WaitForExit(15_000))
+                {
+                    throw new TimeoutException("The running Hardware Connect process did not stop for the update.");
+                }
             }
-            catch
+        }
+    }
+
+    private static void ScheduleInstallDirectoryDeletion()
+    {
+        var windowsDirectory = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
+        var powershell = Path.Combine(windowsDirectory, "System32", "WindowsPowerShell", "v1.0", "powershell.exe");
+        if (!File.Exists(powershell))
+        {
+            throw new FileNotFoundException("Windows PowerShell is required to finish removing the running application files.", powershell);
+        }
+
+        var cleanupScript = Path.Combine(Path.GetTempPath(), $"orithos-hc-uninstall-{Guid.NewGuid():N}.ps1");
+        File.WriteAllText(cleanupScript, """
+            param([int]$ProcessId, [string]$InstallDir)
+            try { Wait-Process -Id $ProcessId -Timeout 30 -ErrorAction SilentlyContinue } catch {}
+            for ($attempt = 0; $attempt -lt 20 -and (Test-Path -LiteralPath $InstallDir); $attempt++) {
+              try { Remove-Item -LiteralPath $InstallDir -Recurse -Force -ErrorAction Stop } catch {}
+              if (Test-Path -LiteralPath $InstallDir) { Start-Sleep -Milliseconds 500 }
+            }
+            if (Test-Path -LiteralPath $InstallDir) { exit 1 }
+            Remove-Item -LiteralPath $PSCommandPath -Force -ErrorAction SilentlyContinue
+            """);
+
+        try
+        {
+            var process = new ProcessStartInfo(powershell)
             {
-                /* best effort */
-            }
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                WindowStyle = ProcessWindowStyle.Hidden,
+            };
+            process.ArgumentList.Add("-NoProfile");
+            process.ArgumentList.Add("-NonInteractive");
+            process.ArgumentList.Add("-ExecutionPolicy");
+            process.ArgumentList.Add("Bypass");
+            process.ArgumentList.Add("-File");
+            process.ArgumentList.Add(cleanupScript);
+            process.ArgumentList.Add(Environment.ProcessId.ToString());
+            process.ArgumentList.Add(InstallDir);
+            Process.Start(process)?.Dispose();
+        }
+        catch
+        {
+            try { File.Delete(cleanupScript); } catch { }
+            throw;
         }
     }
 
@@ -278,16 +360,6 @@ internal static class RegisterAgentInstaller
         catch
         {
             /* non-fatal */
-        }
-    }
-
-    private static void CopyAssetsDirectory(string source, string target)
-    {
-        if (!Directory.Exists(source)) return;
-        Directory.CreateDirectory(target);
-        foreach (var file in Directory.EnumerateFiles(source))
-        {
-            File.Copy(file, Path.Combine(target, Path.GetFileName(file)), overwrite: true);
         }
     }
 

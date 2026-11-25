@@ -5,6 +5,7 @@ export type ConnectorStatus = {
   terminal?: string;
   detail?: string;
   tokenConfigured?: boolean;
+  tokenRecoveryRequired?: boolean;
   integrationMode?: "lab" | "tcp-proxy" | string;
 };
 
@@ -97,8 +98,10 @@ export async function pushConnectorLocalConfig(
 export async function requestConnectorPurchase(
   baseUrl: string,
   payload: ConnectorPurchaseRequest,
+  onDispatchStarted?: () => void,
 ): Promise<void> {
   const target = `${normaliseBase(baseUrl)}/v1/purchase`;
+  onDispatchStarted?.();
   const response = await fetch(target, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

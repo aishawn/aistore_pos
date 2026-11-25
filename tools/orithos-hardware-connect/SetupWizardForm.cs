@@ -74,7 +74,9 @@ internal sealed class SetupWizardForm : Form
 
         statusLabel = new Label
         {
-            Text = "Click Install to copy the register agent to this PC and start it at sign-in.",
+            Text = RegisterAgentInstaller.IsInstalled()
+                ? "A register agent is already installed. Choose Upgrade to replace it and keep this PC's settings and exported data."
+                : "Choose Install to set up the register agent on this PC and start it at sign-in.",
             Location = new Point(24, 108),
             Size = new Size(472, 44),
             ForeColor = Color.FromArgb(51, 65, 85),
@@ -94,14 +96,15 @@ internal sealed class SetupWizardForm : Form
         {
             Location = new Point(24, 178),
             Size = new Size(472, 18),
-            Style = ProgressBarStyle.Marquee,
-            MarqueeAnimationSpeed = 30,
+            Style = ProgressBarStyle.Continuous,
+            Minimum = 0,
+            Maximum = 100,
             Visible = false,
         };
 
         installButton = new Button
         {
-            Text = "Install",
+            Text = RegisterAgentInstaller.IsInstalled() ? "Upgrade" : "Install",
             Location = new Point(312, 208),
             Size = new Size(100, 32),
             FlatStyle = FlatStyle.System,
@@ -132,17 +135,28 @@ internal sealed class SetupWizardForm : Form
         installButton.Enabled = false;
         closeButton.Enabled = false;
         progress.Visible = true;
-        statusLabel.Text = "Processing: Initializing…";
+        progress.Value = 0;
+        statusLabel.Text = InstallerStatusText.ForStage("Preparing");
         progressCaption.Visible = true;
+        var filesInstalled = false;
+        var installerProgress = new Progress<InstallProgress>(step =>
+        {
+            statusLabel.Text = InstallerStatusText.ForStage(step.Stage);
+            progress.Value = Math.Clamp(step.Percent, progress.Minimum, progress.Maximum);
+        });
 
         try
         {
-            await Task.Run(() => RegisterAgentInstaller.Install(settingsUrl));
-            statusLabel.Text = "Installation complete. Starting the tray agent…";
+            await Task.Run(() => RegisterAgentInstaller.Install(settingsUrl, installerProgress));
+            filesInstalled = true;
+            statusLabel.Text = InstallerStatusText.ForStage("StartingAgent");
+            progress.Value = 92;
             RegisterAgentInstaller.LaunchInstalledAgent();
+            progress.Value = 100;
             progress.Visible = false;
+            statusLabel.Text = "Installation complete. Hardware Connect is starting in the system tray.";
             MessageBox.Show(
-                "Installation complete.\n\nIf Windows Firewall asks, allow Orithos Hardware Connect on private networks.\n\nOpen Hardware settings in your browser to connect printers.",
+                "Installation complete.\n\nOpen Hardware settings to confirm both local services are online and connect your devices. If Windows Firewall asks, allow Orithos Hardware Connect on private networks.",
                 AgentVersion.Product,
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Information);
@@ -154,8 +168,14 @@ internal sealed class SetupWizardForm : Form
             progress.Visible = false;
             installButton.Enabled = true;
             closeButton.Enabled = true;
-            statusLabel.Text = "Installation failed.";
-            MessageBox.Show($"Installation failed:\n{ex.Message}", AgentVersion.Product, MessageBoxButtons.OK, MessageBoxIcon.Error);
+            statusLabel.Text = filesInstalled
+                ? "Files installed, but the register agent did not start."
+                : "Installation could not be completed.";
+            MessageBox.Show(
+                $"{statusLabel.Text}\n\n{InstallerStatusText.ForFailure(ex)}\n\nDetails: {ex.Message}",
+                AgentVersion.Product,
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error);
         }
     }
 }

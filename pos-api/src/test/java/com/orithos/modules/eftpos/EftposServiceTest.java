@@ -28,6 +28,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.never;
 
 @ExtendWith(MockitoExtension.class)
 class EftposServiceTest {
@@ -70,6 +71,50 @@ class EftposServiceTest {
         assertEquals(77L, view.attemptId());
         assertEquals("PENDING", view.status());
         assertNotNull(view.connectorChallenge());
+        verify(repository).lockRegisterForAttemptCreation(1L, 12L);
+        verify(repository).lockOrderForAttemptCreation(1L, "order-1");
+    }
+
+    @Test
+    void persistsDispatchBeforeReturningToConnectorCaller() {
+        when(repository.findAttemptById(1L, 77L)).thenReturn(Optional.of(attempt(77L)), Optional.of(
+                new EftposRepository.AttemptRow(77L, 1L, 2L, 12L, "order-1", 1250, "AUD", "quote-sig",
+                        EftposPaymentStatuses.DISPATCHED, null, "challenge")));
+        when(repository.markAttemptDispatched(1L, 77L)).thenReturn(1);
+        when(repository.findBinding(1L, 12L)).thenReturn(Optional.of(binding(true)));
+
+        var view = service.markAttemptDispatched(12L, 77L);
+
+        assertEquals("DISPATCHED", view.attempt().status());
+        org.junit.jupiter.api.Assertions.assertTrue(view.dispatchAuthorized());
+        verify(repository).markAttemptDispatched(1L, 77L);
+    }
+
+    @Test
+    void repeatedDispatchConfirmationIsIdempotentAndDoesNotDispatchAgain() {
+        var dispatched = new EftposRepository.AttemptRow(
+                77L, 1L, 2L, 12L, "order-1", 1250, "AUD", "quote-sig",
+                EftposPaymentStatuses.DISPATCHED, null, "challenge");
+        when(repository.findAttemptById(1L, 77L)).thenReturn(Optional.of(dispatched));
+        when(repository.findBinding(1L, 12L)).thenReturn(Optional.of(binding(true)));
+
+        var view = service.markAttemptDispatched(12L, 77L);
+
+        assertEquals("DISPATCHED", view.attempt().status());
+        org.junit.jupiter.api.Assertions.assertFalse(view.dispatchAuthorized());
+        verify(repository, never()).markAttemptDispatched(1L, 77L);
+    }
+
+    @Test
+    void doesNotDispatchAnAlreadyFinalAttempt() {
+        var approved = new EftposRepository.AttemptRow(
+                77L, 1L, 2L, 12L, "order-1", 1250, "AUD", "quote-sig",
+                EftposPaymentStatuses.APPROVED, "BANK-1", "challenge");
+        when(repository.findAttemptById(1L, 77L)).thenReturn(Optional.of(approved));
+
+        assertThrows(com.orithos.common.BusinessException.class, () -> service.markAttemptDispatched(12L, 77L));
+
+        verify(repository, never()).markAttemptDispatched(1L, 77L);
     }
 
     @Test
@@ -108,6 +153,16 @@ class EftposServiceTest {
         assertThrows(com.orithos.common.BusinessException.class, () -> productionService.connectorCallback(
                 new EftposConnectorCallbackRequest(77L, "challenge", "APPROVED", "LAB-77-123"),
                 binding.connectorToken()));
+        verify(repository, org.mockito.Mockito.never()).updateAttemptStatus(anyLong(), anyLong(), any(), any());
+    }
+
+    @Test
+    void neverReleasesRegisterForUnverifiedActiveAttempt() {
+        when(repository.findLatestActiveAttempt(1L, 12L)).thenReturn(Optional.of(attempt(77L)));
+
+        var error = assertThrows(com.orithos.common.BusinessException.class, () -> service.cancelActiveAttempt(12L));
+
+        assertEquals(40900, error.getCode());
         verify(repository, org.mockito.Mockito.never()).updateAttemptStatus(anyLong(), anyLong(), any(), any());
     }
 

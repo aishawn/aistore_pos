@@ -1,4 +1,5 @@
 import {
+  claimEftposAttemptDispatch,
   createEftposAttempt,
   getEftposAttemptByOrder,
   type EftposAttempt,
@@ -7,38 +8,66 @@ import { fetchConnectorStatus, requestConnectorPurchase, requestConnectorQuery }
 
 const DISPATCH_KEY_PREFIX = "orithos.eftpos.purchase-dispatched.";
 
-type SessionStorageLike = Pick<Storage, "getItem" | "setItem">;
+type PurchaseStorageLike = Pick<Storage, "getItem" | "setItem">;
 
-function browserSessionStorage(): SessionStorageLike | null {
-  return typeof sessionStorage === "undefined" ? null : sessionStorage;
+function browserPurchaseStorage(): PurchaseStorageLike | null {
+  return typeof localStorage === "undefined" ? null : localStorage;
 }
 
-export function wasPurchaseDispatched(orderUuid: string, storage = browserSessionStorage()): boolean {
+export function wasPurchaseDispatched(orderUuid: string, storage = browserPurchaseStorage()): boolean {
   return storage?.getItem(`${DISPATCH_KEY_PREFIX}${orderUuid}`) === "1";
 }
 
-export function markPurchaseDispatched(orderUuid: string, storage = browserSessionStorage()) {
-  storage?.setItem(`${DISPATCH_KEY_PREFIX}${orderUuid}`, "1");
+export function markPurchaseDispatched(orderUuid: string, storage = browserPurchaseStorage()) {
+  if (!storage) throw new Error("This browser cannot safely track EFTPOS dispatch state. Enable local storage before retrying this payment.");
+  storage.setItem(`${DISPATCH_KEY_PREFIX}${orderUuid}`, "1");
 }
 
-async function dispatchConnector(attempt: EftposAttempt): Promise<void> {
+export async function dispatchClaimedPurchase(
+  claimDispatch: () => Promise<{ dispatchAuthorized: boolean }>,
+  dispatchPurchase: () => Promise<void>,
+): Promise<boolean> {
+  const claim = await claimDispatch();
+  if (!claim.dispatchAuthorized) return false;
+  await dispatchPurchase();
+  return true;
+}
+
+async function dispatchConnector(attempt: EftposAttempt, registerId: number): Promise<void> {
   if (attempt.status === "PENDING") {
-    if (wasPurchaseDispatched(attempt.orderUuid)) return;
+    if (wasPurchaseDispatched(attempt.orderUuid)) {
+      await requestConnectorQuery(attempt.connectorBaseUrl, {
+        attemptId: attempt.attemptId,
+        orderUuid: attempt.orderUuid,
+        connectorChallenge: attempt.connectorChallenge,
+      });
+      return;
+    }
     const status = await fetchConnectorStatus(attempt.connectorBaseUrl);
     if (status?.integrationMode !== "tcp-proxy" || status.tokenConfigured !== true) {
       throw new Error("Real Linkly is not ready on this PC. The payment was not sent to the terminal; keep this order and resolve the connector status before retrying.");
     }
-    await requestConnectorPurchase(attempt.connectorBaseUrl, {
-      attemptId: attempt.attemptId,
-      orderUuid: attempt.orderUuid,
-      amountCents: attempt.amountCents,
-      currency: attempt.currency,
-      connectorChallenge: attempt.connectorChallenge,
-    });
-    markPurchaseDispatched(attempt.orderUuid);
+    const dispatched = await dispatchClaimedPurchase(
+      () => claimEftposAttemptDispatch(registerId, attempt.attemptId),
+      () => requestConnectorPurchase(attempt.connectorBaseUrl, {
+        attemptId: attempt.attemptId,
+        orderUuid: attempt.orderUuid,
+        amountCents: attempt.amountCents,
+        currency: attempt.currency,
+        connectorChallenge: attempt.connectorChallenge,
+      }, () => markPurchaseDispatched(attempt.orderUuid)),
+    );
+    if (!dispatched) {
+      await requestConnectorQuery(attempt.connectorBaseUrl, {
+        attemptId: attempt.attemptId,
+        orderUuid: attempt.orderUuid,
+        connectorChallenge: attempt.connectorChallenge,
+      });
+      return;
+    }
     return;
   }
-  if (attempt.status === "UNKNOWN") {
+  if (attempt.status === "DISPATCHED" || attempt.status === "UNKNOWN") {
     await requestConnectorQuery(attempt.connectorBaseUrl, {
       attemptId: attempt.attemptId,
       orderUuid: attempt.orderUuid,
@@ -68,7 +97,7 @@ export async function ensureEftposApprovedBeforeCheckout(input: {
     throw new Error("The terminal declined or cancelled the payment.");
   }
 
-  await dispatchConnector(attempt);
+  await dispatchConnector(attempt, input.registerId);
 
   const deadline = Date.now() + 120_000;
   while (Date.now() < deadline) {
@@ -81,8 +110,8 @@ export async function ensureEftposApprovedBeforeCheckout(input: {
     if (attempt.status === "DECLINED" || attempt.status === "CANCELLED") {
       throw new Error("The terminal declined or cancelled the payment.");
     }
-    if (attempt.status === "UNKNOWN") {
-      await dispatchConnector(attempt);
+    if (attempt.status === "DISPATCHED" || attempt.status === "UNKNOWN") {
+      await dispatchConnector(attempt, input.registerId);
     }
   }
   throw new Error("Payment is still pending on the terminal. Do not charge again; wait or check the terminal.");

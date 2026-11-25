@@ -6,6 +6,7 @@ on:
     branches: [main]
     paths:
       - "tools/orithos-hardware-connect/**"
+      - "tools/orithos-hardware-connect.Tests/**"
       - ".github/workflows/hardware-connect-release.yml"
 
 permissions:
@@ -19,7 +20,14 @@ jobs:
 
       - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 8.0.x
+          dotnet-version: 10.0.x
+
+      - name: Run Hardware Connect security tests
+        run: dotnet test tools/orithos-hardware-connect.Tests/Orithos.HardwareConnect.Tests.csproj --configuration Release --verbosity minimal
+
+      - name: Run release signing script tests
+        shell: pwsh
+        run: Invoke-Pester -Script tools/orithos-hardware-connect.Tests/SignRelease.Tests.ps1 -EnableExit
 
       - name: Build register bundle
         shell: pwsh
@@ -42,18 +50,20 @@ jobs:
           Copy-Item $zip (Join-Path $releaseDir "OrithosHardwareConnect-win-x64.zip") -Force
           "HC_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
-      - name: Optional Authenticode sign
+      - name: Authenticode sign and verify all release executables
         shell: pwsh
         env:
           WINDOWS_SIGNING_CERT_PFX_BASE64: ${{ secrets.WINDOWS_SIGNING_CERT_PFX_BASE64 }}
           WINDOWS_SIGNING_CERT_PASSWORD: ${{ secrets.WINDOWS_SIGNING_CERT_PASSWORD }}
         run: |
           if (-not $env:WINDOWS_SIGNING_CERT_PFX_BASE64) {
-            Write-Host "No signing secret; publishing unsigned bundle."
-            exit 0
+            throw "Cannot publish Hardware Connect unsigned. Configure WINDOWS_SIGNING_CERT_PFX_BASE64 and set WINDOWS_SIGNING_CERT_PASSWORD when the certificate uses a password."
           }
           Set-Location tools/orithos-hardware-connect
-          ./sign-install.ps1 -ZipPath ./dist/release/OrithosHardwareConnect-win-x64.zip
+          ./sign-release.ps1 `
+            -ExePath ./dist/release/OrithosHardwareConnect-Setup.exe `
+            -ZipPath ./dist/release/OrithosHardwareConnect-win-x64.zip `
+            -RequireSignature
 
       - name: Publish rolling release asset
         uses: softprops/action-gh-release@v2

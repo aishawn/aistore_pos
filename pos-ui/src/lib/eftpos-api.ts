@@ -25,6 +25,11 @@ export type EftposAttempt = {
   paymentsEnabled: boolean;
 };
 
+export type EftposDispatchClaim = {
+  attempt: EftposAttempt;
+  dispatchAuthorized: boolean;
+};
+
 export type UpsertRegisterEftposBindingPayload = {
   enabled: boolean;
   paymentsEnabled: boolean;
@@ -92,6 +97,13 @@ export function getEftposAttemptByOrder(
   orderUuid: string,
 ): Promise<EftposAttempt> {
   return api.get<EftposAttempt>(`/api/retail/registers/${registerId}/eftpos/attempts/by-order/${encodeURIComponent(orderUuid)}`);
+}
+
+export function claimEftposAttemptDispatch(registerId: number, attemptId: number): Promise<EftposDispatchClaim> {
+  return api.post<EftposDispatchClaim>(
+    `/api/retail/registers/${registerId}/eftpos/attempts/${attemptId}/dispatch`,
+    {},
+  );
 }
 
 export function simulateEftposApproval(registerId: number, attemptId: number): Promise<EftposAttempt> {

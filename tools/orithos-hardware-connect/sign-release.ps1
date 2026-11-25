@@ -1,28 +1,96 @@
-# Optional Authenticode signing for Setup.exe (removes SmartScreen "unknown publisher" after reputation builds).
-# Requires: ORITHOS_CODESIGN_PFX path and ORITHOS_CODESIGN_PASSWORD (or cert in Windows cert store).
-# Shopfront-style production path: EV code signing cert (DigiCert/Sectigo) or Azure Trusted Signing, then sign in CI before GitHub upload.
-
 param(
-  [Parameter(Mandatory = $true)]
-  [string]$ExePath
+  [string]$ExePath,
+  [string]$ZipPath,
+  [string]$SignToolPath,
+  [switch]$RequireSignature
 )
 
 $ErrorActionPreference = "Stop"
+
+if ([string]::IsNullOrWhiteSpace($ExePath) -and [string]::IsNullOrWhiteSpace($ZipPath)) {
+  throw "Provide an executable path, a bundle path, or both."
+}
+if (-not [string]::IsNullOrWhiteSpace($ExePath)) {
+  if (-not (Test-Path $ExePath -PathType Leaf)) { throw "Missing executable: $ExePath" }
+  $ExePath = (Resolve-Path $ExePath).Path
+}
+
 $pfx = $env:ORITHOS_CODESIGN_PFX
-$pwd = $env:ORITHOS_CODESIGN_PASSWORD
-
-if ([string]::IsNullOrWhiteSpace($pfx) -or -not (Test-Path $pfx)) {
-  Write-Host "Skip signing: set ORITHOS_CODESIGN_PFX to a .pfx file."
-  exit 0
+$password = $env:ORITHOS_CODESIGN_PASSWORD
+$pfxBase64 = $env:WINDOWS_SIGNING_CERT_PFX_BASE64
+if ([string]::IsNullOrWhiteSpace($pfx) -and [string]::IsNullOrWhiteSpace($pfxBase64)) {
+  if ($RequireSignature) { throw "A code-signing certificate is required to publish this release." }
+  Write-Warning "Unsigned release: no code-signing certificate is configured."
+  return
 }
 
-$signtool = "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\signtool.exe" | Get-Item -ErrorAction SilentlyContinue | Select-Object -Last 1
-if (-not $signtool) {
-  throw "signtool.exe not found. Install Windows SDK."
+$tempDirectory = Join-Path $env:TEMP ("orithos-hc-sign-" + [Guid]::NewGuid().ToString("n"))
+$signedZip = $null
+New-Item -ItemType Directory -Force -Path $tempDirectory | Out-Null
+
+try {
+  if (-not [string]::IsNullOrWhiteSpace($pfxBase64)) {
+    $pfx = Join-Path $tempDirectory "signing.pfx"
+    [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($pfxBase64))
+    if ([string]::IsNullOrWhiteSpace($password)) { $password = $env:WINDOWS_SIGNING_CERT_PASSWORD }
+  }
+
+  if (-not (Test-Path $pfx -PathType Leaf)) { throw "The configured code-signing certificate file is missing." }
+
+  if ([string]::IsNullOrWhiteSpace($SignToolPath)) {
+    $windowsKits = @(
+      (Join-Path ${env:ProgramFiles(x86)} "Windows Kits\10\bin"),
+      (Join-Path $env:ProgramFiles "Windows Kits\10\bin")
+    ) | Where-Object { Test-Path $_ }
+    $SignToolPath = $windowsKits |
+      ForEach-Object { Get-ChildItem $_ -Directory | Where-Object { $_.Name -match '^\d+(\.\d+)+$' } | Sort-Object { [version]$_.Name } -Descending | ForEach-Object { Join-Path $_.FullName "x64\signtool.exe" } } |
+      Where-Object { Test-Path $_ -PathType Leaf } |
+      Select-Object -First 1
+  }
+
+  if ([string]::IsNullOrWhiteSpace($SignToolPath) -or -not (Test-Path $SignToolPath -PathType Leaf)) {
+    throw "signtool.exe not found. Install the Windows SDK."
+  }
+
+  function Invoke-CheckedSignTool([string[]]$Arguments, [string]$Operation) {
+    & $SignToolPath @Arguments
+    $toolExitCode = $global:LASTEXITCODE
+    if ($toolExitCode -ne 0) { throw "signtool failed while attempting to $Operation (exit code $toolExitCode)." }
+  }
+
+  function SignAndVerify([string]$Path) {
+    $signArguments = @("sign", "/fd", "SHA256", "/tr", "http://timestamp.digicert.com", "/td", "SHA256", "/f", $pfx)
+    if (-not [string]::IsNullOrWhiteSpace($password)) { $signArguments += @("/p", $password) }
+    $signArguments += $Path
+    Invoke-CheckedSignTool $signArguments "sign $([IO.Path]::GetFileName($Path))"
+    Invoke-CheckedSignTool @("verify", "/pa", "/v", $Path) "verify $([IO.Path]::GetFileName($Path))"
+  }
+
+  if (-not [string]::IsNullOrWhiteSpace($ExePath)) {
+    SignAndVerify $ExePath
+    Write-Host "Signed and verified: $ExePath"
+  }
+
+  if (-not [string]::IsNullOrWhiteSpace($ZipPath)) {
+    if (-not (Test-Path $ZipPath -PathType Leaf)) { throw "Missing bundle: $ZipPath" }
+    $ZipPath = (Resolve-Path $ZipPath).Path
+    $bundleDirectory = Join-Path $tempDirectory "bundle"
+    Expand-Archive -Path $ZipPath -DestinationPath $bundleDirectory
+    $bundleExe = Get-ChildItem $bundleDirectory -Filter "OrithosHardwareConnect.exe" -File -Recurse | Select-Object -First 1
+    if (-not $bundleExe) { throw "Bundle missing OrithosHardwareConnect.exe" }
+    SignAndVerify $bundleExe.FullName
+
+    $zipDirectory = Split-Path -Parent $ZipPath
+    $signedZip = Join-Path $zipDirectory ("." + [IO.Path]::GetFileNameWithoutExtension($ZipPath) + ".signed-" + [Guid]::NewGuid().ToString("n") + ".zip")
+    $backupZip = Join-Path $zipDirectory ("." + [IO.Path]::GetFileName($ZipPath) + ".backup-" + [Guid]::NewGuid().ToString("n"))
+    Compress-Archive -Path (Join-Path $bundleDirectory "*") -DestinationPath $signedZip
+    [IO.File]::Replace($signedZip, $ZipPath, $backupZip)
+    $signedZip = $null
+    Remove-Item $backupZip -Force -ErrorAction SilentlyContinue
+    Write-Host "Signed bundle executable and replaced bundle: $ZipPath"
+  }
 }
-
-$args = @("sign", "/fd", "SHA256", "/tr", "http://timestamp.digicert.com", "/td", "SHA256", "/f", $pfx, $ExePath)
-if ($pwd) { $args = @("sign", "/fd", "SHA256", "/tr", "http://timestamp.digicert.com", "/td", "SHA256", "/f", $pfx, "/p", $pwd, $ExePath) }
-
-& $signtool.FullName @args
-Write-Host "Signed: $ExePath"
+finally {
+  if ($signedZip -and (Test-Path $signedZip)) { Remove-Item $signedZip -Force -ErrorAction SilentlyContinue }
+  Remove-Item $tempDirectory -Recurse -Force -ErrorAction SilentlyContinue
+}

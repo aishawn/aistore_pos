@@ -7,9 +7,15 @@ namespace Orithos.HardwareConnect;
 
 internal static class HardwareConnectWebApp
 {
-    public static async Task RunAsync(CancellationToken cancellationToken)
+    public static Task RunAsync(CancellationToken cancellationToken) => RunAsync(cancellationToken, null);
+
+    public static async Task RunAsync(CancellationToken cancellationToken, Action? onStarted)
     {
         var listenUrl = Environment.GetEnvironmentVariable("ORITHOS_HC_URL") ?? AgentVersion.DefaultListen;
+        if (!LocalRequestSecurity.IsLoopbackListenUrl(listenUrl))
+        {
+            throw new InvalidOperationException("ORITHOS_HC_URL must use localhost or a loopback IP address.");
+        }
 
         var json = new JsonSerializerOptions
         {
@@ -18,16 +24,36 @@ internal static class HardwareConnectWebApp
         };
 
         var builder = WebApplication.CreateBuilder();
+        builder.WebHost.ConfigureKestrel(options => options.Limits.MaxRequestBodySize = 1_048_576);
         builder.WebHost.UseUrls(listenUrl);
-        var app = builder.Build();
+        await using var app = builder.Build();
 
         app.Use(async (ctx, next) =>
         {
-            ctx.Response.Headers["Access-Control-Allow-Origin"] = "*";
-            ctx.Response.Headers["Access-Control-Allow-Methods"] = "GET,POST,OPTIONS";
-            ctx.Response.Headers["Access-Control-Allow-Headers"] = "Content-Type";
+            var origin = ctx.Request.Headers.Origin.ToString();
+            if (!string.IsNullOrEmpty(origin) && !LocalRequestSecurity.IsAllowedOrigin(origin))
+            {
+                ctx.Response.StatusCode = StatusCodes.Status403Forbidden;
+                return;
+            }
+
+            if (!string.IsNullOrEmpty(origin))
+            {
+                ctx.Response.Headers["Access-Control-Allow-Origin"] = origin;
+                ctx.Response.Headers["Access-Control-Allow-Methods"] = "GET,POST,OPTIONS";
+                ctx.Response.Headers["Access-Control-Allow-Headers"] = "Content-Type";
+                ctx.Response.Headers["Access-Control-Allow-Private-Network"] = "true";
+                ctx.Response.Headers["Vary"] = "Origin";
+            }
+
             if (HttpMethods.IsOptions(ctx.Request.Method))
             {
+                if (string.IsNullOrEmpty(origin))
+                {
+                    ctx.Response.StatusCode = StatusCodes.Status403Forbidden;
+                    return;
+                }
+
                 ctx.Response.StatusCode = StatusCodes.Status204NoContent;
                 return;
             }
@@ -58,13 +84,36 @@ internal static class HardwareConnectWebApp
 
         app.MapPost("/v1/print/text", async (HttpRequest request) =>
         {
-            var payload = await JsonSerializer.DeserializeAsync<PrintTextRequest>(request.Body, json);
+            PrintTextRequest? payload;
+            try
+            {
+                payload = await JsonSerializer.DeserializeAsync<PrintTextRequest>(request.Body, json, cancellationToken);
+            }
+            catch (JsonException)
+            {
+                return Results.BadRequest(new { error = "Request body must be valid JSON." });
+            }
+
             if (payload is null || string.IsNullOrWhiteSpace(payload.Printer) || string.IsNullOrWhiteSpace(payload.Text))
             {
                 return Results.BadRequest(new { error = "printer and text are required" });
             }
 
-            var encoding = string.IsNullOrWhiteSpace(payload.Encoding) ? Encoding.UTF8 : Encoding.GetEncoding(payload.Encoding);
+            if (payload.Text.Length > HardwareRequestValidation.MaxTextLength)
+            {
+                return Results.BadRequest(new { error = $"text must not exceed {HardwareRequestValidation.MaxTextLength} characters" });
+            }
+
+            Encoding encoding;
+            try
+            {
+                encoding = string.IsNullOrWhiteSpace(payload.Encoding) ? Encoding.UTF8 : Encoding.GetEncoding(payload.Encoding);
+            }
+            catch (ArgumentException)
+            {
+                return Results.BadRequest(new { error = "encoding is not supported" });
+            }
+
             var bytes = encoding.GetBytes(payload.Text);
             if (!RawPrinterHelper.SendBytesToPrinter(payload.Printer, bytes))
             {
@@ -76,10 +125,19 @@ internal static class HardwareConnectWebApp
 
         app.MapPost("/v1/print/raw", async (HttpRequest request) =>
         {
-            var payload = await JsonSerializer.DeserializeAsync<PrintRawRequest>(request.Body, json);
-            if (payload is null || string.IsNullOrWhiteSpace(payload.Printer) || payload.Bytes is not { Length: > 0 })
+            PrintRawRequest? payload;
+            try
             {
-                return Results.BadRequest(new { error = "printer and bytes are required" });
+                payload = await JsonSerializer.DeserializeAsync<PrintRawRequest>(request.Body, json, cancellationToken);
+            }
+            catch (JsonException)
+            {
+                return Results.BadRequest(new { error = "Request body must be valid JSON." });
+            }
+
+            if (payload is null || string.IsNullOrWhiteSpace(payload.Printer) || !HardwareRequestValidation.IsValidRawBytes(payload.Bytes))
+            {
+                return Results.BadRequest(new { error = "printer and bytes are required; bytes must contain values from 0 to 255 within the supported size limit" });
             }
 
             var bytes = payload.Bytes.Select(b => (byte)b).ToArray();
@@ -93,10 +151,19 @@ internal static class HardwareConnectWebApp
 
         app.MapPost("/v1/cash-drawer/kick", async (HttpRequest request) =>
         {
-            var payload = await JsonSerializer.DeserializeAsync<CashDrawerRequest>(request.Body, json);
-            if (payload is null || string.IsNullOrWhiteSpace(payload.Printer) || payload.Bytes is not { Length: > 0 })
+            CashDrawerRequest? payload;
+            try
             {
-                return Results.BadRequest(new { error = "printer and bytes are required" });
+                payload = await JsonSerializer.DeserializeAsync<CashDrawerRequest>(request.Body, json, cancellationToken);
+            }
+            catch (JsonException)
+            {
+                return Results.BadRequest(new { error = "Request body must be valid JSON." });
+            }
+
+            if (payload is null || string.IsNullOrWhiteSpace(payload.Printer) || !HardwareRequestValidation.IsValidRawBytes(payload.Bytes))
+            {
+                return Results.BadRequest(new { error = "printer and bytes are required; bytes must contain values from 0 to 255 within the supported size limit" });
             }
 
             var bytes = payload.Bytes.Select(b => (byte)b).ToArray();
@@ -122,7 +189,21 @@ internal static class HardwareConnectWebApp
         app.MapPost("/v1/shelf-export", async (HttpRequest request) =>
         {
             var shelfSettings = ShelfExportSettings.Load();
-            var payload = await JsonSerializer.DeserializeAsync<ShelfExportRequest>(request.Body, json);
+            ShelfExportRequest? payload;
+            try
+            {
+                payload = await JsonSerializer.DeserializeAsync<ShelfExportRequest>(request.Body, json, cancellationToken);
+            }
+            catch (JsonException)
+            {
+                return Results.BadRequest(new { error = "Request body must be valid JSON." });
+            }
+
+            if ((payload?.TemplateDirectory?.Length ?? 0) > 32_767 || (payload?.ExportDirectory?.Length ?? 0) > 32_767)
+            {
+                return Results.BadRequest(new { error = "Shelf export paths must not exceed 32,767 characters." });
+            }
+
             shelfSettings.Apply(payload?.TemplateDirectory, payload?.ExportDirectory, persist: true);
             return Results.Json(new
             {
@@ -132,7 +213,9 @@ internal static class HardwareConnectWebApp
             }, json);
         });
 
-        await app.RunAsync(cancellationToken);
+        await app.StartAsync(cancellationToken);
+        onStarted?.Invoke();
+        await app.WaitForShutdownAsync(cancellationToken);
     }
 
     private static string[] InstalledPrinters()

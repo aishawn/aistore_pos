@@ -5,6 +5,13 @@ export const ORITHOS_HC_OFFICIAL_WINDOWS_URL =
 const HC_SETUP_ROUTE_PATH = "/downloads/orithos-hardware-connect-setup";
 const HC_ONECLICK_ROUTE_PATH = "/downloads/orithos-hardware-connect-oneclick";
 
+export function chooseHardwareConnectSetupUrl(configuredUrl: string | undefined, hasVerifiedBundledSetup: boolean): string {
+  const configured = configuredUrl?.trim();
+  if (configured) return configured;
+  if (hasVerifiedBundledSetup) return HC_SETUP_ROUTE_PATH;
+  return ORITHOS_HC_OFFICIAL_WINDOWS_URL;
+}
+
 function sameOriginSetupRouteUrl(): string | null {
   if (typeof window === "undefined") return null;
   return `${window.location.origin}${HC_SETUP_ROUTE_PATH}`;
@@ -143,6 +150,8 @@ export type HardwareConnectReleaseMeta = {
   settingsUrl?: string;
   setupFileName?: string;
   setupDownloadUrl?: string;
+  setupSha256?: string;
+  bundleSha256?: string;
 };
 
 export async function fetchHardwareConnectReleaseMeta(): Promise<HardwareConnectReleaseMeta | null> {

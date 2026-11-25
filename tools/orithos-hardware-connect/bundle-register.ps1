@@ -2,13 +2,12 @@ $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot
 
 function Resolve-DotNet {
-  $candidates = @(
-    "$env:USERPROFILE\.dotnet\dotnet.exe",
-    "$env:ProgramFiles\dotnet\dotnet.exe"
-  )
-  foreach ($path in $candidates) {
-    if (Test-Path $path) { return $path }
-  }
+  $userSdk = "$env:USERPROFILE\.dotnet\dotnet.exe"
+  if (Test-Path $userSdk) { return $userSdk }
+
+  $pathSdk = Get-Command dotnet -ErrorAction SilentlyContinue
+  if ($pathSdk) { return $pathSdk.Source }
+
   return "dotnet"
 }
 

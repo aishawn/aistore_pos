@@ -15,7 +15,14 @@ if (Get-ItemProperty -Path $runKey -Name "OrithosHardwareConnect" -ErrorAction S
   Remove-ItemProperty -Path $runKey -Name "OrithosHardwareConnect" -ErrorAction SilentlyContinue
 }
 
-Get-Process -Name "OrithosHardwareConnect" -ErrorAction SilentlyContinue | Stop-Process -Force
+$installedExe = Join-Path $InstallDir "OrithosHardwareConnect.exe"
+$agentProcesses = Get-Process -Name "OrithosHardwareConnect" -ErrorAction SilentlyContinue | Where-Object {
+  try { [string]::Equals($_.Path, $installedExe, [StringComparison]::OrdinalIgnoreCase) } catch { $false }
+}
+foreach ($process in $agentProcesses) {
+  Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
+  try { $process.WaitForExit(15000) } catch {}
+}
 
 if (Test-Path $InstallDir) {
   Remove-Item -Path $InstallDir -Recurse -Force

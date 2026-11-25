@@ -1,3 +1,3 @@
 using Orithos.HardwareConnect;
 
-AgentHost.Run(args);
+Environment.ExitCode = AgentHost.Run(args);

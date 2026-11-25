@@ -1,5 +1,7 @@
 "use client";
 
+import { hasFreshEftposDiagnostics, hasRecentApprovedEftposTest } from "@/lib/eftpos-readiness-core";
+
 const ORITHOS_HARDWARE_CONNECT_BASE = "http://127.0.0.1:9170";
 const LOOPBACK_PROBE_MS = 2_500;
 const LOCAL_BRIDGE_CONNECT_MS = 8_000;
@@ -45,23 +47,40 @@ async function probeOrithosHardwareConnect(): Promise<{
   reachable: boolean;
   printers: string[];
   version: string | null;
+  error: string | null;
 }> {
   try {
     const health = await loopbackHardwareConnectFetch("/v1/health");
-    if (!health.ok) return { reachable: false, printers: [], version: null };
+    if (!health.ok) {
+      return { reachable: false, printers: [], version: null, error: `Hardware Connect health check failed (${health.status}).` };
+    }
     const healthBody = (await health.json()) as { version?: string };
     const printerRes = await loopbackHardwareConnectFetch("/v1/printers");
     if (!printerRes.ok) {
-      return { reachable: true, printers: [], version: healthBody.version ?? null };
+      return {
+        reachable: true,
+        printers: [],
+        version: healthBody.version ?? null,
+        error: `Hardware Connect is running, but printer discovery failed (${printerRes.status}). Check the Windows print service and reconnect.`,
+      };
     }
     const printerBody = (await printerRes.json()) as { printers?: string[] };
     return {
       reachable: true,
       printers: printerBody.printers ?? [],
       version: healthBody.version ?? null,
+      error: null,
     };
-  } catch {
-    return { reachable: false, printers: [], version: null };
+  } catch (cause) {
+    if (cause instanceof DOMException && cause.name === "AbortError") {
+      return { reachable: false, printers: [], version: null, error: "Hardware Connect did not respond within 2.5 seconds. Start the tray app and try again." };
+    }
+    return {
+      reachable: false,
+      printers: [],
+      version: null,
+      error: "The browser could not reach Hardware Connect. Confirm this page is HTTPS, allow local network access, and check the tray app is running.",
+    };
   }
 }
 
@@ -268,7 +287,7 @@ export async function connectLocalHardware(): Promise<LocalHardwareState> {
       qzAvailable: false,
       connected: true,
       printers: hardwareConnect.printers,
-      error: null,
+      error: hardwareConnect.error,
       hardwareConnectVersion: hardwareConnect.version,
     });
   }
@@ -280,7 +299,7 @@ export async function connectLocalHardware(): Promise<LocalHardwareState> {
       qzAvailable: false,
       connected: false,
       printers: [],
-      error: null,
+      error: hardwareConnect.error,
       hardwareConnectVersion: null,
     });
   }
@@ -293,7 +312,7 @@ export async function connectLocalHardware(): Promise<LocalHardwareState> {
       qzAvailable: false,
       connected: false,
       printers: [],
-      error: null,
+      error: hardwareConnect.error,
       hardwareConnectVersion: null,
     });
   }
@@ -646,20 +665,55 @@ export type HardwareReadinessItem = {
 };
 
 function readEftposReadinessInline(): {
+  registerId: number | null;
+  testPaymentRegisterId: number | null;
+  selectedRegisterId: number | null;
+  enabled: boolean;
   paymentsEnabled: boolean;
   connectorHealth: string;
+  connectorMode: string;
+  tokenConfigured: boolean;
+  testPaymentAt: string;
+  testPaymentStatus: "APPROVED" | "DECLINED" | "UNKNOWN" | "";
+  updatedAt: string;
 } {
-  if (typeof window === "undefined") return { paymentsEnabled: false, connectorHealth: "unknown" };
+  const empty = {
+    registerId: null,
+    testPaymentRegisterId: null,
+    selectedRegisterId: null,
+    enabled: false,
+    paymentsEnabled: false,
+    connectorHealth: "unknown",
+    connectorMode: "unknown",
+    tokenConfigured: false,
+    testPaymentAt: "",
+    testPaymentStatus: "" as const,
+    updatedAt: "",
+  };
+  if (typeof window === "undefined") return empty;
   try {
     const raw = window.localStorage.getItem(EFTPOS_READINESS_KEY);
-    if (!raw) return { paymentsEnabled: false, connectorHealth: "unknown" };
-    const value = JSON.parse(raw) as { paymentsEnabled?: boolean; connectorHealth?: string };
+    if (!raw) return empty;
+    const value = JSON.parse(raw) as Record<string, unknown>;
+    const selectedRegisterValue = Number(window.localStorage.getItem("orithos.eftpos.register-id.v1"));
     return {
+      registerId: typeof value.registerId === "number" ? value.registerId : null,
+      testPaymentRegisterId: typeof value.testPaymentRegisterId === "number" ? value.testPaymentRegisterId : null,
+      selectedRegisterId: Number.isFinite(selectedRegisterValue) && selectedRegisterValue > 0 ? selectedRegisterValue : null,
+      enabled: value.enabled === true,
       paymentsEnabled: value.paymentsEnabled === true,
       connectorHealth: typeof value.connectorHealth === "string" ? value.connectorHealth : "unknown",
+      connectorMode: typeof value.connectorMode === "string" ? value.connectorMode : "unknown",
+      tokenConfigured: value.tokenConfigured === true,
+      testPaymentAt: typeof value.testPaymentAt === "string" ? value.testPaymentAt : "",
+      testPaymentStatus:
+        value.testPaymentStatus === "APPROVED" || value.testPaymentStatus === "DECLINED" || value.testPaymentStatus === "UNKNOWN"
+          ? value.testPaymentStatus
+          : "",
+      updatedAt: typeof value.updatedAt === "string" ? value.updatedAt : "",
     };
   } catch {
-    return { paymentsEnabled: false, connectorHealth: "unknown" };
+    return empty;
   }
 }
 
@@ -727,11 +781,27 @@ export function getHardwareReadinessItems(): HardwareReadinessItem[] {
         })
       : ({ status: "Enabled; connect bridge to test", tone: "warn" as const });
 
-  const eftpos = eftposSnap.paymentsEnabled && eftposSnap.connectorHealth === "reachable"
-    ? ({ status: "Ready on this PC · configure terminal below", tone: "ok" as const })
-    : eftposSnap.paymentsEnabled
-      ? ({ status: "Saved; start Hardware Connect EFTPOS bridge", tone: "warn" as const })
-      : ({ status: "Enable in Card payments section", tone: "muted" as const });
+  const eftposDiagnosticsFresh = hasFreshEftposDiagnostics(eftposSnap);
+  const eftposTestApproved = hasRecentApprovedEftposTest(eftposSnap, eftposSnap.selectedRegisterId);
+  const eftposReady = eftposSnap.enabled
+    && eftposSnap.paymentsEnabled
+    && eftposSnap.registerId === eftposSnap.selectedRegisterId
+    && eftposSnap.connectorHealth === "reachable"
+    && eftposSnap.connectorMode === "tcp-proxy"
+    && eftposSnap.tokenConfigured
+    && eftposDiagnosticsFresh
+    && eftposTestApproved;
+  const eftpos = eftposReady
+    ? ({ status: "Ready for Sell · real terminal test confirmed", tone: "ok" as const })
+    : !eftposSnap.paymentsEnabled || !eftposSnap.enabled
+      ? ({ status: "Card payments are disabled for this register", tone: "muted" as const })
+        : !eftposDiagnosticsFresh || eftposSnap.connectorHealth !== "reachable"
+          ? ({ status: "Check local EFTPOS bridge status below", tone: "warn" as const })
+          : eftposSnap.connectorMode !== "tcp-proxy"
+            ? ({ status: "Test mode · real card payments are blocked", tone: "warn" as const })
+            : !eftposSnap.tokenConfigured
+              ? ({ status: "Connector token required", tone: "warn" as const })
+              : ({ status: "Run an approved real terminal test", tone: "warn" as const });
 
   return [
     { id: "agent", label: "Local agent", ...agent },

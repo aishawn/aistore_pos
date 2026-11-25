@@ -11,17 +11,17 @@ internal static class AgentHost
             && name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase);
     }
 
-    public static void Run(string[] args)
+    public static int Run(string[] args)
     {
         if (args.Contains("--uninstall", StringComparer.OrdinalIgnoreCase))
         {
             RegisterAgentInstaller.Uninstall();
             MessageBox.Show(
-                $"{AgentVersion.Product} has been removed from this PC.",
+                $"{AgentVersion.Product} is stopping. Its program files will be removed in the background.",
                 AgentVersion.Product,
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Information);
-            return;
+            return 0;
         }
 
         var settingsUrlArg = args.FirstOrDefault(a => a.StartsWith("--settings-url=", StringComparison.OrdinalIgnoreCase));
@@ -29,8 +29,7 @@ internal static class AgentHost
 
         if (args.Contains("--install", StringComparer.OrdinalIgnoreCase))
         {
-            RunInstallFlow(settingsUrl, silent: false);
-            return;
+            return RunInstallFlow(settingsUrl, silent: false);
         }
 
         if (!RegisterAgentInstaller.IsRunningFromInstallDir())
@@ -39,24 +38,22 @@ internal static class AgentHost
             {
                 if (RegisterAgentInstaller.IsInstalled())
                 {
-                    RunInstallFlow(settingsUrl, silent: true);
-                    return;
+                    return RunInstallFlow(settingsUrl, silent: true);
                 }
 
                 ApplicationConfiguration.Initialize();
                 using var wizard = new SetupWizardForm(RegisterAgentInstaller.ResolveSettingsUrl(settingsUrl));
                 wizard.ShowDialog();
-                return;
+                return 0;
             }
 
             if (!RegisterAgentInstaller.IsInstalled())
             {
-                RunInstallFlow(settingsUrl, silent: false);
-                return;
+                return RunInstallFlow(settingsUrl, silent: false);
             }
 
             RegisterAgentInstaller.LaunchInstalledAgent();
-            return;
+            return 0;
         }
 
         var consoleMode = args.Contains("--console", StringComparer.OrdinalIgnoreCase)
@@ -70,7 +67,7 @@ internal static class AgentHost
                 AgentVersion.Product,
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Information);
-            return;
+            return 0;
         }
 
         if (consoleMode)
@@ -83,25 +80,28 @@ internal static class AgentHost
             Task.WhenAll(
                 HardwareConnectWebApp.RunAsync(CancellationToken.None),
                 LinklyConnectorWebApp.RunAsync(CancellationToken.None)).GetAwaiter().GetResult();
-            return;
+            return 0;
         }
 
         ApplicationConfiguration.Initialize();
         Application.Run(new TrayApplicationContext());
+        return 0;
     }
 
-    private static void RunInstallFlow(string? settingsUrl, bool silent)
+    private static int RunInstallFlow(string? settingsUrl, bool silent)
     {
         if (!silent)
         {
             var confirm = MessageBox.Show(
-                $"{AgentVersion.Product} installs on this register PC, starts at sign-in, and shows a tray icon.\n\nChoose Yes to install now.",
-                $"Install {AgentVersion.Product}",
+                RegisterAgentInstaller.IsInstalled()
+                    ? $"{AgentVersion.Product} will be updated on this register. Existing settings and exported data are preserved.\n\nChoose Yes to update now."
+                    : $"{AgentVersion.Product} installs on this register PC, starts at sign-in, and shows a tray icon.\n\nChoose Yes to install now.",
+                RegisterAgentInstaller.IsInstalled() ? $"Update {AgentVersion.Product}" : $"Install {AgentVersion.Product}",
                 MessageBoxButtons.YesNo,
                 MessageBoxIcon.Question);
             if (confirm != DialogResult.Yes)
             {
-                return;
+                return 0;
             }
         }
 
@@ -117,6 +117,7 @@ internal static class AgentHost
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Information);
             }
+            return 0;
         }
         catch (Exception ex)
         {
@@ -127,7 +128,7 @@ internal static class AgentHost
                     AgentVersion.Product,
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Error);
-                return;
+                return 1;
             }
 
             MessageBox.Show(
@@ -135,6 +136,7 @@ internal static class AgentHost
                 AgentVersion.Product,
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Error);
+            return 1;
         }
     }
 }

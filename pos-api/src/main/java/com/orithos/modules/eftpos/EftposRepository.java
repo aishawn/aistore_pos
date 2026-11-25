@@ -2,6 +2,7 @@ package com.orithos.modules.eftpos;
 
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.ResultSetExtractor;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 
@@ -196,13 +197,41 @@ public class EftposRepository {
         Integer count = jdbc.queryForObject(
                 """
                 SELECT COUNT(*) FROM eftpos_payment_attempt
-                WHERE vendor_id = ? AND register_id = ? AND status IN ('PENDING', 'UNKNOWN', 'APPROVED_PENDING_SETTLEMENT')
+                WHERE vendor_id = ? AND register_id = ? AND status IN ('PENDING', 'DISPATCHED', 'UNKNOWN', 'APPROVED_PENDING_SETTLEMENT')
                 """,
                 Integer.class,
                 vendorId,
                 registerId
         );
         return count != null && count > 0;
+    }
+
+    public void lockRegisterForAttemptCreation(long vendorId, long registerId) {
+        jdbc.query(
+                "SELECT pg_advisory_xact_lock(hashtext(?))",
+                (ResultSetExtractor<Void>) resultSet -> null,
+                "eftpos:" + vendorId + ":" + registerId
+        );
+    }
+
+    public void lockOrderForAttemptCreation(long vendorId, String orderUuid) {
+        jdbc.query(
+                "SELECT pg_advisory_xact_lock(hashtext(?))",
+                (ResultSetExtractor<Void>) resultSet -> null,
+                "eftpos-order:" + vendorId + ":" + orderUuid
+        );
+    }
+
+    public int markAttemptDispatched(long vendorId, long attemptId) {
+        return jdbc.update(
+                """
+                UPDATE eftpos_payment_attempt
+                SET status = 'DISPATCHED', updated_at = NOW()
+                WHERE vendor_id = ? AND id = ? AND status = 'PENDING'
+                """,
+                vendorId,
+                attemptId
+        );
     }
 
     public Optional<AttemptRow> findLatestActiveAttempt(long vendorId, long registerId) {
@@ -212,7 +241,7 @@ public class EftposRepository {
                     SELECT id, vendor_id, outlet_id, register_id, order_uuid, amount_cents, currency,
                            quote_signature, status, provider_reference, connector_challenge
                     FROM eftpos_payment_attempt
-                    WHERE vendor_id = ? AND register_id = ? AND status IN ('PENDING', 'UNKNOWN')
+                    WHERE vendor_id = ? AND register_id = ? AND status IN ('PENDING', 'DISPATCHED', 'UNKNOWN')
                     ORDER BY updated_at DESC, id DESC
                     LIMIT 1
                     """,
@@ -247,17 +276,25 @@ public class EftposRepository {
         );
     }
 
-    public void updateAttemptStatus(long vendorId, long attemptId, String status, String providerReference) {
-        jdbc.update(
+    public int updateAttemptStatus(long vendorId, long attemptId, String status, String providerReference) {
+        return jdbc.update(
                 """
                 UPDATE eftpos_payment_attempt
                 SET status = ?, provider_reference = COALESCE(?, provider_reference), updated_at = NOW()
                 WHERE vendor_id = ? AND id = ?
+                  AND (
+                    status = ?
+                    OR (status IN ('PENDING', 'DISPATCHED', 'UNKNOWN') AND ? IN ('APPROVED', 'APPROVED_PENDING_SETTLEMENT', 'DECLINED', 'CANCELLED', 'UNKNOWN'))
+                    OR (status = 'APPROVED_PENDING_SETTLEMENT' AND ? = 'APPROVED')
+                  )
                 """,
                 status,
                 providerReference,
                 vendorId,
-                attemptId
+                attemptId,
+                status,
+                status,
+                status
         );
     }
 }

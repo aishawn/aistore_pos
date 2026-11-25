@@ -5,6 +5,7 @@ import com.orithos.config.EftposProperties;
 import com.orithos.modules.eftpos.dto.CreateEftposAttemptRequest;
 import com.orithos.modules.eftpos.dto.EftposAttemptView;
 import com.orithos.modules.eftpos.dto.EftposConnectorCallbackRequest;
+import com.orithos.modules.eftpos.dto.EftposDispatchClaim;
 import com.orithos.modules.eftpos.dto.RegisterEftposBindingView;
 import com.orithos.modules.eftpos.dto.UpsertRegisterEftposBindingRequest;
 import com.orithos.modules.register.Register;
@@ -106,6 +107,8 @@ public class EftposService {
         }
         String orderUuid = body.orderUuid().trim();
         int amountCents = toCents(body.expectedTotal());
+        repository.lockRegisterForAttemptCreation(scope.vendorId(), registerId);
+        repository.lockOrderForAttemptCreation(scope.vendorId(), orderUuid);
         var existing = repository.findAttemptByOrderUuid(scope.vendorId(), orderUuid);
         if (existing.isPresent()) {
             EftposRepository.AttemptRow row = existing.get();
@@ -135,6 +138,28 @@ public class EftposService {
                 challenge
         ));
         return toAttemptView(repository.findAttemptById(scope.vendorId(), attemptId).orElseThrow(), binding);
+    }
+
+    @Transactional
+    public EftposDispatchClaim markAttemptDispatched(long registerId, long attemptId) {
+        Scope scope = scope();
+        requireRegister(registerId, scope);
+        EftposRepository.AttemptRow attempt = repository.findAttemptById(scope.vendorId(), attemptId)
+                .orElseThrow(() -> new BusinessException(40400, "Payment attempt not found."));
+        if (attempt.registerId() != registerId) {
+            throw new BusinessException(40900, "This payment attempt belongs to a different register.");
+        }
+        boolean dispatchAuthorized = false;
+        if (EftposPaymentStatuses.PENDING.equals(attempt.status())) {
+            dispatchAuthorized = repository.markAttemptDispatched(scope.vendorId(), attemptId) == 1;
+            attempt = repository.findAttemptById(scope.vendorId(), attemptId).orElseThrow();
+        }
+        if (!EftposPaymentStatuses.DISPATCHED.equals(attempt.status())) {
+            throw new BusinessException(40900, "This EFTPOS attempt is no longer eligible for purchase dispatch.");
+        }
+        return new EftposDispatchClaim(
+                toAttemptView(attempt, bindingForRegister(scope.vendorId(), registerId)),
+                dispatchAuthorized);
     }
 
     @Transactional
@@ -178,7 +203,9 @@ public class EftposService {
         EftposRepository.AttemptRow attempt = repository.findAttemptById(scope.vendorId(), attemptId)
                 .orElseThrow(() -> new BusinessException(40400, "Payment attempt not found."));
         if (attempt.registerId() != registerId) throw new BusinessException(40900, "This payment attempt belongs to a different register.");
-        if (!EftposPaymentStatuses.PENDING.equals(attempt.status()) && !EftposPaymentStatuses.UNKNOWN.equals(attempt.status())) {
+        if (!EftposPaymentStatuses.PENDING.equals(attempt.status())
+                && !EftposPaymentStatuses.DISPATCHED.equals(attempt.status())
+                && !EftposPaymentStatuses.UNKNOWN.equals(attempt.status())) {
             throw new BusinessException(40900, "This payment attempt is not waiting for approval.");
         }
         String providerReference = "TEST-" + attempt.id();
@@ -193,9 +220,8 @@ public class EftposService {
         requireRegister(registerId, scope);
         EftposRepository.AttemptRow attempt = repository.findLatestActiveAttempt(scope.vendorId(), registerId)
                 .orElseThrow(() -> new BusinessException(40400, "No in-progress EFTPOS attempt found for this register."));
-        repository.updateAttemptStatus(scope.vendorId(), attempt.id(), EftposPaymentStatuses.CANCELLED, "CANCELLED_BY_REGISTER");
-        EftposRepository.BindingRow binding = bindingForRegister(scope.vendorId(), registerId);
-        return toAttemptView(repository.findAttemptById(scope.vendorId(), attempt.id()).orElseThrow(), binding);
+        throw new BusinessException(40900,
+                "This payment result cannot be cancelled safely until Linkly confirms that the terminal did not charge the card. Keep the order pending and reconcile the terminal journal.");
     }
 
     public void requireApprovedAttemptForCheckout(String orderUuid, Long registerId, BigDecimal expectedTotal) {

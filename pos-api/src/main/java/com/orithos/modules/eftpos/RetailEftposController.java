@@ -3,6 +3,7 @@ package com.orithos.modules.eftpos;
 import com.orithos.common.ApiResult;
 import com.orithos.modules.eftpos.dto.CreateEftposAttemptRequest;
 import com.orithos.modules.eftpos.dto.EftposAttemptView;
+import com.orithos.modules.eftpos.dto.EftposDispatchClaim;
 import com.orithos.modules.eftpos.dto.RegisterEftposBindingView;
 import com.orithos.modules.eftpos.dto.UpsertRegisterEftposBindingRequest;
 import com.orithos.security.PermissionAccess;
@@ -46,8 +47,16 @@ public class RetailEftposController {
         return ApiResult.ok(service.getAttemptByOrderUuid(registerId, orderUuid));
     }
 
+    @PostMapping("/attempts/{attemptId}/dispatch")
+    public ApiResult<EftposDispatchClaim> markAttemptDispatched(
+            @PathVariable Long registerId,
+            @PathVariable Long attemptId) {
+        return ApiResult.ok(service.markAttemptDispatched(registerId, attemptId));
+    }
+
     @PostMapping("/attempts/cancel-active")
     public ApiResult<EftposAttemptView> cancelActiveAttempt(@PathVariable Long registerId) {
+        permissions.requirePermission("settings.store");
         return ApiResult.ok(service.cancelActiveAttempt(registerId));
     }
 

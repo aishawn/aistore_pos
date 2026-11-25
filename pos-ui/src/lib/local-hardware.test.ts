@@ -67,9 +67,31 @@ test("reports QZ Tray as unavailable when its browser library is missing", async
     qzAvailable: false,
     connected: false,
     printers: [],
-    error: null,
+    error: "The browser could not reach Hardware Connect. Confirm this page is HTTPS, allow local network access, and check the tray app is running.",
     hardwareConnectVersion: null,
   });
+});
+
+test("reports when Hardware Connect is running but printer discovery fails", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (input) => {
+    if (String(input).endsWith("/v1/health")) return new Response(JSON.stringify({ version: "1.2.3" }), { status: 200 });
+    if (String(input).endsWith("/v1/printers")) return new Response("", { status: 503 });
+    return originalFetch(input);
+  };
+  setWindow({ isSecureContext: true });
+  try {
+    assert.deepEqual(await connectLocalHardware(), {
+      bridge: "orithos-hc",
+      qzAvailable: false,
+      connected: true,
+      printers: [],
+      error: "Hardware Connect is running, but printer discovery failed (503). Check the Windows print service and reconnect.",
+      hardwareConnectVersion: "1.2.3",
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
 
 test("prefers Orithos Hardware Connect when the local agent responds", async () => {
@@ -140,6 +162,121 @@ test("returns a readable error when QZ Tray cannot connect", async () => {
     error: "Connection refused",
     hardwareConnectVersion: null,
   });
+});
+
+function readEftposChecklistItem(snapshot: Record<string, unknown>) {
+  const registerId = typeof snapshot.registerId === "number" ? snapshot.registerId : 7;
+  const selectedRegisterId = typeof snapshot.selectedRegisterId === "number" ? snapshot.selectedRegisterId : registerId;
+  const storage = new Map<string, string>([[
+    "orithos.hardware.eftpos-readiness.v1",
+    JSON.stringify({ testPaymentRegisterId: registerId, updatedAt: new Date().toISOString(), ...snapshot }),
+  ], [
+    "orithos.eftpos.register-id.v1",
+    String(selectedRegisterId),
+  ]]);
+  setWindow({ localStorage: { getItem: (key: string) => storage.get(key) ?? null } });
+  return getHardwareReadinessItems().find((item) => item.id === "eftpos")!;
+}
+
+test("lab connector is never shown as ready for real card payments", () => {
+  const item = readEftposChecklistItem({
+    enabled: true,
+    paymentsEnabled: true,
+    connectorHealth: "reachable",
+    connectorMode: "lab",
+    tokenConfigured: true,
+    testPaymentStatus: "APPROVED",
+    testPaymentAt: new Date().toISOString(),
+    registerId: 1,
+  });
+
+  assert.equal(item.tone, "warn");
+  assert.match(item.status, /test mode/i);
+  assert.match(item.status, /blocked/i);
+});
+
+test("real Linkly without a token or approved terminal test remains incomplete", () => {
+  const missingToken = readEftposChecklistItem({
+    enabled: true,
+    paymentsEnabled: true,
+    connectorHealth: "reachable",
+    connectorMode: "tcp-proxy",
+    tokenConfigured: false,
+  });
+  assert.equal(missingToken.tone, "warn");
+  assert.match(missingToken.status, /token/i);
+
+  const noApprovedTest = readEftposChecklistItem({
+    enabled: true,
+    paymentsEnabled: true,
+    connectorHealth: "reachable",
+    connectorMode: "tcp-proxy",
+    tokenConfigured: true,
+  });
+  assert.equal(noApprovedTest.tone, "warn");
+  assert.match(noApprovedTest.status, /test/i);
+});
+
+test("real card payments are ready only after a recent approved test for this register", () => {
+  const item = readEftposChecklistItem({
+    enabled: true,
+    paymentsEnabled: true,
+    connectorHealth: "reachable",
+    connectorMode: "tcp-proxy",
+    tokenConfigured: true,
+    testPaymentStatus: "APPROVED",
+    testPaymentAt: new Date(Date.now() - 60_000).toISOString(),
+    registerId: 7,
+  });
+
+  assert.equal(item.tone, "ok");
+  assert.match(item.status, /ready for sell/i);
+});
+
+test("disabled or future-dated readiness snapshots do not produce a green card status", () => {
+  const disabled = readEftposChecklistItem({
+    enabled: false,
+    paymentsEnabled: true,
+    connectorHealth: "reachable",
+    connectorMode: "tcp-proxy",
+    tokenConfigured: true,
+    testPaymentStatus: "APPROVED",
+    testPaymentAt: new Date().toISOString(),
+    registerId: 7,
+  });
+  assert.equal(disabled.tone, "muted");
+  assert.doesNotMatch(disabled.status, /ready/i);
+
+  const futureTest = readEftposChecklistItem({
+    enabled: true,
+    paymentsEnabled: true,
+    connectorHealth: "reachable",
+    connectorMode: "tcp-proxy",
+    tokenConfigured: true,
+    testPaymentStatus: "APPROVED",
+    testPaymentAt: new Date(Date.now() + 60_000).toISOString(),
+    registerId: 7,
+  });
+  assert.equal(futureTest.tone, "warn");
+  assert.match(futureTest.status, /test/i);
+});
+
+test("terminal approval from a different selected register does not make the checklist green", () => {
+  const item = readEftposChecklistItem({
+    enabled: true,
+    paymentsEnabled: true,
+    connectorHealth: "reachable",
+    connectorMode: "tcp-proxy",
+    tokenConfigured: true,
+    testPaymentRegisterId: 7,
+    testPaymentStatus: "APPROVED",
+    testPaymentAt: new Date(Date.now() - 60_000).toISOString(),
+    registerId: 7,
+    selectedRegisterId: 8,
+  });
+
+  assert.equal(item.tone, "warn");
+  assert.match(item.status, /test/i);
 });
 
 test("sends a print job to the selected local printer", async () => {

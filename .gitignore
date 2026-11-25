@@ -43,6 +43,8 @@ orithos-images.tar
 /pos-api/src/main/resources/db/orithos*.sql
 node_modules/
 reports/test-runs/
+/tools/orithos-hardware-connect.Tests/bin/
+/tools/orithos-hardware-connect.Tests/obj/
 
 # UAT screenshots and handoffs — keep locally; omit from deploy clones
 /docs/

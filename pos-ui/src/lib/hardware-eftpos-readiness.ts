@@ -1,23 +1,15 @@
 "use client";
 
 import { publishLocalHardwareSettingsChange } from "@/lib/local-hardware";
+import type { EftposReadinessSnapshot } from "@/lib/eftpos-readiness-core";
+export { hasFreshEftposDiagnostics, hasRecentApprovedEftposTest } from "@/lib/eftpos-readiness-core";
+export type { EftposReadinessSnapshot } from "@/lib/eftpos-readiness-core";
 
 const KEY = "orithos.hardware.eftpos-readiness.v1";
 
-export type EftposReadinessSnapshot = {
-  registerId: number | null;
-  enabled: boolean;
-  paymentsEnabled: boolean;
-  connectorHealth: "unknown" | "reachable" | "offline" | "error";
-  connectorMode: "unknown" | "lab" | "tcp-proxy" | string;
-  tokenConfigured: boolean;
-  testPaymentAt: string;
-  testPaymentStatus: "APPROVED" | "DECLINED" | "UNKNOWN" | "";
-  updatedAt: string;
-};
-
 const EMPTY: EftposReadinessSnapshot = {
   registerId: null,
+  testPaymentRegisterId: null,
   enabled: false,
   paymentsEnabled: false,
   connectorHealth: "unknown",
@@ -47,6 +39,7 @@ export function readEftposReadinessSnapshot(): EftposReadinessSnapshot {
     const value = JSON.parse(raw) as Partial<EftposReadinessSnapshot>;
     return {
       registerId: typeof value.registerId === "number" ? value.registerId : null,
+      testPaymentRegisterId: typeof value.testPaymentRegisterId === "number" ? value.testPaymentRegisterId : null,
       enabled: value.enabled === true,
       paymentsEnabled: value.paymentsEnabled === true,
       connectorHealth:
@@ -68,13 +61,4 @@ export function readEftposReadinessSnapshot(): EftposReadinessSnapshot {
 
 export function getEftposReadinessSnapshotJson(): string {
   return JSON.stringify(readEftposReadinessSnapshot());
-}
-
-export function hasRecentApprovedEftposTest(snapshot: EftposReadinessSnapshot, registerId: number | null, now = Date.now()): boolean {
-  const testedAt = Date.parse(snapshot.testPaymentAt);
-  return snapshot.registerId === registerId
-    && registerId !== null
-    && snapshot.testPaymentStatus === "APPROVED"
-    && Number.isFinite(testedAt)
-    && now - testedAt < 24 * 60 * 60 * 1000;
 }

@@ -1,5 +1,4 @@
 ﻿param(
-  [string]$InstallDir = "$env:LOCALAPPDATA\Orithos\HardwareConnect",
   [string]$SettingsUrl = "https://skr.orithos.com.au/settings/hardware",
   [switch]$SkipPublish
 )
@@ -32,38 +31,15 @@ if (-not (Test-Path (Join-Path $source "OrithosHardwareConnect.exe"))) {
   }
 }
 
-New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
-Get-Process -Name "OrithosHardwareConnect" -ErrorAction SilentlyContinue | Stop-Process -Force
-Start-Sleep -Seconds 1
-Copy-Item -Path "$source\*" -Destination $InstallDir -Recurse -Force
-
-$exe = Join-Path $InstallDir "OrithosHardwareConnect.exe"
-$taskName = "Orithos Hardware Connect"
-$tr = "`"$exe`""
-
-schtasks.exe /Query /TN $taskName 2>$null | Out-Null
-if ($LASTEXITCODE -eq 0) {
-  schtasks.exe /Delete /TN $taskName /F | Out-Null
+$exe = Join-Path $source "OrithosHardwareConnect.exe"
+if (-not (Test-Path $exe -PathType Leaf)) {
+  throw "The installer executable is missing: $exe"
 }
 
-$startupMode = "none"
-schtasks.exe /Create /TN $taskName /SC ONLOGON /TR $tr /RL LIMITED /F 2>$null | Out-Null
-if ($LASTEXITCODE -eq 0) {
-  $startupMode = "scheduled-task"
-} else {
-  $runKey = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run"
-  New-Item -Path $runKey -Force | Out-Null
-  Set-ItemProperty -Path $runKey -Name "OrithosHardwareConnect" -Value $tr
-  $startupMode = "run-key"
+Write-Host "Starting the Orithos Hardware Connect installer..."
+& $exe --install "--settings-url=$SettingsUrl"
+if ($LASTEXITCODE -ne 0) {
+  throw "Hardware Connect installation failed with exit code $LASTEXITCODE."
 }
 
-[Environment]::SetEnvironmentVariable("ORITHOS_HC_SETTINGS_URL", $SettingsUrl, "User")
-
-Write-Host "Installed to $InstallDir"
-Write-Host "Startup: $startupMode ($taskName)"
-
-Get-Process -Name "OrithosHardwareConnect" -ErrorAction SilentlyContinue | Stop-Process -Force
-Start-Sleep -Seconds 1
-Write-Host "Starting agent now..."
-Start-Process -FilePath $exe
-Write-Host "Double-click the tray icon to open Hardware settings after deploy."
+Write-Host "Installation or update completed. Confirm both local services in Hardware settings."

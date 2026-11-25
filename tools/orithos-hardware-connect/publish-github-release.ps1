@@ -24,9 +24,11 @@ Copy-Item $setup (Join-Path $releaseDir "OrithosHardwareConnect-Setup.exe") -For
 Copy-Item $zip (Join-Path $releaseDir "OrithosHardwareConnect-win-x64.zip") -Force
 
 $signScript = Join-Path $PSScriptRoot "sign-release.ps1"
-if (Test-Path $signScript) {
-  & $signScript -ExePath (Join-Path $releaseDir "OrithosHardwareConnect-Setup.exe")
-}
+if (-not (Test-Path $signScript -PathType Leaf)) { throw "Missing required release signer: $signScript" }
+& $signScript `
+  -ExePath (Join-Path $releaseDir "OrithosHardwareConnect-Setup.exe") `
+  -ZipPath (Join-Path $releaseDir "OrithosHardwareConnect-win-x64.zip") `
+  -RequireSignature
 
 & $gh release upload hardware-connect-latest `
   --repo aishawn/aistore_pos `

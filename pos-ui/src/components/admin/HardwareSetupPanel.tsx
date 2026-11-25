@@ -143,7 +143,9 @@ export function HardwareSetupPanel() {
             : current;
         });
       }
-      if (next.bridge === "orithos-hc") {
+      if (next.error) {
+        setNotice(next.error);
+      } else if (next.bridge === "orithos-hc") {
         setNotice(`Orithos Hardware Connect ${next.hardwareConnectVersion ?? ""} · ${next.printers.length} printer(s) found.`.trim());
       } else if (next.connected) {
         setNotice(`QZ Tray connected; ${next.printers.length} printer(s) found.`);
@@ -167,7 +169,7 @@ export function HardwareSetupPanel() {
       await printReceiptTestThroughLocalBridge(draft);
       setNotice("Test print submitted. Confirm paper and cut at the printer.");
     } catch (cause) {
-      setNotice(cause instanceof Error ? cause.message : "Print job failed.");
+      setNotice(cause instanceof Error ? cause.message : "Print job failed. Check the printer and Windows print queue, then retry.");
     } finally {
       setActionBusy(false);
     }
@@ -180,7 +182,7 @@ export function HardwareSetupPanel() {
       await testOpenCashDrawer(active);
       setNotice("Cash drawer pulse sent. Confirm the drawer opened.");
     } catch (cause) {
-      setNotice(cause instanceof Error ? cause.message : "Cash drawer test failed.");
+      setNotice(cause instanceof Error ? cause.message : "Cash drawer test failed. Confirm the drawer cable is connected to the receipt printer.");
     } finally {
       setActionBusy(false);
     }
@@ -292,7 +294,14 @@ export function HardwareSetupPanel() {
           </div>
         ) : null}
         {state.error && <p role="alert" className="mt-3 text-sm text-red-800">{state.error}</p>}
-        {notice && <p role="status" className="mt-3 text-sm text-[var(--oh-text-secondary)]">{notice}</p>}
+        {notice && (
+          <p
+            role={state.error || /failed|could not|cannot|unavailable|timed out|could not reach|阻止/i.test(notice) ? "alert" : "status"}
+            className={`mt-3 text-sm ${state.error || /failed|could not|cannot|unavailable|timed out|could not reach|阻止/i.test(notice) ? "text-red-800" : "text-[var(--oh-text-secondary)]"}`}
+          >
+            {notice}
+          </p>
+        )}
 
         <div className="mt-5 space-y-4">
           <div className="flex flex-wrap items-end gap-2">

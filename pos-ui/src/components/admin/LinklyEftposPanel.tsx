@@ -23,7 +23,8 @@ import {
 } from "@/lib/linkly-connector";
 import { resolveLocalNetworkAccessState, type LocalNetworkAccessState } from "@/lib/local-network-access";
 import { useHardwareLoopbackReady } from "@/components/admin/hardware-loopback-context";
-import { hasRecentApprovedEftposTest, readEftposReadinessSnapshot, saveEftposReadinessSnapshot } from "@/lib/hardware-eftpos-readiness";
+import { hasFreshEftposDiagnostics, hasRecentApprovedEftposTest, readEftposReadinessSnapshot, saveEftposReadinessSnapshot } from "@/lib/hardware-eftpos-readiness";
+import { publishLocalHardwareSettingsChange } from "@/lib/local-hardware";
 
 type Props = {
   canEdit: boolean;
@@ -50,10 +51,9 @@ const defaultDraft: BindingDraft = {
 };
 
 function linklyModeLabel(status: ConnectorStatus | null): string | null {
-  if (!status?.detail) return null;
-  if (/lab mode/i.test(status.detail)) return "Test mode (no bank Linkly)";
-  if (/Forwarding to Linkly/i.test(status.detail)) return "Bank Linkly";
-  if (/waiting-for-token/i.test(status.linklyClient ?? "")) return "Waiting for store pairing";
+  if (status?.linklyClient === "waiting-for-token") return "Waiting for store pairing";
+  if (status?.integrationMode === "tcp-proxy") return "Local Linkly adapter";
+  if (status?.integrationMode === "lab" || /lab mode/i.test(status?.detail ?? "")) return "Test mode (no bank Linkly)";
   return null;
 }
 
@@ -73,6 +73,7 @@ export function LinklyEftposPanel({ canEdit }: Props) {
   const [panelOpen, setPanelOpen] = useState(false);
   const loopbackReady = useHardwareLoopbackReady();
   const [revealedToken, setRevealedToken] = useState<string | null>(null);
+  const [readinessNow, setReadinessNow] = useState(() => Date.now());
 
   const resolveStoreApiOrigin = useCallback(
     () => (typeof window !== "undefined" ? window.location.origin : "https://skr.orithos.com.au"),
@@ -131,6 +132,7 @@ export function LinklyEftposPanel({ canEdit }: Props) {
       }
       saveEftposReadinessSnapshot({
         registerId: registerId ?? null,
+        testPaymentRegisterId: readEftposReadinessSnapshot().testPaymentRegisterId,
         enabled: draft.enabled,
         paymentsEnabled: draft.paymentsEnabled,
         connectorHealth: health,
@@ -139,6 +141,7 @@ export function LinklyEftposPanel({ canEdit }: Props) {
         testPaymentAt: readEftposReadinessSnapshot().testPaymentAt,
         testPaymentStatus: readEftposReadinessSnapshot().testPaymentStatus,
       });
+      setReadinessNow(Date.now());
       return { health, detail };
     },
     [applyConnectorToLocalPc, draft.enabled, draft.paymentsEnabled, registerId, revealedToken],
@@ -160,6 +163,7 @@ export function LinklyEftposPanel({ canEdit }: Props) {
   useEffect(() => {
     if (!registerId) return;
     savePreferredEftposRegisterId(registerId);
+    publishLocalHardwareSettingsChange();
     setLoadBusy(true);
     void getRegisterEftposBinding(registerId)
       .then((next) => {
@@ -191,13 +195,13 @@ export function LinklyEftposPanel({ canEdit }: Props) {
   }, [registerId, refreshDiagnostics, loopbackReady, applyConnectorToLocalPc]);
 
   useEffect(() => {
-    if (!panelOpen || !loopbackReady || binding?.paymentsEnabled) return;
+    if (!loopbackReady || !binding?.enabled) return;
     const baseUrl = draft.connectorBaseUrl || defaultDraft.connectorBaseUrl;
     const timer = window.setInterval(() => {
-      void refreshDiagnostics(baseUrl);
-    }, 10_000);
+      void refreshDiagnostics(baseUrl).finally(() => setReadinessNow(Date.now()));
+    }, 30_000);
     return () => window.clearInterval(timer);
-  }, [binding?.paymentsEnabled, draft.connectorBaseUrl, loopbackReady, panelOpen, refreshDiagnostics]);
+  }, [binding?.enabled, draft.connectorBaseUrl, loopbackReady, refreshDiagnostics]);
 
   async function persistBinding(nextDraft: BindingDraft) {
     if (!canEdit || !registerId) return null;
@@ -247,6 +251,7 @@ export function LinklyEftposPanel({ canEdit }: Props) {
       }
       saveEftposReadinessSnapshot({
         registerId,
+        testPaymentRegisterId: readEftposReadinessSnapshot().testPaymentRegisterId,
         enabled: saved.enabled,
         paymentsEnabled: saved.paymentsEnabled,
         connectorHealth,
@@ -355,8 +360,7 @@ export function LinklyEftposPanel({ canEdit }: Props) {
         amountCents: attempt.amountCents,
         currency: attempt.currency,
         connectorChallenge: attempt.connectorChallenge,
-      });
-      dispatched = true;
+      }, () => { dispatched = true; });
       let finalAttempt = attempt;
       for (let i = 0; i < 20; i += 1) {
         await new Promise((resolve) => setTimeout(resolve, 500));
@@ -365,7 +369,12 @@ export function LinklyEftposPanel({ canEdit }: Props) {
       }
       const result = finalAttempt.status === "APPROVED" ? "APPROVED" : finalAttempt.status === "DECLINED" || finalAttempt.status === "CANCELLED" ? "DECLINED" : "UNKNOWN";
       const previous = readEftposReadinessSnapshot();
-      saveEftposReadinessSnapshot({ ...previous, testPaymentAt: result === "APPROVED" ? new Date().toISOString() : previous.testPaymentAt, testPaymentStatus: result });
+      saveEftposReadinessSnapshot({
+        ...previous,
+        testPaymentRegisterId: result === "APPROVED" ? registerId : previous.testPaymentRegisterId,
+        testPaymentAt: result === "APPROVED" ? new Date().toISOString() : previous.testPaymentAt,
+        testPaymentStatus: result,
+      });
       setNotice(result === "UNKNOWN"
         ? "Payment result is unknown. Check the terminal, Linkly journal and Orithos attempt before any retry."
         : `Real terminal test ${result}${finalAttempt.providerReference ? ` · ${finalAttempt.providerReference}` : ""}`);
@@ -387,13 +396,16 @@ export function LinklyEftposPanel({ canEdit }: Props) {
   const agentOk = connectorHealth === "reachable";
   const realMode = connectorDetail?.integrationMode === "tcp-proxy" && connectorDetail.tokenConfigured === true;
   const readiness = readEftposReadinessSnapshot();
-  const testFresh = hasRecentApprovedEftposTest(readiness, registerId);
+  const testFresh = hasRecentApprovedEftposTest(readiness, registerId, readinessNow);
+  const diagnosticsFresh = hasFreshEftposDiagnostics(readiness, readinessNow);
   const modeHint = linklyModeLabel(connectorDetail);
 
-  const statusLine = paymentsLive && agentOk && realMode
-    ? testFresh ? "Ready on Sell · real terminal test confirmed" : `Connected · ${modeHint ?? "real Linkly"} · terminal test required`
+  const statusLine = paymentsLive && agentOk && realMode && diagnosticsFresh
+    ? testFresh ? "Verified for Sell · recent real terminal test confirmed" : `Connected · ${modeHint ?? "real Linkly"} · terminal test required`
     : paymentsLive && agentOk
-      ? "Connected in test mode — real card payments are blocked"
+      ? connectorDetail?.integrationMode === "lab"
+        ? "Test mode — real card payments are blocked"
+        : "Connector settings incomplete — real card payments are blocked"
     : paymentsLive
       ? "Enabled — waiting for Hardware Connect on this PC"
       : agentOk
@@ -434,11 +446,23 @@ export function LinklyEftposPanel({ canEdit }: Props) {
         <div className="flex flex-wrap gap-2">
           <span className={stepClass(browserOk)}>1 · Browser access</span>
           <span className={stepClass(agentOk)}>2 · Hardware Connect</span>
-          <span className={stepClass(paymentsLive && realMode)}>3 · Verified for Sell</span>
+          <span className={stepClass(paymentsLive && agentOk && realMode && diagnosticsFresh && testFresh)}>3 · Verified for Sell</span>
         </div>
 
         {error && <p role="alert" className="text-sm text-red-800">{error}</p>}
-        {notice && <p role="status" className="text-sm text-emerald-800">{notice}</p>}
+        {notice && (
+          <p
+            role={/unknown|check the terminal|before any retry/i.test(notice) ? "alert" : "status"}
+            className={`text-sm ${/unknown|check the terminal|before any retry/i.test(notice) ? "text-amber-900" : "text-emerald-800"}`}
+          >
+            {notice}
+          </p>
+        )}
+        {connectorDetail?.tokenRecoveryRequired && (
+          <p role="alert" className="text-sm text-amber-900">
+            The saved Connector token cannot be opened under this Windows profile. Reconnect this register and re-enter its Connector token before enabling card payments.
+          </p>
+        )}
 
         <label className="grid max-w-md gap-1 text-sm font-medium">
           Cash register
@@ -489,8 +513,8 @@ export function LinklyEftposPanel({ canEdit }: Props) {
         </div>
 
         <p className="text-xs leading-5 text-[var(--oh-muted)]">
-          One tap pairs this register with the local bridge on port <span className="font-mono">9167</span>. Real bank terminals: install Linkly on this PC and set{" "}
-          <span className="font-mono text-[11px]">ORITHOS_LINKLY_TCP_BASE</span>. Lab mode is diagnostic only and cannot be used for live card payments.
+          One tap pairs this register with the local bridge on port <span className="font-mono">9167</span>. For live payments, install and configure the bank's Linkly Client plus a local HTTP adapter, then set{" "}
+          <span className="font-mono text-[11px]">ORITHOS_LINKLY_ADAPTER_BASE</span>. A configured adapter still needs a reconciled low-value terminal test; Lab mode is diagnostic only and cannot be used for live card payments.
         </p>
 
         <details className="rounded-md border border-[var(--oh-border)] px-3 py-2">

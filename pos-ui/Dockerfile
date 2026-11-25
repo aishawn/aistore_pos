@@ -72,7 +72,9 @@ RUN if [ -n "$ORITHOS_HC_BUNDLE_URL" ]; then \
   && mkdir -p public/downloads \
   && curl -fsSL "$ORITHOS_HC_BUNDLE_URL" -o public/downloads/orithos-hardware-connect-latest.zip \
   && test -s public/downloads/orithos-hardware-connect-latest.zip \
-  && printf '%s\n' "{\"product\":\"Orithos Hardware Connect\",\"version\":\"1.0.0.0\",\"downloadPath\":\"/downloads/orithos-hardware-connect-latest.zip\",\"stagedAt\":\"$(date -Iseconds)\"}" > public/downloads/orithos-hardware-connect.version.json \
+  && if [ ! -f public/downloads/orithos-hardware-connect.version.json ]; then \
+    printf '%s\n' "{\"product\":\"Orithos Hardware Connect\",\"version\":\"unknown\",\"downloadPath\":\"/downloads/orithos-hardware-connect-latest.zip\",\"stagedAt\":\"$(date -Iseconds)\"}" > public/downloads/orithos-hardware-connect.version.json; \
+  fi \
   && apt-get purge -y curl \
   && apt-get autoremove -y \
   && rm -rf /var/lib/apt/lists/*; \

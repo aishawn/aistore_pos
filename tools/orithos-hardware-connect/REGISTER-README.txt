@@ -10,7 +10,7 @@ Recommended (one click):
 Tray icon: double-click opens Hardware settings.
 Local ports: printers 127.0.0.1:9170 · EFTPOS 127.0.0.1:9167 (same app).
 After saving EFTPOS in Settings → Hardware, the connector token syncs to this PC automatically (v1.1.1+).
-For a real Linkly terminal, install Linkly on this PC and set user env ORITHOS_LINKLY_TCP_BASE to its local HTTP base URL.
+For a real Linkly terminal, install and configure the bank's Linkly Client and a local HTTP adapter on this PC. Set user env ORITHOS_LINKLY_ADAPTER_BASE to that adapter's localhost URL (ORITHOS_LINKLY_TCP_BASE remains a legacy alias). A configured adapter is not proof of terminal connectivity; complete and reconcile a real low-value terminal test before enabling Sell card payments.
 
 ZIP bundle (optional IT path): unzip, double-click Install-Orithos-Hardware-Connect.cmd.
 

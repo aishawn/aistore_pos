@@ -2,6 +2,7 @@ package com.orithos.modules.eftpos;
 
 public final class EftposPaymentStatuses {
     public static final String PENDING = "PENDING";
+    public static final String DISPATCHED = "DISPATCHED";
     public static final String APPROVED = "APPROVED";
     public static final String DECLINED = "DECLINED";
     public static final String CANCELLED = "CANCELLED";

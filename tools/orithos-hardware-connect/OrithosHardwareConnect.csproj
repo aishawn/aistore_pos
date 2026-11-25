@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
   <PropertyGroup>
-    <TargetFramework>net8.0-windows</TargetFramework>
+    <TargetFramework>net10.0-windows</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWindowsForms>true</UseWindowsForms>
@@ -15,9 +15,6 @@
     <ApplicationIcon>assets\orithos-hc.ico</ApplicationIcon>
     <PublishTrimmed>false</PublishTrimmed>
   </PropertyGroup>
-  <ItemGroup>
-    <PackageReference Include="System.Drawing.Common" Version="8.0.10" />
-  </ItemGroup>
   <ItemGroup>
     <Content Remove="bin/**;obj/**;dist/**;publish/**" />
     <None Remove="bin/**;obj/**;dist/**;publish/**" />
