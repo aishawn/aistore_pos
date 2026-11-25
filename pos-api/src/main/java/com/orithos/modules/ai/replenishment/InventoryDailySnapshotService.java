@@ -5,7 +5,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -20,10 +20,13 @@ public class InventoryDailySnapshotService {
 
     private final JdbcTemplate jdbc;
     private final BusinessTimezoneService businessTimezone;
+    private final TransactionTemplate transactionTemplate;
 
-    public InventoryDailySnapshotService(JdbcTemplate jdbc, BusinessTimezoneService businessTimezone) {
+    public InventoryDailySnapshotService(JdbcTemplate jdbc, BusinessTimezoneService businessTimezone,
+                                         TransactionTemplate transactionTemplate) {
         this.jdbc = jdbc;
         this.businessTimezone = businessTimezone;
+        this.transactionTemplate = transactionTemplate;
     }
 
     public void captureDueOutlets() {
@@ -43,8 +46,12 @@ public class InventoryDailySnapshotService {
         }
     }
 
-    @Transactional
     public boolean captureOutlet(long outletId, LocalDate businessDate) {
+        return Boolean.TRUE.equals(transactionTemplate.execute(
+                status -> captureOutletInTransaction(outletId, businessDate)));
+    }
+
+    private boolean captureOutletInTransaction(long outletId, LocalDate businessDate) {
         int expected = jdbc.queryForObject("""
                 SELECT COUNT(*) FROM product
                 WHERE outlet_id = ? AND deleted_at IS NULL AND status = 'ACTIVE' AND track_inventory = 1
