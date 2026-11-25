@@ -62,7 +62,7 @@ public class RetailRegisterController {
                 companySettings.getBoolean(CompanySettingsKeys.REFUNDS_REQUIRE_REASON, true),
                 companySettings.getBoolean(CompanySettingsKeys.CASH_OUT_WITHOUT_SALE, true),
                 companySettings.getBoolean(CompanySettingsKeys.REQUIRE_NOTE_ON_PARKED_SALE, false),
-                companySettings.getString(CompanySettingsKeys.SALE_KEYS_POSITION, CurrentUser.vendorId(), "RIGHT")));
+                companySettings.getString(CompanySettingsKeys.SALE_KEYS_POSITION, CurrentUser.vendorId(), "LEFT")));
     }
 
     private List<String> parseOptions(String raw) {
