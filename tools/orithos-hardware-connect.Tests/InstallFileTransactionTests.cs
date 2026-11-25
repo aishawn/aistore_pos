@@ -63,6 +63,26 @@ public sealed class InstallFileTransactionTests
         });
     }
 
+    [Fact]
+    public void DoesNotLeaveInstallDirectoryWhenFirstInstallPayloadIsInvalid()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"orithos-hc-install-test-{Guid.NewGuid():N}");
+        var source = Path.Combine(root, "source");
+        var install = Path.Combine(root, "install");
+        Directory.CreateDirectory(source);
+        try
+        {
+            var failure = Assert.Throws<TargetInvocationException>(() => ReplaceFiles(source, install, "missing.exe"));
+
+            Assert.IsType<FileNotFoundException>(failure.InnerException);
+            Assert.False(Directory.Exists(install));
+        }
+        finally
+        {
+            if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
+        }
+    }
+
     private static void ReplaceFiles(string source, string install, params string[] files)
     {
         var assembly = Assembly.Load("OrithosHardwareConnect");

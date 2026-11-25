@@ -153,13 +153,7 @@ internal sealed class SetupWizardForm : Form
             progress.Value = 92;
             RegisterAgentInstaller.LaunchInstalledAgent();
             statusLabel.Text = InstallerStatusText.ForStage("CheckingServices");
-            using var healthClient = new HttpClient { Timeout = TimeSpan.FromSeconds(2) };
-            var servicesReady = await LocalApiHealthProbe.WaitForBothReadyAsync(
-                Environment.GetEnvironmentVariable("ORITHOS_HC_URL") ?? AgentVersion.DefaultListen,
-                Environment.GetEnvironmentVariable("ORITHOS_CONNECTOR_URL") ?? AgentVersion.DefaultEftposListen,
-                healthClient,
-                TimeSpan.FromSeconds(20),
-                CancellationToken.None);
+            var servicesReady = await Task.Run(() => RegisterAgentInstaller.WaitForLocalServicesReady(TimeSpan.FromSeconds(20)));
             if (!servicesReady)
             {
                 throw new InvalidOperationException("Hardware Connect started, but one or both local services did not become ready within 20 seconds.");

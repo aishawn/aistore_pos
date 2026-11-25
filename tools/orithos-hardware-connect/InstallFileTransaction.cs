@@ -9,7 +9,6 @@ internal static class InstallFileTransaction
         var parentDirectory = Path.GetDirectoryName(destinationRoot)
             ?? throw new ArgumentException("The install directory must have a parent directory.", nameof(destinationRoot));
         Directory.CreateDirectory(parentDirectory);
-        Directory.CreateDirectory(destinationRoot);
 
         var transactionDirectory = Path.Combine(parentDirectory, $".{Path.GetFileName(destinationRoot)}-update-{Guid.NewGuid():N}");
         var backupDirectory = Path.Combine(transactionDirectory, "backup");
@@ -49,6 +48,7 @@ internal static class InstallFileTransaction
                 File.Copy(sourcePath, stagedPath);
                 File.SetAttributes(stagedPath, FileAttributes.Normal);
                 applied.Add(new AppliedFile(file.RelativePath, existed, attributes));
+                Directory.CreateDirectory(Path.GetDirectoryName(destinationPath)!);
                 if (existed) File.SetAttributes(destinationPath, FileAttributes.Normal);
                 File.Move(stagedPath, destinationPath, overwrite: true);
             }
@@ -62,6 +62,7 @@ internal static class InstallFileTransaction
             }
 
             TryDeleteDirectory(transactionDirectory);
+            TryDeleteEmptyDirectory(destinationRoot);
             throw;
         }
 
@@ -137,6 +138,17 @@ internal static class InstallFileTransaction
         catch
         {
             // Keep the backup directory if cleanup is blocked.
+        }
+    }
+
+    private static void TryDeleteEmptyDirectory(string path)
+    {
+        try
+        {
+            if (Directory.Exists(path) && !Directory.EnumerateFileSystemEntries(path).Any()) Directory.Delete(path);
+        }
+        catch
+        {
         }
     }
 

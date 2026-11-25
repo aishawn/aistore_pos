@@ -111,7 +111,7 @@ internal static class AgentHost
                 MessageBoxIcon.Question);
             if (confirm != DialogResult.Yes)
             {
-                return 0;
+                return 2;
             }
         }
 
@@ -119,6 +119,12 @@ internal static class AgentHost
         {
             RegisterAgentInstaller.Install(settingsUrl);
             RegisterAgentInstaller.LaunchInstalledAgent();
+            if (!RegisterAgentInstaller.WaitForLocalServicesReady(TimeSpan.FromSeconds(20)))
+            {
+                throw new InvalidOperationException("Hardware Connect started, but one or both local services did not become ready within 20 seconds.");
+            }
+
+            SupportLog.Record("info", "installer.install-verified");
             if (!silent)
             {
                 MessageBox.Show(
@@ -131,6 +137,7 @@ internal static class AgentHost
         }
         catch (Exception ex)
         {
+            SupportLog.Record("error", "installer.install-failed", ex);
             if (silent)
             {
                 MessageBox.Show(

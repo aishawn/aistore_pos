@@ -198,6 +198,17 @@ internal static class RegisterAgentInstaller
         });
     }
 
+    public static bool WaitForLocalServicesReady(TimeSpan timeout)
+    {
+        using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(2) };
+        return LocalApiHealthProbe.WaitForBothReadyAsync(
+            Environment.GetEnvironmentVariable("ORITHOS_HC_URL") ?? AgentVersion.DefaultListen,
+            Environment.GetEnvironmentVariable("ORITHOS_CONNECTOR_URL") ?? AgentVersion.DefaultEftposListen,
+            client,
+            timeout,
+            CancellationToken.None).GetAwaiter().GetResult();
+    }
+
     private static void StopRunningAgent()
     {
         var currentProcessId = Environment.ProcessId;
