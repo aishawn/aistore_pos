@@ -421,7 +421,7 @@ const cases = [
   { id: "report-quantity-week-zh", question: "这周卖了多少件", intent: "report_qty" },
   { id: "report-dead-stock-en", question: "Which products have had no sales for 30 days?", intent: "report_dead_stock", noRoute: true, requireReportFreshness: true },
   { id: "report-dead-stock-zh", question: "连续30天没有销售的商品有哪些？", intent: "report_dead_stock", noRoute: true, answerLanguage: "zh", requireReportFreshness: true },
-  { id: "report-stock-value-en", question: "Which inventory items tie up the most cash?", intent: "report_stock_value", noRoute: true, answerRegex: "(?:Inventory value is unavailable because no on-hand products have verifiable positive costs;|Known-cost on-hand inventory subtotal:)" },
+  { id: "report-stock-value-en", question: "Which inventory items tie up the most cash?", intent: "report_stock_value", noRoute: true, answerRegex: "(?:Inventory value is unavailable because no on-hand products have verifiable positive costs;|Known-cost on-hand inventory subtotal \\(including inactive stock\\):)" },
   { id: "report-mixed-metrics-en", question: "Give me sales and units for yesterday", intent: "report_adhoc", noRoute: true },
   { id: "report-ranking-zh", question: "昨天卖得最好的商品是什么", intent: "report_adhoc", noRoute: true },
   { id: "stock-quantity-short-en", question: "How many Carlton Draught left?", intent: "report_stock", query: "Carlton Draught" },
