@@ -82,6 +82,12 @@ internal static class HardwareConnectWebApp
 
         app.MapGet("/v1/printers", () => Results.Json(new { printers = InstalledPrinters() }, json));
 
+        app.MapGet("/v1/linkly-diagnostics", async (CancellationToken requestCancellation) =>
+        {
+            var diagnostics = await LinklyDiscovery.DiscoverAsync(requestCancellation);
+            return Results.Json(diagnostics, json);
+        });
+
         app.MapGet("/v1/printer-status", () => Results.Json(new
         {
             source = "windows-spooler",

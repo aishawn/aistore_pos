@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { afterEach, test } from "node:test";
 import {
   connectLocalHardware,
+  detectLocalLinkly,
   formatSaleDocketPlainText,
   formatSaleReceiptPlainText,
   summarizePostSaleHardwareOutcome,
@@ -57,6 +58,29 @@ test("refuses a local hardware connection on an insecure origin", async () => {
     error: "Use this page on HTTPS to connect local devices.",
     hardwareConnectVersion: null,
   });
+});
+
+test("requests Linkly discovery from the local Hardware Connect EXE", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (input) => {
+    assert.equal(String(input), "http://127.0.0.1:9170/v1/linkly-diagnostics");
+    return new Response(JSON.stringify({
+      state: "linkly-client-found",
+      linklyProcesses: ["EFTSRV"],
+      linklyPort2005Listening: true,
+      httpCandidates: [],
+      checkedAtUtc: "2026-11-25T00:00:00Z",
+    }), { status: 200 });
+  };
+
+  try {
+    const result = await detectLocalLinkly();
+    assert.equal(result.state, "linkly-client-found");
+    assert.equal(result.linklyPort2005Listening, true);
+    assert.deepEqual(result.httpCandidates, []);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
 
 test("reports QZ Tray as unavailable when its browser library is missing", async () => {

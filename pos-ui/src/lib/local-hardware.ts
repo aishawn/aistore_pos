@@ -5,6 +5,7 @@ import { hasFreshEftposDiagnostics, hasRecentApprovedEftposTest, isAdapterMode }
 const ORITHOS_HARDWARE_CONNECT_BASE = "http://127.0.0.1:9170";
 const LOOPBACK_PROBE_MS = 2_500;
 const LOCAL_BRIDGE_CONNECT_MS = 8_000;
+const LINKLY_DISCOVERY_TIMEOUT_MS = 15_000;
 
 /** Shopfront-style default: only Orithos Hardware Connect; set NEXT_PUBLIC_ORITHOS_QZ_FALLBACK=true for legacy QZ. */
 export function isQzTrayFallbackEnabled(): boolean {
@@ -25,6 +26,38 @@ function loopbackHardwareConnectFetch(path: string, init?: RequestInit): Promise
     ...init,
   };
   return fetch(`${ORITHOS_HARDWARE_CONNECT_BASE}${path}`, request).finally(() => clearTimeout(timer));
+}
+
+export type LinklyLocalDiscovery = {
+  state: "adapter-candidate-found" | "linkly-client-found" | "not-found";
+  linklyProcesses: string[];
+  linklyPort2005Listening: boolean;
+  httpCandidates: { port: number; baseUrl: string; healthPath: string; statusCode: number; jsonKeys: string[] }[];
+  checkedAtUtc: string;
+};
+
+export async function detectLocalLinkly(): Promise<LinklyLocalDiscovery> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), LINKLY_DISCOVERY_TIMEOUT_MS);
+  const request: LoopbackRequestInit = {
+    cache: "no-store",
+    mode: "cors",
+    targetAddressSpace: "loopback",
+    signal: controller.signal,
+  };
+
+  try {
+    const response = await fetch(`${ORITHOS_HARDWARE_CONNECT_BASE}/v1/linkly-diagnostics`, request);
+    if (!response.ok) throw new Error(`Linkly detection failed (${response.status}).`);
+    return await response.json() as LinklyLocalDiscovery;
+  } catch (cause) {
+    if (cause instanceof DOMException && cause.name === "AbortError") {
+      throw new Error("Linkly detection timed out. Check that Hardware Connect is running, then try again.");
+    }
+    throw cause instanceof Error ? cause : new Error("Could not read Linkly detection results from this PC.");
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 function withBridgeTimeout<T>(label: string, promise: Promise<T>): Promise<T> {

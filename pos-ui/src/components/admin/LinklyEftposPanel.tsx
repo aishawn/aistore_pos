@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { CreditCard, RefreshCw, Zap } from "lucide-react";
+import { CreditCard, Radar, RefreshCw, Zap } from "lucide-react";
 import { listRetailRegisters, type RetailRegister } from "@/lib/api";
 import {
   createEftposAttempt,
@@ -27,7 +27,7 @@ import { resolveLocalNetworkAccessState, type LocalNetworkAccessState } from "@/
 import { useHardwareLoopbackReady } from "@/components/admin/hardware-loopback-context";
 import { getEftposConfigurationKey } from "@/lib/eftpos-readiness-core";
 import { hasFreshEftposDiagnostics, hasRecentApprovedEftposTest, readEftposReadinessSnapshot, saveEftposReadinessSnapshot } from "@/lib/hardware-eftpos-readiness";
-import { publishLocalHardwareSettingsChange } from "@/lib/local-hardware";
+import { detectLocalLinkly, publishLocalHardwareSettingsChange, type LinklyLocalDiscovery } from "@/lib/local-hardware";
 
 type Props = {
   canEdit: boolean;
@@ -75,6 +75,8 @@ export function LinklyEftposPanel({ canEdit }: Props) {
   const [lna, setLna] = useState<LocalNetworkAccessState>("unsupported");
   const [connectorHealth, setConnectorHealth] = useState<"unknown" | "reachable" | "offline" | "error">("unknown");
   const [connectorDetail, setConnectorDetail] = useState<ConnectorStatus | null>(null);
+  const [linklyDiscovery, setLinklyDiscovery] = useState<LinklyLocalDiscovery | null>(null);
+  const [discoveryBusy, setDiscoveryBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loadBusy, setLoadBusy] = useState(true);
@@ -373,6 +375,23 @@ export function LinklyEftposPanel({ canEdit }: Props) {
     }
   }
 
+  async function detectLinklyClick() {
+    if (!loopbackReady) {
+      setNotice("Allow local network access first, then detect Linkly again.");
+      return;
+    }
+    setDiscoveryBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      setLinklyDiscovery(await detectLocalLinkly());
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not detect Linkly on this PC.");
+    } finally {
+      setDiscoveryBusy(false);
+    }
+  }
+
   async function runTestPayment() {
     if (!registerId || !binding?.paymentsEnabled || !realMode) return;
     if (!window.confirm("This sends AUD 1.00 to the real EFTPOS terminal and may charge the card. Continue only with an authorised test card and terminal ready.")) return;
@@ -559,7 +578,28 @@ export function LinklyEftposPanel({ canEdit }: Props) {
             <RefreshCw size={15} className={diagBusy ? "animate-spin" : undefined} aria-hidden="true" />
             Check status
           </button>
+          <button
+            type="button"
+            disabled={busy || discoveryBusy || !registerId}
+            onClick={() => void detectLinklyClick()}
+            className="inline-flex min-h-10 items-center gap-2 rounded-md border border-[var(--oh-border)] px-3 text-sm font-semibold disabled:opacity-50"
+          >
+            <Radar size={15} className={discoveryBusy ? "animate-pulse" : undefined} aria-hidden="true" />
+            {discoveryBusy ? "Detecting…" : "Detect Linkly automatically"}
+          </button>
         </div>
+
+        {linklyDiscovery && (
+          <section aria-label="Linkly detection results" className="rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface)] p-3">
+            <h3 className="text-sm font-semibold text-[var(--oh-text)]">Local Linkly detection</h3>
+            <dl className="mt-2 grid gap-2 text-xs sm:grid-cols-2">
+              <div><dt className="text-[var(--oh-muted)]">Linkly Client process</dt><dd className="font-medium text-[var(--oh-text)]">{linklyDiscovery.linklyProcesses.length ? `Found · ${linklyDiscovery.linklyProcesses.join(", ")}` : "Not detected"}</dd></div>
+              <div><dt className="text-[var(--oh-muted)]">Linkly TCP port 2005</dt><dd className="font-medium text-[var(--oh-text)]">{linklyDiscovery.linklyPort2005Listening ? "Listening" : "Not detected"}</dd></div>
+              <div className="sm:col-span-2"><dt className="text-[var(--oh-muted)]">Local HTTP candidates</dt><dd className="font-medium text-[var(--oh-text)]">{linklyDiscovery.httpCandidates.length ? linklyDiscovery.httpCandidates.map((candidate) => `${candidate.baseUrl} · ${candidate.healthPath} · HTTP ${candidate.statusCode}`).join("; ") : "None found on detected loopback TCP listeners"}</dd></div>
+            </dl>
+            <p role="note" className="mt-2 text-xs leading-5 text-[var(--oh-muted)]">A detected HTTP service is only a candidate. Its Linkly purchase/query protocol is not verified, so Orithos will not configure it automatically or enable card payments from this result.</p>
+          </section>
+        )}
 
         <p className="text-xs leading-5 text-[var(--oh-muted)]">
           One tap pairs this register with the local bridge on port <span className="font-mono">9167</span>. For live payments, install and configure the bank&apos;s Linkly Client plus a local HTTP adapter, then set{" "}
