@@ -1,6 +1,15 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { dispatchClaimedPurchase, loadOrCreateAttemptWithPreflight, markPurchaseDispatched, wasPurchaseDispatched } from "./eftpos-checkout.ts";
+import { dispatchClaimedPurchase, loadOrCreateAttemptWithPreflight, markPurchaseDispatched, shouldShowPendingEftposDialog, wasPurchaseDispatched } from "./eftpos-checkout.ts";
+
+test("dismissing a pending EFTPOS dialog hides only that order and allows reopening", () => {
+  const pendingOrderUuid = "order-pending";
+
+  assert.equal(shouldShowPendingEftposDialog(pendingOrderUuid, null), true);
+  assert.equal(shouldShowPendingEftposDialog(pendingOrderUuid, pendingOrderUuid), false);
+  assert.equal(shouldShowPendingEftposDialog(pendingOrderUuid, null), true);
+  assert.equal(shouldShowPendingEftposDialog(null, pendingOrderUuid), false);
+});
 
 test("purchase dispatch marker is isolated per order and survives resume checks", () => {
   const values = new Map<string, string>();

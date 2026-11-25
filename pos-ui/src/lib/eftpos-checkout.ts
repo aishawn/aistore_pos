@@ -12,6 +12,10 @@ const DISPATCH_KEY_PREFIX = "orithos.eftpos.purchase-dispatched.";
 
 type PurchaseStorageLike = Pick<Storage, "getItem" | "setItem">;
 
+export function shouldShowPendingEftposDialog(orderUuid: string | null, dismissedOrderUuid: string | null): boolean {
+  return Boolean(orderUuid && orderUuid !== dismissedOrderUuid);
+}
+
 function browserPurchaseStorage(): PurchaseStorageLike | null {
   return typeof localStorage === "undefined" ? null : localStorage;
 }

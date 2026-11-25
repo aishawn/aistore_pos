@@ -67,7 +67,7 @@ import {
   writeRegisterStartupPromptAck,
 } from "@/lib/register-startup";
 import { getRegisterEftposBinding } from "@/lib/eftpos-api";
-import { ensureEftposApprovedBeforeCheckout } from "@/lib/eftpos-checkout";
+import { ensureEftposApprovedBeforeCheckout, shouldShowPendingEftposDialog } from "@/lib/eftpos-checkout";
 import { LocalQzBridge } from "@/components/LocalQzBridge";
 
 type CompletedReceipt = {
@@ -204,6 +204,7 @@ export function OdooRegisterPage() {
   const [quoteRetryKey, setQuoteRetryKey] = useState(0);
   const [busy, setBusy] = useState(false);
   const [pendingCheckout, setPendingCheckout] = useState<RetailCheckoutRequest | null>(null);
+  const [dismissedEftposOrderUuid, setDismissedEftposOrderUuid] = useState<string | null>(null);
   const checkoutBusy = useRef(false);
   const productSearchRef = useRef<HTMLInputElement | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -663,18 +664,19 @@ export function OdooRegisterPage() {
   });
   const paymentMethods = selectedConfig?.paymentMethods ?? [];
   const pendingEftposCheckout = Boolean(pendingCheckout && isCardCheckoutRequest(pendingCheckout));
-  const dialogOpen = helpOpen || closeRegisterCartWarn || clearSaleConfirm || cashOutOpen || Boolean(receipt) || pendingEftposCheckout || Boolean(eftposPaymentNotice) || Boolean(parkedAction) || Boolean(parkNoteDialog) || pendingRegisterId !== null || registerStartupPrompt !== null;
+  const pendingEftposDialogOpen = pendingEftposCheckout && shouldShowPendingEftposDialog(pendingCheckout?.orderUuid ?? null, dismissedEftposOrderUuid);
+  const dialogOpen = helpOpen || closeRegisterCartWarn || clearSaleConfirm || cashOutOpen || Boolean(receipt) || pendingEftposDialogOpen || Boolean(parkedAction) || Boolean(parkNoteDialog) || pendingRegisterId !== null || registerStartupPrompt !== null;
   useDialogFocus(dialogOpen, () => {
     if (helpOpen) setHelpOpen(false);
     else if (closeRegisterCartWarn) setCloseRegisterCartWarn(false);
     else if (clearSaleConfirm) setClearSaleConfirm(false);
     else if (cashOutOpen && !cashOutBusy) setCashOutOpen(false);
-    else if (pendingEftposCheckout || eftposPaymentNotice) return;
+    else if (pendingEftposDialogOpen && pendingCheckout) setDismissedEftposOrderUuid(pendingCheckout.orderUuid);
     else if (parkNoteDialog) setParkNoteDialog(null);
     else if (parkedAction) setParkedAction(null);
     else if (pendingRegisterId !== null) setPendingRegisterId(null);
     else if (receipt) setReceipt(null);
-  }, pendingEftposCheckout ? "eftpos-checkout" : receipt ? "sale-receipt" : undefined, pendingEftposCheckout ? eftposDialogTitleRef : undefined, registerSelectRef);
+  }, pendingEftposDialogOpen ? "eftpos-checkout" : receipt ? "sale-receipt" : undefined, pendingEftposDialogOpen ? eftposDialogTitleRef : undefined, registerSelectRef);
 
   const selectedCompanyId = Array.isArray(selectedConfig?.company) ? selectedConfig.company[0] : null;
   const visibleParkedSales = parkedSales.filter((sale) => sale.ownerUserId === registerUserId
@@ -1211,13 +1213,14 @@ export function OdooRegisterPage() {
     }
   }
 
-  if (pendingCheckout && !pendingEftposCheckout && !loading) return <main className="flex h-full flex-col items-start gap-4 overflow-y-auto p-6">
+  if (pendingCheckout && (!pendingEftposCheckout || !pendingEftposDialogOpen) && !loading) return <main className="flex h-full flex-col items-start gap-4 overflow-y-auto p-6">
     <LocalQzBridge />
     <h1 className="text-xl font-semibold">{error && /payment was not sent to the terminal/i.test(error) ? "Payment not sent to terminal" : "Payment result pending confirmation"}</h1>
     <p role="alert">{error || "Do not take payment again. This cart is preserved while the result is checked."}</p>
     {eftposPaymentNotice && <p role="status" className="text-sm font-medium text-amber-900">{eftposPaymentNotice}</p>}
     <p className="break-all text-sm">Order reference: {pendingCheckout.orderUuid}</p>
     <button type="button" disabled={busy || !isOnline} onClick={() => void checkout()} className="min-h-11 rounded bg-green-800 px-4 text-white disabled:opacity-50">{busy ? "Checking…" : error && /payment was not sent to the terminal/i.test(error) ? "Retry saved order" : "Check saved order"}</button>
+    {pendingEftposCheckout && <button type="button" onClick={() => setDismissedEftposOrderUuid(null)} className="min-h-11 rounded border border-[var(--oh-border)] px-4 font-semibold text-[var(--oh-text)]">Reopen payment status</button>}
     <Link href="/history" target="_blank" className="min-h-11 underline">Open sales history in another tab</Link>
     <p className="text-sm">If the result remains unknown, a store administrator must reconcile the order and payment in Orithos before another sale is attempted.</p>
   </main>;
@@ -1911,14 +1914,17 @@ export function OdooRegisterPage() {
         </div>
       )}
 
-            {pendingEftposCheckout && pendingCheckout && <div className="fixed inset-0 z-[65] grid place-items-center overflow-y-auto bg-black/45 p-4">
+            {pendingEftposDialogOpen && pendingCheckout && <div className="fixed inset-0 z-[65] grid place-items-center overflow-y-auto bg-black/45 p-4">
         <section role="dialog" aria-modal="true" aria-labelledby="eftpos-checkout-title" aria-describedby="eftpos-checkout-description" aria-busy={busy} className="my-auto w-full max-w-md rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-6 shadow-2xl">
-          <div className="flex items-start gap-3">
-            {busy && !error ? <span aria-hidden="true" className="mt-1 size-5 shrink-0 animate-spin rounded-full border-2 border-[var(--oh-border)] border-t-[var(--oh-primary)]" /> : <CreditCard size={20} className="mt-1 shrink-0 text-[var(--oh-primary)]" />}
-            <div className="min-w-0">
-              <h2 ref={eftposDialogTitleRef} tabIndex={-1} id="eftpos-checkout-title" className="text-lg font-semibold text-[var(--oh-text)]">{eftposPaymentNotice ? "EFTPOS payment" : "Payment result needs confirmation"}</h2>
-              <p id="eftpos-checkout-description" role="status" aria-live="polite" className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">{eftposPaymentNotice || error || "Do not charge this card again. Check the saved order or reconcile it in sales history before taking another payment."}</p>
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex min-w-0 items-start gap-3">
+              {busy && !error ? <span aria-hidden="true" className="mt-1 size-5 shrink-0 animate-spin rounded-full border-2 border-[var(--oh-border)] border-t-[var(--oh-primary)]" /> : <CreditCard size={20} className="mt-1 shrink-0 text-[var(--oh-primary)]" />}
+              <div className="min-w-0">
+                <h2 ref={eftposDialogTitleRef} tabIndex={-1} id="eftpos-checkout-title" className="text-lg font-semibold text-[var(--oh-text)]">{eftposPaymentNotice ? "EFTPOS payment" : "Payment result needs confirmation"}</h2>
+                <p id="eftpos-checkout-description" role="status" aria-live="polite" className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">{eftposPaymentNotice || error || "Do not charge this card again. Check the saved order or reconcile it in sales history before taking another payment."}</p>
+              </div>
             </div>
+            <button type="button" onClick={() => setDismissedEftposOrderUuid(pendingCheckout.orderUuid)} aria-label="Close payment status" title="Close payment status" className="grid h-11 w-11 shrink-0 place-items-center rounded-md text-[var(--oh-muted)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"><X size={18} /></button>
           </div>
           <div className="mt-5 flex items-baseline justify-between border-y border-[var(--oh-border)] py-3">
             <span className="text-sm text-[var(--oh-muted)]">Amount</span>
