@@ -34,6 +34,12 @@ internal static class RegisterAgentInstaller
             return explicitUrl;
         }
 
+        var configuredUrl = Environment.GetEnvironmentVariable(SettingsUrlEnv);
+        if (!string.IsNullOrWhiteSpace(configuredUrl))
+        {
+            return configuredUrl;
+        }
+
         var sourceDir = Path.GetDirectoryName(Environment.ProcessPath ?? AppContext.BaseDirectory);
         if (!string.IsNullOrWhiteSpace(sourceDir))
         {

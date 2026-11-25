@@ -37,6 +37,12 @@ internal static class AgentHost
         {
             if (IsSetupBootstrapper() && !args.Contains("--install", StringComparer.OrdinalIgnoreCase))
             {
+                if (RegisterAgentInstaller.IsInstalled())
+                {
+                    RunInstallFlow(settingsUrl, silent: true);
+                    return;
+                }
+
                 ApplicationConfiguration.Initialize();
                 using var wizard = new SetupWizardForm(RegisterAgentInstaller.ResolveSettingsUrl(settingsUrl));
                 wizard.ShowDialog();
@@ -102,15 +108,28 @@ internal static class AgentHost
         try
         {
             RegisterAgentInstaller.Install(settingsUrl);
-            MessageBox.Show(
-                "Installation complete. The register agent is starting now.\n\nIf Windows Firewall asks, allow access on private networks.",
-                AgentVersion.Product,
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Information);
             RegisterAgentInstaller.LaunchInstalledAgent();
+            if (!silent)
+            {
+                MessageBox.Show(
+                    "Installation complete. The register agent is starting now.\n\nIf Windows Firewall asks, allow access on private networks.",
+                    AgentVersion.Product,
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+            }
         }
         catch (Exception ex)
         {
+            if (silent)
+            {
+                MessageBox.Show(
+                    $"The update could not be installed:\n{ex.Message}",
+                    AgentVersion.Product,
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+                return;
+            }
+
             MessageBox.Show(
                 $"Installation failed:\n{ex.Message}",
                 AgentVersion.Product,

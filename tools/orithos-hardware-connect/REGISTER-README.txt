@@ -3,8 +3,8 @@ Orithos Hardware Connect — register install (release pipeline trigger)
 
 Recommended (one click):
 1. Download OrithosHardwareConnect-Setup.exe from your store Settings → Hardware.
-2. Open Downloads and double-click the file.
-3. Click Yes when asked to install. Allow private firewall if Windows asks.
+2. Open Downloads and double-click the file. Existing installations update in place and restart automatically; first-time installs open the setup wizard.
+3. Allow private firewall access if Windows asks.
 4. In the browser, allow Local network access for this store, then Connect local bridge.
 
 Tray icon: double-click opens Hardware settings.
