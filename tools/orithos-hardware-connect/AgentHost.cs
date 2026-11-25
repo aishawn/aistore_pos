@@ -3,6 +3,7 @@ namespace Orithos.HardwareConnect;
 internal static class AgentHost
 {
     private const string SingleInstanceMutexName = @"Local\OrithosHardwareConnect";
+    private const string ConsoleMutexName = @"Local\OrithosHardwareConnectConsole";
 
     private static bool IsSetupBootstrapper()
     {
@@ -13,6 +14,11 @@ internal static class AgentHost
 
     public static int Run(string[] args)
     {
+        if (AgentRunModePolicy.IsConsoleMode(args, Environment.GetEnvironmentVariable("ORITHOS_HC_CONSOLE")))
+        {
+            return RunConsoleMode();
+        }
+
         if (args.Contains("--uninstall", StringComparer.OrdinalIgnoreCase))
         {
             RegisterAgentInstaller.Uninstall();
@@ -56,9 +62,6 @@ internal static class AgentHost
             return 0;
         }
 
-        var consoleMode = args.Contains("--console", StringComparer.OrdinalIgnoreCase)
-            || string.Equals(Environment.GetEnvironmentVariable("ORITHOS_HC_CONSOLE"), "1", StringComparison.Ordinal);
-
         using var mutex = new Mutex(true, SingleInstanceMutexName, out var createdNew);
         if (!createdNew)
         {
@@ -70,21 +73,28 @@ internal static class AgentHost
             return 0;
         }
 
-        if (consoleMode)
-        {
-            var hcUrl = Environment.GetEnvironmentVariable("ORITHOS_HC_URL") ?? AgentVersion.DefaultListen;
-            var eftposUrl = Environment.GetEnvironmentVariable("ORITHOS_CONNECTOR_URL") ?? AgentVersion.DefaultEftposListen;
-            Console.WriteLine($"{AgentVersion.Product} {AgentVersion.DisplayVersion}");
-            Console.WriteLine($"Printers: {hcUrl}");
-            Console.WriteLine($"EFTPOS:   {eftposUrl}");
-            Task.WhenAll(
-                HardwareConnectWebApp.RunAsync(CancellationToken.None),
-                LinklyConnectorWebApp.RunAsync(CancellationToken.None)).GetAwaiter().GetResult();
-            return 0;
-        }
-
         ApplicationConfiguration.Initialize();
         Application.Run(new TrayApplicationContext());
+        return 0;
+    }
+
+    private static int RunConsoleMode()
+    {
+        using var mutex = new Mutex(true, ConsoleMutexName, out var createdNew);
+        if (!createdNew)
+        {
+            Console.Error.WriteLine($"{AgentVersion.Product} is already running on this register.");
+            return 1;
+        }
+
+        var hcUrl = Environment.GetEnvironmentVariable("ORITHOS_HC_URL") ?? AgentVersion.DefaultListen;
+        var eftposUrl = Environment.GetEnvironmentVariable("ORITHOS_CONNECTOR_URL") ?? AgentVersion.DefaultEftposListen;
+        Console.WriteLine($"{AgentVersion.Product} {AgentVersion.DisplayVersion}");
+        Console.WriteLine($"Printers: {hcUrl}");
+        Console.WriteLine($"EFTPOS:   {eftposUrl}");
+        Task.WhenAll(
+            HardwareConnectWebApp.RunAsync(CancellationToken.None),
+            LinklyConnectorWebApp.RunAsync(CancellationToken.None)).GetAwaiter().GetResult();
         return 0;
     }
 
