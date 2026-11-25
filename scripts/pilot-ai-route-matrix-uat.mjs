@@ -7,9 +7,15 @@ import { chromium } from "playwright";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const env = Object.fromEntries(fs.readFileSync(path.join(root, ".env"), "utf8")
   .split(/\r?\n/).filter((line) => line && !line.startsWith("#") && line.includes("="))
-  .map((line) => { const index = line.indexOf("="); return [line.slice(0, index).trim(), line.slice(index + 1).trim()]; }));
+  .map((line) => { const index = line.indexOf("="); return [line.slice(0, index).trim(), line.slice(index + 1).trim().replace(/^['\"]|['\"]$/g, "")]; }));
 const base = (process.env.PILOT_BASE_URL ?? "https://demo.orithos.com.au").replace(/\/+$/, "");
-const password = process.env.INITIAL_ADMIN_PASSWORD ?? env.INITIAL_ADMIN_PASSWORD;
+const isSkr = new URL(base).hostname === "skr.orithos.com.au";
+const username = process.env.PILOT_USERNAME
+  ?? (isSkr ? env.ORITHOS_SKR_USER ?? env.SKR_USER ?? "shawn" : "admin");
+const password = process.env.PILOT_PASSWORD
+  ?? (isSkr
+    ? env.ORITHOS_SKR_PASS ?? env.SKR_PASS
+    : process.env.INITIAL_ADMIN_PASSWORD ?? env.INITIAL_ADMIN_PASSWORD);
 if (!password) throw new Error("MISSING_ADMIN_PASSWORD");
 
 const routes = [
@@ -34,7 +40,7 @@ const safeErrorEvidence = (error) => ({
 
 try {
   const login = await context.request.post(`${base}/api/auth/login`, {
-    data: { username: "admin", password }, headers: { Origin: base },
+    data: { username, password }, headers: { Origin: base },
   });
   const loginBody = await login.json().catch(() => ({}));
   if (!login.ok() || loginBody.code !== 0) throw new Error(`LOGIN_FAILED_${login.status()}`);
@@ -58,9 +64,18 @@ try {
     try {
       const response = await page.goto(`${base}${pathname}`, { waitUntil: "domcontentloaded", timeout: 60000 });
       const fab = page.getByRole("button", { name: /Open Orithos AI/ }).first();
-      await fab.waitFor({ state: "visible", timeout: 30000 });
+      const sendMessage = page.getByRole("button", { name: "Send message", exact: true }).first();
+      await fab.or(sendMessage).first().waitFor({ state: "visible", timeout: 30000 });
       const layout = await page.evaluate(() => ({ scrollWidth: document.documentElement.scrollWidth, width: window.innerWidth }));
-      const result = { pathname, httpStatus: response?.status() ?? 0, aiFab: true, horizontalOverflow: layout.scrollWidth > layout.width, pageErrors };
+      const result = {
+        pathname,
+        resolvedPathname: new URL(page.url()).pathname,
+        httpStatus: response?.status() ?? 0,
+        aiFab: await fab.isVisible().catch(() => false),
+        aiWorkspaceReady: await sendMessage.isVisible().catch(() => false),
+        horizontalOverflow: layout.scrollWidth > layout.width,
+        pageErrors,
+      };
       if (pathname === "/sommelier/identify") {
         const camera = page.getByRole("button", { name: "Photograph label", exact: true });
         // The identify page renders the camera control before its client capability
@@ -88,7 +103,7 @@ try {
         result.aiEnabled = aiEnabled;
         result.labelVisionAvailable = labelVisionAvailable;
       }
-      checks.push({ name: pathname, status: result.httpStatus === 200 && result.aiFab && !result.horizontalOverflow && result.pageErrors.length === 0
+      checks.push({ name: pathname, status: result.httpStatus === 200 && (result.aiFab || result.aiWorkspaceReady) && !result.horizontalOverflow && result.pageErrors.length === 0
         && (pathname !== "/sommelier/identify" || (labelVisionAvailable ? !result.labelPhotoButtonDisabled : (result.labelPhotoButtonDisabled && result.disabledCopy))) ? "PASS" : "FAIL", evidence: result });
     } catch (error) {
       const detail = error instanceof Error ? error.message : "Unexpected failure";
