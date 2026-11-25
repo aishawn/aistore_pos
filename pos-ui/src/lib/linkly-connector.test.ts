@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { afterEach, test } from "node:test";
-import { requestConnectorPurchase } from "./linkly-connector.ts";
+import { isConnectorConfiguredAndReachable, requestConnectorPurchase } from "./linkly-connector.ts";
 
 const originalFetch = globalThis.fetch;
 
@@ -15,6 +15,14 @@ const purchase = {
   currency: "AUD",
   connectorChallenge: "challenge",
 };
+
+test("requires a reachable adapter listener and configured token before enabling live EFTPOS", () => {
+  assert.equal(isConnectorConfiguredAndReachable({ integrationMode: "tcp-proxy", tokenConfigured: true, adapterListener: "reachable" }), true);
+  assert.equal(isConnectorConfiguredAndReachable({ integrationMode: "tcp-proxy", tokenConfigured: true, adapterListener: "unreachable" }), false);
+  assert.equal(isConnectorConfiguredAndReachable({ integrationMode: "tcp-proxy", tokenConfigured: true }), false);
+  assert.equal(isConnectorConfiguredAndReachable({ integrationMode: "lab", tokenConfigured: true, adapterListener: "reachable" }), false);
+  assert.equal(isConnectorConfiguredAndReachable({ integrationMode: "tcp-proxy", tokenConfigured: false, adapterListener: "reachable" }), false);
+});
 
 test("marks a purchase dispatched before the request can lose its response", async () => {
   const events: string[] = [];

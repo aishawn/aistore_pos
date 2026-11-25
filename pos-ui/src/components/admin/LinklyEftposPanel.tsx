@@ -16,6 +16,7 @@ import {
 } from "@/lib/eftpos-api";
 import {
   fetchConnectorStatus,
+  isConnectorConfiguredAndReachable,
   probeConnectorHealth,
   pushConnectorLocalConfig,
   requestConnectorPurchase,
@@ -52,6 +53,8 @@ const defaultDraft: BindingDraft = {
 
 function linklyModeLabel(status: ConnectorStatus | null): string | null {
   if (status?.linklyClient === "waiting-for-token") return "Waiting for store pairing";
+  if (status?.integrationMode === "tcp-proxy" && status.adapterListener === "unreachable") return "Local adapter not accepting connections";
+  if (status?.integrationMode === "tcp-proxy" && status.adapterListener !== "reachable") return "Local adapter status unavailable";
   if (status?.integrationMode === "tcp-proxy") return "Local HTTP adapter · terminal unverified";
   if (status?.integrationMode === "lab" || /lab mode/i.test(status?.detail ?? "")) return "Test mode (no bank Linkly)";
   return null;
@@ -207,8 +210,8 @@ export function LinklyEftposPanel({ canEdit }: Props) {
     if (!canEdit || !registerId) return null;
     if (nextDraft.paymentsEnabled) {
       const diagnostics = await refreshDiagnostics(nextDraft.connectorBaseUrl || defaultDraft.connectorBaseUrl);
-      if (diagnostics.health !== "reachable" || diagnostics.detail?.integrationMode !== "tcp-proxy" || diagnostics.detail.tokenConfigured !== true) {
-        setError("Sell card payments can only be enabled when the local HTTP adapter is reachable and its connector token is configured.");
+      if (diagnostics.health !== "reachable" || !isConnectorConfiguredAndReachable(diagnostics.detail)) {
+        setError("Sell card payments can only be enabled when the local adapter port is reachable and its connector token is configured. Update Hardware Connect if adapter status is unavailable.");
         return null;
       }
     }
@@ -240,7 +243,7 @@ export function LinklyEftposPanel({ canEdit }: Props) {
         const synced = await applyConnectorToLocalPc(baseUrl, token);
         setNotice(
           synced
-            ? "Card payments are ready on this PC — try Test $1.00 on Sell or below."
+            ? "Connector settings saved on this PC. Checking the adapter and token status…"
             : "Saved on the server. Update Hardware Connect to 1.1.1+ to auto-apply the token.",
         );
         await refreshDiagnostics(baseUrl);
@@ -296,8 +299,10 @@ export function LinklyEftposPanel({ canEdit }: Props) {
 
     const status = await fetchConnectorStatus(baseUrl);
     setConnectorDetail(status);
-    if (status?.integrationMode !== "tcp-proxy" || status.tokenConfigured !== true) {
-      setError("This PC is in Lab mode or has no connector token. Real card payments cannot be enabled.");
+    if (!isConnectorConfiguredAndReachable(status)) {
+      setError(status?.integrationMode === "tcp-proxy" && status.adapterListener === "unreachable"
+        ? "The local adapter port is not accepting connections. Start the bank Linkly Client or adapter, then check again."
+        : "This PC is in Lab mode, the adapter is unreachable, or its connector token is missing. Real card payments cannot be enabled.");
       return;
     }
 
@@ -310,7 +315,7 @@ export function LinklyEftposPanel({ canEdit }: Props) {
     const saved = await persistBinding(preparedDraft);
     if (!saved) return;
     const diagnostics = await refreshDiagnostics(saved.connectorBaseUrl || baseUrl);
-    if (diagnostics.health !== "reachable" || diagnostics.detail?.integrationMode !== "tcp-proxy" || diagnostics.detail.tokenConfigured !== true) {
+    if (diagnostics.health !== "reachable" || !isConnectorConfiguredAndReachable(diagnostics.detail)) {
       setError("Connector token was saved, but the real Linkly adapter is not ready. Sell card payments remain off.");
       return;
     }
@@ -394,7 +399,7 @@ export function LinklyEftposPanel({ canEdit }: Props) {
   const paymentsLive = Boolean(binding?.paymentsEnabled && binding?.enabled);
   const browserOk = loopbackReady && lna === "granted";
   const agentOk = connectorHealth === "reachable";
-  const realMode = connectorDetail?.integrationMode === "tcp-proxy" && connectorDetail.tokenConfigured === true;
+  const realMode = isConnectorConfiguredAndReachable(connectorDetail);
   const readiness = readEftposReadinessSnapshot();
   const testFresh = hasRecentApprovedEftposTest(readiness, registerId, readinessNow);
   const diagnosticsFresh = hasFreshEftposDiagnostics(readiness, readinessNow);

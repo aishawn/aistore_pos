@@ -4,7 +4,7 @@ import {
   getEftposAttemptByOrder,
   type EftposAttempt,
 } from "./eftpos-api";
-import { fetchConnectorStatus, requestConnectorPurchase, requestConnectorQuery } from "./linkly-connector";
+import { fetchConnectorStatus, isConnectorConfiguredAndReachable, requestConnectorPurchase, requestConnectorQuery } from "./linkly-connector";
 
 const DISPATCH_KEY_PREFIX = "orithos.eftpos.purchase-dispatched.";
 
@@ -44,8 +44,11 @@ async function dispatchConnector(attempt: EftposAttempt, registerId: number): Pr
       return;
     }
     const status = await fetchConnectorStatus(attempt.connectorBaseUrl);
-    if (status?.integrationMode !== "tcp-proxy" || status.tokenConfigured !== true) {
-      throw new Error("Real Linkly is not ready on this PC. The payment was not sent to the terminal; keep this order and resolve the connector status before retrying.");
+    if (!isConnectorConfiguredAndReachable(status)) {
+      const reason = status?.integrationMode === "tcp-proxy" && status.adapterListener === "unreachable"
+        ? "The local adapter port is not accepting connections."
+        : "Real Linkly is not ready on this PC.";
+      throw new Error(`${reason} The payment was not sent to the terminal; keep this order and resolve the connector status before retrying.`);
     }
     const dispatched = await dispatchClaimedPurchase(
       () => claimEftposAttemptDispatch(registerId, attempt.attemptId),

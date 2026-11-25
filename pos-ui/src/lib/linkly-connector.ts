@@ -6,8 +6,15 @@ export type ConnectorStatus = {
   detail?: string;
   tokenConfigured?: boolean;
   tokenRecoveryRequired?: boolean;
+  adapterListener?: "reachable" | "unreachable" | "not-configured" | string;
   integrationMode?: "lab" | "tcp-proxy" | string;
 };
+
+export function isConnectorConfiguredAndReachable(status: ConnectorStatus | null | undefined): boolean {
+  return status?.integrationMode === "tcp-proxy"
+    && status.tokenConfigured === true
+    && status.adapterListener === "reachable";
+}
 
 export type ConnectorLocalConfigPayload = {
   orithosApiUrl: string;
