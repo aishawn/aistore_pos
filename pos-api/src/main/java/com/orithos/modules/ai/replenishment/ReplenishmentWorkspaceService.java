@@ -287,18 +287,23 @@ public class ReplenishmentWorkspaceService {
                 .filter(Objects::nonNull)
                 .max(Instant::compareTo)
                 .orElse(null);
+        long now = System.currentTimeMillis();
+        boolean everyRecordFresh = rows.stream().allMatch(row -> isFreshInventoryRecord(row, now));
+        int staleOrUnverified = (int) rows.stream()
+                .filter(row -> row.onHand() != null && !isFreshInventoryRecord(row, now))
+                .count();
 
         String status = "UNAVAILABLE";
-        if (latest != null) {
-            long age = System.currentTimeMillis() - latest.toEpochMilli();
-            double coverage = expected == 0 ? 0 : captured / (double) expected;
-            if (age <= INVENTORY_FRESH_MILLIS && coverage >= 0.85) status = "FRESH";
+        double coverage = expected == 0 ? 0 : captured / (double) expected;
+        if (expected > 0) {
+            if (everyRecordFresh && coverage >= 0.85) status = "FRESH";
             else if (coverage >= 0.5) status = "REVIEW";
             else status = "STALE";
         }
 
         Map<String, Integer> missing = new HashMap<>();
         if (negative > 0) missing.put("availableQty", negative);
+        if (staleOrUnverified > 0) missing.put("staleInventory", staleOrUnverified);
 
         ReplenishmentWorkspaceView.InventoryHistory history = new ReplenishmentWorkspaceView.InventoryHistory(
                 status,
@@ -312,6 +317,12 @@ public class ReplenishmentWorkspaceService {
                 null,
                 missing.isEmpty() ? Map.of() : Map.copyOf(missing));
         return new InventoryMeta(history);
+    }
+
+    private static boolean isFreshInventoryRecord(Row row, long now) {
+        if (row.onHand() == null || row.inventoryUpdatedAt() == null) return false;
+        long age = now - row.inventoryUpdatedAt().toEpochMilli();
+        return age >= 0 && age <= INVENTORY_FRESH_MILLIS;
     }
 
     private static Row mapRow(ResultSet rs) throws java.sql.SQLException {

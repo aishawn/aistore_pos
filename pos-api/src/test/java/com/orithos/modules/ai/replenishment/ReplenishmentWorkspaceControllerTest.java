@@ -69,6 +69,38 @@ class ReplenishmentWorkspaceControllerTest {
     }
 
     @Test
+    void freshInventoryRowDoesNotHideAnotherStaleRow() throws Exception {
+        var jdbc = mock(org.springframework.jdbc.core.JdbcTemplate.class);
+        var zones = mock(com.orithos.common.BusinessTimezoneService.class);
+        when(zones.zoneForVendor(1L)).thenReturn(java.time.ZoneId.of("Australia/Melbourne"));
+        var fresh = inventoryRow(501L, java.time.Instant.now().minusSeconds(60));
+        var stale = inventoryRow(502L, java.time.Instant.now().minusSeconds(27 * 60 * 60));
+        when(jdbc.query(org.mockito.ArgumentMatchers.any(org.springframework.jdbc.core.PreparedStatementCreator.class),
+                org.mockito.ArgumentMatchers.any(org.springframework.jdbc.core.RowMapper.class)))
+                .thenAnswer(invocation -> {
+                    org.springframework.jdbc.core.RowMapper<?> mapper = invocation.getArgument(1);
+                    return List.of(mapper.mapRow(fresh, 0), mapper.mapRow(stale, 1));
+                });
+
+        var plan = new ReplenishmentWorkspaceService(jdbc, "false", zones)
+                .plan(new TenantContext(1L, 2L, 3L, List.of(3L), Set.of()), 21, false, false);
+
+        org.junit.jupiter.api.Assertions.assertEquals("REVIEW", plan.inventoryHistory().status());
+        org.junit.jupiter.api.Assertions.assertEquals(1,
+                plan.inventoryHistory().missingFields().get("staleInventory"));
+        org.junit.jupiter.api.Assertions.assertEquals(1d, plan.inventoryHistory().productCoverage());
+    }
+
+    private static java.sql.ResultSet inventoryRow(long id, java.time.Instant updatedAt) throws Exception {
+        var row = mock(java.sql.ResultSet.class);
+        when(row.getLong("id")).thenReturn(id);
+        when(row.getString("name")).thenReturn("Product " + id);
+        when(row.getObject("on_hand")).thenReturn(0d);
+        when(row.getTimestamp("inventory_updated_at")).thenReturn(java.sql.Timestamp.from(updatedAt));
+        return row;
+    }
+
+    @Test
     void zeroDemandAndZeroStockAreNotPresentedAsReadyToOrderOrAnException() throws Exception {
         var readyToOrder = singleProductWorkspace(0d, 0d, false);
         var exceptions = singleProductWorkspace(0d, 0d, true);
