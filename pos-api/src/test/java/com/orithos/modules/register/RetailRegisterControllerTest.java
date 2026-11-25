@@ -95,7 +95,7 @@ class RetailRegisterControllerTest {
         when(companySettings.getBoolean(CompanySettingsKeys.REFUNDS_REQUIRE_REASON, true)).thenReturn(false);
         when(companySettings.getBoolean(CompanySettingsKeys.CASH_OUT_WITHOUT_SALE, true)).thenReturn(true);
         when(companySettings.getBoolean(CompanySettingsKeys.REQUIRE_NOTE_ON_PARKED_SALE, false)).thenReturn(true);
-        when(companySettings.getString(CompanySettingsKeys.SALE_KEYS_POSITION, 3L, "RIGHT")).thenReturn("LEFT");
+        when(companySettings.getString(CompanySettingsKeys.SALE_KEYS_POSITION, 3L, "LEFT")).thenReturn("LEFT");
 
         var response = controller.salePolicy();
 
@@ -108,7 +108,7 @@ class RetailRegisterControllerTest {
         verify(companySettings).getBoolean(CompanySettingsKeys.REFUNDS_REQUIRE_REASON, true);
         verify(companySettings).getBoolean(CompanySettingsKeys.CASH_OUT_WITHOUT_SALE, true);
         verify(companySettings).getBoolean(CompanySettingsKeys.REQUIRE_NOTE_ON_PARKED_SALE, false);
-        verify(companySettings).getString(CompanySettingsKeys.SALE_KEYS_POSITION, 3L, "RIGHT");
+        verify(companySettings).getString(CompanySettingsKeys.SALE_KEYS_POSITION, 3L, "LEFT");
     }
 
     @Test
