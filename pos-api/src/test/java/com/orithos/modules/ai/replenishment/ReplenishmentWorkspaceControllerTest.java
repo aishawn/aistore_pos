@@ -42,6 +42,40 @@ class ReplenishmentWorkspaceControllerTest {
     }
 
     @Test
+    void inventoryHistoryReportsObservedDatesGapsAndPartialCaptures() throws Exception {
+        var jdbc = mock(org.springframework.jdbc.core.JdbcTemplate.class);
+        var zones = mock(com.orithos.common.BusinessTimezoneService.class);
+        var connection = mock(java.sql.Connection.class);
+        var statement = mock(java.sql.PreparedStatement.class);
+        var today = java.time.LocalDate.now(java.time.ZoneId.of("Australia/Melbourne"));
+        when(zones.zoneForVendor(1L)).thenReturn(java.time.ZoneId.of("Australia/Melbourne"));
+        when(connection.prepareStatement(anyString())).thenReturn(statement);
+        when(jdbc.query(org.mockito.ArgumentMatchers.any(org.springframework.jdbc.core.PreparedStatementCreator.class),
+                org.mockito.ArgumentMatchers.any(org.springframework.jdbc.core.RowMapper.class)))
+                .thenAnswer(invocation -> {
+                    org.springframework.jdbc.core.PreparedStatementCreator creator = invocation.getArgument(0);
+                    creator.createPreparedStatement(connection);
+                    return List.of();
+                });
+        when(jdbc.queryForList(anyString(), org.mockito.ArgumentMatchers.any(Object[].class)))
+                .thenReturn(List.of(
+                        java.util.Map.of("business_date", java.sql.Date.valueOf(today.minusDays(3)),
+                                "expected_products", 10, "capture_status", "COMPLETE"),
+                        java.util.Map.of("business_date", java.sql.Date.valueOf(today.minusDays(1)),
+                                "expected_products", 10, "capture_status", "PARTIAL")));
+
+        var plan = new ReplenishmentWorkspaceService(jdbc, "false", zones)
+                .plan(new TenantContext(1L, 2L, 3L, List.of(3L), Set.of()), 21, false, false);
+
+        var history = plan.inventoryHistory();
+        org.junit.jupiter.api.Assertions.assertEquals(2, history.observedDays());
+        org.junit.jupiter.api.Assertions.assertEquals(1, history.gapDays());
+        org.junit.jupiter.api.Assertions.assertEquals(1, history.invalidSnapshots());
+        org.junit.jupiter.api.Assertions.assertEquals(today.minusDays(3), history.firstBusinessDate());
+        org.junit.jupiter.api.Assertions.assertEquals(today.minusDays(1), history.latestBusinessDate());
+    }
+
+    @Test
     void workspaceExcludesNegativeStockWithVerifiedSalesFromDraftSuggestions() throws Exception {
         var jdbc = mock(org.springframework.jdbc.core.JdbcTemplate.class);
         var zones = mock(com.orithos.common.BusinessTimezoneService.class);
@@ -183,7 +217,7 @@ class ReplenishmentWorkspaceControllerTest {
                         new ReplenishmentWorkspaceView.SalesHistory("Australia/Melbourne", true, "SIGNED_NET_UNITS"),
                         0, java.util.Map.of(), java.time.Instant.now().toString(),
                         new ReplenishmentWorkspaceView.InventoryHistory("REVIEW", null, "Australia/Melbourne",
-                                1, 1, 1d, null, null, null, java.util.Map.of()),
+                                1, 1, 1d, null, null, null, java.util.Map.of(), null, null),
                         new ReplenishmentWorkspaceView.Forecast(false, "rules_v1_weighted_velocity", "UNAVAILABLE", null),
                         new ReplenishmentWorkspaceView.PurchaseWorkflow(true, "DRAFT_RFQ"),
                         new ReplenishmentWorkspaceView.CatalogueCoverage("COMPLETE", 0, 0, 0)));

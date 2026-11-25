@@ -10,6 +10,8 @@ import java.sql.ResultSet;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -304,6 +306,7 @@ public class ReplenishmentWorkspaceService {
         Map<String, Integer> missing = new HashMap<>();
         if (negative > 0) missing.put("availableQty", negative);
         if (staleOrUnverified > 0) missing.put("staleInventory", staleOrUnverified);
+        SnapshotHistory snapshots = snapshotHistory(outletId, timezone);
 
         ReplenishmentWorkspaceView.InventoryHistory history = new ReplenishmentWorkspaceView.InventoryHistory(
                 status,
@@ -312,11 +315,48 @@ public class ReplenishmentWorkspaceService {
                 expected,
                 captured,
                 expected == 0 ? 0d : captured / (double) expected,
-                null,
-                null,
-                null,
-                missing.isEmpty() ? Map.of() : Map.copyOf(missing));
+                snapshots.observedDays(),
+                snapshots.gapDays(),
+                snapshots.invalidSnapshots(),
+                missing.isEmpty() ? Map.of() : Map.copyOf(missing),
+                snapshots.firstBusinessDate(),
+                snapshots.latestBusinessDate());
         return new InventoryMeta(history);
+    }
+
+    private SnapshotHistory snapshotHistory(long outletId, String timezone) {
+        ZoneId zone = ZoneId.of(timezone);
+        LocalDate today = LocalDate.now(zone);
+        LocalDate from = today.minusDays(HISTORY_DAYS - 1L);
+        List<Map<String, Object>> captures = jdbc.queryForList("""
+                SELECT business_date, expected_products, capture_status
+                FROM inventory_snapshot_capture
+                WHERE outlet_id = ? AND business_date BETWEEN ? AND ?
+                ORDER BY business_date
+                """, outletId, from, today);
+        List<LocalDate> observed = captures.stream()
+                .filter(row -> numberValue(row.get("expected_products")) > 0)
+                .map(row -> localDateValue(row.get("business_date")))
+                .filter(Objects::nonNull)
+                .toList();
+        LocalDate first = observed.isEmpty() ? null : observed.getFirst();
+        LocalDate latest = observed.isEmpty() ? null : observed.getLast();
+        int gaps = first == null ? 0 : Math.max(0, (int) (latest.toEpochDay() - first.toEpochDay() + 1) - observed.size());
+        int invalid = (int) captures.stream()
+                .filter(row -> numberValue(row.get("expected_products")) > 0)
+                .filter(row -> !"COMPLETE".equalsIgnoreCase(String.valueOf(row.get("capture_status"))))
+                .count();
+        return new SnapshotHistory(observed.size(), gaps, invalid, first, latest);
+    }
+
+    private static int numberValue(Object value) {
+        return value instanceof Number number ? number.intValue() : 0;
+    }
+
+    private static LocalDate localDateValue(Object value) {
+        if (value instanceof LocalDate date) return date;
+        if (value instanceof java.sql.Date date) return date.toLocalDate();
+        return null;
     }
 
     private static boolean isFreshInventoryRecord(Row row, long now) {
@@ -359,4 +399,6 @@ public class ReplenishmentWorkspaceService {
                        Double unitCost, Double unitPrice, Long supplierId, String supplierName, long supplierLinkCount, double minimumOrder, Integer leadTimeDays) { }
 
     private record InventoryMeta(ReplenishmentWorkspaceView.InventoryHistory history) { }
+    private record SnapshotHistory(int observedDays, int gapDays, int invalidSnapshots,
+                                   LocalDate firstBusinessDate, LocalDate latestBusinessDate) { }
 }

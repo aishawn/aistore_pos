@@ -66,7 +66,9 @@ public record ReplenishmentWorkspaceView(
             Integer observedDays,
             Integer gapDays,
             Integer invalidSnapshots,
-            Map<String, Integer> missingFields
+            Map<String, Integer> missingFields,
+            java.time.LocalDate firstBusinessDate,
+            java.time.LocalDate latestBusinessDate
     ) { }
 
     public record Forecast(
