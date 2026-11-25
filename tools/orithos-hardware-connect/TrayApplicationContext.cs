@@ -153,9 +153,11 @@ internal sealed class TrayApplicationContext : ApplicationContext
 
     private static void OpenUrl(string url)
     {
+        if (!SettingsPagePolicy.TryGetSafeUri(url, out var settingsUri)) return;
+
         try
         {
-            Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+            Process.Start(new ProcessStartInfo(settingsUri!.AbsoluteUri) { UseShellExecute = true });
         }
         catch
         {

@@ -98,8 +98,8 @@ internal sealed class SupportDiagnosticsForm : Form
                 "Support logs: available locally",
                 $"Checked: {DateTimeOffset.Now:yyyy-MM-dd HH:mm:ss zzz}",
                 "",
-                $"Hardware API ({hardwareUrl}): {Describe(hardware)}",
-                $"EFTPOS API ({eftposUrl}): {Describe(eftpos)}",
+                $"Hardware API ({EndpointDisplay.SafeLabel(hardwareUrl)}): {Describe(hardware)}",
+                $"EFTPOS API ({EndpointDisplay.SafeLabel(eftposUrl)}): {Describe(eftpos)}",
             };
 
             if (hardware is not null)

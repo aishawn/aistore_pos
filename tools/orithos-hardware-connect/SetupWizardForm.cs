@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Drawing;
 
 namespace Orithos.HardwareConnect;
@@ -163,11 +164,39 @@ internal sealed class SetupWizardForm : Form
             progress.Visible = false;
             statusLabel.Text = "Installation complete. Hardware Connect is starting in the system tray.";
             SupportLog.Record("info", "installer.install-verified");
-            MessageBox.Show(
-                "Installation complete.\n\nOpen Hardware settings to confirm both local services are online and connect your devices. If Windows Firewall asks, allow Orithos Hardware Connect on private networks.",
+            var openSettings = MessageBox.Show(
+                SetupCompletionPolicy.SuccessMessage,
                 AgentVersion.Product,
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Information);
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Information,
+                MessageBoxDefaultButton.Button1);
+            if (openSettings == DialogResult.Yes)
+            {
+                if (SettingsPagePolicy.TryGetSafeUri(settingsUrl, out var settingsUri))
+                {
+                    try
+                    {
+                        Process.Start(new ProcessStartInfo(settingsUri!.AbsoluteUri) { UseShellExecute = true });
+                    }
+                    catch
+                    {
+                        MessageBox.Show(
+                            "The Hardware settings page could not be opened. Check your default browser and open the store's Hardware settings manually.",
+                            AgentVersion.Product,
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Warning);
+                    }
+                }
+                else
+                {
+                    MessageBox.Show(
+                        "The configured Hardware settings address is invalid. Open the store's Hardware settings manually.",
+                        AgentVersion.Product,
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning);
+                }
+            }
+
             DialogResult = DialogResult.OK;
             Close();
         }
