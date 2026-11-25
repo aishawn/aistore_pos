@@ -4,6 +4,17 @@ internal static class InstallFileTransaction
 {
     public static void ReplaceFiles(string sourceRoot, string destinationRoot, IEnumerable<string> relativeFiles)
     {
+        ReplaceFilesAndVerify(sourceRoot, destinationRoot, relativeFiles, verify: null, beforeRollback: null, afterRollback: null);
+    }
+
+    public static void ReplaceFilesAndVerify(
+        string sourceRoot,
+        string destinationRoot,
+        IEnumerable<string> relativeFiles,
+        Action? verify,
+        Action? beforeRollback,
+        Action? afterRollback = null)
+    {
         sourceRoot = Path.GetFullPath(sourceRoot);
         destinationRoot = Path.GetFullPath(destinationRoot);
         var parentDirectory = Path.GetDirectoryName(destinationRoot)
@@ -52,10 +63,30 @@ internal static class InstallFileTransaction
                 if (existed) File.SetAttributes(destinationPath, FileAttributes.Normal);
                 File.Move(stagedPath, destinationPath, overwrite: true);
             }
+
+            verify?.Invoke();
         }
         catch (Exception installFailure)
         {
-            var rollbackFailures = RollBack(destinationRoot, backupDirectory, applied);
+            var rollbackFailures = new List<Exception>();
+            try
+            {
+                beforeRollback?.Invoke();
+            }
+            catch (Exception rollbackFailure)
+            {
+                rollbackFailures.Add(rollbackFailure);
+            }
+
+            rollbackFailures.AddRange(RollBack(destinationRoot, backupDirectory, applied));
+            try
+            {
+                afterRollback?.Invoke();
+            }
+            catch (Exception rollbackFailure)
+            {
+                rollbackFailures.Add(rollbackFailure);
+            }
             if (rollbackFailures.Count > 0)
             {
                 throw new InstallRollbackException(transactionDirectory, installFailure, rollbackFailures);

@@ -17,6 +17,8 @@ const purchase = {
 };
 
 test("requires a reachable adapter listener and configured token before enabling live EFTPOS", () => {
+  assert.equal(isConnectorConfiguredAndReachable({ integrationMode: "adapter", tokenConfigured: true, adapterListener: "reachable" }), true);
+  assert.equal(isConnectorConfiguredAndReachable({ integrationMode: "adapter", tokenConfigured: true, adapterListener: "unreachable" }), false);
   assert.equal(isConnectorConfiguredAndReachable({ integrationMode: "tcp-proxy", tokenConfigured: true, adapterListener: "reachable" }), true);
   assert.equal(isConnectorConfiguredAndReachable({ integrationMode: "tcp-proxy", tokenConfigured: true, adapterListener: "unreachable" }), false);
   assert.equal(isConnectorConfiguredAndReachable({ integrationMode: "tcp-proxy", tokenConfigured: true }), false);

@@ -2,7 +2,7 @@
 
 import { publishLocalHardwareSettingsChange } from "@/lib/local-hardware";
 import type { EftposReadinessSnapshot } from "@/lib/eftpos-readiness-core";
-export { hasFreshEftposDiagnostics, hasRecentApprovedEftposTest } from "@/lib/eftpos-readiness-core";
+export { getEftposConfigurationKey, hasFreshEftposDiagnostics, hasRecentApprovedEftposTest } from "@/lib/eftpos-readiness-core";
 export type { EftposReadinessSnapshot } from "@/lib/eftpos-readiness-core";
 
 const KEY = "orithos.hardware.eftpos-readiness.v1";
@@ -17,6 +17,8 @@ const EMPTY: EftposReadinessSnapshot = {
   tokenConfigured: false,
   testPaymentAt: "",
   testPaymentStatus: "",
+  currentConfigurationKey: "",
+  testConfigurationKey: "",
   updatedAt: "",
 };
 
@@ -52,6 +54,8 @@ export function readEftposReadinessSnapshot(): EftposReadinessSnapshot {
       tokenConfigured: value.tokenConfigured === true,
       testPaymentAt: typeof value.testPaymentAt === "string" ? value.testPaymentAt : "",
       testPaymentStatus: value.testPaymentStatus === "APPROVED" || value.testPaymentStatus === "DECLINED" || value.testPaymentStatus === "UNKNOWN" ? value.testPaymentStatus : "",
+      currentConfigurationKey: typeof value.currentConfigurationKey === "string" ? value.currentConfigurationKey : "",
+      testConfigurationKey: typeof value.testConfigurationKey === "string" ? value.testConfigurationKey : "",
       updatedAt: typeof value.updatedAt === "string" ? value.updatedAt : "",
     };
   } catch {

@@ -25,7 +25,7 @@ internal sealed record LinklyAdapterEndpoint(string BaseUrl)
             || !string.IsNullOrEmpty(uri.Fragment)
             || uri.AbsolutePath != "/")
         {
-            error = "ORITHOS_LINKLY_TCP_BASE must be a local HTTP(S) adapter URL on localhost or a loopback IP, without credentials, query, fragment, or path.";
+            error = "ORITHOS_LINKLY_ADAPTER_BASE (or legacy ORITHOS_LINKLY_TCP_BASE) must be a local HTTP(S) adapter URL on localhost or a loopback IP, without credentials, query, fragment, or path.";
             return null;
         }
 

@@ -124,11 +124,6 @@ internal static class AgentHost
         try
         {
             RegisterAgentInstaller.Install(settingsUrl);
-            RegisterAgentInstaller.LaunchInstalledAgent();
-            if (!RegisterAgentInstaller.WaitForLocalServicesReady(TimeSpan.FromSeconds(20)))
-            {
-                throw new InvalidOperationException("Hardware Connect started, but one or both local services did not become ready within 20 seconds.");
-            }
 
             SupportLog.Record("info", "installer.install-verified");
             MessageBox.Show(

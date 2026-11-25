@@ -40,7 +40,8 @@ internal static class DiagnosticGuidance
             actions.Add("LAB MODE: this connector cannot process live card payments. Configure the bank's Linkly adapter and complete terminal acceptance before enabling EFTPOS.");
         else if (string.Equals(integrationMode, "configuration-error", StringComparison.OrdinalIgnoreCase))
             actions.Add("Linkly adapter configuration is invalid. Correct the local adapter address and refresh diagnostics.");
-        else if (string.Equals(integrationMode, "tcp-proxy", StringComparison.OrdinalIgnoreCase))
+        else if (string.Equals(integrationMode, "adapter", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(integrationMode, "tcp-proxy", StringComparison.OrdinalIgnoreCase))
         {
             if (string.Equals(adapterListener, "unreachable", StringComparison.OrdinalIgnoreCase))
                 actions.Add("The configured Linkly adapter port is not accepting local TCP connections. Start the bank's Linkly Client or adapter and verify its address and port. Do not retry a pending or unknown payment.");

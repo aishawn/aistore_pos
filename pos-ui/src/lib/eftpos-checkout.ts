@@ -6,7 +6,7 @@ import {
   type EftposAttempt,
 } from "./eftpos-api";
 import { ApiError } from "./api";
-import { fetchConnectorStatus, isConnectorConfiguredAndReachable, requestConnectorPurchase, requestConnectorQuery } from "./linkly-connector";
+import { fetchConnectorStatus, isAdapterMode, isConnectorConfiguredAndReachable, requestConnectorPurchase, requestConnectorQuery } from "./linkly-connector";
 
 const DISPATCH_KEY_PREFIX = "orithos.eftpos.purchase-dispatched.";
 
@@ -61,7 +61,7 @@ async function dispatchConnector(attempt: EftposAttempt, registerId: number): Pr
     }
     const status = await fetchConnectorStatus(attempt.connectorBaseUrl);
     if (!isConnectorConfiguredAndReachable(status)) {
-      const reason = status?.integrationMode === "tcp-proxy" && status.adapterListener === "unreachable"
+      const reason = isAdapterMode(status) && status?.adapterListener === "unreachable"
         ? "The local adapter port is not accepting connections."
         : "Real Linkly is not ready on this PC.";
       throw new Error(`${reason} The payment was not sent to the terminal; keep this order and resolve the connector status before retrying.`);
@@ -115,7 +115,7 @@ export async function ensureEftposApprovedBeforeCheckout(input: {
       const binding = await getRegisterEftposBinding(input.registerId);
       const status = await fetchConnectorStatus(binding.connectorBaseUrl);
       if (isConnectorConfiguredAndReachable(status)) return null;
-      if (status?.integrationMode === "tcp-proxy" && status.adapterListener === "unreachable")
+      if (isAdapterMode(status) && status?.adapterListener === "unreachable")
         return "The local adapter port is not accepting connections. No payment attempt was created; start the bank Linkly Client or adapter before retrying this order.";
       return "Real Linkly is not ready on this PC. No payment attempt was created; resolve the connector status before retrying.";
     },

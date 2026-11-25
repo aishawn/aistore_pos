@@ -50,6 +50,46 @@ public sealed class InstallFileTransactionTests
     }
 
     [Fact]
+    public void RestoresPreviousInstallWhenPostInstallVerificationFails()
+    {
+        WithDirectories((source, install) =>
+        {
+            Write(source, "OrithosHardwareConnect.exe", "new-agent");
+            Write(install, "OrithosHardwareConnect.exe", "old-agent");
+            Write(install, "connector-settings.json", "encrypted-token");
+            var candidateStopped = false;
+            var registrationsRestored = false;
+
+            var failure = Assert.Throws<TargetInvocationException>(() =>
+                ReplaceFilesAndVerify(source, install, ["OrithosHardwareConnect.exe"],
+                    () => throw new InvalidOperationException("health check failed"),
+                    () => candidateStopped = true,
+                    () => registrationsRestored = true));
+
+            Assert.IsType<InvalidOperationException>(failure.InnerException);
+            Assert.True(candidateStopped);
+            Assert.True(registrationsRestored);
+            Assert.Equal("old-agent", Read(install, "OrithosHardwareConnect.exe"));
+            Assert.Equal("encrypted-token", Read(install, "connector-settings.json"));
+        });
+    }
+
+    [Fact]
+    public void KeepsNewInstallOnlyAfterPostInstallVerificationSucceeds()
+    {
+        WithDirectories((source, install) =>
+        {
+            Write(source, "OrithosHardwareConnect.exe", "new-agent");
+            Write(install, "OrithosHardwareConnect.exe", "old-agent");
+
+            ReplaceFilesAndVerify(source, install, ["OrithosHardwareConnect.exe"], () => { }, () =>
+                throw new InvalidOperationException("rollback must not run after successful verification"));
+
+            Assert.Equal("new-agent", Read(install, "OrithosHardwareConnect.exe"));
+        });
+    }
+
+    [Fact]
     public void RejectsPathsThatEscapeTheInstallDirectory()
     {
         WithDirectories((source, install) =>
@@ -89,6 +129,20 @@ public sealed class InstallFileTransactionTests
         var type = assembly.GetType("Orithos.HardwareConnect.InstallFileTransaction", throwOnError: true)!;
         var method = type.GetMethod("ReplaceFiles", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)!;
         method.Invoke(null, [source, install, files]);
+    }
+
+    private static void ReplaceFilesAndVerify(
+        string source,
+        string install,
+        string[] files,
+        Action verify,
+        Action beforeRollback,
+        Action? afterRollback = null)
+    {
+        var assembly = Assembly.Load("OrithosHardwareConnect");
+        var type = assembly.GetType("Orithos.HardwareConnect.InstallFileTransaction", throwOnError: true)!;
+        var method = type.GetMethod("ReplaceFilesAndVerify", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)!;
+        method.Invoke(null, [source, install, files, verify, beforeRollback, afterRollback]);
     }
 
     private static void WithDirectories(Action<string, string> action)

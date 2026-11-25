@@ -80,6 +80,7 @@ internal static class RegisterAgentInstaller
         }
 
         var hadInstalledAgent = IsInstalled();
+        var previousSettingsUrl = Environment.GetEnvironmentVariable(SettingsUrlEnv, EnvironmentVariableTarget.User);
         if (hadInstalledAgent)
         {
             var candidateVersion = Assembly.GetExecutingAssembly().GetName().Version ?? new Version(1, 0, 0, 0);
@@ -111,17 +112,33 @@ internal static class RegisterAgentInstaller
                     .Select(path => Path.GetRelativePath(stagingDirectory, path))
                     .ToArray();
                 progress?.Report(new InstallProgress("ReplacingFiles", 55));
-                InstallFileTransaction.ReplaceFiles(stagingDirectory, InstallDir, payloadFiles);
+                InstallFileTransaction.ReplaceFilesAndVerify(
+                    stagingDirectory,
+                    InstallDir,
+                    payloadFiles,
+                    verify: () =>
+                    {
+                        if (!File.Exists(InstalledExePath))
+                        {
+                            throw new InvalidOperationException($"Could not install agent at {InstalledExePath}.");
+                        }
 
-                if (!File.Exists(InstalledExePath))
-                {
-                    throw new InvalidOperationException($"Could not install agent at {InstalledExePath}.");
-                }
+                        progress?.Report(new InstallProgress("RegisteringStartup", 82));
+                        RegisterStartup(InstalledExePath);
+                        Environment.SetEnvironmentVariable(SettingsUrlEnv, resolvedSettingsUrl, EnvironmentVariableTarget.User);
+                        RegisterProgramsAndFeatures(InstalledExePath);
 
-                progress?.Report(new InstallProgress("RegisteringStartup", 82));
-                RegisterStartup(InstalledExePath);
-                Environment.SetEnvironmentVariable(SettingsUrlEnv, resolvedSettingsUrl, EnvironmentVariableTarget.User);
-                RegisterProgramsAndFeatures(InstalledExePath);
+                        progress?.Report(new InstallProgress("StartingAgent", 90));
+                        LaunchInstalledAgent();
+                        progress?.Report(new InstallProgress("CheckingServices", 96));
+                        if (!WaitForLocalServicesReady(TimeSpan.FromSeconds(20)))
+                        {
+                            throw new InvalidOperationException(
+                                "Hardware Connect started, but one or both local services did not become ready within 20 seconds.");
+                        }
+                    },
+                    beforeRollback: StopRunningAgent,
+                    afterRollback: () => RestoreInstallationRegistration(hadInstalledAgent, previousSettingsUrl));
             }
             catch (InstallRollbackException)
             {
@@ -300,6 +317,21 @@ internal static class RegisterAgentInstaller
         DeleteRunKey();
         var runKey = Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run", writable: true);
         runKey?.SetValue(RunKeyName, $"\"{exePath}\"");
+    }
+
+    private static void RestoreInstallationRegistration(bool hadInstalledAgent, string? previousSettingsUrl)
+    {
+        Environment.SetEnvironmentVariable(SettingsUrlEnv, previousSettingsUrl, EnvironmentVariableTarget.User);
+        if (hadInstalledAgent && File.Exists(InstalledExePath))
+        {
+            RegisterStartup(InstalledExePath);
+            RegisterProgramsAndFeatures(InstalledExePath);
+            return;
+        }
+
+        DeleteScheduledTask();
+        DeleteRunKey();
+        DeleteProgramsAndFeatures();
     }
 
     private static bool TryCreateScheduledTask(string exePath)

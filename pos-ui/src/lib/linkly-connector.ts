@@ -7,11 +7,16 @@ export type ConnectorStatus = {
   tokenConfigured?: boolean;
   tokenRecoveryRequired?: boolean;
   adapterListener?: "reachable" | "unreachable" | "not-configured" | string;
-  integrationMode?: "lab" | "tcp-proxy" | string;
+  integrationMode?: "lab" | "adapter" | "tcp-proxy" | string;
 };
 
+export function isAdapterMode(status: ConnectorStatus | null | undefined): boolean {
+  return status?.integrationMode === "adapter" || status?.integrationMode === "tcp-proxy";
+}
+
 export function isConnectorConfiguredAndReachable(status: ConnectorStatus | null | undefined): boolean {
-  return status?.integrationMode === "tcp-proxy"
+  return status != null
+    && isAdapterMode(status)
     && status.tokenConfigured === true
     && status.adapterListener === "reachable";
 }

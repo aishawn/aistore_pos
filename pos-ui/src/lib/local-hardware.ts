@@ -1,6 +1,6 @@
 "use client";
 
-import { hasFreshEftposDiagnostics, hasRecentApprovedEftposTest } from "@/lib/eftpos-readiness-core";
+import { hasFreshEftposDiagnostics, hasRecentApprovedEftposTest, isAdapterMode } from "@/lib/eftpos-readiness-core";
 
 const ORITHOS_HARDWARE_CONNECT_BASE = "http://127.0.0.1:9170";
 const LOOPBACK_PROBE_MS = 2_500;
@@ -675,6 +675,8 @@ function readEftposReadinessInline(): {
   tokenConfigured: boolean;
   testPaymentAt: string;
   testPaymentStatus: "APPROVED" | "DECLINED" | "UNKNOWN" | "";
+  currentConfigurationKey: string;
+  testConfigurationKey: string;
   updatedAt: string;
 } {
   const empty = {
@@ -688,6 +690,8 @@ function readEftposReadinessInline(): {
     tokenConfigured: false,
     testPaymentAt: "",
     testPaymentStatus: "" as const,
+    currentConfigurationKey: "",
+    testConfigurationKey: "",
     updatedAt: "",
   };
   if (typeof window === "undefined") return empty;
@@ -710,6 +714,8 @@ function readEftposReadinessInline(): {
         value.testPaymentStatus === "APPROVED" || value.testPaymentStatus === "DECLINED" || value.testPaymentStatus === "UNKNOWN"
           ? value.testPaymentStatus
           : "",
+      currentConfigurationKey: typeof value.currentConfigurationKey === "string" ? value.currentConfigurationKey : "",
+      testConfigurationKey: typeof value.testConfigurationKey === "string" ? value.testConfigurationKey : "",
       updatedAt: typeof value.updatedAt === "string" ? value.updatedAt : "",
     };
   } catch {
@@ -787,7 +793,7 @@ export function getHardwareReadinessItems(): HardwareReadinessItem[] {
     && eftposSnap.paymentsEnabled
     && eftposSnap.registerId === eftposSnap.selectedRegisterId
     && eftposSnap.connectorHealth === "reachable"
-    && eftposSnap.connectorMode === "tcp-proxy"
+    && isAdapterMode(eftposSnap.connectorMode)
     && eftposSnap.tokenConfigured
     && eftposDiagnosticsFresh
     && eftposTestApproved;
@@ -797,7 +803,7 @@ export function getHardwareReadinessItems(): HardwareReadinessItem[] {
       ? ({ status: "Card payments are disabled for this register", tone: "muted" as const })
         : !eftposDiagnosticsFresh || eftposSnap.connectorHealth !== "reachable"
           ? ({ status: "Check local EFTPOS bridge status below", tone: "warn" as const })
-          : eftposSnap.connectorMode !== "tcp-proxy"
+          : !isAdapterMode(eftposSnap.connectorMode)
             ? ({ status: "Test mode · real card payments are blocked", tone: "warn" as const })
             : !eftposSnap.tokenConfigured
               ? ({ status: "Connector token required", tone: "warn" as const })

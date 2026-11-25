@@ -18,7 +18,7 @@ public sealed class DiagnosticGuidanceTests
     public void GivesPrinterAndCredentialRecoverySteps()
     {
         var printer = ("Receipt", "attention", (string?)"paper out");
-        var actions = Build("reachable", "reachable", 1, [printer], "tcp-proxy", "reachable", false, true);
+        var actions = Build("reachable", "reachable", 1, [printer], "adapter", "reachable", false, true);
 
         Assert.Contains(actions, action => action.Contains("Receipt", StringComparison.Ordinal) && action.Contains("paper out", StringComparison.Ordinal));
         Assert.Contains(actions, action => action.Contains("Re-enter EFTPOS settings", StringComparison.Ordinal));
@@ -40,7 +40,7 @@ public sealed class DiagnosticGuidanceTests
     [Fact]
     public void GuidesOperatorWhenAdapterListenerIsDown()
     {
-        var actions = Build("reachable", "reachable", 1, [], "tcp-proxy", "unreachable", true, false);
+        var actions = Build("reachable", "reachable", 1, [], "adapter", "unreachable", true, false);
 
         Assert.Contains(actions, action => action.Contains("not accepting local TCP connections", StringComparison.Ordinal));
         Assert.Contains(actions, action => action.Contains("Do not retry", StringComparison.Ordinal));

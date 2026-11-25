@@ -169,7 +169,13 @@ function readEftposChecklistItem(snapshot: Record<string, unknown>) {
   const selectedRegisterId = typeof snapshot.selectedRegisterId === "number" ? snapshot.selectedRegisterId : registerId;
   const storage = new Map<string, string>([[
     "orithos.hardware.eftpos-readiness.v1",
-    JSON.stringify({ testPaymentRegisterId: registerId, updatedAt: new Date().toISOString(), ...snapshot }),
+    JSON.stringify({
+      testPaymentRegisterId: registerId,
+      updatedAt: new Date().toISOString(),
+      currentConfigurationKey: "test-config",
+      testConfigurationKey: "test-config",
+      ...snapshot,
+    }),
   ], [
     "orithos.eftpos.register-id.v1",
     String(selectedRegisterId),

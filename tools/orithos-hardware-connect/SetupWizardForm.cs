@@ -156,16 +156,6 @@ internal sealed class SetupWizardForm : Form
         {
             await Task.Run(() => RegisterAgentInstaller.Install(settingsUrl, installerProgress));
             filesInstalled = true;
-            statusLabel.Text = InstallerStatusText.ForStage("StartingAgent");
-            progress.Value = 92;
-            RegisterAgentInstaller.LaunchInstalledAgent();
-            statusLabel.Text = InstallerStatusText.ForStage("CheckingServices");
-            var servicesReady = await Task.Run(() => RegisterAgentInstaller.WaitForLocalServicesReady(TimeSpan.FromSeconds(20)));
-            if (!servicesReady)
-            {
-                throw new InvalidOperationException("Hardware Connect started, but one or both local services did not become ready within 20 seconds.");
-            }
-
             progress.Value = 100;
             progress.Visible = false;
             statusLabel.Text = autoStartUpdate

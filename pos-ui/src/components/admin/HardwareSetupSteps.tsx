@@ -10,6 +10,7 @@ import {
   subscribeLocalHardwareSettings,
 } from "@/lib/local-hardware";
 import { getEftposReadinessSnapshotJson, hasRecentApprovedEftposTest, readEftposReadinessSnapshot } from "@/lib/hardware-eftpos-readiness";
+import { isAdapterMode } from "@/lib/eftpos-readiness-core";
 import {
   resolveHardwareNetworkAccessState,
   watchHardwareNetworkAccess,
@@ -43,7 +44,7 @@ function stepDone(id: StepId, bridge: boolean, network: LocalNetworkAccessState)
       return eftpos.paymentsEnabled
         && eftpos.connectorHealth === "reachable"
         && eftpos.tokenConfigured
-        && eftpos.connectorMode === "tcp-proxy"
+        && isAdapterMode(eftpos.connectorMode)
         && hasRecentApprovedEftposTest(eftpos, eftpos.registerId);
     default:
       return false;
