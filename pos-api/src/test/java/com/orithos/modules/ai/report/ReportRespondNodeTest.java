@@ -62,6 +62,7 @@ class ReportRespondNodeTest {
         assertTrue(answer.startsWith("2026-11-23 至 2026-11-26品类销量排名（按售出件数，前 2 名）："));
         assertTrue(answer.contains("1. Beer Local：售出 420 件，销售额 AUD 2100.00"));
         assertTrue(answer.contains("2. Wine：售出 180 件，销售额 AUD 3600.00"));
+        assertTrue(answer.contains("销售额含 GST"));
         assertTrue(answer.contains("金额仅供参考"));
     }
 

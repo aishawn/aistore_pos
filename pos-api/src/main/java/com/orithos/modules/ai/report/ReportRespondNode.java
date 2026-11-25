@@ -363,8 +363,8 @@ public class ReportRespondNode implements NodeAction {
                     .append(chinese ? " 件，销售额 AUD " : " units sold, sales AUD ").append(sales);
         }
         answer.append(chinese
-                ? "\n数据来源：Orithos POS 已完成销售记录；按销量排序，金额仅供参考。"
-                : "\nSource: completed Orithos POS sales; ranked by units, with sales value for context.");
+                ? "\n数据来源：Orithos POS 已完成销售记录；按销量排序，销售额含 GST，金额仅供参考。"
+                : "\nSource: completed Orithos POS sales; ranked by units. Sales values include GST and are for context only.");
         return answer.toString();
     }
 
