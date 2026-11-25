@@ -3,10 +3,32 @@
 $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot
 
-foreach ($name in @("R2_ENDPOINT", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY", "R2_BUCKET")) {
-  if ([string]::IsNullOrWhiteSpace((Get-Item "Env:$name" -ErrorAction SilentlyContinue).Value)) {
-    throw "Missing required environment variable: $name"
+function Get-TrimmedEnv([string]$name) {
+  $raw = (Get-Item "Env:$name" -ErrorAction SilentlyContinue).Value
+  if ([string]::IsNullOrWhiteSpace($raw)) { return $null }
+  return [string]::Concat([char[]](($raw.ToCharArray() | Where-Object { [int][char]$_ -ge 32 -and [int][char]$_ -le 126 }))).Trim()
+}
+
+$envFile = Join-Path $PSScriptRoot "..\..\.env"
+if (Test-Path $envFile) {
+  foreach ($line in Get-Content $envFile) {
+    if ($line -match '^\s*#' -or $line -notmatch '=') { continue }
+    $parts = $line -split '=', 2
+    $name = $parts[0].Trim()
+    if ($name -notmatch '^R2_') { continue }
+    $trimmed = Get-TrimmedEnv -name 'x'  # pattern reuse below
+    $value = [string]::Concat([char[]](($parts[1].ToCharArray() | Where-Object { [int][char]$_ -ge 32 -and [int][char]$_ -le 126 }))).Trim()
+    if ($name -eq 'R2_BUCKET' -and $value -eq 'generate-image') { continue }
+    Set-Item -Path "Env:$name" -Value $value
   }
+}
+
+foreach ($name in @("R2_ENDPOINT", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY", "R2_BUCKET")) {
+  $value = Get-TrimmedEnv $name
+  if ([string]::IsNullOrWhiteSpace($value)) {
+    throw "Missing required environment variable: $name (use R2 v2 store credentials; trim stray control characters in .env)"
+  }
+  Set-Item -Path "Env:$name" -Value $value
 }
 
 $version = (Select-Xml -Path ./OrithosHardwareConnect.csproj -XPath "/Project/PropertyGroup/Version").Node.InnerText.Trim()
