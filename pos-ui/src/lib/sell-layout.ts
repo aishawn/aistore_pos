@@ -31,6 +31,6 @@ export function getSellLayoutClasses(position: string | null | undefined): SellL
     case "RIGHT":
       return RIGHT_LAYOUT;
     default:
-      return LEFT_LAYOUT;
+      return RIGHT_LAYOUT;
   }
 }

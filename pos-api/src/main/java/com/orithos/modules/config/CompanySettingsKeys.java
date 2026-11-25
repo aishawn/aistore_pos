@@ -92,7 +92,7 @@ public final class CompanySettingsKeys {
         d.put("company.integrations.metcash_host_file", "true");
         // Miscellaneous
         d.put("company.misc.default_sale_keys", "");
-        d.put(SALE_KEYS_POSITION, "LEFT");
+        d.put(SALE_KEYS_POSITION, "RIGHT");
         d.put("company.misc.price_change_notifications", "false");
         d.put("company.misc.statement_reply_to", "");
         d.put("company.misc.avg_cost_on_price_editor", "false");

@@ -216,7 +216,7 @@ export function OdooRegisterPage() {
   const [cashOutReasons, setCashOutReasons] = useState<string[]>([]);
   const [discountReasonRequired, setDiscountReasonRequired] = useState<boolean | null>(null);
   const [parkedSaleNoteRequired, setParkedSaleNoteRequired] = useState<boolean | null>(null);
-  const [saleKeysPosition, setSaleKeysPosition] = useState("LEFT");
+  const [saleKeysPosition, setSaleKeysPosition] = useState("RIGHT");
   const [eftposRecoveryAvailable, setEftposRecoveryAvailable] = useState(false);
   const [eftposRecoveryBusy, setEftposRecoveryBusy] = useState(false);
   const [eftposPaymentAmount, setEftposPaymentAmount] = useState<number | null>(null);
@@ -296,13 +296,13 @@ export function OdooRegisterPage() {
         setDiscountReasonRequired(policy.discountsRequireReason);
         setCashOutWithoutSaleAllowed(policy.allowCashOutWithoutSale);
         setParkedSaleNoteRequired(typeof policy.requireNoteOnParkedSale === "boolean" ? policy.requireNoteOnParkedSale : null);
-        setSaleKeysPosition("LEFT");
+        setSaleKeysPosition(policy.saleKeysPosition);
       })
       .catch(() => {
         if (!active) return;
         setDiscountReasonRequired(null);
         setParkedSaleNoteRequired(null);
-        setSaleKeysPosition("LEFT");
+        setSaleKeysPosition("RIGHT");
       });
     return () => { active = false; };
   }, []);
