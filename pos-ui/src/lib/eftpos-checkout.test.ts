@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { dispatchClaimedPurchase, markPurchaseDispatched, wasPurchaseDispatched } from "./eftpos-checkout.ts";
+import { dispatchClaimedPurchase, loadOrCreateAttemptWithPreflight, markPurchaseDispatched, wasPurchaseDispatched } from "./eftpos-checkout.ts";
 
 test("purchase dispatch marker is isolated per order and survives resume checks", () => {
   const values = new Map<string, string>();
@@ -39,4 +39,43 @@ test("does not send another purchase when another checkout owns the dispatch cla
 
   assert.equal(dispatched, false);
   assert.equal(purchaseSent, false);
+});
+
+test("recovers an existing attempt without blocking it on a new-payment preflight", async () => {
+  const events: string[] = [];
+  const existing = { status: "UNKNOWN" };
+
+  const attempt = await loadOrCreateAttemptWithPreflight(
+    async () => { events.push("lookup"); return existing; },
+    async () => { events.push("preflight"); return "adapter offline"; },
+    async () => { events.push("create"); return { status: "PENDING" }; },
+  );
+
+  assert.equal(attempt, existing);
+  assert.deepEqual(events, ["lookup"]);
+});
+
+test("does not create a payment attempt when adapter preflight fails", async () => {
+  const events: string[] = [];
+
+  await assert.rejects(loadOrCreateAttemptWithPreflight(
+    async () => { events.push("lookup"); return null; },
+    async () => { events.push("preflight"); return "adapter offline"; },
+    async () => { events.push("create"); return { status: "PENDING" }; },
+  ), /adapter offline/);
+
+  assert.deepEqual(events, ["lookup", "preflight"]);
+});
+
+test("checks readiness before creating a first payment attempt", async () => {
+  const events: string[] = [];
+
+  const attempt = await loadOrCreateAttemptWithPreflight(
+    async () => { events.push("lookup"); return null; },
+    async () => { events.push("preflight"); return null; },
+    async () => { events.push("create"); return { status: "PENDING" }; },
+  );
+
+  assert.equal(attempt.status, "PENDING");
+  assert.deepEqual(events, ["lookup", "preflight", "create"]);
 });

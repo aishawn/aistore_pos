@@ -1194,7 +1194,7 @@ export function OdooRegisterPage() {
         && /already has an in-progress EFTPOS attempt/i.test(cause.message);
       setEftposRecoveryAvailable(eftposBlocked);
       const terminalPending = cause instanceof Error
-        && /pending on the terminal|Do not charge again|declined or cancelled/i.test(cause.message);
+        && /pending on the terminal|Do not charge again|declined or cancelled|payment was not sent to the terminal/i.test(cause.message);
       if (cause instanceof RetailCheckoutPendingError) setPendingCheckout(cause.order);
       else if (terminalPending) {
         /* keep pending order for recovery */
@@ -1213,11 +1213,11 @@ export function OdooRegisterPage() {
 
   if (pendingCheckout && !pendingEftposCheckout && !loading) return <main className="flex h-full flex-col items-start gap-4 overflow-y-auto p-6">
     <LocalQzBridge />
-    <h1 className="text-xl font-semibold">Payment result pending confirmation</h1>
+    <h1 className="text-xl font-semibold">{error && /payment was not sent to the terminal/i.test(error) ? "Payment not sent to terminal" : "Payment result pending confirmation"}</h1>
     <p role="alert">{error || "Do not take payment again. This cart is preserved while the result is checked."}</p>
     {eftposPaymentNotice && <p role="status" className="text-sm font-medium text-amber-900">{eftposPaymentNotice}</p>}
     <p className="break-all text-sm">Order reference: {pendingCheckout.orderUuid}</p>
-    <button type="button" disabled={busy || !isOnline} onClick={() => void checkout()} className="min-h-11 rounded bg-green-800 px-4 text-white disabled:opacity-50">{busy ? "Checking…" : "Check saved order"}</button>
+    <button type="button" disabled={busy || !isOnline} onClick={() => void checkout()} className="min-h-11 rounded bg-green-800 px-4 text-white disabled:opacity-50">{busy ? "Checking…" : error && /payment was not sent to the terminal/i.test(error) ? "Retry saved order" : "Check saved order"}</button>
     <Link href="/history" target="_blank" className="min-h-11 underline">Open sales history in another tab</Link>
     <p className="text-sm">If the result remains unknown, a store administrator must reconcile the order and payment in Orithos before another sale is attempted.</p>
   </main>;
