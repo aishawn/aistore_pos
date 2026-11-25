@@ -86,6 +86,7 @@ internal sealed class SupportDiagnosticsForm : Form
             var eftposUrl = Environment.GetEnvironmentVariable("ORITHOS_CONNECTOR_URL") ?? AgentVersion.DefaultEftposListen;
             var hardware = await ReadEndpointAsync(hardwareUrl, "status");
             var printers = await ReadEndpointAsync(hardwareUrl, "printers");
+            var printerStatus = await ReadEndpointAsync(hardwareUrl, "printer-status");
             var eftpos = await ReadEndpointAsync(eftposUrl, "status");
             var lines = new List<string>
             {
@@ -107,6 +108,17 @@ internal sealed class SupportDiagnosticsForm : Form
             lines.Add("Printers");
             var printerNames = ReadArrayStrings(printers?.Root, "printers");
             lines.AddRange(printerNames.Count > 0 ? printerNames.Select(name => $"  - {name}") : [$"  {Describe(printers)}"]);
+            var printerObservations = ReadPrinterObservations(printerStatus?.Root);
+            if (printerObservations.Count > 0)
+            {
+                lines.Add("Windows spooler status (does not confirm physical sensors):");
+                lines.AddRange(printerObservations.Select(observation =>
+                    $"  - {observation.Printer}: {observation.Status}{(string.IsNullOrWhiteSpace(observation.Detail) ? "" : $" ({observation.Detail})")}"));
+            }
+            else
+            {
+                lines.Add($"Windows spooler status: {Describe(printerStatus)}");
+            }
             lines.Add("");
             lines.Add("EFTPOS configuration");
             lines.Add($"  Mode: {ReadString(eftpos?.Root, "integrationMode") ?? "unknown"}");
@@ -199,6 +211,33 @@ internal sealed class SupportDiagnosticsForm : Form
         return result;
     }
 
+    private static List<PrinterObservation> ReadPrinterObservations(JsonElement? root)
+    {
+        var result = new List<PrinterObservation>();
+        if (root is not { ValueKind: JsonValueKind.Object } value
+            || !value.TryGetProperty("printers", out var array)
+            || array.ValueKind != JsonValueKind.Array) return result;
+
+        foreach (var item in array.EnumerateArray())
+        {
+            if (item.ValueKind != JsonValueKind.Object) continue;
+            var printer = ReadString(item, "printer");
+            var status = ReadString(item, "status");
+            var detail = ReadString(item, "detail");
+            if (!string.IsNullOrWhiteSpace(printer) && !string.IsNullOrWhiteSpace(status))
+                result.Add(new PrinterObservation(printer, status, detail));
+        }
+
+        return result;
+    }
+
+    private static string? ReadString(JsonElement element, string name) =>
+        element.ValueKind == JsonValueKind.Object
+        && element.TryGetProperty(name, out var property)
+        && property.ValueKind == JsonValueKind.String
+            ? property.GetString()
+            : null;
+
     private void CopyReport()
     {
         if (string.IsNullOrWhiteSpace(reportBox.Text)) return;
@@ -206,5 +245,6 @@ internal sealed class SupportDiagnosticsForm : Form
         statusLabel.Text = "Report copied without connector token or payment data";
     }
 
+    private sealed record PrinterObservation(string Printer, string Status, string? Detail);
     private sealed record EndpointResponse(int StatusCode, JsonElement Root, string? Error = null);
 }

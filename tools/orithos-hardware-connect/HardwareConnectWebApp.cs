@@ -82,6 +82,13 @@ internal static class HardwareConnectWebApp
 
         app.MapGet("/v1/printers", () => Results.Json(new { printers = InstalledPrinters() }, json));
 
+        app.MapGet("/v1/printer-status", () => Results.Json(new
+        {
+            source = "windows-spooler",
+            physicalDeviceVerified = false,
+            printers = InstalledPrinters().Select(PrinterQueueStatus.Read),
+        }, json));
+
         app.MapPost("/v1/print/text", async (HttpRequest request) =>
         {
             PrintTextRequest? payload;
