@@ -20,7 +20,7 @@ internal static class LinklyDiscovery
         var listeners = GetLoopbackListeners();
         var processNames = GetLinklyProcesses();
         var adapterCandidates = await ProbeHttpCandidatesAsync(listeners, cancellationToken);
-        var linklyPortListening = listeners.Contains(2005);
+        var linklyPortListening = listeners.Contains(2005) || listeners.Contains(2011);
 
         var state = GetState(processNames.Length, linklyPortListening, adapterCandidates.Length);
 
@@ -85,7 +85,7 @@ internal static class LinklyDiscovery
 
     private static async Task<LinklyHttpCandidate[]> ProbeHttpCandidatesAsync(int[] listeners, CancellationToken cancellationToken)
     {
-        var excludedPorts = new HashSet<int> { 2005, 9167, 9170 };
+        var excludedPorts = new HashSet<int> { 2005, 2011, 9167, 9170 };
         using var gate = new SemaphoreSlim(12);
         var probes = listeners.Where(port => !excludedPorts.Contains(port)).Select(async port =>
         {

@@ -49,7 +49,7 @@ export function getEftposConfigurationKey(configuration: {
 }
 
 export function isAdapterMode(mode: string): boolean {
-  return mode === "adapter" || mode === "tcp-proxy";
+  return mode === "adapter" || mode === "tcp-proxy" || mode === "tcp-ip-interface";
 }
 
 export function hasRecentApprovedEftposTest(

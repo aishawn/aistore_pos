@@ -11,7 +11,7 @@ public sealed class DiagnosticGuidanceTests
         var actions = Build("reachable", "reachable", 1, [], "lab", "not-configured", true, false);
 
         Assert.Contains(actions, action => action.Contains("LAB MODE", StringComparison.Ordinal));
-        Assert.Contains(actions, action => action.Contains("cannot process live card payments", StringComparison.Ordinal));
+        Assert.Contains(actions, action => action.Contains("was not detected on TCP 2011/2005", StringComparison.Ordinal));
     }
 
     [Fact]

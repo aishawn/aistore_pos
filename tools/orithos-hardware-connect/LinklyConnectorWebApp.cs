@@ -96,9 +96,12 @@ internal static class LinklyConnectorWebApp
             Environment.GetEnvironmentVariable("ORITHOS_LINKLY_ADAPTER_BASE"),
             Environment.GetEnvironmentVariable("ORITHOS_LINKLY_TCP_BASE"));
         var linklyAdapter = LinklyAdapterEndpoint.Parse(configuredLinklyBase, out var adapterConfigurationError);
-        var integrationMode = string.IsNullOrWhiteSpace(configuredLinklyBase)
-            ? "lab"
-            : linklyAdapter is null ? "configuration-error" : "adapter";
+        var tcpConfigured = string.IsNullOrWhiteSpace(configuredLinklyBase)
+            && (!string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("ORITHOS_LINKLY_TCP_HOST"))
+                || !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("ORITHOS_LINKLY_TCP_PORT")));
+        var integrationMode = !string.IsNullOrWhiteSpace(configuredLinklyBase)
+            ? linklyAdapter is null ? "configuration-error" : "adapter"
+            : tcpConfigured ? "tcp-ip-interface" : "lab";
 
         app.MapGet("/v1/status", async () =>
         {
@@ -106,25 +109,32 @@ internal static class LinklyConnectorWebApp
             var adapterListener = integrationMode == "adapter"
                 ? await AdapterListenerProbe.ProbeAsync(configuredLinklyBase, TimeSpan.FromMilliseconds(800))
                 : "not-configured";
+            var tcpEndpoint = integrationMode == "tcp-ip-interface" || integrationMode == "lab"
+                ? await LinklyTcpEndpoint.DiscoverAsync(CancellationToken.None)
+                : null;
+            var effectiveMode = tcpEndpoint is not null && linklyAdapter is null ? "tcp-ip-interface" : integrationMode;
             return Results.Json(new
             {
                 linklyClient = hasToken
-                    ? (integrationMode == "adapter" ? "adapter-configured" : integrationMode == "lab" ? "simulated-ready" : "configuration-error")
+                    ? (effectiveMode == "adapter" ? "adapter-configured" : effectiveMode == "tcp-ip-interface" ? "linkly-tcp-connected" : effectiveMode == "lab" ? "simulated-ready" : "configuration-error")
                     : "waiting-for-token",
-                terminal = integrationMode == "adapter" ? "local-adapter-configured" : integrationMode == "lab" ? "simulation" : "not-configured",
+                terminal = effectiveMode == "adapter" ? "local-adapter-configured" : effectiveMode == "tcp-ip-interface" ? "linkly-tcp" : effectiveMode == "lab" ? "simulation" : "not-configured",
                 tokenConfigured = hasToken,
                 tokenRecoveryRequired = settings.TokenRecoveryRequired,
-                integrationMode,
+                integrationMode = effectiveMode,
                 adapterListener,
+                tcpEndpoint = tcpEndpoint?.Display,
                 detail = !hasToken
                     ? settings.TokenRecoveryRequired
                         ? "The saved Connector token cannot be opened with this Windows user profile. Re-enter EFTPOS settings to restore the connection."
                         : "Save EFTPOS in Hardware settings — token syncs automatically (Hardware Connect 1.1.1+)."
-                    : integrationMode == "adapter"
+                    : effectiveMode == "adapter"
                         ? $"A local Linkly HTTP adapter is configured; its TCP listener is {adapterListener}. This does not verify the adapter protocol, bank Linkly client, or terminal."
-                        : integrationMode == "configuration-error"
+                        : effectiveMode == "tcp-ip-interface"
+                            ? $"Connected to the Linkly TCP/IP interface at {tcpEndpoint!.Display}. Protocol is the official fixed-width API; terminal approval still requires a real authorized test."
+                        : effectiveMode == "configuration-error"
                             ? adapterConfigurationError
-                            : "Lab mode is diagnostic only; it cannot approve or process Sell payments. Configure the real Linkly adapter first.",
+                            : "Lab mode: no Linkly TCP listener on 2011/2005 and no HTTP adapter configured. Start Linkly EFT-Client (Shopfront-style TCP) or set ORITHOS_LINKLY_ADAPTER_BASE.",
             }, json);
         });
 
@@ -181,15 +191,15 @@ internal static class LinklyConnectorWebApp
                 return Results.Problem("Connector token is not configured. Save EFTPOS settings in Hardware Connect before querying a transaction.", statusCode: StatusCodes.Status503ServiceUnavailable);
             }
 
+            var (apiUrl, token) = settings.Snapshot();
             if (linklyAdapter is null)
             {
-                var message = integrationMode == "lab"
-                    ? "Lab mode cannot query terminal payments. Configure the real Linkly adapter before reconciling this attempt."
-                    : adapterConfigurationError;
-                return Results.Problem(message, statusCode: StatusCodes.Status503ServiceUnavailable);
+                if (!string.IsNullOrWhiteSpace(configuredLinklyBase))
+                    return Results.Problem(adapterConfigurationError, statusCode: StatusCodes.Status503ServiceUnavailable);
+                var endpoint = await LinklyTcpEndpoint.DiscoverAsync(cancellationToken);
+                if (endpoint is null) return await TcpUnavailableAsync(apiUrl, token, body!, cancellationToken);
+                return await ForwardToLinklyTcpReconciliationAsync(endpoint, body!, apiUrl, token, cancellationToken, CallbackClient);
             }
-
-            var (apiUrl, token) = settings.Snapshot();
             var forwarded = await ForwardToLinklyAdapterAsync(linklyAdapter.BaseUrl, "/v1/query", body!, json,
                 apiUrl, token, cancellationToken, AdapterClient, CallbackClient, TimeSpan.FromSeconds(30));
             return forwarded!;
@@ -223,16 +233,16 @@ internal static class LinklyConnectorWebApp
                 return Results.Problem("Connector token is not configured. Save EFTPOS settings in Hardware Connect before starting a payment.", statusCode: StatusCodes.Status503ServiceUnavailable);
             }
 
-            if (linklyAdapter is null)
-            {
-                var message = integrationMode == "lab"
-                    ? "Lab mode cannot approve or process Sell payments. Configure the real Linkly adapter before enabling card payments."
-                    : adapterConfigurationError;
-                return Results.Problem(message, statusCode: StatusCodes.Status503ServiceUnavailable);
-            }
-
             body = body with { Currency = "AUD" };
             var (apiUrl, token) = settings.Snapshot();
+            if (linklyAdapter is null)
+            {
+                if (!string.IsNullOrWhiteSpace(configuredLinklyBase))
+                    return Results.Problem(adapterConfigurationError, statusCode: StatusCodes.Status503ServiceUnavailable);
+                var endpoint = await LinklyTcpEndpoint.DiscoverAsync(cancellationToken);
+                if (endpoint is null) return await TcpUnavailableAsync(apiUrl, token, body, cancellationToken);
+                return await ForwardToLinklyTcpPurchaseAsync(endpoint, body, apiUrl, token, cancellationToken, CallbackClient);
+            }
             var forwarded = await ForwardToLinklyAdapterAsync(linklyAdapter.BaseUrl, "/v1/purchase", body, json,
                 apiUrl, token, cancellationToken, AdapterClient, CallbackClient, TimeSpan.FromSeconds(30));
             return forwarded!;
@@ -241,6 +251,74 @@ internal static class LinklyConnectorWebApp
         await app.StartAsync(cancellationToken);
         onStarted?.Invoke();
         await app.WaitForShutdownAsync(cancellationToken);
+    }
+
+    private static async Task<IResult> ForwardToLinklyTcpPurchaseAsync(
+        LinklyTcpEndpoint endpoint,
+        ConnectorTxnRequest transaction,
+        string apiUrl,
+        string token,
+        CancellationToken cancellationToken,
+        HttpClient callbackClient)
+    {
+        var txnRef = BuildTxnReference(transaction);
+        try
+        {
+            var result = await LinklyTcpClient.PurchaseAsync(endpoint, transaction.AmountCents!.Value, txnRef, cancellationToken);
+            var txnRefMatched = string.IsNullOrWhiteSpace(result.TransactionReference)
+                || string.Equals(result.TransactionReference, txnRef, StringComparison.Ordinal);
+            var status = txnRefMatched ? result.Status : "UNKNOWN";
+            var callback = new LinklyAdapterResult(
+                status,
+                txnRefMatched ? result.ProviderReference ?? txnRef : null);
+            if (!await TryWriteCallbackAsync(apiUrl, token, transaction, callback, callbackClient)) return UnknownOutcome();
+            return Results.Json(new { status }, statusCode: status == "UNKNOWN" ? 502 : 200);
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Linkly TCP purchase failed: {ex.GetType().Name}");
+            SupportLog.Record("error", "eftpos.tcp.request-failed", ex);
+            await TryWriteUnknownAsync(apiUrl, token, transaction, callbackClient);
+            return UnknownOutcome();
+        }
+    }
+
+    private static async Task<IResult> ForwardToLinklyTcpReconciliationAsync(
+        LinklyTcpEndpoint endpoint,
+        ConnectorTxnRequest transaction,
+        string apiUrl,
+        string token,
+        CancellationToken cancellationToken,
+        HttpClient callbackClient)
+    {
+        var txnRef = BuildTxnReference(transaction);
+        try
+        {
+            var result = await LinklyTcpClient.GetLastTransactionAsync(endpoint, txnRef, cancellationToken);
+            var matchedAttempt = string.Equals(result.TransactionReference, txnRef, StringComparison.Ordinal);
+            var callback = new LinklyAdapterResult(matchedAttempt ? result.Status : "UNKNOWN", matchedAttempt ? result.ProviderReference : null);
+            if (!await TryWriteCallbackAsync(apiUrl, token, transaction, callback, callbackClient)) return UnknownOutcome();
+            return Results.Json(new { status = callback.Status }, statusCode: callback.Status == "UNKNOWN" ? 502 : 200);
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Linkly TCP query failed: {ex.GetType().Name}");
+            SupportLog.Record("error", "eftpos.tcp.query-failed", ex);
+            await TryWriteUnknownAsync(apiUrl, token, transaction, callbackClient);
+            return UnknownOutcome();
+        }
+    }
+
+    private static async Task<IResult> TcpUnavailableAsync(string apiUrl, string token, ConnectorTxnRequest transaction, CancellationToken cancellationToken)
+    {
+        await TryWriteUnknownAsync(apiUrl, token, transaction, CallbackClient);
+        return Results.Problem("Linkly TCP/IP interface was not found on ports 2011 or 2005. Confirm Linkly EFT-Client is running and configured for the IP interface.", statusCode: 503);
+    }
+
+    private static string BuildTxnReference(ConnectorTxnRequest transaction)
+    {
+        var source = $"O{transaction.AttemptId}";
+        return source.Length <= 16 ? source : source[^16..];
     }
 
     internal static async Task<IResult> ForwardToLinklyAdapterAsync(

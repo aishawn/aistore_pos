@@ -24,6 +24,8 @@ test("requires a reachable adapter listener and configured token before enabling
   assert.equal(isConnectorConfiguredAndReachable({ integrationMode: "tcp-proxy", tokenConfigured: true }), false);
   assert.equal(isConnectorConfiguredAndReachable({ integrationMode: "lab", tokenConfigured: true, adapterListener: "reachable" }), false);
   assert.equal(isConnectorConfiguredAndReachable({ integrationMode: "tcp-proxy", tokenConfigured: false, adapterListener: "reachable" }), false);
+  assert.equal(isConnectorConfiguredAndReachable({ integrationMode: "tcp-ip-interface", tokenConfigured: true, tcpEndpoint: "127.0.0.1:2011" }), true);
+  assert.equal(isConnectorConfiguredAndReachable({ integrationMode: "tcp-ip-interface", tokenConfigured: true }), false);
 });
 
 test("marks a purchase dispatched before the request can lose its response", async () => {

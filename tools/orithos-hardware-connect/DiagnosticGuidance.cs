@@ -36,8 +36,10 @@ internal static class DiagnosticGuidance
         else if (tokenConfigured == false)
             actions.Add("No EFTPOS connector token is configured. Save EFTPOS settings from the Orithos Hardware page.");
 
-        if (string.Equals(integrationMode, "lab", StringComparison.OrdinalIgnoreCase))
-            actions.Add("LAB MODE: this connector cannot process live card payments. Configure the bank's Linkly adapter and complete terminal acceptance before enabling EFTPOS.");
+        if (string.Equals(integrationMode, "tcp-ip-interface", StringComparison.OrdinalIgnoreCase))
+            actions.Add("Linkly PC-EFTPOS TCP is in use (same path as Shopfront without a separate HTTP adapter). Complete an authorized test transaction before live Sell use.");
+        else if (string.Equals(integrationMode, "lab", StringComparison.OrdinalIgnoreCase))
+            actions.Add("LAB MODE: Linkly was not detected on TCP 2011/2005. Start Linkly EFT-Client or configure ORITHOS_LINKLY_ADAPTER_BASE for HTTP adapter mode.");
         else if (string.Equals(integrationMode, "configuration-error", StringComparison.OrdinalIgnoreCase))
             actions.Add("Linkly adapter configuration is invalid. Correct the local adapter address and refresh diagnostics.");
         else if (string.Equals(integrationMode, "adapter", StringComparison.OrdinalIgnoreCase)

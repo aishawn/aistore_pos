@@ -59,6 +59,7 @@ function configurationKey(registerId: number | null, draft: BindingDraft): strin
 
 function linklyModeLabel(status: ConnectorStatus | null): string | null {
   if (status?.linklyClient === "waiting-for-token") return "Waiting for store pairing";
+  if (status?.integrationMode === "tcp-ip-interface") return `Linkly TCP connected at ${status.tcpEndpoint ?? "unknown endpoint"} · terminal unverified`;
   if (isAdapterMode(status) && status?.adapterListener === "unreachable") return "Local adapter not accepting connections";
   if (isAdapterMode(status) && status?.adapterListener !== "reachable") return "Local adapter status unavailable";
   if (isAdapterMode(status)) return "Local HTTP adapter · terminal unverified";
@@ -152,7 +153,7 @@ export function LinklyEftposPanel({ canEdit }: Props) {
         enabled: draftRef.current.enabled,
         paymentsEnabled: draftRef.current.paymentsEnabled,
         connectorHealth: health,
-        connectorMode: isAdapterMode(detail) ? "adapter" : detail?.integrationMode === "lab" ? "lab" : "unknown",
+        connectorMode: detail?.integrationMode === "tcp-ip-interface" ? "tcp-ip-interface" : isAdapterMode(detail) ? "adapter" : detail?.integrationMode === "lab" ? "lab" : "unknown",
         tokenConfigured: Boolean(detail?.tokenConfigured),
         testPaymentAt: readEftposReadinessSnapshot().testPaymentAt,
         testPaymentStatus: readEftposReadinessSnapshot().testPaymentStatus,
@@ -228,7 +229,7 @@ export function LinklyEftposPanel({ canEdit }: Props) {
     if (nextDraft.paymentsEnabled) {
       const diagnostics = await refreshDiagnostics(nextDraft.connectorBaseUrl || defaultDraft.connectorBaseUrl);
       if (diagnostics.health !== "reachable" || !isConnectorConfiguredAndReachable(diagnostics.detail)) {
-        setError("Sell card payments can only be enabled when the local adapter port is reachable and its connector token is configured. Update Hardware Connect if adapter status is unavailable.");
+        setError("Sell card payments require a reachable Linkly TCP interface or local HTTP adapter and a configured connector token. Update Hardware Connect if its status is unavailable.");
         return null;
       }
     }
@@ -278,7 +279,7 @@ export function LinklyEftposPanel({ canEdit }: Props) {
         enabled: saved.enabled,
         paymentsEnabled: saved.paymentsEnabled,
         connectorHealth,
-        connectorMode: isAdapterMode(connectorDetail) ? "adapter" : connectorDetail?.integrationMode === "lab" ? "lab" : "unknown",
+        connectorMode: connectorDetail?.integrationMode === "tcp-ip-interface" ? "tcp-ip-interface" : isAdapterMode(connectorDetail) ? "adapter" : connectorDetail?.integrationMode === "lab" ? "lab" : "unknown",
         tokenConfigured: Boolean(connectorDetail?.tokenConfigured),
         testPaymentAt: nextDraft.rotateConnectorToken ? "" : previousReadiness.testPaymentAt,
         testPaymentStatus: nextDraft.rotateConnectorToken ? "" : previousReadiness.testPaymentStatus,
@@ -332,7 +333,7 @@ export function LinklyEftposPanel({ canEdit }: Props) {
     if (!isConnectorConfiguredAndReachable(status)) {
       setError(isAdapterMode(status) && status?.adapterListener === "unreachable"
         ? "The local adapter port is not accepting connections. Start the bank Linkly Client or adapter, then check again."
-        : "This PC is in Lab mode, the adapter is unreachable, or its connector token is missing. Real card payments cannot be enabled.");
+        : "This PC is in Lab mode, the Linkly TCP interface or adapter is unreachable, or its connector token is missing. Real card payments cannot be enabled.");
       return;
     }
 
@@ -346,7 +347,7 @@ export function LinklyEftposPanel({ canEdit }: Props) {
     if (!saved) return;
     const diagnostics = await refreshDiagnostics(saved.connectorBaseUrl || baseUrl);
     if (diagnostics.health !== "reachable" || !isConnectorConfiguredAndReachable(diagnostics.detail)) {
-      setError("Connector token was saved, but the real Linkly adapter is not ready. Sell card payments remain off.");
+      setError("Connector token was saved, but the real Linkly interface is not ready. Sell card payments remain off.");
       return;
     }
     await persistBinding({ ...preparedDraft, paymentsEnabled: true, rotateConnectorToken: false });
@@ -602,8 +603,7 @@ export function LinklyEftposPanel({ canEdit }: Props) {
         )}
 
         <p className="text-xs leading-5 text-[var(--oh-muted)]">
-          One tap pairs this register with the local bridge on port <span className="font-mono">9167</span>. For live payments, install and configure the bank&apos;s Linkly Client plus a local HTTP adapter, then set{" "}
-          <span className="font-mono text-[11px]">ORITHOS_LINKLY_ADAPTER_BASE</span>, then restart Hardware Connect. A configured adapter still needs a reconciled low-value terminal test; Lab mode is diagnostic only and cannot be used for live card payments.
+          One tap pairs this register with the local bridge on port <span className="font-mono">9167</span>. Hardware Connect can use the Linkly EFT-Client TCP interface (default <span className="font-mono">2011</span>, legacy <span className="font-mono">2005</span>) or a local HTTP adapter. A reachable interface does not confirm terminal acceptance; complete and reconcile an authorized low-value test before taking live payments. Lab mode is diagnostic only.
         </p>
 
         <details className="rounded-md border border-[var(--oh-border)] px-3 py-2">
