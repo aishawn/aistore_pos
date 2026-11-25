@@ -7,6 +7,7 @@ namespace Orithos.HardwareConnect;
 internal sealed class SupportDiagnosticsForm : Form
 {
     private readonly HttpClient client = new() { Timeout = TimeSpan.FromSeconds(3) };
+    private readonly CancellationTokenSource formCts = new();
     private readonly Label statusLabel = new() { AutoSize = true, ForeColor = Color.FromArgb(71, 85, 105) };
     private readonly TextBox reportBox = new()
     {
@@ -22,6 +23,8 @@ internal sealed class SupportDiagnosticsForm : Form
     private readonly Button refreshButton = new() { Text = "Refresh", AutoSize = true };
     private readonly Button copyButton = new() { Text = "Copy report", AutoSize = true };
     private readonly Button logsButton = new() { Text = "Open logs", AutoSize = true };
+    private bool closing;
+    private bool refreshInProgress;
 
     public SupportDiagnosticsForm()
     {
@@ -75,11 +78,14 @@ internal sealed class SupportDiagnosticsForm : Form
         copyButton.Click += (_, _) => CopyReport();
         logsButton.Click += (_, _) => OpenLogs();
         Shown += async (_, _) => await RefreshReportAsync();
-        FormClosed += (_, _) => client.Dispose();
+        FormClosed += (_, _) => CloseDiagnostics();
     }
 
     private async Task RefreshReportAsync()
     {
+        if (closing) return;
+
+        refreshInProgress = true;
         refreshButton.Enabled = false;
         copyButton.Enabled = false;
         statusLabel.Text = "Checking local services…";
@@ -87,10 +93,19 @@ internal sealed class SupportDiagnosticsForm : Form
         {
             var hardwareUrl = Environment.GetEnvironmentVariable("ORITHOS_HC_URL") ?? AgentVersion.DefaultListen;
             var eftposUrl = Environment.GetEnvironmentVariable("ORITHOS_CONNECTOR_URL") ?? AgentVersion.DefaultEftposListen;
-            var hardware = await ReadEndpointAsync(hardwareUrl, "status");
-            var printers = await ReadEndpointAsync(hardwareUrl, "printers");
-            var printerStatus = await ReadEndpointAsync(hardwareUrl, "printer-status");
-            var eftpos = await ReadEndpointAsync(eftposUrl, "status");
+            var cancellationToken = formCts.Token;
+            var readiness = await Task.WhenAll(
+                LocalApiHealthProbe.ProbeAsync(hardwareUrl, client, cancellationToken),
+                LocalApiHealthProbe.ProbeAsync(eftposUrl, client, cancellationToken));
+            var endpoints = await Task.WhenAll(
+                ReadEndpointAsync(hardwareUrl, "status", readiness[0] == "Ready", cancellationToken),
+                ReadEndpointAsync(hardwareUrl, "printers", readiness[0] == "Ready", cancellationToken),
+                ReadEndpointAsync(hardwareUrl, "printer-status", readiness[0] == "Ready", cancellationToken),
+                ReadEndpointAsync(eftposUrl, "status", readiness[1] == "Ready", cancellationToken));
+            var hardware = endpoints[0];
+            var printers = endpoints[1];
+            var printerStatus = endpoints[2];
+            var eftpos = endpoints[3];
             var lines = new List<string>
             {
                 $"Product: {AgentVersion.Product}",
@@ -151,6 +166,9 @@ internal sealed class SupportDiagnosticsForm : Form
             reportBox.Text = string.Join(Environment.NewLine, lines);
             statusLabel.Text = "Diagnostic snapshot ready";
         }
+        catch (OperationCanceledException) when (formCts.IsCancellationRequested)
+        {
+        }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException or UriFormatException)
         {
             reportBox.Text = $"{AgentVersion.Product} {AgentVersion.DisplayVersion}{Environment.NewLine}"
@@ -161,29 +179,56 @@ internal sealed class SupportDiagnosticsForm : Form
         }
         finally
         {
-            refreshButton.Enabled = true;
-            copyButton.Enabled = true;
-            logsButton.Enabled = true;
+            refreshInProgress = false;
+            if (closing)
+            {
+                client.Dispose();
+                formCts.Dispose();
+            }
+            else
+            {
+                refreshButton.Enabled = true;
+                copyButton.Enabled = true;
+                logsButton.Enabled = true;
+            }
         }
     }
 
-    private async Task<EndpointResponse?> ReadEndpointAsync(string baseUrl, string path)
+    private async Task<EndpointResponse?> ReadEndpointAsync(
+        string baseUrl,
+        string path,
+        bool serviceReady,
+        CancellationToken cancellationToken)
     {
         if (!LocalRequestSecurity.IsLoopbackListenUrl(baseUrl))
             return new EndpointResponse(0, default, "configured URL is not loopback; request was not sent");
+        if (!serviceReady) return null;
 
         try
         {
-            if (await LocalApiHealthProbe.ProbeAsync(baseUrl, client, CancellationToken.None) != "Ready") return null;
-            using var response = await client.GetAsync(new Uri(new Uri(baseUrl), $"v1/{path}"));
-            var payload = await response.Content.ReadAsStringAsync();
+            using var response = await client.GetAsync(new Uri(new Uri(baseUrl), $"v1/{path}"), cancellationToken);
+            var payload = await response.Content.ReadAsStringAsync(cancellationToken);
             using var document = JsonDocument.Parse(payload);
             return new EndpointResponse((int)response.StatusCode, document.RootElement.Clone());
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException or UriFormatException)
         {
             return null;
         }
+    }
+
+    private void CloseDiagnostics()
+    {
+        closing = true;
+        formCts.Cancel();
+        if (refreshInProgress) return;
+
+        client.Dispose();
+        formCts.Dispose();
     }
 
     private static string Describe(EndpointResponse? endpoint) => endpoint is null
