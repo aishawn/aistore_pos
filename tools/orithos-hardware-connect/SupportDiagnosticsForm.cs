@@ -127,6 +127,7 @@ internal sealed class SupportDiagnosticsForm : Form
             lines.Add("EFTPOS configuration");
             lines.Add($"  Mode: {ReadString(eftpos?.Root, "integrationMode") ?? "unknown"}");
             lines.Add($"  Connector: {ReadString(eftpos?.Root, "linklyClient") ?? "unknown"}");
+            lines.Add($"  Adapter TCP listener: {ReadString(eftpos?.Root, "adapterListener") ?? "unknown"}");
             lines.Add($"  Terminal: {ReadString(eftpos?.Root, "terminal") ?? "unknown"}");
             lines.Add($"  Connector token configured: {ReadBoolean(eftpos?.Root, "tokenConfigured")?.ToString() ?? "unknown"}");
             lines.Add($"  Connector token recovery required: {ReadBoolean(eftpos?.Root, "tokenRecoveryRequired")?.ToString() ?? "unknown"}");
@@ -142,6 +143,7 @@ internal sealed class SupportDiagnosticsForm : Form
                 ReadInt(hardware?.Root ?? default, "printerCount"),
                 printerObservations.Select(observation => (observation.Printer, observation.Status, observation.Detail)),
                 ReadString(eftpos?.Root, "integrationMode"),
+                ReadString(eftpos?.Root, "adapterListener"),
                 ReadBoolean(eftpos?.Root, "tokenConfigured"),
                 ReadBoolean(eftpos?.Root, "tokenRecoveryRequired"))
                 .Select(action => $"  - {action}"));

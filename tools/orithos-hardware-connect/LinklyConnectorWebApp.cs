@@ -95,9 +95,12 @@ internal static class LinklyConnectorWebApp
             ? "lab"
             : linklyAdapter is null ? "configuration-error" : "tcp-proxy";
 
-        app.MapGet("/v1/status", () =>
+        app.MapGet("/v1/status", async () =>
         {
             var hasToken = settings.HasConnectorToken();
+            var adapterListener = linklyMode == "tcp-proxy"
+                ? await AdapterListenerProbe.ProbeAsync(configuredLinklyBase, TimeSpan.FromMilliseconds(800))
+                : "not-configured";
             return Results.Json(new
             {
                 linklyClient = hasToken
@@ -107,12 +110,13 @@ internal static class LinklyConnectorWebApp
                 tokenConfigured = hasToken,
                 tokenRecoveryRequired = settings.TokenRecoveryRequired,
                 integrationMode = linklyMode,
+                adapterListener,
                 detail = !hasToken
                     ? settings.TokenRecoveryRequired
                         ? "The saved Connector token cannot be opened with this Windows user profile. Re-enter EFTPOS settings to restore the connection."
                         : "Save EFTPOS in Hardware settings — token syncs automatically (Hardware Connect 1.1.1+)."
                     : linklyMode == "tcp-proxy"
-                        ? "A local Linkly HTTP adapter is configured. The bank Linkly client and terminal are not verified until a real terminal test succeeds."
+                        ? $"A local Linkly HTTP adapter is configured; its TCP listener is {adapterListener}. This does not verify the adapter protocol, bank Linkly client, or terminal."
                         : linklyMode == "configuration-error"
                             ? adapterConfigurationError
                             : "Lab mode is diagnostic only; it cannot approve or process Sell payments. Configure the real Linkly adapter first.",

@@ -8,6 +8,7 @@ internal static class DiagnosticGuidance
         int? printerCount,
         IEnumerable<(string Printer, string Status, string? Detail)> printers,
         string? integrationMode,
+        string? adapterListener,
         bool? tokenConfigured,
         bool? tokenRecoveryRequired)
     {
@@ -40,7 +41,12 @@ internal static class DiagnosticGuidance
         else if (string.Equals(integrationMode, "configuration-error", StringComparison.OrdinalIgnoreCase))
             actions.Add("Linkly adapter configuration is invalid. Correct the local adapter address and refresh diagnostics.");
         else if (string.Equals(integrationMode, "tcp-proxy", StringComparison.OrdinalIgnoreCase))
-            actions.Add("Linkly adapter is configured, but the terminal and bank connection are not verified. Complete the approved store acceptance before live use.");
+        {
+            if (string.Equals(adapterListener, "unreachable", StringComparison.OrdinalIgnoreCase))
+                actions.Add("The configured Linkly adapter port is not accepting local TCP connections. Start the bank's Linkly Client or adapter and verify its address and port. Do not retry a pending or unknown payment.");
+            else
+                actions.Add("The Linkly adapter TCP listener is reachable, but its protocol, bank connection, and terminal are not verified. Complete the approved store acceptance before live use.");
+        }
 
         if (actions.Count == 0)
             actions.Add("No local service or Windows queue issue was reported. Physical printer sensors, EFTPOS terminal, and bank Linkly connection still require separate verification.");
