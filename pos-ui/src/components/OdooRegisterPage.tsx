@@ -3,7 +3,7 @@
 /** Classic register shell; data path is Orithos (`@/lib/retail-api`), not Odoo ERP. */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Banknote, Check, CircleAlert, DoorClosed, LoaderCircle, Monitor, Printer, RefreshCw, X } from "lucide-react";
+import { Banknote, Check, CircleAlert, CreditCard, DoorClosed, LoaderCircle, Monitor, Printer, RefreshCw, X } from "lucide-react";
 import { SalesMenu } from "@/components/SalesMenu";
 import { useCloseRegisterUiOptional } from "@/components/CloseRegisterUiProvider";
 import { useSalesHistoryUiOptional } from "@/components/SalesHistoryUiProvider";
@@ -219,6 +219,8 @@ export function OdooRegisterPage() {
   const [saleKeysPosition, setSaleKeysPosition] = useState("LEFT");
   const [eftposRecoveryAvailable, setEftposRecoveryAvailable] = useState(false);
   const [eftposRecoveryBusy, setEftposRecoveryBusy] = useState(false);
+  const [eftposPaymentAmount, setEftposPaymentAmount] = useState<number | null>(null);
+  const eftposDialogTitleRef = useRef<HTMLHeadingElement | null>(null);
   const [parkNoteDialog, setParkNoteDialog] = useState<{ switchToRegisterId: number | null } | null>(null);
   const [parkNoteInput, setParkNoteInput] = useState("");
   const [parkNoteError, setParkNoteError] = useState<string | null>(null);
@@ -435,18 +437,6 @@ export function OdooRegisterPage() {
     }
     openCloseRegister();
   }
-
-  const dialogOpen = helpOpen || closeRegisterCartWarn || clearSaleConfirm || cashOutOpen || Boolean(receipt) || Boolean(parkedAction) || Boolean(parkNoteDialog) || pendingRegisterId !== null || registerStartupPrompt !== null;
-  useDialogFocus(dialogOpen, () => {
-    if (helpOpen) setHelpOpen(false);
-    else if (closeRegisterCartWarn) setCloseRegisterCartWarn(false);
-    else if (clearSaleConfirm) setClearSaleConfirm(false);
-    else if (cashOutOpen && !cashOutBusy) setCashOutOpen(false);
-    else if (parkNoteDialog) setParkNoteDialog(null);
-    else if (parkedAction) setParkedAction(null);
-    else if (pendingRegisterId !== null) setPendingRegisterId(null);
-    else if (receipt) setReceipt(null);
-  }, undefined, undefined, registerSelectRef);
 
   useEffect(() => {
     setParkedLoaded(false);
@@ -673,6 +663,20 @@ export function OdooRegisterPage() {
     lines: lines.map((line) => [line.product.id, line.quantity, line.packFactor || 1, line.discountPercent || 0, line.discountReason || ""]),
   });
   const paymentMethods = selectedConfig?.paymentMethods ?? [];
+  const pendingEftposCheckout = Boolean(pendingCheckout && isCardCheckoutRequest(pendingCheckout));
+  const dialogOpen = helpOpen || closeRegisterCartWarn || clearSaleConfirm || cashOutOpen || Boolean(receipt) || pendingEftposCheckout || Boolean(eftposPaymentNotice) || Boolean(parkedAction) || Boolean(parkNoteDialog) || pendingRegisterId !== null || registerStartupPrompt !== null;
+  useDialogFocus(dialogOpen, () => {
+    if (helpOpen) setHelpOpen(false);
+    else if (closeRegisterCartWarn) setCloseRegisterCartWarn(false);
+    else if (clearSaleConfirm) setClearSaleConfirm(false);
+    else if (cashOutOpen && !cashOutBusy) setCashOutOpen(false);
+    else if (pendingEftposCheckout || eftposPaymentNotice) return;
+    else if (parkNoteDialog) setParkNoteDialog(null);
+    else if (parkedAction) setParkedAction(null);
+    else if (pendingRegisterId !== null) setPendingRegisterId(null);
+    else if (receipt) setReceipt(null);
+  }, pendingEftposCheckout ? "eftpos-checkout" : receipt ? "sale-receipt" : undefined, pendingEftposCheckout ? eftposDialogTitleRef : undefined, registerSelectRef);
+
   const selectedCompanyId = Array.isArray(selectedConfig?.company) ? selectedConfig.company[0] : null;
   const visibleParkedSales = parkedSales.filter((sale) => sale.ownerUserId === registerUserId
     && sale.companyId === selectedCompanyId
@@ -1060,7 +1064,11 @@ export function OdooRegisterPage() {
   }
 
   function isCardCheckoutRequest(request: RetailCheckoutRequest): boolean {
-    return Boolean(cardMethod && request.paymentMethodId === cardMethod.id);
+    const nonCashMethods = paymentMethods.filter((method) => method.type !== "cash" && !method.is_cash_count);
+    const method = nonCashMethods.find((item) => /card|eftpos|bank|terminal/i.test(item.name))
+      ?? nonCashMethods.find((item) => !/account|customer|credit|pay.?later/i.test(item.name))
+      ?? nonCashMethods[0];
+    return Boolean(method && request.paymentMethodId === method.id);
   }
 
   async function checkout() {
@@ -1105,6 +1113,7 @@ export function OdooRegisterPage() {
       if (payingByCard && eftposPaymentsEnabled) {
         const signed = readQuoteFromSignature(request.expectedQuote) ?? (quoteIsCurrent && quote?.signature ? readQuoteFromSignature(quote.signature) : null);
         if (!signed) throw new Error("Refresh the cart quote before taking card payment.");
+        setEftposPaymentAmount(signed.expectedTotal);
         setEftposPaymentNotice("Waiting for the EFTPOS terminal…");
         await ensureEftposApprovedBeforeCheckout({
           registerId: request.configId,
@@ -1119,10 +1128,11 @@ export function OdooRegisterPage() {
             }
           },
         });
-        setEftposPaymentNotice(null);
       }
       const result = activeRequest ? await recoverRetailOrder(request) : await submitRetailOrder(request);
       if (!result) throw new RetailCheckoutPendingError(request);
+      setEftposPaymentNotice(null);
+      setEftposPaymentAmount(null);
       setPendingCheckout(null);
       const completed: CompletedReceipt = {
         reference: result.receipt,
@@ -1180,6 +1190,7 @@ export function OdooRegisterPage() {
       checkoutFingerprint.current = null;
     } catch (cause) {
       setEftposPaymentNotice(null);
+      setEftposPaymentAmount(null);
       const eftposBlocked = cause instanceof Error
         && /already has an in-progress EFTPOS attempt/i.test(cause.message);
       setEftposRecoveryAvailable(eftposBlocked);
@@ -1209,6 +1220,7 @@ export function OdooRegisterPage() {
       setEftposRecoveryAvailable(false);
       setPendingCheckout(null);
       setEftposPaymentNotice(null);
+      setEftposPaymentAmount(null);
       setError(null);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not cancel the previous EFTPOS attempt.");
@@ -1217,7 +1229,7 @@ export function OdooRegisterPage() {
     }
   }
 
-  if (pendingCheckout) return <main className="flex h-full flex-col items-start gap-4 overflow-y-auto p-6">
+  if (pendingCheckout && !pendingEftposCheckout && !loading) return <main className="flex h-full flex-col items-start gap-4 overflow-y-auto p-6">
     <LocalQzBridge />
     <h1 className="text-xl font-semibold">Payment result pending confirmation</h1>
     <p role="alert">{error || "Do not take payment again. This cart is preserved while the result is checked."}</p>
@@ -1795,7 +1807,6 @@ export function OdooRegisterPage() {
         </section>
 
         {quoteIsCurrent && quote?.priceSource && <p role="status" className="px-3 text-xs text-[var(--oh-muted)]">Pricing: {quote.priceSource} · {quote.currency}</p>}
-        {eftposPaymentNotice && <p role="status" className="px-3 text-xs font-medium text-amber-900">{eftposPaymentNotice}</p>}
         <RegisterSellPaymentBar
           linesLength={lines.length}
           eftposSelected={eftposSelected}
@@ -1925,6 +1936,28 @@ export function OdooRegisterPage() {
         </div>
       )}
 
+            {pendingEftposCheckout && pendingCheckout && <div className="fixed inset-0 z-[65] grid place-items-center overflow-y-auto bg-black/45 p-4">
+        <section role="dialog" aria-modal="true" aria-labelledby="eftpos-checkout-title" aria-describedby="eftpos-checkout-description" aria-busy={busy} className="my-auto w-full max-w-md rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-6 shadow-2xl">
+          <div className="flex items-start gap-3">
+            {busy && !error ? <span aria-hidden="true" className="mt-1 size-5 shrink-0 animate-spin rounded-full border-2 border-[var(--oh-border)] border-t-[var(--oh-primary)]" /> : <CreditCard size={20} className="mt-1 shrink-0 text-[var(--oh-primary)]" />}
+            <div className="min-w-0">
+              <h2 ref={eftposDialogTitleRef} tabIndex={-1} id="eftpos-checkout-title" className="text-lg font-semibold text-[var(--oh-text)]">{eftposPaymentNotice ? "EFTPOS payment" : "Payment result needs confirmation"}</h2>
+              <p id="eftpos-checkout-description" role="status" aria-live="polite" className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">{eftposPaymentNotice || error || "Do not charge this card again. Check the saved order or reconcile it in sales history before taking another payment."}</p>
+            </div>
+          </div>
+          <div className="mt-5 flex items-baseline justify-between border-y border-[var(--oh-border)] py-3">
+            <span className="text-sm text-[var(--oh-muted)]">Amount</span>
+            <strong className="text-2xl tabular-nums text-[var(--oh-text)]">{money(eftposPaymentAmount ?? readQuoteFromSignature(pendingCheckout.expectedQuote)?.expectedTotal ?? 0)}</strong>
+          </div>
+          <p className="mt-3 break-all text-xs text-[var(--oh-muted)]">Order reference: {pendingCheckout.orderUuid}</p>
+          {!eftposPaymentNotice && <div className="mt-5 flex flex-col gap-2">
+            <button type="button" disabled={busy || !isOnline} onClick={() => void checkout()} className="min-h-11 rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white disabled:opacity-50">{busy ? "Checking…" : "Check saved order"}</button>
+            <button type="button" disabled={busy || eftposRecoveryBusy} onClick={() => void recoverStaleEftposAttempt(pendingCheckout.configId)} className="min-h-11 rounded-md border border-amber-400 px-4 text-sm font-semibold text-amber-950 disabled:opacity-50">{eftposRecoveryBusy ? "Cancelling pending attempt…" : "Cancel pending EFTPOS attempt"}</button>
+            <Link href="/history" target="_blank" className="min-h-11 content-center text-center text-sm font-medium text-[var(--oh-primary)] underline">Open sales history in another tab</Link>
+            <p className="text-xs leading-5 text-[var(--oh-muted)]">If the result remains unknown, ask a store administrator to reconcile the order and payment before starting another sale.</p>
+          </div>}
+        </section>
+      </div>}
             {receipt && <div role="dialog" aria-modal="true" aria-labelledby="sale-complete-title" className="receipt-overlay fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-black/40 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) setReceipt(null); }}>
         <section className="receipt-print my-auto w-full max-w-sm rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-6 shadow-2xl">
           <header className="receipt-print-hidden mb-4 flex items-center justify-between gap-4 border-b border-[var(--oh-border)] pb-3"><div className="flex items-center gap-2 text-emerald-700"><Check size={20} /><h2 id="sale-complete-title" className="text-lg font-semibold text-[var(--oh-text)]">Sale complete</h2></div><button type="button" onClick={() => setReceipt(null)} aria-label="Close receipt" className="grid h-11 w-11 place-items-center rounded-md text-[var(--oh-muted)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"><X size={18} /></button></header>
