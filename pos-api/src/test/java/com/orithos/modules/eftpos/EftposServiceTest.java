@@ -2,6 +2,7 @@ package com.orithos.modules.eftpos;
 
 import com.orithos.config.EftposProperties;
 import com.orithos.modules.eftpos.dto.CreateEftposAttemptRequest;
+import com.orithos.modules.eftpos.dto.EftposConnectorCallbackRequest;
 import com.orithos.modules.eftpos.dto.UpsertRegisterEftposBindingRequest;
 import com.orithos.modules.register.Register;
 import com.orithos.modules.register.RegisterMapper;
@@ -21,8 +22,11 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -90,6 +94,21 @@ class EftposServiceTest {
                 "Register 1", "PAX", "CBA", false));
 
         assertNotNull(view.revealedConnectorToken());
+    }
+
+    @Test
+    void rejectsLabApprovalCallbacksOutsideEftposTestMode() {
+        EftposProperties production = new EftposProperties();
+        EftposService productionService = new EftposService(repository, registerMapper, production);
+        var attempt = attempt(77L);
+        var binding = binding(true);
+        when(repository.findAttemptByIdGlobal(77L)).thenReturn(Optional.of(attempt));
+        when(repository.findBinding(1L, 12L)).thenReturn(Optional.of(binding));
+
+        assertThrows(com.orithos.common.BusinessException.class, () -> productionService.connectorCallback(
+                new EftposConnectorCallbackRequest(77L, "challenge", "APPROVED", "LAB-77-123"),
+                binding.connectorToken()));
+        verify(repository, org.mockito.Mockito.never()).updateAttemptStatus(anyLong(), anyLong(), any(), any());
     }
 
     private static EftposRepository.BindingRow binding(boolean paymentsEnabled) {

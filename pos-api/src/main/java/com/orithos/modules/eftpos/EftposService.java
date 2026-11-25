@@ -152,6 +152,11 @@ public class EftposService {
             throw new BusinessException(40300, "Connector challenge rejected.");
         }
         String status = normalise(body.status(), EftposPaymentStatuses.UNKNOWN);
+        String providerReference = trim(body.providerReference());
+        if (!properties.isTestMode() && providerReference != null
+                && providerReference.toUpperCase(Locale.ROOT).startsWith("LAB-")) {
+            throw new BusinessException(40300, "Lab payment approvals are not accepted outside EFTPOS test mode.");
+        }
         if (!status.equals(EftposPaymentStatuses.APPROVED)
                 && !status.equals(EftposPaymentStatuses.DECLINED)
                 && !status.equals(EftposPaymentStatuses.CANCELLED)
@@ -159,7 +164,7 @@ public class EftposService {
                 && !status.equals(EftposPaymentStatuses.APPROVED_PENDING_SETTLEMENT)) {
             throw new BusinessException(40000, "Unsupported payment status from connector.");
         }
-        repository.updateAttemptStatus(attempt.vendorId(), attempt.id(), status, trim(body.providerReference()));
+        repository.updateAttemptStatus(attempt.vendorId(), attempt.id(), status, providerReference);
         return toAttemptView(repository.findAttemptById(attempt.vendorId(), attempt.id()).orElseThrow(), binding);
     }
 

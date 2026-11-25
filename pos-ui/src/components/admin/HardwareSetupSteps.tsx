@@ -9,19 +9,18 @@ import {
   isLocalPrinterBridgeActive,
   subscribeLocalHardwareSettings,
 } from "@/lib/local-hardware";
-import { getEftposReadinessSnapshotJson, readEftposReadinessSnapshot } from "@/lib/hardware-eftpos-readiness";
+import { getEftposReadinessSnapshotJson, hasRecentApprovedEftposTest, readEftposReadinessSnapshot } from "@/lib/hardware-eftpos-readiness";
 import {
   resolveHardwareNetworkAccessState,
   watchHardwareNetworkAccess,
   type LocalNetworkAccessState,
 } from "@/lib/local-network-access";
 
-type StepId = "install" | "network" | "connect" | "printer" | "test" | "eftpos";
+type StepId = "network" | "connect" | "printer" | "test" | "eftpos";
 
 const STEP_META: { id: StepId; label: string; anchor: string }[] = [
-  { id: "install", label: "Install agent", anchor: "hardware-connect" },
   { id: "network", label: "Browser access", anchor: "hardware-connect" },
-  { id: "connect", label: "Connect on this PC", anchor: "hardware-connect" },
+  { id: "connect", label: "Install and connect agent", anchor: "hardware-connect" },
   { id: "printer", label: "Save printer", anchor: "hardware-printer" },
   { id: "test", label: "Test devices", anchor: "hardware-scanner" },
   { id: "eftpos", label: "Card payments", anchor: "hardware-eftpos" },
@@ -32,10 +31,8 @@ function stepDone(id: StepId, bridge: boolean, network: LocalNetworkAccessState)
   const eftpos = readEftposReadinessSnapshot();
 
   switch (id) {
-    case "install":
-      return bridge;
     case "network":
-      return network === "granted" || network === "unsupported";
+      return network === "granted";
     case "connect":
       return bridge;
     case "printer":
@@ -43,7 +40,11 @@ function stepDone(id: StepId, bridge: boolean, network: LocalNetworkAccessState)
     case "test":
       return hasBarcodeScannerTested();
     case "eftpos":
-      return eftpos.paymentsEnabled && eftpos.connectorHealth === "reachable";
+      return eftpos.paymentsEnabled
+        && eftpos.connectorHealth === "reachable"
+        && eftpos.tokenConfigured
+        && eftpos.connectorMode === "tcp-proxy"
+        && hasRecentApprovedEftposTest(eftpos, eftpos.registerId);
     default:
       return false;
   }
@@ -78,10 +79,8 @@ function stepHint(id: StepId, bridge: boolean, network: LocalNetworkAccessState)
     }
   }
   switch (id) {
-    case "install":
-      return "Download Hardware Connect";
     case "network":
-      return network === "denied" ? "Allow in site settings" : "Allow local network";
+      return network === "unsupported" ? "Use a supported secure browser" : network === "denied" ? "Allow in site settings" : "Allow local network";
     case "connect":
       return "Connect on this PC";
     case "printer":
@@ -89,7 +88,9 @@ function stepHint(id: StepId, bridge: boolean, network: LocalNetworkAccessState)
     case "test":
       return hasBarcodeScannerTested() ? "Scanner verified on this PC" : "Scan a barcode below";
     case "eftpos":
-      return eftpos.paymentsEnabled ? "Start EFTPOS bridge" : "Optional · Linkly";
+      return eftpos.paymentsEnabled
+        ? eftpos.connectorMode === "lab" ? "Lab test mode only" : "Finish terminal verification"
+        : "Optional · Linkly";
     default:
       return "";
   }
@@ -118,7 +119,7 @@ export function HardwareSetupSteps() {
   void eftposSnap;
 
   const bridge = isLocalPrinterBridgeActive();
-  const [network, setNetwork] = useState<LocalNetworkAccessState>("unsupported");
+  const [network, setNetwork] = useState<LocalNetworkAccessState>("prompt");
 
   useEffect(() => {
     let cancelled = false;

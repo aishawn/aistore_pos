@@ -5,6 +5,7 @@ export type ConnectorStatus = {
   terminal?: string;
   detail?: string;
   tokenConfigured?: boolean;
+  integrationMode?: "lab" | "tcp-proxy" | string;
 };
 
 export type ConnectorLocalConfigPayload = {

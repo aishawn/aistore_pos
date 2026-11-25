@@ -9,6 +9,10 @@ export type EftposReadinessSnapshot = {
   enabled: boolean;
   paymentsEnabled: boolean;
   connectorHealth: "unknown" | "reachable" | "offline" | "error";
+  connectorMode: "unknown" | "lab" | "tcp-proxy" | string;
+  tokenConfigured: boolean;
+  testPaymentAt: string;
+  testPaymentStatus: "APPROVED" | "DECLINED" | "UNKNOWN" | "";
   updatedAt: string;
 };
 
@@ -17,6 +21,10 @@ const EMPTY: EftposReadinessSnapshot = {
   enabled: false,
   paymentsEnabled: false,
   connectorHealth: "unknown",
+  connectorMode: "unknown",
+  tokenConfigured: false,
+  testPaymentAt: "",
+  testPaymentStatus: "",
   updatedAt: "",
 };
 
@@ -47,6 +55,10 @@ export function readEftposReadinessSnapshot(): EftposReadinessSnapshot {
         || value.connectorHealth === "error"
           ? value.connectorHealth
           : "unknown",
+      connectorMode: typeof value.connectorMode === "string" ? value.connectorMode : "unknown",
+      tokenConfigured: value.tokenConfigured === true,
+      testPaymentAt: typeof value.testPaymentAt === "string" ? value.testPaymentAt : "",
+      testPaymentStatus: value.testPaymentStatus === "APPROVED" || value.testPaymentStatus === "DECLINED" || value.testPaymentStatus === "UNKNOWN" ? value.testPaymentStatus : "",
       updatedAt: typeof value.updatedAt === "string" ? value.updatedAt : "",
     };
   } catch {
@@ -56,4 +68,13 @@ export function readEftposReadinessSnapshot(): EftposReadinessSnapshot {
 
 export function getEftposReadinessSnapshotJson(): string {
   return JSON.stringify(readEftposReadinessSnapshot());
+}
+
+export function hasRecentApprovedEftposTest(snapshot: EftposReadinessSnapshot, registerId: number | null, now = Date.now()): boolean {
+  const testedAt = Date.parse(snapshot.testPaymentAt);
+  return snapshot.registerId === registerId
+    && registerId !== null
+    && snapshot.testPaymentStatus === "APPROVED"
+    && Number.isFinite(testedAt)
+    && now - testedAt < 24 * 60 * 60 * 1000;
 }

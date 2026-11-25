@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -13,10 +14,12 @@ internal static class LinklyConnectorWebApp
     {
         var listenUrl = Environment.GetEnvironmentVariable("ORITHOS_CONNECTOR_URL")
             ?? AgentVersion.DefaultEftposListen;
+        if (!IsLoopbackListenUrl(listenUrl))
+        {
+            throw new InvalidOperationException("ORITHOS_CONNECTOR_URL must use localhost or a loopback IP address.");
+        }
+
         var settings = ConnectorLocalSettings.Load();
-        var autoApproveMs = int.TryParse(Environment.GetEnvironmentVariable("CONNECTOR_AUTO_APPROVE_MS"), out var parsedMs)
-            ? Math.Max(0, parsedMs)
-            : 800;
 
         var json = new JsonSerializerOptions
         {
@@ -31,12 +34,39 @@ internal static class LinklyConnectorWebApp
 
         app.Use(async (ctx, next) =>
         {
-            ctx.Response.Headers["Access-Control-Allow-Origin"] = "*";
-            ctx.Response.Headers["Access-Control-Allow-Methods"] = "GET,POST,OPTIONS";
-            ctx.Response.Headers["Access-Control-Allow-Headers"] = "Content-Type";
+            var origin = ctx.Request.Headers["Origin"].ToString();
+            if (!string.IsNullOrEmpty(origin) && !IsAllowedOrigin(origin))
+            {
+                ctx.Response.StatusCode = StatusCodes.Status403Forbidden;
+                return;
+            }
+
+            if (!string.IsNullOrEmpty(origin))
+            {
+                ctx.Response.Headers["Access-Control-Allow-Origin"] = origin;
+                ctx.Response.Headers["Access-Control-Allow-Methods"] = "GET,POST,OPTIONS";
+                ctx.Response.Headers["Access-Control-Allow-Headers"] = "Content-Type";
+                ctx.Response.Headers["Access-Control-Allow-Private-Network"] = "true";
+                ctx.Response.Headers["Vary"] = "Origin";
+            }
+
             if (HttpMethods.IsOptions(ctx.Request.Method))
             {
+                if (string.IsNullOrEmpty(origin))
+                {
+                    ctx.Response.StatusCode = StatusCodes.Status403Forbidden;
+                    return;
+                }
+
                 ctx.Response.StatusCode = StatusCodes.Status204NoContent;
+                return;
+            }
+
+            if (HttpMethods.IsPost(ctx.Request.Method)
+                && ctx.Request.Path.Equals("/v1/config", StringComparison.OrdinalIgnoreCase)
+                && string.IsNullOrEmpty(origin))
+            {
+                ctx.Response.StatusCode = StatusCodes.Status403Forbidden;
                 return;
             }
 
@@ -62,8 +92,8 @@ internal static class LinklyConnectorWebApp
                 detail = !hasToken
                     ? "Save EFTPOS in Hardware settings — token syncs automatically (Hardware Connect 1.1.1+)."
                     : linklyMode == "tcp-proxy"
-                        ? "Forwarding to Linkly TCP on this PC. Complete terminal pairing with your acquirer."
-                        : "Lab mode auto-approves test payments. Set ORITHOS_LINKLY_TCP_BASE for a real Linkly client.",
+                        ? "Forwarding to the configured Linkly HTTP adapter. Verify terminal pairing before accepting payments."
+                        : "Lab mode is diagnostic only; it cannot approve or process Sell payments. Configure the real Linkly adapter first.",
             }, json);
         });
 
@@ -73,6 +103,13 @@ internal static class LinklyConnectorWebApp
             if (body is null)
             {
                 return Results.BadRequest(new { error = "Invalid JSON" });
+            }
+
+            if (!Uri.TryCreate(body.OrithosApiUrl, UriKind.Absolute, out var apiUri)
+                || !IsAllowedOrigin(apiUri.GetLeftPart(UriPartial.Authority))
+                || !string.Equals(request.Headers["Origin"].ToString(), apiUri.GetLeftPart(UriPartial.Authority), StringComparison.OrdinalIgnoreCase))
+            {
+                return Results.BadRequest(new { error = "Orithos API origin must match this approved store page" });
             }
 
             settings.Apply(body.OrithosApiUrl, body.ConnectorToken, persist: true);
@@ -93,31 +130,13 @@ internal static class LinklyConnectorWebApp
                 return Results.Problem("Connector token is not configured. Save EFTPOS settings in Hardware Connect before querying a transaction.", statusCode: StatusCodes.Status503ServiceUnavailable);
             }
 
-            if (!string.IsNullOrWhiteSpace(linklyTcpBase))
+            if (string.IsNullOrWhiteSpace(linklyTcpBase))
             {
-                var forwarded = await TryForwardToLinklyTcpAsync(linklyTcpBase, "/v1/query", body!, json, cancellationToken);
-                if (forwarded is not null) return forwarded;
+                return Results.Problem("Lab mode cannot query terminal payments. Configure the real Linkly adapter before reconciling this attempt.", statusCode: StatusCodes.Status503ServiceUnavailable);
             }
 
-            var snap = settings.Snapshot();
-            _ = Task.Run(async () =>
-            {
-                if (autoApproveMs > 0)
-                {
-                    await Task.Delay(autoApproveMs, cancellationToken);
-                }
-
-                await PostCallbackAsync(
-                    snap.ApiUrl,
-                    snap.Token,
-                    body!.AttemptId,
-                    body.ConnectorChallenge,
-                    "APPROVED",
-                    $"LAB-QUERY-{body.AttemptId}-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}",
-                    cancellationToken);
-            }, cancellationToken);
-
-            return Results.Json(new { queried = true, attemptId = body.AttemptId }, json, statusCode: StatusCodes.Status202Accepted);
+            var forwarded = await TryForwardToLinklyTcpAsync(linklyTcpBase, "/v1/query", body!, json, cancellationToken);
+            return forwarded!;
         });
 
         app.MapPost("/v1/purchase", async (HttpRequest request) =>
@@ -138,74 +157,43 @@ internal static class LinklyConnectorWebApp
                 return Results.Problem("Connector token is not configured. Save EFTPOS settings in Hardware Connect before starting a payment.", statusCode: StatusCodes.Status503ServiceUnavailable);
             }
 
-            body = body with { Currency = "AUD" };
-
-            if (!string.IsNullOrWhiteSpace(linklyTcpBase))
+            if (string.IsNullOrWhiteSpace(linklyTcpBase))
             {
-                var forwarded = await TryForwardToLinklyTcpAsync(linklyTcpBase, "/v1/purchase", body, json, cancellationToken);
-                if (forwarded is not null) return forwarded;
+                return Results.Problem("Lab mode cannot approve or process Sell payments. Configure the real Linkly adapter before enabling card payments.", statusCode: StatusCodes.Status503ServiceUnavailable);
             }
 
-            var snap = settings.Snapshot();
-            _ = Task.Run(async () =>
-            {
-                if (autoApproveMs > 0)
-                {
-                    await Task.Delay(autoApproveMs, cancellationToken);
-                }
-
-                await PostCallbackAsync(
-                    snap.ApiUrl,
-                    snap.Token,
-                    body.AttemptId,
-                    body.ConnectorChallenge,
-                    "APPROVED",
-                    $"LAB-{body.AttemptId}-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}",
-                    cancellationToken);
-            }, cancellationToken);
-
-            return Results.Json(new { accepted = true, orderUuid = body.OrderUuid }, json, statusCode: StatusCodes.Status202Accepted);
+            body = body with { Currency = "AUD" };
+            var forwarded = await TryForwardToLinklyTcpAsync(linklyTcpBase, "/v1/purchase", body, json, cancellationToken);
+            return forwarded!;
         });
 
         await app.RunAsync(cancellationToken);
     }
 
-    private static async Task PostCallbackAsync(
-        string orithosApiUrl,
-        string connectorToken,
-        long attemptId,
-        string connectorChallenge,
-        string status,
-        string providerReference,
-        CancellationToken cancellationToken)
+    private static bool IsLoopbackListenUrl(string value)
     {
-        if (string.IsNullOrWhiteSpace(connectorToken))
-        {
-            return;
-        }
+        return Uri.TryCreate(value, UriKind.Absolute, out var uri)
+            && (uri.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase)
+                || (IPAddress.TryParse(uri.Host, out var address) && IPAddress.IsLoopback(address)));
+    }
 
-        try
+    private static bool IsAllowedOrigin(string origin)
+    {
+        var configured = Environment.GetEnvironmentVariable("ORITHOS_ALLOWED_ORIGINS") ?? "";
+        var allowed = new[]
         {
-            using var request = new HttpRequestMessage(HttpMethod.Post, $"{orithosApiUrl}/api/eftpos/connector/callback");
-            request.Headers.TryAddWithoutValidation("X-Orithos-Connector-Token", connectorToken);
-            request.Content = JsonContent.Create(new
-            {
-                attemptId,
-                connectorChallenge,
-                status,
-                providerReference,
-            });
-            using var response = await CallbackClient.SendAsync(request, cancellationToken);
-            if (!response.IsSuccessStatusCode)
-            {
-                var text = await response.Content.ReadAsStringAsync(cancellationToken);
-                Console.Error.WriteLine($"Orithos callback failed ({(int)response.StatusCode}): {text}");
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.Error.WriteLine($"Orithos callback error: {ex.Message}");
-        }
+            "https://skr.orithos.com.au",
+            "https://demo.orithos.com.au",
+            "https://app.orithos.com.au",
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
+            "http://localhost:3100",
+            "http://127.0.0.1:3100",
+            "http://localhost:3101",
+            "http://127.0.0.1:3101",
+        }.Concat(configured.Split([',', ';'], StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries));
+
+        return allowed.Any(candidate => string.Equals(candidate, origin, StringComparison.OrdinalIgnoreCase));
     }
 
     private static async Task<IResult?> TryForwardToLinklyTcpAsync(
