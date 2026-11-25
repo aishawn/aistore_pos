@@ -170,6 +170,7 @@ class AssistantFastPathRouterTest {
                 "How much is our stock worth?",
                 "What is our current stock valuation?",
                 "What is our inventory value including inactive products?",
+                "What is our current stock valuation, including inactive products?",
                 "total inventory value",
                 "库存总价值是多少？",
                 "当前库存估值是多少？"
