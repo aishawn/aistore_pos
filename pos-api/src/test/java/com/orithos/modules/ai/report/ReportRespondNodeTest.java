@@ -49,6 +49,23 @@ class ReportRespondNodeTest {
     }
 
     @Test
+    void topCategoryAnswerRanksUnitsAndShowsSalesValueInChinese() {
+        OverAllState state = state("", List.of(
+                Map.of("category", "Beer Local", "units_sold", 420, "sales_amount", BigDecimal.valueOf(2100)),
+                Map.of("category", "Wine", "units_sold", 180, "sales_amount", BigDecimal.valueOf(3600))),
+                "2026-11-23", "2026-11-26");
+        when(state.value("intent", String.class)).thenReturn(Optional.of("report_top_category"));
+        when(state.value("question", String.class)).thenReturn(Optional.of("本周哪类商品卖得最好"));
+
+        String answer = (String) node.apply(state).get("answer");
+
+        assertTrue(answer.startsWith("2026-11-23 至 2026-11-26品类销量排名（按售出件数，前 2 名）："));
+        assertTrue(answer.contains("1. Beer Local：售出 420 件，销售额 AUD 2100.00"));
+        assertTrue(answer.contains("2. Wine：售出 180 件，销售额 AUD 3600.00"));
+        assertTrue(answer.contains("金额仅供参考"));
+    }
+
+    @Test
     void authoritativeSalesAnswerIncludesProfitAndExplainsItsBasis() {
         OverAllState state = state("", List.of(Map.of("sales", 125.50, "grossProfit", 40.25,
                 "costAvailable", true, "transactions", 4)), "2026-10-16", "2026-10-16");

@@ -14,7 +14,7 @@ public class ReportTemplateRegistry {
 
     public static final Set<String> TEMPLATE_INTENTS = Set.of(
             "report_sales", "report_qty", "report_aov", "report_stock", "report_stock_summary",
-            "report_dead_stock", "report_stock_value"
+            "report_dead_stock", "report_stock_value", "report_top_category"
     );
 
     /** Classifier often stuffs the metric word into category ("销量"), which matches no product. */
@@ -50,6 +50,23 @@ public class ReportTemplateRegistry {
         return switch (intent) {
             case "report_sales" -> sales(outletId, fromDay, toDay, category, "amount");
             case "report_qty" -> sales(outletId, fromDay, toDay, category, "qty");
+            case "report_top_category" -> BoundSql.ok("""
+                    SELECT COALESCE(NULLIF(BTRIM(p.category_name), ''), 'Uncategorised') AS category,
+                           SUM(si.qty) AS units_sold,
+                           SUM(si.amount) AS sales_amount,
+                           COUNT(DISTINCT si.product_id) AS products_sold,
+                           to_char(MAX(si.sold_at) AT TIME ZONE current_setting('TimeZone') AT TIME ZONE 'UTC',
+                                   'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS "dataAsOf"
+                    FROM ai_rpt_sale_item si
+                    JOIN ai_rpt_product p ON p.id = si.product_id AND p.outlet_id = si.outlet_id
+                    WHERE si.outlet_id = ?
+                      AND p.outlet_id = ?
+                      AND si.business_date >= ?
+                      AND si.business_date < ?
+                    GROUP BY p.category_id, COALESCE(NULLIF(BTRIM(p.category_name), ''), 'Uncategorised')
+                    ORDER BY SUM(si.qty) DESC, SUM(si.amount) DESC, category
+                    LIMIT 10
+                    """, List.of(outletId, outletId, fromDay, toDay));
             case "report_aov" -> BoundSql.fail("AUTHORITATIVE_REPORT_REQUIRED");
             case "report_stock" -> {
                 if (query == null) {

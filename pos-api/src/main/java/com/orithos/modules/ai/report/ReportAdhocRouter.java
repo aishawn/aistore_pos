@@ -13,7 +13,7 @@ public final class ReportAdhocRouter {
 
     private static final Set<String> OVERRIDE_FROM = Set.of(
             "report_sales", "report_qty", "report_aov", "report_stock", "report_dead_stock",
-            "report_stock_summary",
+            "report_stock_summary", "report_top_category",
             "product_count", "qa", "unknown", "navigate", "report_adhoc"
     );
 
@@ -50,6 +50,9 @@ public final class ReportAdhocRouter {
             "(?is).*(?:sales|revenue|takings|销售额|营业额|收入|profit|gross profit|毛利|利润).*"
                     + "(?:units|quantity|销量|件数|库存|stock).*|.*(?:units|quantity|销量|件数|库存|stock).*"
                     + "(?:sales|revenue|takings|销售额|营业额|收入|profit|gross profit|毛利|利润).*"
+    );
+    private static final Pattern TOP_CATEGORY_SALES = Pattern.compile(
+            "(?is).*(?:哪类|哪一类|哪个品类|哪些品类|which\s+(?:product\s+)?categor(?:y|ies).*?(?:sold|sell).*?(?:best|most)|top[- ]selling\s+categor(?:y|ies)|best[- ]selling\s+categor(?:y|ies)|categor(?:y|ies).*?(?:sold|sell).*?(?:best|most)).*"
     );
     private static final Pattern RAW_SQL_STATEMENT = Pattern.compile(
             "(?is)\\b(?:select\\s+.+?\\s+from\\s+|insert\\s+into\\s+|update\\s+[\\w.]+\\s+set\\s+|"
@@ -95,6 +98,10 @@ public final class ReportAdhocRouter {
             return false;
         }
         String q = question.toLowerCase(Locale.ROOT);
+        if (TOP_CATEGORY_SALES.matcher(q).matches() && !isRawSqlStatement(question)
+                && !containsSqlMutation(question)) {
+            return false;
+        }
         if (TICKET_COUNT.matcher(q).find()) {
             return false;
         }
@@ -133,6 +140,10 @@ public final class ReportAdhocRouter {
             return intent;
         }
         String q = question.toLowerCase(Locale.ROOT);
+        if (TOP_CATEGORY_SALES.matcher(q).matches() && !isRawSqlStatement(question)
+                && !containsSqlMutation(question) && canOverride(intent)) {
+            return "report_top_category";
+        }
         if (STOCK_SUMMARY.matcher(q).matches() && canOverride(intent)) {
             return "report_stock_summary";
         }

@@ -135,7 +135,9 @@ class ClassifyQueryNodeTest {
         for (String question : new String[]{
                 "What were yesterday's sales, gross profit and transaction count?",
                 "昨天销售额、毛利和交易笔数是多少？",
-                "What was the average ticket and transaction count yesterday?"
+                "What was the average ticket and transaction count yesterday?",
+                "本周哪类商品卖得最好",
+                "Which category sold best this week?"
         }) {
             OverAllState state = mock(OverAllState.class);
             when(state.value("question", String.class)).thenReturn(Optional.of(question));
@@ -145,7 +147,9 @@ class ClassifyQueryNodeTest {
 
             Map<String, Object> result = node.apply(state);
 
-            String expectedIntent = question.contains("average ticket") ? "report_aov" : "report_sales";
+            String expectedIntent = question.contains("average ticket") ? "report_aov"
+                    : question.contains("category") || question.contains("哪类")
+                    ? "report_top_category" : "report_sales";
             assertEquals(expectedIntent, result.get("intent"), question);
             assertEquals("deterministic", result.get("route_source"), question);
             assertFalse(Boolean.parseBoolean(String.valueOf(result.get("llm_fallback"))), question);
@@ -879,7 +883,7 @@ class ClassifyQueryNodeTest {
     }
 
     @Test
-    void unsupportedRankingSkipsClassifierWithSafeAdhocIntent() {
+    void categoryRankingSkipsClassifierWithNativeReportIntent() {
         ChatClient chatClient = mock(ChatClient.class);
         IntentConfigService config = mock(IntentConfigService.class);
         IntentSanitizeService sanitizer = mock(IntentSanitizeService.class);
@@ -890,7 +894,7 @@ class ClassifyQueryNodeTest {
 
         Map<String, Object> result = node.apply(state);
 
-        assertEquals("report_adhoc", result.get("intent"));
+        assertEquals("report_top_category", result.get("intent"));
         assertEquals("", result.get("ui_route"));
         verifyNoInteractions(chatClient, config, sanitizer, properties);
     }

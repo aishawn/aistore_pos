@@ -55,6 +55,31 @@ class ReportTemplateRegistryTest {
     }
 
     @Test
+    void topCategoryReportUsesBoundedOutletAndBusinessDateScopedReadOnlyQuery() {
+        TenantContext tenant = new TenantContext(
+                55L, 12L, 87L, List.of(87L), Set.of(TenantContext.PERM_QUERY));
+        LocalDate from = LocalDate.of(2026, 11, 23);
+        LocalDate to = LocalDate.of(2026, 11, 27);
+        ReportPeriodResolver.Window window = new ReportPeriodResolver.Window(
+                from.atStartOfDay(), to.atStartOfDay(), 4);
+
+        ReportTemplateRegistry.BoundSql bound = registry.bind(
+                "report_top_category", tenant, Map.of(), window);
+
+        assertNull(bound.error());
+        assertTrue(bound.sql().contains("FROM ai_rpt_sale_item si"));
+        assertTrue(bound.sql().contains("JOIN ai_rpt_product p"));
+        assertTrue(bound.sql().contains("si.outlet_id = ?"));
+        assertTrue(bound.sql().contains("p.outlet_id = ?"));
+        assertTrue(bound.sql().contains("si.business_date >= ?"));
+        assertTrue(bound.sql().contains("si.business_date < ?"));
+        assertTrue(bound.sql().contains("SUM(si.qty) DESC"));
+        assertTrue(bound.sql().contains("SUM(si.amount)"));
+        assertTrue(bound.sql().contains("LIMIT 10"));
+        assertEquals(List.of(87L, 87L, java.sql.Date.valueOf(from), java.sql.Date.valueOf(to)), bound.params());
+    }
+
+    @Test
     void averageTicketCannotUseTheLegacyCustomerSaleAggregation() {
         TenantContext tenant = new TenantContext(
                 55L, 12L, 87L, List.of(87L), Set.of(TenantContext.PERM_QUERY));

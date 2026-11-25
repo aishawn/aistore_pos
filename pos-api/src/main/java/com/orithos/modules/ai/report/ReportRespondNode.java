@@ -77,6 +77,9 @@ public class ReportRespondNode implements NodeAction {
                             + (dateRange.isBlank() ? "" : "销售统计区间：" + dateRange + "。");
                 }
                 case "report_stock_value" -> "No on-hand products with a recorded cost were found.";
+                case "report_top_category" -> chinese
+                        ? "所选期间没有已完成销售记录，暂时无法比较品类销量。"
+                        : "No completed sales were recorded for that period, so category sales cannot be ranked.";
                 default -> "report_sales".equals(intent) && chinese
                         ? rangeText(from, to, true) + "没有已完成销售记录。数据来源：Orithos POS 报表。"
                         : "No completed sales found for " + rangeText(from, to)
@@ -97,6 +100,7 @@ public class ReportRespondNode implements NodeAction {
             case "report_dead_stock" -> formatDead(rows, slots.getOrDefault("days", "30"), from, to, chinese);
             case "report_stock_value" -> formatStockValue(rows, chinese);
             case "report_qty" -> formatQuantitySeries(rows, from, to);
+            case "report_top_category" -> formatTopCategories(rows, from, to, chinese);
             case "report_adhoc" -> formatAdhoc(rows, from, to);
             default -> formatSeries(rows, "sales", "Sales", from, to);
         };
@@ -342,6 +346,26 @@ public class ReportRespondNode implements NodeAction {
         return "Average Ticket for " + range + " is " + aov + " across " + tickets
                 + ("1".equals(tickets) ? " sale transaction. Source: Orithos POS report."
                 : " sales transactions. Source: Orithos POS report.");
+    }
+
+    private String formatTopCategories(List<Map<String, Object>> rows, String from, String to, boolean chinese) {
+        StringBuilder answer = new StringBuilder(chinese
+                ? rangeText(from, to, true) + "品类销量排名（按售出件数，前 " + rows.size() + " 名）："
+                : "Top " + rows.size() + " categories by units sold for " + rangeText(from, to) + ":");
+        for (int i = 0; i < rows.size(); i++) {
+            Map<String, Object> row = rows.get(i);
+            String category = String.valueOf(row.getOrDefault("category", "Uncategorised"));
+            String units = ReportQueryService.toDecimal(row.get("units_sold"))
+                    .stripTrailingZeros().toPlainString();
+            String sales = money(ReportQueryService.toDecimal(row.get("sales_amount")));
+            answer.append("\n").append(i + 1).append(". ").append(category)
+                    .append(chinese ? "：售出 " : ": ").append(units)
+                    .append(chinese ? " 件，销售额 AUD " : " units sold, sales AUD ").append(sales);
+        }
+        answer.append(chinese
+                ? "\n数据来源：Orithos POS 已完成销售记录；按销量排序，金额仅供参考。"
+                : "\nSource: completed Orithos POS sales; ranked by units, with sales value for context.");
+        return answer.toString();
     }
 
     private String formatStock(List<Map<String, Object>> rows, String query, boolean chinese) {
