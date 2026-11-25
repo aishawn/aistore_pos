@@ -123,6 +123,13 @@ internal static class LinklyConnectorWebApp
                 return Results.BadRequest(new { error = "attemptId and connectorChallenge are required" });
             }
 
+            if (body.AmountCents is not > 0 || !string.Equals(body.Currency, "AUD", StringComparison.OrdinalIgnoreCase))
+            {
+                return Results.BadRequest(new { error = "A positive amountCents and AUD currency are required" });
+            }
+
+            body = body with { Currency = "AUD" };
+
             if (!string.IsNullOrWhiteSpace(linklyTcpBase))
             {
                 var forwarded = await TryForwardToLinklyTcpAsync(linklyTcpBase, "/v1/purchase", body, json, cancellationToken);
@@ -208,12 +215,17 @@ internal static class LinklyConnectorWebApp
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"Linkly TCP forward failed: {ex.Message}");
-            return Results.Problem("Linkly TCP forward failed; falling back to lab mode.", statusCode: StatusCodes.Status502BadGateway);
+            Console.Error.WriteLine($"Linkly HTTP adapter forward failed: {ex.GetType().Name}");
+            return Results.Problem("No confirmation was received from the Linkly adapter. The outcome may be unknown; do not retry until the terminal and Linkly journal are checked.", statusCode: StatusCodes.Status502BadGateway);
         }
     }
 
     private sealed record ConnectorConfigRequest(string? OrithosApiUrl, string? ConnectorToken);
 
-    private sealed record ConnectorTxnRequest(long AttemptId, string? OrderUuid, string? ConnectorChallenge);
+    private sealed record ConnectorTxnRequest(
+        long AttemptId,
+        string? OrderUuid,
+        string? ConnectorChallenge,
+        int? AmountCents = null,
+        string? Currency = null);
 }
