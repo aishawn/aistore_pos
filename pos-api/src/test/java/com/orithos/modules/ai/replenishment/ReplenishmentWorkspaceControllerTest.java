@@ -9,6 +9,7 @@ import org.springframework.mock.web.MockHttpServletRequest;
 import java.util.List;
 import java.util.Set;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doNothing;
@@ -16,6 +17,17 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 class ReplenishmentWorkspaceControllerTest {
+
+    @Test
+    void snapshotGapsIncludeMissedDaysAfterTheLatestCapture() {
+        var first = java.time.LocalDate.of(2026, 11, 20);
+        assertEquals(2, ReplenishmentWorkspaceService.missingSnapshotDays(
+                first, 1, java.time.LocalDate.of(2026, 11, 22)));
+        assertEquals(0, ReplenishmentWorkspaceService.missingSnapshotDays(
+                first, 3, java.time.LocalDate.of(2026, 11, 22)));
+        assertEquals(0, ReplenishmentWorkspaceService.missingSnapshotDays(
+                null, 0, java.time.LocalDate.of(2026, 11, 22)));
+    }
 
     @Test
     void workspaceUsesTheSameInclusiveSalesWindowsAsAssistant() throws Exception {

@@ -11,6 +11,7 @@ import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -341,12 +342,20 @@ public class ReplenishmentWorkspaceService {
                 .toList();
         LocalDate first = observed.isEmpty() ? null : observed.getFirst();
         LocalDate latest = observed.isEmpty() ? null : observed.getLast();
-        int gaps = first == null ? 0 : Math.max(0, (int) (latest.toEpochDay() - first.toEpochDay() + 1) - observed.size());
+        LocalDate expectedThrough = LocalTime.now(zone).isBefore(LocalTime.of(23, 45))
+                ? today.minusDays(1) : today;
+        int gaps = missingSnapshotDays(first, observed.size(), expectedThrough);
         int invalid = (int) captures.stream()
                 .filter(row -> numberValue(row.get("expected_products")) > 0)
                 .filter(row -> !"COMPLETE".equalsIgnoreCase(String.valueOf(row.get("capture_status"))))
                 .count();
         return new SnapshotHistory(observed.size(), gaps, invalid, first, latest);
+    }
+
+    static int missingSnapshotDays(LocalDate firstObserved, int observedDays, LocalDate expectedThrough) {
+        if (firstObserved == null || expectedThrough.isBefore(firstObserved)) return 0;
+        long expectedDays = expectedThrough.toEpochDay() - firstObserved.toEpochDay() + 1;
+        return (int) Math.max(0, expectedDays - observedDays);
     }
 
     private static int numberValue(Object value) {
