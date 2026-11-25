@@ -462,7 +462,7 @@ public class ReportRespondNode implements NodeAction {
         }
         if (hasStoreTotal) {
             if (chinese) {
-                sb.append("。已知成本库存小计 AUD ").append(money(storeTotal))
+                sb.append("。已知成本库存小计（含停用商品）AUD ").append(money(storeTotal))
                         .append("，覆盖 ").append(valuedCount).append(" 个商品；另有 ")
                         .append(excludedCount).append(" 个商品未计价，完整库存金额暂不可用。前 ")
                         .append(Math.min(8, valuedCount)).append(" 个商品小计 AUD ").append(money(topTotal))
@@ -474,11 +474,13 @@ public class ReportRespondNode implements NodeAction {
                     } else {
                         sb.append("，成本未核实");
                     }
+                    sb.append("；扣除停用商品后，在售商品已知成本小计 AUD ")
+                            .append(money(storeTotal.subtract(inactiveValue)));
                     sb.append("；核对状态前请勿将其视为正常在售库存。");
                 }
                 sb.append("数据来源：Orithos 当前库存和商品成本快照。");
             } else {
-                sb.append(". Known-cost on-hand inventory subtotal: AUD ")
+                sb.append(". Known-cost on-hand inventory subtotal (including inactive stock): AUD ")
                         .append(money(storeTotal)).append(" across ").append(valuedCount)
                         .append(" products; ").append(excludedCount)
                         .append(" products were not valued, so the complete inventory value is unavailable. Top ")
@@ -491,6 +493,8 @@ public class ReportRespondNode implements NodeAction {
                     } else {
                         sb.append(" with unverified cost");
                     }
+                    sb.append(". Active-product known-cost subtotal excluding inactive stock: AUD ")
+                            .append(money(storeTotal.subtract(inactiveValue)));
                     sb.append("; verify their status before treating them as active stock.");
                 }
                 sb.append(" Source: Orithos on-hand quantities and product costs; current snapshot.");

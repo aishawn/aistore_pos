@@ -584,7 +584,7 @@ class ReportRespondNodeTest {
 
         String answer = (String) node.apply(stockValue).get("answer");
 
-        org.junit.jupiter.api.Assertions.assertTrue(answer.contains("已知成本库存小计 AUD 550.00"));
+        org.junit.jupiter.api.Assertions.assertTrue(answer.contains("已知成本库存小计（含停用商品）AUD 550.00"));
         org.junit.jupiter.api.Assertions.assertTrue(answer.contains("前 8 个商品小计 AUD 360.00"));
         org.junit.jupiter.api.Assertions.assertTrue(answer.contains("完整库存金额暂不可用"));
         org.junit.jupiter.api.Assertions.assertFalse(answer.contains("前 8 个合计 AUD 550.00"));
@@ -658,6 +658,8 @@ class ReportRespondNodeTest {
 
         org.junit.jupiter.api.Assertions.assertTrue(answer.contains("21 inactive product(s) on hand"));
         org.junit.jupiter.api.Assertions.assertTrue(answer.contains("known-cost portion AUD 20460.28"));
+        org.junit.jupiter.api.Assertions.assertTrue(answer.contains("including inactive stock"));
+        org.junit.jupiter.api.Assertions.assertTrue(answer.contains("Active-product known-cost subtotal excluding inactive stock: AUD 375062.12"));
         org.junit.jupiter.api.Assertions.assertTrue(answer.contains("verify their status"));
     }
 
@@ -679,6 +681,7 @@ class ReportRespondNodeTest {
 
         org.junit.jupiter.api.Assertions.assertTrue(answer.contains("停用商品有 21 个在库"));
         org.junit.jupiter.api.Assertions.assertTrue(answer.contains("AUD 20460.28"));
+        org.junit.jupiter.api.Assertions.assertTrue(answer.contains("在售商品已知成本小计 AUD 375062.12"));
         org.junit.jupiter.api.Assertions.assertTrue(answer.contains("核对状态前"));
     }
 
