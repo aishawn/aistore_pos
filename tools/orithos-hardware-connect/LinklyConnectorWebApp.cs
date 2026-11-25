@@ -243,10 +243,19 @@ internal static class LinklyConnectorWebApp
     {
         try
         {
+            using var requestTimeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            requestTimeout.CancelAfter(TimeSpan.FromSeconds(30));
             using var request = new HttpRequestMessage(HttpMethod.Post, $"{linklyTcpBase}{path}");
             request.Content = JsonContent.Create(body, options: json);
-            using var response = await CallbackClient.SendAsync(request, cancellationToken);
-            var text = await response.Content.ReadAsStringAsync(cancellationToken);
+            using var response = await CallbackClient.SendAsync(
+                request,
+                HttpCompletionOption.ResponseHeadersRead,
+                requestTimeout.Token);
+            await using var responseStream = await response.Content.ReadAsStreamAsync(requestTimeout.Token);
+            var text = await BoundedResponseReader.ReadAsync(
+                responseStream,
+                response.Content.Headers.ContentLength,
+                requestTimeout.Token);
             return Results.Content(text, "application/json", statusCode: (int)response.StatusCode);
         }
         catch (Exception ex)
