@@ -129,9 +129,22 @@ internal sealed class SupportDiagnosticsForm : Form
             lines.Add($"  Connector: {ReadString(eftpos?.Root, "linklyClient") ?? "unknown"}");
             lines.Add($"  Terminal: {ReadString(eftpos?.Root, "terminal") ?? "unknown"}");
             lines.Add($"  Connector token configured: {ReadBoolean(eftpos?.Root, "tokenConfigured")?.ToString() ?? "unknown"}");
+            lines.Add($"  Connector token recovery required: {ReadBoolean(eftpos?.Root, "tokenRecoveryRequired")?.ToString() ?? "unknown"}");
             var detail = ReadString(eftpos?.Root, "detail");
             if (!string.IsNullOrWhiteSpace(detail)) lines.Add($"  Detail: {detail}");
             lines.Add("  Terminal and bank Linkly state: unverified by local API health checks");
+
+            lines.Add("");
+            lines.Add("Recommended actions");
+            lines.AddRange(DiagnosticGuidance.Build(
+                Describe(hardware),
+                Describe(eftpos),
+                ReadInt(hardware?.Root ?? default, "printerCount"),
+                printerObservations.Select(observation => (observation.Printer, observation.Status, observation.Detail)),
+                ReadString(eftpos?.Root, "integrationMode"),
+                ReadBoolean(eftpos?.Root, "tokenConfigured"),
+                ReadBoolean(eftpos?.Root, "tokenRecoveryRequired"))
+                .Select(action => $"  - {action}"));
 
             reportBox.Text = string.Join(Environment.NewLine, lines);
             statusLabel.Text = "Diagnostic snapshot ready";

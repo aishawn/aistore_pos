@@ -35,7 +35,7 @@ internal static class AgentHost
 
         if (args.Contains("--install", StringComparer.OrdinalIgnoreCase))
         {
-            return RunInstallFlow(settingsUrl, silent: false);
+            return RunInstallFlow(settingsUrl);
         }
 
         if (!RegisterAgentInstaller.IsRunningFromInstallDir())
@@ -44,7 +44,7 @@ internal static class AgentHost
             {
                 if (RegisterAgentInstaller.IsInstalled())
                 {
-                    return RunInstallFlow(settingsUrl, silent: true);
+                    return RunInstallFlow(settingsUrl);
                 }
 
                 ApplicationConfiguration.Initialize();
@@ -55,7 +55,7 @@ internal static class AgentHost
 
             if (!RegisterAgentInstaller.IsInstalled())
             {
-                return RunInstallFlow(settingsUrl, silent: false);
+                return RunInstallFlow(settingsUrl);
             }
 
             RegisterAgentInstaller.LaunchInstalledAgent();
@@ -98,21 +98,18 @@ internal static class AgentHost
         return 0;
     }
 
-    private static int RunInstallFlow(string? settingsUrl, bool silent)
+    private static int RunInstallFlow(string? settingsUrl)
     {
-        if (!silent)
+        var isUpdate = RegisterAgentInstaller.IsInstalled();
+        var confirm = MessageBox.Show(
+            InstallerPromptPolicy.GetConfirmationMessage(isUpdate),
+            isUpdate ? $"Update {AgentVersion.Product}" : $"Install {AgentVersion.Product}",
+            MessageBoxButtons.YesNo,
+            MessageBoxIcon.Warning,
+            MessageBoxDefaultButton.Button2);
+        if (confirm != DialogResult.Yes)
         {
-            var confirm = MessageBox.Show(
-                RegisterAgentInstaller.IsInstalled()
-                    ? $"{AgentVersion.Product} will be updated on this register. Existing settings and exported data are preserved.\n\nChoose Yes to update now."
-                    : $"{AgentVersion.Product} installs on this register PC, starts at sign-in, and shows a tray icon.\n\nChoose Yes to install now.",
-                RegisterAgentInstaller.IsInstalled() ? $"Update {AgentVersion.Product}" : $"Install {AgentVersion.Product}",
-                MessageBoxButtons.YesNo,
-                MessageBoxIcon.Question);
-            if (confirm != DialogResult.Yes)
-            {
-                return 2;
-            }
+            return 2;
         }
 
         try
@@ -125,31 +122,18 @@ internal static class AgentHost
             }
 
             SupportLog.Record("info", "installer.install-verified");
-            if (!silent)
-            {
-                MessageBox.Show(
-                    "Installation complete. The register agent is starting now.\n\nIf Windows Firewall asks, allow access on private networks.",
-                    AgentVersion.Product,
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Information);
-            }
+            MessageBox.Show(
+                "Installation complete. The register agent is starting now.\n\nIf Windows Firewall asks, allow access on private networks.",
+                AgentVersion.Product,
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information);
             return 0;
         }
         catch (Exception ex)
         {
             SupportLog.Record("error", "installer.install-failed", ex);
-            if (silent)
-            {
-                MessageBox.Show(
-                    $"The update could not be installed:\n{ex.Message}",
-                    AgentVersion.Product,
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Error);
-                return 1;
-            }
-
             MessageBox.Show(
-                $"Installation failed:\n{ex.Message}",
+                $"{(isUpdate ? "Update" : "Installation")} failed:\n{ex.Message}",
                 AgentVersion.Product,
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Error);
