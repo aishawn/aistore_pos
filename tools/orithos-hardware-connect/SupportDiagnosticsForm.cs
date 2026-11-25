@@ -143,6 +143,8 @@ internal sealed class SupportDiagnosticsForm : Form
             lines.Add($"  Mode: {ReadString(eftpos?.Root, "integrationMode") ?? "unknown"}");
             lines.Add($"  Connector: {ReadString(eftpos?.Root, "linklyClient") ?? "unknown"}");
             lines.Add($"  Adapter TCP listener: {ReadString(eftpos?.Root, "adapterListener") ?? "unknown"}");
+            var tcpEndpoint = ReadString(eftpos?.Root, "tcpEndpoint");
+            if (!string.IsNullOrWhiteSpace(tcpEndpoint)) lines.Add($"  Linkly TCP endpoint: {tcpEndpoint}");
             lines.Add($"  Terminal: {ReadString(eftpos?.Root, "terminal") ?? "unknown"}");
             lines.Add($"  Connector token configured: {ReadBoolean(eftpos?.Root, "tokenConfigured")?.ToString() ?? "unknown"}");
             lines.Add($"  Connector token recovery required: {ReadBoolean(eftpos?.Root, "tokenRecoveryRequired")?.ToString() ?? "unknown"}");

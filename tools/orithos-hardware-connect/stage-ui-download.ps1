@@ -36,7 +36,7 @@ $meta = @{
   setupSha256 = $stagedSetupHash
   bundleSha256 = $stagedZipHash
   stagedAt    = (Get-Date).ToString("o")
-  releaseUrl  = "https://github.com/aishawn/aistore_pos/releases/download/hardware-connect-latest/OrithosHardwareConnect-Setup.exe"
+  releaseUrl  = "https://pub-c6dcd3f101764011bf5facc4662cc384.r2.dev/downloads/OrithosHardwareConnect-Setup.exe"
 } | ConvertTo-Json -Compress
 
 Set-Content -Path (Join-Path $root "orithos-hardware-connect.version.json") -Value $meta -Encoding UTF8

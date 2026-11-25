@@ -13,14 +13,15 @@ internal static class LinklyDiscovery
         Timeout = TimeSpan.FromMilliseconds(350),
     };
 
-    private static readonly string[] LinklyProcessNames = ["LinklyClient", "EFTPOS", "EFTSRV", "EFTSRVClient"];
+    private static readonly string[] LinklyProcessNames = ["Eftsrv", "LinklyClient", "EFTPOS", "EFTSRV", "EFTSRVClient"];
 
     public static async Task<LinklyDiscoveryResult> DiscoverAsync(CancellationToken cancellationToken)
     {
         var listeners = GetLoopbackListeners();
         var processNames = GetLinklyProcesses();
         var adapterCandidates = await ProbeHttpCandidatesAsync(listeners, cancellationToken);
-        var linklyPortListening = listeners.Contains(2005) || listeners.Contains(2011);
+        var linklyTcpPorts = new[] { 2005, 2011 }.Where(listeners.Contains).ToArray();
+        var linklyPortListening = linklyTcpPorts.Length > 0;
 
         var state = GetState(processNames.Length, linklyPortListening, adapterCandidates.Length);
 
@@ -28,6 +29,7 @@ internal static class LinklyDiscovery
             state,
             processNames,
             linklyPortListening,
+            linklyTcpPorts,
             adapterCandidates,
             DateTimeOffset.UtcNow);
     }
@@ -141,6 +143,7 @@ internal sealed record LinklyDiscoveryResult(
     string State,
     string[] LinklyProcesses,
     bool LinklyPort2005Listening,
+    int[] LinklyTcpListenPorts,
     LinklyHttpCandidate[] HttpCandidates,
     DateTimeOffset CheckedAtUtc);
 

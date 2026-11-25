@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Net;
+using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Text;
 
@@ -21,15 +22,40 @@ internal sealed record LinklyTcpEndpoint(string Host, int Port)
             return await CanConnectAsync(new LinklyTcpEndpoint(host, port), cancellationToken) ? new(host, port) : null;
         }
 
-        // Linkly's current documented default is 2011.  2005 is retained as a
-        // compatibility probe for older PC-EFTPOS installations.
-        foreach (var candidatePort in new[] { 2011, 2005 })
+        foreach (var candidatePort in ResolveProbePortOrder())
         {
             var candidate = new LinklyTcpEndpoint(host, candidatePort);
             if (await CanConnectAsync(candidate, cancellationToken)) return candidate;
         }
 
         return null;
+    }
+
+    private static int[] ResolveProbePortOrder()
+    {
+        // Documented default 2011; Eftsrv / legacy Shopfront tills often listen on 2005 only.
+        const int legacyPort = 2005;
+        const int documentedPort = 2011;
+        try
+        {
+            var listeners = IPGlobalProperties.GetIPGlobalProperties()
+                .GetActiveTcpListeners()
+                .Select(endpoint => endpoint.Port)
+                .ToHashSet();
+            var order = new List<int>(2);
+            if (listeners.Contains(legacyPort)) order.Add(legacyPort);
+            if (listeners.Contains(documentedPort)) order.Add(documentedPort);
+            foreach (var port in new[] { documentedPort, legacyPort })
+            {
+                if (!order.Contains(port)) order.Add(port);
+            }
+
+            return order.ToArray();
+        }
+        catch
+        {
+            return [documentedPort, legacyPort];
+        }
     }
 
     private static bool IsLoopbackHost(string host) =>
