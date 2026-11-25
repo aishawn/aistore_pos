@@ -101,9 +101,18 @@ internal static class AgentHost
     private static int RunInstallFlow(string? settingsUrl)
     {
         var isUpdate = RegisterAgentInstaller.IsInstalled();
+        if (InstallerPromptPolicy.ShouldStartUpdateImmediately(isUpdate))
+        {
+            ApplicationConfiguration.Initialize();
+            using var updateWizard = new SetupWizardForm(
+                RegisterAgentInstaller.ResolveSettingsUrl(settingsUrl),
+                autoStartUpdate: true);
+            return updateWizard.ShowDialog() == DialogResult.OK ? 0 : 1;
+        }
+
         var confirm = MessageBox.Show(
-            InstallerPromptPolicy.GetConfirmationMessage(isUpdate),
-            isUpdate ? $"Update {AgentVersion.Product}" : $"Install {AgentVersion.Product}",
+            InstallerPromptPolicy.GetFirstInstallConfirmationMessage(),
+            $"Install {AgentVersion.Product}",
             MessageBoxButtons.YesNo,
             MessageBoxIcon.Warning,
             MessageBoxDefaultButton.Button2);

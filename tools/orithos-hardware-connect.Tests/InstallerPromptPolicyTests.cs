@@ -1,4 +1,3 @@
-using System.Reflection;
 using Xunit;
 
 namespace Orithos.HardwareConnect.Tests;
@@ -6,29 +5,20 @@ namespace Orithos.HardwareConnect.Tests;
 public sealed class InstallerPromptPolicyTests
 {
     [Fact]
-    public void UpdatePromptWarnsAboutPendingAndUnknownEftposOutcomes()
+    public void ExistingInstallStartsTheUpdateFlowAutomatically()
     {
-        var message = GetConfirmationMessage(isUpdate: true);
-
-        Assert.Contains("close active checkout work", message, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("pending or unknown", message, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("terminal and Linkly journal", message, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("Existing settings and exported data are preserved", message, StringComparison.Ordinal);
+        Assert.True(InstallerPromptPolicy.ShouldStartUpdateImmediately(isUpdate: true));
     }
 
     [Fact]
-    public void FirstInstallPromptDoesNotClaimItWillStopAnExistingAgent()
+    public void FirstInstallDoesNotUseTheAutomaticUpdateFlow()
     {
-        var message = GetConfirmationMessage(isUpdate: false);
-
-        Assert.Contains("starts at sign-in", message, StringComparison.Ordinal);
-        Assert.DoesNotContain("pending or unknown", message, StringComparison.OrdinalIgnoreCase);
+        Assert.False(InstallerPromptPolicy.ShouldStartUpdateImmediately(isUpdate: false));
     }
 
-    private static string GetConfirmationMessage(bool isUpdate)
+    [Fact]
+    public void FirstInstallConfirmationExplainsStartupAndTrayBehavior()
     {
-        var type = Assembly.Load("OrithosHardwareConnect").GetType("Orithos.HardwareConnect.InstallerPromptPolicy", throwOnError: true)!;
-        var method = type.GetMethod("GetConfirmationMessage", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)!;
-        return (string)method.Invoke(null, [isUpdate])!;
+        Assert.Contains("starts at sign-in", InstallerPromptPolicy.GetFirstInstallConfirmationMessage(), StringComparison.Ordinal);
     }
 }

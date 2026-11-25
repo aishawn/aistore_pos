@@ -11,10 +11,12 @@ internal sealed class SetupWizardForm : Form
     private readonly Label statusLabel;
     private readonly Button installButton;
     private readonly Button closeButton;
+    private readonly bool autoStartUpdate;
 
-    public SetupWizardForm(string? settingsUrl)
+    public SetupWizardForm(string? settingsUrl, bool autoStartUpdate = false)
     {
         this.settingsUrl = settingsUrl;
+        this.autoStartUpdate = autoStartUpdate;
         Text = $"{AgentVersion.Product} Setup";
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
@@ -75,9 +77,11 @@ internal sealed class SetupWizardForm : Form
 
         statusLabel = new Label
         {
-            Text = RegisterAgentInstaller.IsInstalled()
-                ? "A register agent is already installed. Choose Upgrade to replace it and keep this PC's settings and exported data."
-                : "Choose Install to set up the register agent on this PC and start it at sign-in.",
+            Text = autoStartUpdate
+                ? "Updating in place. Settings are preserved; local services restart briefly. Reconcile pending or unknown EFTPOS results before retrying."
+                : RegisterAgentInstaller.IsInstalled()
+                    ? "A register agent is already installed. Choose Upgrade to replace it and keep this PC's settings and exported data."
+                    : "Choose Install to set up the register agent on this PC and start it at sign-in.",
             Location = new Point(24, 108),
             Size = new Size(472, 44),
             ForeColor = Color.FromArgb(51, 65, 85),
@@ -85,7 +89,7 @@ internal sealed class SetupWizardForm : Form
 
         progressCaption = new Label
         {
-            Text = "Setup Progress",
+            Text = autoStartUpdate ? "Update Progress" : "Setup Progress",
             Font = new Font("Segoe UI", 11F, FontStyle.Regular),
             ForeColor = Color.FromArgb(51, 65, 85),
             AutoSize = true,
@@ -105,10 +109,11 @@ internal sealed class SetupWizardForm : Form
 
         installButton = new Button
         {
-            Text = RegisterAgentInstaller.IsInstalled() ? "Upgrade" : "Install",
+            Text = autoStartUpdate ? "Updating…" : RegisterAgentInstaller.IsInstalled() ? "Upgrade" : "Install",
             Location = new Point(312, 208),
             Size = new Size(100, 32),
             FlatStyle = FlatStyle.System,
+            Visible = !autoStartUpdate,
         };
         installButton.Click += (_, _) => BeginInstall();
 
@@ -128,7 +133,8 @@ internal sealed class SetupWizardForm : Form
         Controls.Add(statusLabel);
         Controls.Add(header);
         CancelButton = closeButton;
-        AcceptButton = installButton;
+        AcceptButton = autoStartUpdate ? null : installButton;
+        if (autoStartUpdate) Shown += (_, _) => BeginInstall();
     }
 
     private async void BeginInstall()
@@ -162,8 +168,10 @@ internal sealed class SetupWizardForm : Form
 
             progress.Value = 100;
             progress.Visible = false;
-            statusLabel.Text = "Installation complete. Hardware Connect is starting in the system tray.";
-            SupportLog.Record("info", "installer.install-verified");
+            statusLabel.Text = autoStartUpdate
+                ? "Update complete. Hardware Connect is running in the system tray."
+                : "Installation complete. Hardware Connect is starting in the system tray.";
+            SupportLog.Record("info", autoStartUpdate ? "installer.update-verified" : "installer.install-verified");
             var openSettings = MessageBox.Show(
                 SetupCompletionPolicy.SuccessMessage,
                 AgentVersion.Product,
@@ -205,10 +213,16 @@ internal sealed class SetupWizardForm : Form
             SupportLog.Record("error", "installer.install-failed", ex);
             progress.Visible = false;
             installButton.Enabled = true;
+            if (autoStartUpdate)
+            {
+                installButton.Text = "Retry update";
+                installButton.Visible = true;
+                AcceptButton = installButton;
+            }
             closeButton.Enabled = true;
             statusLabel.Text = filesInstalled
                 ? "Files installed, but Hardware Connect services could not be confirmed ready."
-                : "Installation could not be completed.";
+                : autoStartUpdate ? "Update could not be completed." : "Installation could not be completed.";
             MessageBox.Show(
                 $"{statusLabel.Text}\n\n{InstallerStatusText.ForFailure(ex)}\n\nDetails: {ex.Message}",
                 AgentVersion.Product,
