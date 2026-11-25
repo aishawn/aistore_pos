@@ -615,6 +615,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
           <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[var(--oh-muted)]">
             <span>{planCoverageDays}-day coverage</span>
             {data?.generatedAt ? <span>· Updated {formatStoreDateTime(data.generatedAt, storeTimezone)}</span> : null}
+            {data?.forecast && <span>· {data.forecast.enabled && data.forecast.status === "AVAILABLE" ? `AI forecast · ${data.forecast.modelVersion ?? "available"}` : "Rules preview · AI forecast unavailable"}</span>}
             <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${data?.inventoryHistory?.status === "FRESH" ? "bg-emerald-50 text-emerald-800" : "bg-amber-50 text-amber-900"}`}>
               Stock data {data?.inventoryHistory?.status === "FRESH" ? "current" : "check"}
             </span>
@@ -1131,9 +1132,9 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
               </button>
             </header>
             <p className="mt-3 text-sm leading-6 text-[var(--oh-text-secondary)]">
-              {data?.forecast?.enabled
+              {data?.forecast?.enabled && data.forecast.status === "AVAILABLE"
                 ? "Products with enough history are assigned a model using rolling backtests; intermittent products can use Croston or TSB, while short histories remain explicitly marked as insufficient and use the transparent rules fallback. The forecast interval shown in each row is a demand range, not a guarantee. "
-                : `Forecast daily demand combines the most recent ${data?.periodDays ?? 28} days (70%) with the previous ${data?.periodDays ?? 28} days (30%); if one period has no sales, the other period is used. `}
+                : `AI forecast is unavailable, so this page is a rules preview. Forecast daily demand combines the most recent ${data?.periodDays ?? 28} days (70%) with the previous ${data?.periodDays ?? 28} days (30%); if one period has no sales, the other period is used. `}
               Suggested order uses weighted sales demand over {planCoverageDays} days, less units on hand and on order. A positive suggestion is raised to the supplier’s minimum quantity and rounded up to a full case when the pack size is known. Stock cover estimates how long shelf stock will last using recent demand. Use Explain for the inputs behind each suggestion.
             </p>
             <footer className="mt-5 flex justify-end">
