@@ -88,6 +88,11 @@ internal static class LinklyConnectorWebApp
                 return Results.BadRequest(new { error = "attemptId and connectorChallenge are required" });
             }
 
+            if (!settings.HasConnectorToken())
+            {
+                return Results.Problem("Connector token is not configured. Save EFTPOS settings in Hardware Connect before querying a transaction.", statusCode: StatusCodes.Status503ServiceUnavailable);
+            }
+
             if (!string.IsNullOrWhiteSpace(linklyTcpBase))
             {
                 var forwarded = await TryForwardToLinklyTcpAsync(linklyTcpBase, "/v1/query", body!, json, cancellationToken);
@@ -126,6 +131,11 @@ internal static class LinklyConnectorWebApp
             if (body.AmountCents is not > 0 || !string.Equals(body.Currency, "AUD", StringComparison.OrdinalIgnoreCase))
             {
                 return Results.BadRequest(new { error = "A positive amountCents and AUD currency are required" });
+            }
+
+            if (!settings.HasConnectorToken())
+            {
+                return Results.Problem("Connector token is not configured. Save EFTPOS settings in Hardware Connect before starting a payment.", statusCode: StatusCodes.Status503ServiceUnavailable);
             }
 
             body = body with { Currency = "AUD" };
