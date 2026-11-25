@@ -52,7 +52,7 @@ const defaultDraft: BindingDraft = {
 
 function linklyModeLabel(status: ConnectorStatus | null): string | null {
   if (status?.linklyClient === "waiting-for-token") return "Waiting for store pairing";
-  if (status?.integrationMode === "tcp-proxy") return "Local Linkly adapter";
+  if (status?.integrationMode === "tcp-proxy") return "Local HTTP adapter · terminal unverified";
   if (status?.integrationMode === "lab" || /lab mode/i.test(status?.detail ?? "")) return "Test mode (no bank Linkly)";
   return null;
 }
@@ -208,7 +208,7 @@ export function LinklyEftposPanel({ canEdit }: Props) {
     if (nextDraft.paymentsEnabled) {
       const diagnostics = await refreshDiagnostics(nextDraft.connectorBaseUrl || defaultDraft.connectorBaseUrl);
       if (diagnostics.health !== "reachable" || diagnostics.detail?.integrationMode !== "tcp-proxy" || diagnostics.detail.tokenConfigured !== true) {
-        setError("Sell card payments can only be enabled when the real Linkly adapter is reachable and its connector token is configured.");
+        setError("Sell card payments can only be enabled when the local HTTP adapter is reachable and its connector token is configured.");
         return null;
       }
     }
@@ -401,7 +401,7 @@ export function LinklyEftposPanel({ canEdit }: Props) {
   const modeHint = linklyModeLabel(connectorDetail);
 
   const statusLine = paymentsLive && agentOk && realMode && diagnosticsFresh
-    ? testFresh ? "Verified for Sell · recent real terminal test confirmed" : `Connected · ${modeHint ?? "real Linkly"} · terminal test required`
+    ? testFresh ? "Verified for Sell · recent real terminal test confirmed" : `Connected · ${modeHint ?? "local HTTP adapter"} · terminal test required`
     : paymentsLive && agentOk
       ? connectorDetail?.integrationMode === "lab"
         ? "Test mode — real card payments are blocked"
@@ -514,7 +514,7 @@ export function LinklyEftposPanel({ canEdit }: Props) {
 
         <p className="text-xs leading-5 text-[var(--oh-muted)]">
           One tap pairs this register with the local bridge on port <span className="font-mono">9167</span>. For live payments, install and configure the bank's Linkly Client plus a local HTTP adapter, then set{" "}
-          <span className="font-mono text-[11px]">ORITHOS_LINKLY_ADAPTER_BASE</span>. A configured adapter still needs a reconciled low-value terminal test; Lab mode is diagnostic only and cannot be used for live card payments.
+          <span className="font-mono text-[11px]">ORITHOS_LINKLY_ADAPTER_BASE</span>, then restart Hardware Connect. A configured adapter still needs a reconciled low-value terminal test; Lab mode is diagnostic only and cannot be used for live card payments.
         </p>
 
         <details className="rounded-md border border-[var(--oh-border)] px-3 py-2">

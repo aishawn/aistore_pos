@@ -44,6 +44,11 @@ internal sealed class TrayApplicationContext : ApplicationContext
         menu.Items.Add(hardwareStatusItem);
         menu.Items.Add(eftposStatusItem);
         menu.Items.Add(new ToolStripSeparator());
+        menu.Items.Add("Run local diagnostics…", null, (_, _) =>
+        {
+            using var diagnostics = new SupportDiagnosticsForm();
+            diagnostics.ShowDialog();
+        });
         menu.Items.Add("Open Hardware setup and diagnostics", null, (_, _) => OpenUrl(settingsUrl));
         menu.Items.Add("About", null, (_, _) =>
         {

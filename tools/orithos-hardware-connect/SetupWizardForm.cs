@@ -152,6 +152,19 @@ internal sealed class SetupWizardForm : Form
             statusLabel.Text = InstallerStatusText.ForStage("StartingAgent");
             progress.Value = 92;
             RegisterAgentInstaller.LaunchInstalledAgent();
+            statusLabel.Text = InstallerStatusText.ForStage("CheckingServices");
+            using var healthClient = new HttpClient { Timeout = TimeSpan.FromSeconds(2) };
+            var servicesReady = await LocalApiHealthProbe.WaitForBothReadyAsync(
+                Environment.GetEnvironmentVariable("ORITHOS_HC_URL") ?? AgentVersion.DefaultListen,
+                Environment.GetEnvironmentVariable("ORITHOS_CONNECTOR_URL") ?? AgentVersion.DefaultEftposListen,
+                healthClient,
+                TimeSpan.FromSeconds(20),
+                CancellationToken.None);
+            if (!servicesReady)
+            {
+                throw new InvalidOperationException("Hardware Connect started, but one or both local services did not become ready within 20 seconds.");
+            }
+
             progress.Value = 100;
             progress.Visible = false;
             statusLabel.Text = "Installation complete. Hardware Connect is starting in the system tray.";
@@ -169,7 +182,7 @@ internal sealed class SetupWizardForm : Form
             installButton.Enabled = true;
             closeButton.Enabled = true;
             statusLabel.Text = filesInstalled
-                ? "Files installed, but the register agent did not start."
+                ? "Files installed, but Hardware Connect services could not be confirmed ready."
                 : "Installation could not be completed.";
             MessageBox.Show(
                 $"{statusLabel.Text}\n\n{InstallerStatusText.ForFailure(ex)}\n\nDetails: {ex.Message}",

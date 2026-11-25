@@ -79,7 +79,12 @@ internal static class LinklyConnectorWebApp
             await next();
         });
 
-        app.MapGet("/v1/health", () => Results.Json(new { ok = true }, json));
+        app.MapGet("/v1/health", () => Results.Json(new
+        {
+            ok = true,
+            product = AgentVersion.Product,
+            version = AgentVersion.DisplayVersion,
+        }, json));
 
         // The adapter is a local HTTP contract. Keep the old variable as a migration alias.
         var configuredLinklyBase = LinklyAdapterEndpoint.ResolveConfiguredBase(
