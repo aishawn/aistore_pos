@@ -70,6 +70,9 @@ Run the local contract tests and fixture audit:
 
 ```powershell
 node --test scripts/ai-eval/*.test.mjs
+node scripts/ai-eval/validate-catalog.mjs scripts/ai-eval/fixtures/utterances.jsonl
+node scripts/ai-eval/validate-catalog.mjs scripts/ai-eval/fixtures/dynamic-report-utterances.jsonl
+node scripts/ai-eval/validate-catalog.mjs scripts/ai-eval/fixtures/readonly-smoke.jsonl
 node scripts/ai-eval/run-local-eval.mjs --cases scripts/ai-eval/fixtures/utterances.jsonl
 ```
 

@@ -21,7 +21,8 @@
 | POS API | `cd pos-api; mvn -B clean verify` | Java 21 |
 | Crawler | `cd shopfront_crawler; pip install -e ".[test]"; pytest -q` | Python 3.12 |
 | Forecast | `cd forecast-service; pip install -r requirements.txt pytest; pytest -q` | Python 3.12 |
-| AI 离线样本 | `python scripts/ai-eval/validate_fixtures.py` | 不调用模型 |
+| AI 固定问答目录 | `node scripts/ai-eval/validate-catalog.mjs scripts/ai-eval/fixtures/utterances.jsonl` | 校验事实答案覆盖与断言结构，不调用模型 |
+| AI 动态/只读目录 | 详见 `scripts/ai-eval/README.md` 中的两条校验命令 | 校验指标周期和只读安全断言，不调用模型 |
 | 预测评估工具 | `python -m unittest scripts.tests.test_ai_forecast_eval scripts.tests.test_ai_forecast_segmented_eval scripts.tests.test_ai_forecast_walkforward_eval` | 固定样本 |
 | AI Gateway/Worker | 在 `orithos-ai-services` 执行 `python -m unittest discover -s tests -v` 与 `python eval/validate_fixtures.py` | 不调用模型 |
 
@@ -42,6 +43,7 @@ GitHub Actions 默认跟随提交门禁，也可在 Actions 页面手动重跑 `
 ## AI 与预测质量
 
 - 将已批准且脱敏的问答 JSONL 作为业务正确性基准，事实型问题断言日期、门店、金额/数量、来源及空数据行为。模型在线比较可用 Promptfoo，在手动 dispatch 或预算批次里运行；必须设置最大请求数/预算、超额立即失败，提交门禁不配置 provider key。
+- 离线 CI 校验固定、动态报表和只读安全目录；事实型用例必须有可执行的答案预期，动态报表须标明指标和周期。自然语言 negative 文案不能计为断言。
 - Forecast 使用逐步扩展窗口 walk-forward，报告 7/14/28 天 WAPE、偏差和区间覆盖，按品类与间歇需求分组并对照朴素基线。历史库存、营业日或覆盖范围缺失时写 `BLOCKED`，不填零，也不算通过/失败。
 
 ## Demo 验收与性能
