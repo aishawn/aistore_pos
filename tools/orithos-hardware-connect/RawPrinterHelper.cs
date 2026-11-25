@@ -54,21 +54,38 @@ internal static class RawPrinterHelper
                 return false;
             }
 
+            var pageStarted = false;
+            var writeSucceeded = false;
+            var bytesWritten = 0;
+            var pageEnded = false;
+            var documentEnded = false;
             try
             {
-                if (!StartPagePrinter(hPrinter))
+                pageStarted = StartPagePrinter(hPrinter);
+                if (pageStarted)
                 {
-                    return false;
+                    writeSucceeded = WritePrinter(hPrinter, bytes, bytes.Length, out bytesWritten);
                 }
-
-                var ok = WritePrinter(hPrinter, bytes, bytes.Length, out _);
-                EndPagePrinter(hPrinter);
-                return ok;
             }
             finally
             {
-                EndDocPrinter(hPrinter);
+                try
+                {
+                    if (pageStarted) pageEnded = EndPagePrinter(hPrinter);
+                }
+                finally
+                {
+                    documentEnded = EndDocPrinter(hPrinter);
+                }
             }
+
+            return RawPrinterResultPolicy.IsSuccessful(
+                pageStarted,
+                writeSucceeded,
+                bytes.Length,
+                bytesWritten,
+                pageEnded,
+                documentEnded);
         }
         finally
         {

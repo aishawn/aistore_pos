@@ -137,6 +137,9 @@ internal sealed class SupportDiagnosticsForm : Form
 
     private async Task<EndpointResponse?> ReadEndpointAsync(string baseUrl, string path)
     {
+        if (!LocalRequestSecurity.IsLoopbackListenUrl(baseUrl))
+            return new EndpointResponse(0, default, "configured URL is not loopback; request was not sent");
+
         try
         {
             if (await LocalApiHealthProbe.ProbeAsync(baseUrl, client, CancellationToken.None) != "Ready") return null;
@@ -153,6 +156,8 @@ internal sealed class SupportDiagnosticsForm : Form
 
     private static string Describe(EndpointResponse? endpoint) => endpoint is null
         ? "unavailable or invalid response"
+        : endpoint.Error is not null
+            ? endpoint.Error
         : endpoint.StatusCode is >= 200 and < 300
             ? "reachable"
             : $"HTTP {endpoint.StatusCode}";
@@ -201,5 +206,5 @@ internal sealed class SupportDiagnosticsForm : Form
         statusLabel.Text = "Report copied without connector token or payment data";
     }
 
-    private sealed record EndpointResponse(int StatusCode, JsonElement Root);
+    private sealed record EndpointResponse(int StatusCode, JsonElement Root, string? Error = null);
 }
