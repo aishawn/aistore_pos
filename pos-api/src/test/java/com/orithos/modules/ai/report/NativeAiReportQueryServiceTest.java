@@ -177,6 +177,31 @@ class NativeAiReportQueryServiceTest {
     }
 
     @Test
+    void retriesProductSearchWithSingularFinalWordWhenPluralHasNoMatch() {
+        TenantContext tenant = tenant(Set.of(TenantContext.PERM_QUERY));
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        when(dataSources.jdbc(87L)).thenReturn(jdbc);
+        when(jdbc.queryForList(org.mockito.ArgumentMatchers.contains("FROM ai_rpt_product_count p"),
+                eq(87L), eq("%VB Cans%"), eq(8))).thenReturn(List.of());
+        when(jdbc.queryForList(org.mockito.ArgumentMatchers.contains("FROM ai_rpt_product_count p"),
+                eq(87L), eq("%VB Can%"), eq(8)))
+                .thenReturn(List.of(Map.of("id", 42L, "name", "VB CAN 375ML")));
+        when(jdbc.queryForList(org.mockito.ArgumentMatchers.contains("FROM ai_rpt_product_barcode b"),
+                eq(87L), eq("%VB Cans%"), eq(8))).thenReturn(List.of());
+        when(jdbc.queryForList(org.mockito.ArgumentMatchers.contains("FROM ai_rpt_product p"),
+                eq(87L), eq(42L)))
+                .thenReturn(List.of(Map.of("id", 42L, "name", "VB CAN 375ML", "barcode", "9312345678901",
+                        "list_price", 8.50, "quantity", 12)));
+
+        NativeAiReportQueryService.ProductSearchResult result = service.searchProducts(tenant, "VB Cans", 8);
+
+        assertEquals(null, result.error());
+        assertEquals("VB CAN 375ML", result.rows().get(0).get("name"));
+        verify(jdbc).queryForList(org.mockito.ArgumentMatchers.contains("FROM ai_rpt_product_count p"),
+                eq(87L), eq("%VB Can%"), eq(8));
+    }
+
+    @Test
     void searchesNumericBarcodeExactlyThroughTheOutletScopedBarcodeView() {
         TenantContext tenant = tenant(Set.of(TenantContext.PERM_QUERY));
         JdbcTemplate jdbc = mock(JdbcTemplate.class);

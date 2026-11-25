@@ -157,6 +157,18 @@ public class NativeAiReportQueryService {
                     ORDER BY p.name, p.id
                     LIMIT ?
                     """, outletId, match, rowLimit);
+            if (candidates.isEmpty()) {
+                String singularTerm = singularizeFinalPlural(term);
+                if (singularTerm != null) {
+                    candidates = jdbc.queryForList("""
+                            SELECT p.id, p.name
+                            FROM ai_rpt_product_count p
+                            WHERE p.outlet_id = ? AND p.status = 'ACTIVE' AND p.name ILIKE ?
+                            ORDER BY p.name, p.id
+                            LIMIT ?
+                            """, outletId, "%" + singularTerm + "%", rowLimit);
+                }
+            }
 
             String barcodePredicate = term.matches("\\d{6,14}") ? "b.code = ?" : "b.code ILIKE ?";
             List<Map<String, Object>> barcodeCandidates = jdbc.queryForList("""
@@ -204,6 +216,15 @@ public class NativeAiReportQueryService {
                 target.putIfAbsent(id.longValue(), name);
             }
         }
+    }
+
+    private static String singularizeFinalPlural(String term) {
+        String normalized = term.trim();
+        String lower = normalized.toLowerCase(java.util.Locale.ROOT);
+        if (normalized.length() < 4 || !lower.endsWith("s") || lower.endsWith("ss")) return null;
+        int lastSpace = normalized.lastIndexOf(' ');
+        int finalWordLength = normalized.length() - lastSpace - 1;
+        return finalWordLength >= 4 ? normalized.substring(0, normalized.length() - 1) : null;
     }
 
     public ProductCatalogResult listRecommendationProducts(TenantContext tenant) {
