@@ -88,23 +88,37 @@ for (const target of targets) {
       headers: { Origin: base, Cookie: cookies },
     }, refresh ? 120000 : 60000);
     const body = await readJson(response);
+    const data = body.data;
+    const inventoryHistory = data?.inventoryHistory;
+    const requiredHistoryFields = ["expectedProducts", "capturedProducts", "observedDays", "gapDays", "invalidSnapshots"];
+    const missingHistoryFields = requiredHistoryFields.filter((field) => !Number.isFinite(inventoryHistory?.[field]));
+    const contractValid = response.ok
+      && body.code === 0
+      && data
+      && inventoryHistory
+      && missingHistoryFields.length === 0
+      && data.forecast;
     evidence.stores[target.host] = {
-      result: response.ok ? "PASS" : "FAIL",
+      result: contractValid ? "PASS" : "FAIL",
       httpStatus: response.status,
       runtimeCommit: version.frontend?.commit ?? version.backend?.commit ?? null,
-      dataQuality: body.dataQuality,
-      supplierLeadTime: body.supplierLeadTime,
-      inventoryHistory: body.inventoryHistory,
-      reviewRequiredCount: body.reviewRequiredCount,
-      exceptionCount: body.exceptionCount,
-      cache: body.cache,
-      writeRequests: body.writeRequests || [],
+      responseCode: body.code ?? null,
+      contractValid: Boolean(contractValid),
+      missingHistoryFields,
+      inventoryHistory,
+      forecast: data?.forecast ?? null,
+      reviewRequiredCount: data?.reviewRequiredCount ?? null,
+      reviewIssueCounts: data?.reviewIssueCounts ?? null,
+      exceptionCount: data?.exceptionCount ?? null,
+      writeRequests: [],
     };
   } catch (error) {
     evidence.stores[target.host] = { result: "FAIL", step: "request", error: error.name === "AbortError" ? "TIMEOUT" : String(error) };
   }
 }
 
-const output = path.join(root, "docs", "UAT_REPLENISHMENT_POST_71213472_2026-11-03.json");
+const runStamp = new Date().toISOString().replace(/[-:.]/g, "");
+const output = path.join(root, ".local", "ai-eval", `replenishment-readonly-live-${runStamp}.json`);
 fs.writeFileSync(output, `${JSON.stringify(evidence, null, 2)}\n`);
 console.log(JSON.stringify({ output, stores: evidence.stores }));
+if (Object.values(evidence.stores).some((store) => store.result !== "PASS")) process.exitCode = 1;
