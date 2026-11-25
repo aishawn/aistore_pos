@@ -248,6 +248,7 @@ internal static class LinklyConnectorWebApp
         catch (Exception ex)
         {
             Console.Error.WriteLine($"Linkly HTTP adapter forward failed: {ex.GetType().Name}");
+            SupportLog.Record("error", "eftpos.adapter.request-failed", ex);
             return Results.Problem("No confirmation was received from the Linkly adapter. The outcome may be unknown; do not retry until the terminal and Linkly journal are checked.", statusCode: StatusCodes.Status502BadGateway);
         }
     }

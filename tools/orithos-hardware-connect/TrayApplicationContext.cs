@@ -130,6 +130,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
         var now = DateTime.UtcNow;
         if ((hardwareWebHostTask.IsFaulted || hardwareWebHostTask.IsCompleted) && now >= nextHardwareRestartUtc)
         {
+            SupportLog.Record(hardwareWebHostTask.IsFaulted ? "error" : "warning", "hardware.host.restart", hardwareWebHostTask.Exception?.GetBaseException());
             hardwareHostStarted = 0;
             hardwareHealth = null;
             hardwareWebHostTask = Task.Run(
@@ -140,6 +141,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
 
         if ((linklyWebHostTask.IsFaulted || linklyWebHostTask.IsCompleted) && now >= nextEftposRestartUtc)
         {
+            SupportLog.Record(linklyWebHostTask.IsFaulted ? "error" : "warning", "eftpos.host.restart", linklyWebHostTask.Exception?.GetBaseException());
             eftposHostStarted = 0;
             eftposHealth = null;
             linklyWebHostTask = Task.Run(

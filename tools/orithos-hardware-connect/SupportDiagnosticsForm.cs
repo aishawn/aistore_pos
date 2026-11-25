@@ -1,5 +1,5 @@
+using System.Diagnostics;
 using System.Net.Http.Json;
-using System.Text;
 using System.Text.Json;
 
 namespace Orithos.HardwareConnect;
@@ -21,6 +21,7 @@ internal sealed class SupportDiagnosticsForm : Form
     };
     private readonly Button refreshButton = new() { Text = "Refresh", AutoSize = true };
     private readonly Button copyButton = new() { Text = "Copy report", AutoSize = true };
+    private readonly Button logsButton = new() { Text = "Open logs", AutoSize = true };
 
     public SupportDiagnosticsForm()
     {
@@ -61,6 +62,7 @@ internal sealed class SupportDiagnosticsForm : Form
         };
         footer.Controls.Add(refreshButton);
         footer.Controls.Add(copyButton);
+        footer.Controls.Add(logsButton);
         footer.Controls.Add(statusLabel);
 
         var body = new Panel { Dock = DockStyle.Fill, Padding = new Padding(16, 4, 16, 10) };
@@ -71,6 +73,7 @@ internal sealed class SupportDiagnosticsForm : Form
 
         refreshButton.Click += async (_, _) => await RefreshReportAsync();
         copyButton.Click += (_, _) => CopyReport();
+        logsButton.Click += (_, _) => OpenLogs();
         Shown += async (_, _) => await RefreshReportAsync();
         FormClosed += (_, _) => client.Dispose();
     }
@@ -92,6 +95,7 @@ internal sealed class SupportDiagnosticsForm : Form
             {
                 $"Product: {AgentVersion.Product}",
                 $"Version: {AgentVersion.DisplayVersion}",
+                "Support logs: available locally",
                 $"Checked: {DateTimeOffset.Now:yyyy-MM-dd HH:mm:ss zzz}",
                 "",
                 $"Hardware API ({hardwareUrl}): {Describe(hardware)}",
@@ -144,6 +148,7 @@ internal sealed class SupportDiagnosticsForm : Form
         {
             refreshButton.Enabled = true;
             copyButton.Enabled = true;
+            logsButton.Enabled = true;
         }
     }
 
@@ -243,6 +248,22 @@ internal sealed class SupportDiagnosticsForm : Form
         if (string.IsNullOrWhiteSpace(reportBox.Text)) return;
         Clipboard.SetText(reportBox.Text);
         statusLabel.Text = "Report copied without connector token or payment data";
+    }
+
+    private void OpenLogs()
+    {
+        try
+        {
+            SupportLog.Initialize();
+            var start = new ProcessStartInfo("explorer.exe") { UseShellExecute = true };
+            start.ArgumentList.Add(SupportLog.LogDirectoryPath);
+            Process.Start(start);
+            statusLabel.Text = "Opened support log folder";
+        }
+        catch
+        {
+            statusLabel.Text = "Could not open support log folder";
+        }
     }
 
     private sealed record PrinterObservation(string Printer, string Status, string? Detail);

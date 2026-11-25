@@ -168,6 +168,7 @@ internal sealed class SetupWizardForm : Form
             progress.Value = 100;
             progress.Visible = false;
             statusLabel.Text = "Installation complete. Hardware Connect is starting in the system tray.";
+            SupportLog.Record("info", "installer.install-verified");
             MessageBox.Show(
                 "Installation complete.\n\nOpen Hardware settings to confirm both local services are online and connect your devices. If Windows Firewall asks, allow Orithos Hardware Connect on private networks.",
                 AgentVersion.Product,
@@ -178,6 +179,7 @@ internal sealed class SetupWizardForm : Form
         }
         catch (Exception ex)
         {
+            SupportLog.Record("error", "installer.install-failed", ex);
             progress.Visible = false;
             installButton.Enabled = true;
             closeButton.Enabled = true;
