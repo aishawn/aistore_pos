@@ -67,6 +67,7 @@ export function HardwareSetupPanel() {
   const [connectBusy, setConnectBusy] = useState(false);
   const [actionBusy, setActionBusy] = useState(false);
   const busy = connectBusy || actionBusy;
+  const noticeIsError = notice !== null && /failed|could not|cannot|unavailable|timed out|could not reach|阻止/i.test(notice);
   const [scaleReader, setScaleReader] = useState<string | null>(null);
   const [scaleReading, setScaleReading] = useState(false);
   const scaleAbort = useRef<AbortController | null>(null);
@@ -296,8 +297,8 @@ export function HardwareSetupPanel() {
         {state.error && <p role="alert" className="mt-3 text-sm text-red-800">{state.error}</p>}
         {notice && (
           <p
-            role={state.error || /failed|could not|cannot|unavailable|timed out|could not reach|阻止/i.test(notice) ? "alert" : "status"}
-            className={`mt-3 text-sm ${state.error || /failed|could not|cannot|unavailable|timed out|could not reach|阻止/i.test(notice) ? "text-red-800" : "text-[var(--oh-text-secondary)]"}`}
+            role={noticeIsError ? "alert" : "status"}
+            className={`mt-3 text-sm ${noticeIsError ? "text-red-800" : "text-[var(--oh-text-secondary)]"}`}
           >
             {notice}
           </p>
