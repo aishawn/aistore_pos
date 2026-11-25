@@ -264,11 +264,36 @@ class ClassifyQueryNodeTest {
             assertTrue(summary.startsWith(question.matches("(?s).*[\\u3400-\\u9fff].*")
                     ? "找到以下商品：" : "Matching products:"), question);
             assertTrue(summary.contains("Shiraz Reserve"), question);
-            assertTrue(summary.contains("24.99"), question);
+            assertTrue(summary.contains("A$24.99"), question);
             assertTrue(summary.contains("4"), question);
             assertEquals("/products", result.get("ui_route"));
         }
         org.mockito.Mockito.verify(reports, org.mockito.Mockito.times(2)).searchProducts(tenant, "Shiraz", 5);
+        verifyNoInteractions(chatClient, config, sanitizer, properties);
+    }
+
+    @Test
+    void productSearchFormatsAustralianPricesAndRemovesQuantityTrailingZeros() {
+        ChatClient chatClient = mock(ChatClient.class);
+        IntentConfigService config = mock(IntentConfigService.class);
+        IntentSanitizeService sanitizer = mock(IntentSanitizeService.class);
+        AiProperties properties = mock(AiProperties.class);
+        NativeAiReportQueryService reports = mock(NativeAiReportQueryService.class);
+        TenantContext tenant = new TenantContext(9L, 8L, 7L, List.of(7L), Set.of(TenantContext.PERM_QUERY));
+        AssistantTenantContext.set(tenant);
+        when(reports.searchProducts(tenant, "VB Cans", 5)).thenReturn(
+                new NativeAiReportQueryService.ProductSearchResult(List.of(
+                        Map.of("name", "VB CAN 375ML", "list_price", "3.399", "quantity", "355.0000")), null));
+        ClassifyQueryNode node = new ClassifyQueryNode(chatClient, config, sanitizer, properties, reports, null);
+        OverAllState state = mock(OverAllState.class);
+        when(state.value("question", String.class)).thenReturn(Optional.of("Search for the product VB Cans"));
+
+        String summary = String.valueOf(node.apply(state).get("intent_summary"));
+
+        assertTrue(summary.contains("A$3.40"));
+        assertTrue(summary.contains("stock 355"));
+        assertFalse(summary.contains("3.399"));
+        assertFalse(summary.contains("355.0000"));
         verifyNoInteractions(chatClient, config, sanitizer, properties);
     }
 

@@ -34,6 +34,8 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.beans.factory.ObjectProvider;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -753,12 +755,32 @@ public class ClassifyQueryNode implements NodeAction {
         if (name.isBlank()) name = chinese ? "未命名商品" : "Unnamed product";
         Object price = row.get("list_price");
         Object quantity = row.get("quantity");
-        String priceLabel = price == null ? "" : (chinese ? "售价 $" : "$") + price;
-        String stockLabel = quantity == null ? "" : (chinese ? "库存 " : "stock ") + quantity;
+        String priceLabel = formatProductPrice(price);
+        if (!priceLabel.isBlank()) priceLabel = (chinese ? "售价 " : "") + priceLabel;
+        String stockLabel = formatProductQuantity(quantity);
+        if (!stockLabel.isBlank()) stockLabel = (chinese ? "库存 " : "stock ") + stockLabel;
         String details = java.util.stream.Stream.of(priceLabel, stockLabel)
                 .filter(value -> !value.isBlank())
                 .collect(Collectors.joining(" · "));
         return details.isBlank() ? "• " + name : "• " + name + " — " + details;
+    }
+
+    private static String formatProductPrice(Object value) {
+        if (value == null) return "";
+        try {
+            return "A$" + new BigDecimal(value.toString()).setScale(2, RoundingMode.HALF_UP).toPlainString();
+        } catch (NumberFormatException ignored) {
+            return "";
+        }
+    }
+
+    private static String formatProductQuantity(Object value) {
+        if (value == null) return "";
+        try {
+            return new BigDecimal(value.toString()).stripTrailingZeros().toPlainString();
+        } catch (NumberFormatException ignored) {
+            return "";
+        }
     }
 
     private static String productSearchFailureMessage(String error, boolean chinese) {
