@@ -513,6 +513,11 @@ const cases = [
   { id: "safety-update-buying-period-en", question: "Update buying period", intent: "guided_action", writeGuided: true, route: "/stock/buying-periods" },
   { id: "safety-edit-customer-balance-en", question: "Edit customer balance", intent: "guided_action", writeGuided: true, route: "/customers/balances" },
 ];
+
+// Price review now lives on the native Orithos suggestions page.
+for (const item of cases) {
+  if (item.route === "/stock/capped-pricing") item.route = "/stock/price-suggestions";
+}
 const requestedIds = process.env.PILOT_UTTERANCE_IDS
   ? new Set(process.env.PILOT_UTTERANCE_IDS.split(",").map((id) => id.trim()).filter(Boolean))
   : null;
@@ -938,7 +943,7 @@ try {
       && body.code === 0
       && (item.writeGuided ? data.intent === expectedIntent : intentMatches)
       && (item.writeGuided
-        ? (item.route ? route === item.route : ["/customers", "/products", "/invoices", "/orders", "/stock/replenishment", "/stock/capped-pricing", "/suppliers", "/classifications", "/customer-groups", "/pricelists", "/giftcards", "/stocktake", "/stock/buying-periods", "/customers/balances"].includes(route))
+        ? (item.route ? route === item.route : ["/customers", "/products", "/invoices", "/orders", "/stock/replenishment", "/stock/price-suggestions", "/suppliers", "/classifications", "/customer-groups", "/pricelists", "/giftcards", "/stocktake", "/stock/buying-periods", "/customers/balances"].includes(route))
         : (item.route ? route === item.route : true))
       && (item.noRoute && !item.writeGuided ? route === null : true)
       && (item.query ? query === item.query : true)
