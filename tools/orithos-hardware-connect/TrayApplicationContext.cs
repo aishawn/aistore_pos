@@ -17,9 +17,10 @@ internal sealed class TrayApplicationContext : ApplicationContext
     private string? hardwareHealth;
     private string? eftposHealth;
     private int healthProbeRunning;
-    private int hardwareHealthFailures;
-    private int eftposHealthFailures;
-    private DateTime nextRestartAllowedUtc = DateTime.MinValue;
+    private int hardwareRestartAttempts;
+    private int eftposRestartAttempts;
+    private DateTime nextHardwareRestartUtc = DateTime.MinValue;
+    private DateTime nextEftposRestartUtc = DateTime.MinValue;
 
     public TrayApplicationContext()
     {
@@ -120,41 +121,31 @@ internal sealed class TrayApplicationContext : ApplicationContext
 
     private void RestartExitedHosts()
     {
-        var hardwareStarted = Volatile.Read(ref hardwareHostStarted) == 1;
-        var eftposStarted = Volatile.Read(ref eftposHostStarted) == 1;
-        if (hardwareStarted && !string.Equals(hardwareHealth, "Ready", StringComparison.Ordinal))
-            hardwareHealthFailures++;
-        else if (string.Equals(hardwareHealth, "Ready", StringComparison.Ordinal))
-            hardwareHealthFailures = 0;
-        if (eftposStarted && !string.Equals(eftposHealth, "Ready", StringComparison.Ordinal))
-            eftposHealthFailures++;
-        else if (string.Equals(eftposHealth, "Ready", StringComparison.Ordinal))
-            eftposHealthFailures = 0;
+        if (!hardwareWebHostTask.IsFaulted && !hardwareWebHostTask.IsCompleted
+            && string.Equals(hardwareHealth, "Ready", StringComparison.Ordinal)) hardwareRestartAttempts = 0;
+        if (!linklyWebHostTask.IsFaulted && !linklyWebHostTask.IsCompleted
+            && string.Equals(eftposHealth, "Ready", StringComparison.Ordinal)) eftposRestartAttempts = 0;
+        if (webHostCts.IsCancellationRequested) return;
 
-        if (!webHostCts.IsCancellationRequested && DateTime.UtcNow >= nextRestartAllowedUtc)
+        var now = DateTime.UtcNow;
+        if ((hardwareWebHostTask.IsFaulted || hardwareWebHostTask.IsCompleted) && now >= nextHardwareRestartUtc)
         {
-            var restarted = false;
-            if (hardwareWebHostTask.IsFaulted || hardwareWebHostTask.IsCompleted || hardwareHealthFailures >= 3)
-            {
-                hardwareHostStarted = 0;
-                hardwareHealth = null;
-                hardwareHealthFailures = 0;
-                hardwareWebHostTask = Task.Run(
-                    () => HardwareConnectWebApp.RunAsync(webHostCts.Token, () => Interlocked.Exchange(ref hardwareHostStarted, 1)),
-                    webHostCts.Token);
-                restarted = true;
-            }
-            if (linklyWebHostTask.IsFaulted || linklyWebHostTask.IsCompleted || eftposHealthFailures >= 3)
-            {
-                eftposHostStarted = 0;
-                eftposHealth = null;
-                eftposHealthFailures = 0;
-                linklyWebHostTask = Task.Run(
-                    () => LinklyConnectorWebApp.RunAsync(webHostCts.Token, () => Interlocked.Exchange(ref eftposHostStarted, 1)),
-                    webHostCts.Token);
-                restarted = true;
-            }
-            if (restarted) nextRestartAllowedUtc = DateTime.UtcNow.AddSeconds(5);
+            hardwareHostStarted = 0;
+            hardwareHealth = null;
+            hardwareWebHostTask = Task.Run(
+                () => HardwareConnectWebApp.RunAsync(webHostCts.Token, () => Interlocked.Exchange(ref hardwareHostStarted, 1)),
+                webHostCts.Token);
+            nextHardwareRestartUtc = now + HostRestartPolicy.DelayForAttempt(++hardwareRestartAttempts);
+        }
+
+        if ((linklyWebHostTask.IsFaulted || linklyWebHostTask.IsCompleted) && now >= nextEftposRestartUtc)
+        {
+            eftposHostStarted = 0;
+            eftposHealth = null;
+            linklyWebHostTask = Task.Run(
+                () => LinklyConnectorWebApp.RunAsync(webHostCts.Token, () => Interlocked.Exchange(ref eftposHostStarted, 1)),
+                webHostCts.Token);
+            nextEftposRestartUtc = now + HostRestartPolicy.DelayForAttempt(++eftposRestartAttempts);
         }
     }
 
