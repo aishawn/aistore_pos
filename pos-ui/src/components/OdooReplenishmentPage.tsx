@@ -1,6 +1,6 @@
 "use client";
 
-import { estimatePurchaseValue, formatPurchaseQuantity, positivePurchaseLines } from "@/lib/purchase-quantity";
+import { estimatePurchaseValue, formatSuggestedPurchaseQuantity, positivePurchaseLines } from "@/lib/purchase-quantity";
 import { draftSupplierId } from "@/lib/purchase-draft-policy";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
@@ -889,7 +889,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
                         </div>
                       </div>
                       {product.suggestedQuantity > 0
-                        ? <span className="shrink-0 rounded-full bg-[var(--oh-orange-light)] px-2.5 py-1 text-xs font-bold tabular-nums text-[var(--oh-orange-dark)]">Order {formatPurchaseQuantity(product.suggestedQuantity, (product.caseQuantity ?? 0) > 1 ? product.caseQuantity : null)}</span>
+                        ? <span className="shrink-0 rounded-full bg-[var(--oh-orange-light)] px-2.5 py-1 text-xs font-bold tabular-nums text-[var(--oh-orange-dark)]">{formatSuggestedPurchaseQuantity(product.suggestedQuantity, (product.caseQuantity ?? 0) > 1 ? product.caseQuantity : null, product.recommendationStatus)}</span>
                         : <span className="shrink-0 rounded-full bg-[var(--oh-surface)] px-2.5 py-1 text-xs font-medium text-[var(--oh-muted)]">{product.recommendationStatus === "REVIEW_DATA" ? "Review data" : "No order"}</span>}
                     </div>
                     <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 rounded-md bg-[var(--oh-surface)] p-3 text-sm">
@@ -1037,7 +1037,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
                     )}
                     <td className="px-4 py-3 text-right">
                       {product.suggestedQuantity > 0
-                        ? <span className="inline-flex min-w-16 justify-center rounded-full bg-[var(--oh-orange-light)] px-2.5 py-1 text-xs font-bold tabular-nums text-[var(--oh-orange-dark)]">{formatPurchaseQuantity(product.suggestedQuantity, (product.caseQuantity ?? 0) > 1 ? product.caseQuantity : null)}</span>
+                        ? <span className="inline-flex min-w-16 justify-center rounded-full bg-[var(--oh-orange-light)] px-2.5 py-1 text-xs font-bold tabular-nums text-[var(--oh-orange-dark)]">{formatSuggestedPurchaseQuantity(product.suggestedQuantity, (product.caseQuantity ?? 0) > 1 ? product.caseQuantity : null, product.recommendationStatus)}</span>
                         : <span className="text-xs text-[var(--oh-muted)]">{product.recommendationStatus === "REVIEW_DATA" ? "Review data" : "No order"}</span>}
                     </td>
                     <td className="px-4 py-3 text-xs text-[var(--oh-muted)]">

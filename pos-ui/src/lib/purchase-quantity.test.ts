@@ -9,6 +9,11 @@ test("purchase quantities display the same case and item split as Shopfront", ()
   assert.equal(purchaseQuantity.formatPurchaseQuantity(0, 16), "0 items");
 });
 
+test("suggested quantities distinguish data review from order-ready quantities", () => {
+  assert.equal(purchaseQuantity.formatSuggestedPurchaseQuantity(6, 6, "REVIEW_DATA"), "Review · 1 case");
+  assert.equal(purchaseQuantity.formatSuggestedPurchaseQuantity(12, 6, "READY"), "Order 2 cases");
+});
+
 test("a zero quantity removes the line even when the assistant suggested ordering it", () => {
   const removed = { productId: 101, quantity: 0, suggestedQuantity: 24 };
   const accepted = { productId: 102, quantity: 12, suggestedQuantity: 12 };
