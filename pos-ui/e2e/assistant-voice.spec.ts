@@ -58,6 +58,7 @@ test("voice input stays editable and only queries after manual confirmation", as
 
   let assistantRequests = 0;
   let transcriptionRequest = "";
+  let transcriptionAttempts = 0;
   await page.route("**/api/ai/config/client", (route) => route.fulfill({
     status: 200,
     contentType: "application/json",
@@ -69,7 +70,12 @@ test("voice input stays editable and only queries after manual confirmation", as
     } }),
   }));
   await page.route("**/api/ai/transcribe", async (route) => {
+    transcriptionAttempts++;
     transcriptionRequest = route.request().postData() ?? "";
+    if (transcriptionAttempts === 3) {
+      await route.fulfill({ status: 200, json: { code: 0, message: "ok", data: { text: "Today's sales", lang: "en" } } });
+      return;
+    }
     await route.fulfill({ status: 502, json: { code: 50211, message: "Transcription unavailable" } });
   });
   await page.route("**/api/ai/assistant", async (route) => {
@@ -110,8 +116,64 @@ test("voice input stays editable and only queries after manual confirmation", as
   expect(await page.evaluate(() => (window as Window & { __voiceRecognitionLang?: string }).__voiceRecognitionLang)).toBe("en-AU");
   expect(assistantRequests).toBe(0);
 
+  await composer.getByRole("button", { name: "Voice input" }).click();
+  await composer.getByRole("button", { name: "Stop voice input" }).click();
+  await expect(input).toHaveValue("库存 库存还有多少？ 库存还有多少？ Today's sales");
+  expect(assistantRequests).toBe(0);
+
   await input.fill("修正后的库存问题");
   await expect(composer.getByRole("button", { name: "Send message" })).toBeEnabled();
   await composer.getByRole("button", { name: "Send message" }).click();
   await expect.poll(() => assistantRequests).toBe(1);
+});
+
+test("microphone permission refusal keeps the draft and does not send a query", async ({ page }) => {
+  await useLocalPreviewSession(page);
+  await page.addInitScript(() => {
+    localStorage.setItem("sf_user", JSON.stringify({
+      id: "voice-denied-user",
+      name: "Voice Denied User",
+      username: "voice-denied",
+      isAdmin: true,
+      roleCode: "ADMIN",
+      permissions: ["ai.assistant"],
+    }));
+    Object.defineProperty(navigator, "mediaDevices", {
+      configurable: true,
+      value: {
+        getUserMedia: async () => { throw new DOMException("Permission denied", "NotAllowedError"); },
+      },
+    });
+    class MockMediaRecorder {
+      static isTypeSupported() { return true; }
+      constructor() {}
+    }
+    Object.defineProperty(window, "MediaRecorder", { configurable: true, value: MockMediaRecorder });
+  });
+
+  let assistantRequests = 0;
+  await page.route("**/api/ai/config/client", (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({ code: 0, message: "ok", data: {
+      enabled: true,
+      assistantAvailable: true,
+      transcriptionAvailable: true,
+      aiTriggerKeywords: [],
+    } }),
+  }));
+  await page.route("**/api/ai/assistant", async (route) => {
+    assistantRequests++;
+    await route.fulfill({ status: 200, json: { code: 0, message: "ok", data: { answer: "查询已接收", intent: "qa" } } });
+  });
+
+  await page.goto("/assistant");
+  const composer = page.locator("[data-assistant-composer]").last();
+  const input = composer.getByLabel("Ask Orithos AI");
+  await input.fill("保留这条查询草稿");
+  await composer.getByRole("button", { name: "Voice input" }).click();
+
+  await expect(composer.getByRole("alert")).toContainText(/permission denied/i);
+  await expect(input).toHaveValue("保留这条查询草稿");
+  expect(assistantRequests).toBe(0);
 });
