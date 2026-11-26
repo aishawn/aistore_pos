@@ -85,6 +85,8 @@ const cases = [
   { id: "replenishment-needs-reorder-en", question: "What needs a reorder?", intent: "navigate", route: "/stock/replenishment" },
   { id: "replenishment-check-zh", question: "帮我看下哪些要补货", intent: "navigate", route: "/stock/replenishment", answerLanguage: "zh" },
   { id: "replenishment-low-soon-zh", question: "哪些商品快没货", intent: "navigate", route: "/stock/replenishment", answerLanguage: "zh" },
+  { id: "replenishment-next-week-quantity-zh", question: "哪些酒快卖完了，下周需要进多少？", intent: "navigate", route: "/stock/replenishment", answerLanguage: "zh", requireCtaRoute: true },
+  { id: "replenishment-next-week-quantity-en", question: "Which wines are almost sold out, and how many should I order next week?", intent: "navigate", route: "/stock/replenishment", requireCtaRoute: true },
   { id: "replenishment-list-zh", question: "补货清单", intent: "navigate", route: "/stock/replenishment", answerLanguage: "zh" },
   { id: "pricing-checking-en", question: "Which prices need checking?", intent: "navigate", route: "/stock/capped-pricing" },
   { id: "pricing-fair-price-en", question: "What is a fair price for Shiraz?", intent: "navigate", route: "/stock/capped-pricing" },
@@ -354,7 +356,7 @@ const cases = [
   { id: "sales-yesterday-turnover-like-en", question: "What was turnover like yesterday?", intent: "report_sales", noRoute: true, responseSource: "deterministic", compareReport: true, singlePeriodReport: true, reportStatus: ["available", "no_data"], reportSource: "orithos_ledger", reportFrom: yesterdayStore, reportTo: yesterdayStore, reportTimeZone: STORE_TIME_ZONE },
   { id: "sales-yesterday-turnover-order-zh", question: "昨日的营业额如何？", intent: "report_sales", noRoute: true, responseSource: "deterministic", compareReport: true, singlePeriodReport: true, answerLanguage: "zh", reportStatus: ["available", "no_data"], reportSource: "orithos_ledger", reportFrom: yesterdayStore, reportTo: yesterdayStore, reportTimeZone: STORE_TIME_ZONE },
   { id: "sales-this-week-en", question: "What were sales this week?", intent: "report_sales", noRoute: true, responseSource: "deterministic", compareReport: false, reportStatus: ["available", "no_data"], reportSource: "orithos_ledger", reportFrom: currentWeekStartStore, reportTo: todayStore, reportTimeZone: STORE_TIME_ZONE },
-  { id: "sales-this-week-zh", question: "本周营业额多少？", intent: "report_sales", noRoute: true, responseSource: "deterministic", compareReport: false, answerLanguage: "zh", reportStatus: ["available", "no_data"], reportSource: "orithos_ledger", reportFrom: currentWeekStartStore, reportTo: todayStore, reportTimeZone: STORE_TIME_ZONE },
+  { id: "sales-this-week-zh", question: "本周营业额多少？", intent: "report_sales", noRoute: true, responseSource: "deterministic", compareReport: false, answerLanguage: "zh", reportStatus: ["available", "no_data"], reportSource: "orithos_ledger", reportFrom: currentWeekStartStore, reportTo: todayStore, reportTimeZone: STORE_TIME_ZONE, requireStoreScope: true },
   { id: "sales-empty-historical-range-zh", question: "从2000年1月1日到2000年1月7日营业额多少？", intent: "report_sales", noRoute: true, responseSource: "deterministic", compareReport: true, aggregateReport: true, answerLanguage: "zh", answerRegex: "2000-01-01 至 2000-01-07没有已完成销售记录", reportStatus: ["no_data"], reportSource: "orithos_ledger", reportFrom: "2000-01-01", reportTo: "2000-01-07", reportTimeZone: STORE_TIME_ZONE },
   { id: "report-stock-value-zh", question: "库存价值多少？", intent: "report_stock_value", noRoute: true, responseSource: "deterministic", answerLanguage: "zh", answerRegex: "库存|价值|暂不可用|没有" },
   { id: "sales-near-7-zh", question: "近7天营业额多少？", intent: "report_sales", noRoute: true, responseSource: "deterministic", answerLanguage: "zh", reportSource: "orithos_ledger", reportTimeZone: STORE_TIME_ZONE },
@@ -914,6 +916,10 @@ try {
     const answerLanguageCheck = item.answerLanguage !== "zh" || /[\u3400-\u9fff]/.test(answer);
     const writeRequestsCheck = Array.isArray(data.writeRequests) && data.writeRequests.length === 0;
     const responseSourceCheck = !item.responseSource || data.source === item.responseSource;
+    const cta = Array.isArray(data.cards)
+      ? data.cards.find((card) => card?.cta?.route === item.route)?.cta ?? null
+      : null;
+    const ctaRouteCheck = !item.requireCtaRoute || cta?.route === item.route;
     const verifiedCostGap = item.compareReport
       && authoritativeReportEvidence?.httpStatus === 200
       && authoritativeReportEvidence?.source === item.reportSource
@@ -926,7 +932,8 @@ try {
       && data.dataSource === item.reportSource
       && data.reportPeriodFrom === item.reportFrom
       && data.reportPeriodTo === item.reportTo
-      && data.reportTimeZone === item.reportTimeZone);
+      && data.reportTimeZone === item.reportTimeZone
+      && (!item.requireStoreScope || (typeof data.storeScope === "string" && data.storeScope.trim().length > 0)));
     const reportFreshnessChecks = item.requireReportFreshness
       ? assistantReportFreshnessAcceptance(data, {
         maxAgeMs: REPORT_FRESHNESS_MAX_AGE_MS,
@@ -954,6 +961,7 @@ try {
       && productLookupAnswerCheck
       && answerLanguageCheck
       && responseSourceCheck
+      && ctaRouteCheck
       && productCountCardCheck
       && productCountOracleCheck
       && authoritativeReportCheck
@@ -979,6 +987,8 @@ try {
         ...(item.answerRegex ? { answerRegex: item.answerRegex } : {}),
         ...(item.stockOracle ? { stockOracle: true } : {}),
         ...(item.answerLanguage ? { answerLanguage: item.answerLanguage } : {}),
+        ...(item.requireCtaRoute ? { ctaRoute: item.route } : {}),
+        ...(item.requireStoreScope ? { storeScope: true } : {}),
         ...(item.requireReportFreshness ? { reportFreshness: true } : {}),
         ...(item.aggregateReport ? { aggregateReport: true } : {}),
       },
@@ -1000,6 +1010,7 @@ try {
           reportPeriodFrom: data.reportPeriodFrom ?? null,
           reportPeriodTo: data.reportPeriodTo ?? null,
           reportTimeZone: data.reportTimeZone ?? null,
+          storeScope: data.storeScope ?? null,
         } : {}),
         ...(reportFreshnessChecks ? {
           reportFreshnessCheck,
@@ -1013,6 +1024,7 @@ try {
         } : {}),
         ...(item.compareReport ? { authoritativeReportCheck, authoritativeReportEvidence } : {}),
         writeRequestsCheck,
+        ...(item.requireCtaRoute ? { ctaRouteCheck, cta } : {}),
         correlationId: response.headers()["x-correlation-id"] ?? null,
         ...(answerChecks.length ? { answerChecks } : {}),
         ...(item.intent === "product_count" ? {

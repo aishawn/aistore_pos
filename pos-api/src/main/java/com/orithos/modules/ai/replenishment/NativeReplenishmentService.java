@@ -170,12 +170,13 @@ public class NativeReplenishmentService {
         int costGapCount = 0;
         Instant salesDataAsOf = rows.stream().map(Row::salesDataAsOf).filter(java.util.Objects::nonNull)
                 .max(Instant::compareTo).orElse(null);
-        if (salesDataAsOf == null) {
-            return new ReplenishmentPlan(cover, 0, List.of(), "NO_DATA",
-                    List.of("sales history unavailable"), null, rows.size(), 0, 0, 0, from, today, zone.getId());
-        }
         Instant inventoryDataAsOf = rows.stream().map(Row::inventoryDataAsOf).filter(java.util.Objects::nonNull)
                 .max(Instant::compareTo).orElse(null);
+        if (salesDataAsOf == null) {
+            return new ReplenishmentPlan(cover, 0, List.of(), "NO_DATA",
+                    List.of("sales history unavailable"), inventoryDataAsOf, rows.size(), 0, 0, 0,
+                    from, today, zone.getId(), null, inventoryDataAsOf);
+        }
         Instant dataAsOf = inventoryDataAsOf == null || salesDataAsOf.isAfter(inventoryDataAsOf)
                 ? salesDataAsOf : inventoryDataAsOf;
         long now = currentTimeMillis.getAsLong();
@@ -232,7 +233,8 @@ public class NativeReplenishmentService {
                 .thenComparingLong(ReplenishmentSuggestion::productId));
         return new ReplenishmentPlan(cover, suggestions.size(), suggestions.stream().limit(limit).toList(),
                 gaps.isEmpty() ? "VALID" : "DATA_INCOMPLETE", gaps.stream().distinct().limit(20).toList(),
-                dataAsOf, dataGapCount, inventoryGapCount, supplierGapCount, costGapCount, from, today, zone.getId());
+                dataAsOf, dataGapCount, inventoryGapCount, supplierGapCount, costGapCount, from, today,
+                zone.getId(), salesDataAsOf, inventoryDataAsOf);
     }
 
     private record Row(long id, String name, double caseQuantity, Double onHand, double onOrder,

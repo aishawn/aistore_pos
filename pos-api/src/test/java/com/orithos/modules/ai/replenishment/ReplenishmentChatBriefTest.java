@@ -8,6 +8,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import java.util.List;
 import java.util.Set;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.sql.SQLException;
 
 import org.springframework.dao.DataAccessException;
@@ -59,8 +60,37 @@ class ReplenishmentChatBriefTest {
 
         assertTrue(text.contains("建议补货（覆盖 21 天）：5 个商品需要补货。"));
         assertTrue(text.contains("\n• Shiraz — 建议订购 12（2 箱，每箱 6 件）（约剩 5.0 天）"));
-        assertTrue(text.contains("数据来源：Orithos 库存与销售账本；账本最新可用数据时间：未知。"));
+        assertTrue(text.contains("数据来源：Orithos POS 销售与库存账本；销售窗口：未知 至 未知"));
+        assertTrue(text.contains("销售数据更新时间：未知；库存最新更新时间：未知"));
+        assertTrue(text.contains("节假日和门店活动日历未纳入"));
         assertTrue(text.contains("打开补货页面审核数量并确认订单。"));
+    }
+
+    @Test
+    void briefSeparatesSalesAndInventoryFreshnessAndDisclosesCalculationWindow() {
+        NativeReplenishmentService client = mock(NativeReplenishmentService.class);
+        TenantContext tenant = new TenantContext(1L, 1L, 1L, List.of(1L), Set.of("ROLE_ADMIN"));
+        Instant salesUpdated = Instant.parse("2026-11-26T17:10:00Z");
+        Instant inventoryUpdated = Instant.parse("2026-11-26T16:45:00Z");
+        when(client.plan(tenant)).thenReturn(new ReplenishmentPlan(
+                21, 1,
+                List.of(new ReplenishmentSuggestion(1, "Shiraz", "Units", 12, 5d, 2d,
+                        10d, 10d, null, 6d)),
+                "VALID", List.of(), salesUpdated, 0, 0, 0, 0,
+                LocalDate.parse("2026-10-02"), LocalDate.parse("2026-11-26"), "Australia/Melbourne",
+                salesUpdated, inventoryUpdated));
+
+        String english = new ReplenishmentChatBrief(client).brief("What should I restock?", tenant);
+        String chinese = new ReplenishmentChatBrief(client).brief("哪些商品需要补货？", tenant);
+
+        assertTrue(english.contains("sales window 2026-10-02 to 2026-11-26"));
+        assertTrue(english.contains("sales data updated 2026-11-26T17:10:00Z"));
+        assertTrue(english.contains("latest inventory update 2026-11-26T16:45:00Z"));
+        assertTrue(english.contains("public holidays and store events are not included"));
+        assertTrue(chinese.contains("销售窗口：2026-10-02 至 2026-11-26"));
+        assertTrue(chinese.contains("销售数据更新时间：2026-11-26T17:10:00Z"));
+        assertTrue(chinese.contains("库存最新更新时间：2026-11-26T16:45:00Z"));
+        assertTrue(chinese.contains("节假日和门店活动日历未纳入"));
     }
 
     @Test
@@ -215,7 +245,8 @@ class ReplenishmentChatBriefTest {
 
         String text = new ReplenishmentChatBrief(client).brief("What do we need to buy?", tenant);
 
-        assertTrue(text.contains("latest available ledger data at 2026-11-03T04:00:00Z"));
+        assertTrue(text.contains("sales data updated unknown; latest inventory update unknown"));
+        assertTrue(text.contains("sales window unknown to unknown"));
         assertTrue(text.contains("Manual review is required"));
         assertTrue(text.contains("no quantities were generated"));
     }

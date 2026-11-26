@@ -11,6 +11,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 
 /**
@@ -43,10 +44,7 @@ public class ReplenishmentChatBrief {
                 return unavailableMessage(question);
             }
             int dataGapCount = plan.dataGapCount();
-            String sourceNote = chinese
-                    ? "数据来源：Orithos 库存与销售账本；账本最新可用数据时间：" + dataDate(plan.dataAsOf(), true) + "。"
-                    : "Source: Orithos inventory and sales ledger; latest available ledger data at "
-                            + dataDate(plan.dataAsOf(), false) + ".";
+            String sourceNote = sourceNote(plan, chinese);
             if ("NO_DATA".equalsIgnoreCase(plan.dataQualityStatus())) {
                 logOutcome("no_sales_data", dataGapCount, startedAt);
                 return chinese
@@ -267,5 +265,28 @@ public class ReplenishmentChatBrief {
 
     private static String dataDate(Instant value, boolean chinese) {
         return value == null ? (chinese ? "未知" : "unknown") : DateTimeFormatter.ISO_INSTANT.format(value);
+    }
+
+    private static String sourceNote(ReplenishmentPlan plan, boolean chinese) {
+        String from = localDate(plan.periodFrom(), chinese);
+        String to = localDate(plan.periodTo(), chinese);
+        String zone = plan.timeZone() == null || plan.timeZone().isBlank()
+                ? (chinese ? "未知" : "unknown") : plan.timeZone();
+        if (chinese) {
+            return "数据来源：Orithos POS 销售与库存账本；销售窗口：" + from + " 至 " + to
+                    + "（最近 28 天与此前 28 天对比；两段均有销量时按 70%/30% 加权，门店时区 " + zone + "）；"
+                    + "销售数据更新时间：" + dataDate(plan.salesDataAsOf(), true)
+                    + "；库存最新更新时间：" + dataDate(plan.inventoryDataAsOf(), true)
+                    + "。库存缺失、为负或超过 24 小时未更新的商品不生成订购数量；节假日和门店活动日历未纳入。";
+        }
+        return "Source: Orithos POS sales and inventory ledger; sales window " + from + " to " + to
+                + " (latest 28 days compared with the prior 28 days; weighted 70/30 when both have sales, store timezone "
+                + zone + "); sales data updated " + dataDate(plan.salesDataAsOf(), false)
+                + "; latest inventory update " + dataDate(plan.inventoryDataAsOf(), false)
+                + ". Items with missing, negative, or over-24-hour-old inventory are excluded from quantities; public holidays and store events are not included.";
+    }
+
+    private static String localDate(LocalDate value, boolean chinese) {
+        return value == null ? (chinese ? "未知" : "unknown") : DateTimeFormatter.ISO_LOCAL_DATE.format(value);
     }
 }
