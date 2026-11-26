@@ -187,7 +187,7 @@ export function OdooPriceSuggestionsPage() {
           <p className="text-xs font-semibold uppercase tracking-[.12em] text-[var(--oh-muted)]">AI Workspace</p>
           <h1 className="mt-1 text-xl font-semibold text-[var(--oh-text)]">Price Suggestions</h1>
           <p className="mt-1 max-w-2xl text-sm text-[var(--oh-muted)]">
-            Shelf suggestions use each product&apos;s Orithos tax rate and a target margin on net sales excluding tax.
+            Suggested shelf prices use Orithos cost, tax and target net margin. Recent 28-day POS sales rank review items; public manufacturer and competitor prices are not connected, so this is not a market-price comparison.
             You apply any change in Products or Bulk Price Edit — this page never writes prices.
             {lastLoadedAt !== null && (
               <span className="ml-2">Last refreshed {formatStoreEpoch(lastLoadedAt, storeTimezone)}.</span>

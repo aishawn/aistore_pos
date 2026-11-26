@@ -12,6 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 class PricingChatBriefTest {
@@ -56,8 +57,36 @@ class PricingChatBriefTest {
         String text = new PricingChatBrief(client).brief("What is a fair price for Shiraz?", tenant);
 
         assertTrue(text.contains("Barossa Shiraz"));
-        assertTrue(text.contains("store cost and tax data, not market pricing"));
+        assertTrue(text.contains("recorded 28-day POS units"));
+        assertTrue(text.contains("public manufacturer and competitor prices are not included"));
         verify(client).review(tenant, "Shiraz");
+    }
+
+    @Test
+    void chineseProductPriceQuestionUsesOnlyTheNamedProduct() {
+        NativePriceSuggestionService client = mock(NativePriceSuggestionService.class);
+        TenantContext tenant = new TenantContext(1L, 1L, 1L, List.of(1L), Set.of("ROLE_ADMIN"));
+        when(client.review(tenant, "Penfolds Shiraz")).thenReturn(new PriceReviewBrief(
+                0.30, List.of(new PriceReviewItem(1, "Penfolds Shiraz", 8, 24.99, 27.95, "raise")), 1));
+
+        String text = new PricingChatBrief(client).brief("这款 Penfolds Shiraz 价格合不合理？", tenant);
+
+        assertTrue(text.contains("Penfolds Shiraz"));
+        assertTrue(text.contains("近 28 天本店 POS 销量排序"));
+        assertTrue(text.contains("不含公开厂商或竞品价格"));
+        verify(client).review(tenant, "Penfolds Shiraz");
+    }
+
+    @Test
+    void genericChineseWinePriceQuestionAsksForProductInsteadOfListingUnrelatedItems() {
+        NativePriceSuggestionService client = mock(NativePriceSuggestionService.class);
+        TenantContext tenant = new TenantContext(1L, 1L, 1L, List.of(1L), Set.of("ROLE_ADMIN"));
+
+        String text = new PricingChatBrief(client).brief("这款酒价格合不合理？", tenant);
+
+        assertTrue(text.contains("商品名称或条码"));
+        assertTrue(text.contains("尚未接入公开厂商或竞品价格"));
+        verifyNoInteractions(client);
     }
 
     @Test

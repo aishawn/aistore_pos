@@ -21,6 +21,10 @@ public class PricingChatBrief {
     private static final Pattern PRODUCT_PRICE_QUESTION = Pattern.compile(
             "^(?:what is a fair price for|what should (?:i|we) charge for|how much should (?:i|we) charge for|suggest(?: a)? price for)\\s+(.+?)[?.!]*$",
             Pattern.CASE_INSENSITIVE);
+    private static final Pattern CHINESE_PRODUCT_PRICE_QUESTION = Pattern.compile(
+            "^(?:(?:请问|帮我(?:看下|看看|看一下))\\s*)?(?:(?:这款|这瓶|这个|那款|那瓶|某款|一款|一瓶)\\s*)?(.+?)\\s*(?:的)?(?:价格|售价)(?:合不合理|合理吗|是否合理|是不是合理|贵不贵|偏贵|太贵|太高|太低)[?？。!！]*$");
+    private static final Pattern GENERIC_CHINESE_PRODUCT_PRICE_QUESTION = Pattern.compile(
+            "^(?:(?:请问|帮我(?:看下|看看|看一下))\\s*)?(?:(?:这款|这瓶|这个|那款|那瓶|某款|一款|一瓶|该款)\\s*)?(?:酒|葡萄酒|红酒|白酒|商品|产品)(?:的)?(?:价格|售价)(?:合不合理|合理吗|是否合理|是不是合理|贵不贵|偏贵|太贵|太高|太低)[?？。!！]*$");
     private static final Logger log = LoggerFactory.getLogger(PricingChatBrief.class);
 
     private final NativePriceSuggestionService client;
@@ -31,6 +35,9 @@ public class PricingChatBrief {
 
     public String brief(String question, TenantContext tenant) {
         boolean chinese = isChinese(question);
+        if (chinese && GENERIC_CHINESE_PRODUCT_PRICE_QUESTION.matcher(question.trim()).matches()) {
+            return "请提供商品名称或条码。我目前只能依据本店成本、税率和目标毛利做价格复核，尚未接入公开厂商或竞品价格，不能据此判断市场价是否合理。打开价格建议页查看复核项目。";
+        }
         if (tenant == null) {
             log.warn("Price review brief unavailable: tenant context is missing");
             return unavailableMessage(question);
@@ -78,8 +85,8 @@ public class PricingChatBrief {
                 }
             }
             sb.append(chinese
-                    ? "\n\n这些价格基于本店成本和税率，不代表市场行情。打开价格复核页面查看；任何价格变更都需要员工在页面确认。"
-                    : "\n\nThese estimates use store cost and tax data, not market pricing. Tap below to open price review. Staff confirm any change on the page.");
+                    ? "\n\n列表按近 28 天本店 POS 销量排序；建议按本店成本、税率和目标净毛利计算，不含公开厂商或竞品价格，不代表市场行情。打开价格复核页面查看；任何价格变更都需要员工在页面确认。"
+                    : "\n\nItems are ranked by recorded 28-day POS units. Estimates use store cost, tax and target net margin; public manufacturer and competitor prices are not included, so this is not a market-price comparison. Tap below to open price review. Staff confirm any change on the page.");
             return sb.toString();
         } catch (Exception e) {
             Throwable rootCause = e;
@@ -107,8 +114,12 @@ public class PricingChatBrief {
     private static String productSearch(String question) {
         if (question == null) return null;
         Matcher matcher = PRODUCT_PRICE_QUESTION.matcher(question.trim());
-        if (!matcher.matches()) return null;
+        if (!matcher.matches()) {
+            matcher = CHINESE_PRODUCT_PRICE_QUESTION.matcher(question.trim());
+            if (!matcher.matches()) return null;
+        }
         String query = matcher.group(1).trim();
+        if (query.matches("(?i)(?:酒|葡萄酒|红酒|白酒|商品|产品|这款酒|这瓶酒)")) return null;
         return query.isEmpty() ? null : query;
     }
 
