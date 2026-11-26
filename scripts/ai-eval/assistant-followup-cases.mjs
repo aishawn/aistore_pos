@@ -11,6 +11,17 @@ export const assistantFollowupCases = [
   { id: "stock-history-carlton-en", question: "How many Carlton Draught do we have?", followUp: "and yesterday?", repeatFollowUp: "and the day before?", surface: "stock", kind: "stock-history", language: "en", readOnly: true },
 ];
 
+function businessDateAt(nowMs, timeZone) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(nowMs);
+  const value = Object.fromEntries(parts.map(({ type, value }) => [type, value]));
+  return `${value.year}-${value.month}-${value.day}`;
+}
+
 export function evaluateSalesFollowup({ assistant, report, expectedFrom, expectedTo = expectedFrom, timeZone, nowMs = Date.now() }) {
   const answer = String(assistant?.answer ?? "");
   const slots = assistant?.slots ?? {};
@@ -19,6 +30,11 @@ export function evaluateSalesFollowup({ assistant, report, expectedFrom, expecte
   const dataAsOfMs = Date.parse(dataAsOf);
   const asOfValid = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/i.test(dataAsOf)
     && Number.isFinite(dataAsOfMs);
+  const nativeDataAsOf = typeof report?.dataAsOf === "string" ? report.dataAsOf : "";
+  const nativeDataAsOfMs = Date.parse(nativeDataAsOf);
+  const nativeAsOfValid = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/i.test(nativeDataAsOf)
+    && Number.isFinite(nativeDataAsOfMs);
+  const includesCurrentBusinessDay = expectedTo >= businessDateAt(nowMs, timeZone);
   const dateRange = slots.from === expectedFrom && slots.to === expectedTo
     && assistant.reportPeriodFrom === expectedFrom && assistant.reportPeriodTo === expectedTo;
   const daily = Array.isArray(report?.dailyTrend)
@@ -41,7 +57,9 @@ export function evaluateSalesFollowup({ assistant, report, expectedFrom, expecte
     storeScope: assistant?.storeScope === "current_authenticated_store",
     timeZone: assistant?.reportTimeZone === timeZone,
     dataStatus: String(assistant?.reportDataStatus ?? "").toLowerCase() === expectedStatus,
-    dataAsOf: asOfValid && dataAsOfMs <= nowMs && nowMs - dataAsOfMs <= 90 * 60 * 1000,
+    dataAsOfFresh: asOfValid && nativeAsOfValid && dataAsOfMs === nativeDataAsOfMs
+      && dataAsOfMs <= nowMs
+      && (!includesCurrentBusinessDay || nowMs - dataAsOfMs <= 90 * 60 * 1000),
     noWrites: Array.isArray(assistant?.writeRequests) && assistant.writeRequests.length === 0,
   };
   return {
