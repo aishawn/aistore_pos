@@ -62,6 +62,8 @@ class WorkflowRouteRouterTest {
         assertRoute("Which products need reordering?", "/stock/replenishment");
         assertRoute("Which products should we buy?", "/stock/replenishment");
         assertRoute("Show me items to order", "/stock/replenishment");
+        assertRoute("Which wines are almost sold out? How much should we order next week?", "/stock/replenishment");
+        assertRoute("哪些酒快卖完了，下周需要进多少？", "/stock/replenishment");
         assertRoute("哪些商品库存低", "/stock/replenishment");
         assertRoute("哪些商品该买", "/stock/replenishment");
         assertRoute("哪些商品快没货", "/stock/replenishment");
