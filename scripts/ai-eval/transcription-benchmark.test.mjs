@@ -10,6 +10,10 @@ import {
 test("synthetic ASR benchmark has 50 utterances per target language and five per scenario", () => {
   assert.equal(transcriptionBenchmarkCases.filter((testCase) => testCase.lang === "en-AU").length, 50);
   assert.equal(transcriptionBenchmarkCases.filter((testCase) => testCase.lang === "zh-CN").length, 50);
+  assert.ok(transcriptionBenchmarkCases.filter((testCase) => testCase.lang === "en-AU")
+    .every((testCase) => testCase.voiceLocale === "en-AU"));
+  assert.ok(transcriptionBenchmarkCases.filter((testCase) => testCase.lang === "zh-CN")
+    .every((testCase) => testCase.voiceLocale === "zh-CN"));
   assert.equal(new Set(transcriptionBenchmarkCases.map((testCase) => testCase.id)).size, 100);
   for (const lang of ["en-AU", "zh-CN"]) {
     for (const category of ["product", "barcode", "numbers", "dates", "inventory", "sales", "negation", "noise", "pause", "code-switch"]) {
@@ -63,22 +67,22 @@ test("critical number and date accuracy accepts equivalent spoken and numeric fo
   assert.equal(metrics["zh-CN"].criticalEntityTypes.dates.accuracy, 1);
 });
 
-test("quality gate blocks speech samples whose voice locale does not match the target locale", () => {
+test("quality gate passes target-locale samples and blocks mismatched English synthesis", () => {
   const transcripts = transcriptionBenchmarkCases.map((testCase) => ({ caseId: testCase.id, transcript: testCase.expectedText }));
   const metrics = evaluateTranscriptionBenchmark(transcriptionBenchmarkCases, transcripts);
+  const mismatchedEnglishCases = transcriptionBenchmarkCases.map((testCase) => testCase.lang === "en-AU"
+    ? { ...testCase, voiceLocale: "en-US" }
+    : testCase);
   const initialGate = benchmark.evaluateTranscriptionQualityGate?.({
-    cases: transcriptionBenchmarkCases,
+    cases: mismatchedEnglishCases,
     completedCaseIds: transcripts.map(({ caseId }) => caseId),
     metrics,
   });
   assert.equal(initialGate?.status, "BLOCKED");
   assert.equal(initialGate?.voiceLocaleCoverage["en-AU"].matchingVoiceCases, 0);
 
-  const AustralianVoiceCases = transcriptionBenchmarkCases.map((testCase) => testCase.lang === "en-AU"
-    ? { ...testCase, voiceLocale: "en-AU" }
-    : testCase);
   const matchedGate = benchmark.evaluateTranscriptionQualityGate?.({
-    cases: AustralianVoiceCases,
+    cases: transcriptionBenchmarkCases,
     completedCaseIds: transcripts.map(({ caseId }) => caseId),
     metrics,
   });

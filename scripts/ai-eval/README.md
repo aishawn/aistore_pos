@@ -174,13 +174,17 @@ model evaluation.
 ## Bilingual speech benchmark and online acceptance
 
 Build the synthetic benchmark corpus locally. It contains 50 Chinese and 50
-English prompts across product names, barcodes, numbers, dates, noise, pauses,
-and code-switching. The generated audio and manifest are local evaluation data;
-do not commit them or treat synthetic WER as real-user accuracy. Run the
-generator with Node 24 or newer on `PATH`; when multiple runtimes are installed,
-set `ASR_NODE_BIN` to the Node 24 executable:
+Australian English prompts across product names, barcodes, numbers, dates,
+noise, pauses, and code-switching. The generated audio and manifest are local
+evaluation data; do not commit them or treat synthetic WER as real-user
+accuracy. The generator needs Node 24+, Python with `imageio-ffmpeg`, the
+installed Microsoft Huihui desktop voice, and Edge TTS 7.3.1+ for its en-AU
+Natasha voice. Set `ASR_NODE_BIN` and `EDGE_TTS_BIN` when these executables are
+not on `PATH`:
 
 ```powershell
+$env:ASR_NODE_BIN = "C:\path\to\node.exe"
+$env:EDGE_TTS_BIN = "C:\path\to\edge-tts.exe"
 powershell -ExecutionPolicy Bypass -File scripts/ai-eval/generate-synthetic-transcription-audio.ps1
 node --test scripts/ai-eval/transcription-benchmark.test.mjs scripts/ai-eval/transcription-uat-contract.test.mjs
 ```
@@ -195,12 +199,11 @@ accuracy for product identifiers, barcodes, numbers, and dates; do not retain
 raw audio or full transcripts in shared reports. Runtime SHA mismatch or a dirty
 source checkout blocks requests and cannot count as acceptance.
 
-The synthetic English voice is en-US while the recognition locale is en-AU.
-Before claiming Australian speech coverage, add an approved en-AU corpus and
-evaluate it separately. The quality gate blocks the en-AU result until at
-least 50 completed cases use an en-AU voice locale. Keep human-reviewed,
-consented/de-identified recordings as a separately labeled set so synthetic
-and real-speech scores are never combined.
+The synthetic English voice is en-AU (Microsoft Edge Natasha Neural), matching
+the recognition locale. This supports repeatable synthetic coverage, not real
+store speech accuracy. Keep human-reviewed, consented/de-identified recordings
+as a separately labeled set so synthetic and real-speech scores are never
+combined. Audio files use mono 16 kHz, 16-bit PCM WAV.
 
 ## Daily native inventory snapshot
 

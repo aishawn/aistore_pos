@@ -108,7 +108,7 @@ export const transcriptionBenchmarkCases = [
   ...enCases.map(([category, utterance, criticalEntities], index) => ({
     id: `en-${String(index + 1).padStart(2, "0")}`,
     lang: "en-AU",
-    voiceLocale: "en-US",
+    voiceLocale: "en-AU",
     category,
     utterance,
     expectedText: utterance.replace(/\s{2,}/g, " "),

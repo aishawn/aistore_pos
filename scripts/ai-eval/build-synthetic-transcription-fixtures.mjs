@@ -14,7 +14,7 @@ fs.writeFileSync(manifestPath, `${JSON.stringify({
   synthetic: true,
   generatedAt: new Date().toISOString(),
   audioStorage: "local ignored directory",
-  notes: ["English uses the installed en-US Microsoft Zira voice; en-AU is the ASR language hint."],
+  notes: ["English uses the en-AU Microsoft Edge Natasha neural voice; Chinese uses the installed zh-CN Microsoft Huihui voice."],
   cases: transcriptionBenchmarkCases.map(({ id, lang, voiceLocale, category, utterance, expectedText, criticalEntities }) => ({
     id,
     lang,
