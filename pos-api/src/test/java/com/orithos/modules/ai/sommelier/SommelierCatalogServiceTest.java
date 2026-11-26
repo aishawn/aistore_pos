@@ -171,4 +171,21 @@ class SommelierCatalogServiceTest {
 
         assertEquals(List.of("Shiraz Reserve 750ml"), wines.stream().map(WineCandidate::name).toList());
     }
+
+    @Test
+    void listWinesExcludesGroceryItemWithStaleWineProfileAndShopfrontGmUnit() {
+        SommelierProductMapper mapper = mock(SommelierProductMapper.class);
+        SommelierProductMapper.CatalogRow grissini = new SommelierProductMapper.CatalogRow();
+        grissini.setId(21513L);
+        grissini.setName("ALWAYS FRESH SEA SALT & ROSEMARY GRISSINI 125GM");
+        grissini.setCategoryName("GROCERIES");
+        grissini.setStoredWineType("red");
+        grissini.setPrice(new BigDecimal("4.99"));
+        grissini.setStockQuantity(new BigDecimal("7"));
+        when(mapper.listCatalog(87L)).thenReturn(List.of(grissini));
+        SommelierCatalogService service = new SommelierCatalogService(mapper, new ObjectMapper());
+        TenantContext tenant = new TenantContext(55L, 7L, 87L, List.of(87L), Set.of());
+
+        assertTrue(service.listWines(tenant).isEmpty());
+    }
 }
