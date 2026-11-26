@@ -636,6 +636,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
                   Sales: {data.forecast.sourceVersion?.startsWith("odoo_pos_order_line_local_complete_days") ? "POS order lines" : "source unavailable"} · {data.salesHistory?.startDate ?? "—"} to before {data.salesHistory?.endDateExclusive ?? "—"} · {data.historyDays} {data.salesHistory?.completeDaysOnly ? "complete days" : "days"} · {data.salesHistory?.timezone ?? "—"}
                   {data.salesHistory?.refunds === "SIGNED_NET_UNITS" ? " · refunds netted" : ""}.
                 </p>
+                <p>Seasonal, holiday and store event calendars are not included in this forecast.</p>
                 {data.products.length > 0 && (
                   <p role="status">
                     History: {number.format(forecastReadinessSummary.valid)} valid · {number.format(forecastReadinessSummary.insufficientHistory)} need more history · {number.format(forecastReadinessSummary.lowConfidence)} low confidence.
