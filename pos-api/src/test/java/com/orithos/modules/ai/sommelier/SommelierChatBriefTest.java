@@ -111,6 +111,29 @@ class SommelierChatBriefTest {
     }
 
     @Test
+    void sweetnessPreferencesAreParsedAndShownInTheBrief() {
+        var chineseDry = SommelierChatBrief.fromQuestion("推荐一款不太甜、预算50澳元以内的现货酒");
+        var englishDry = SommelierChatBrief.fromQuestion("Recommend a wine that is not too sweet under $50");
+        var sweet = SommelierChatBrief.fromQuestion("推荐一款偏甜的酒");
+        var neutral = SommelierChatBrief.fromQuestion("推荐一款葡萄酒");
+
+        assertEquals(0.8, chineseDry.dryness());
+        assertEquals(0.8, englishDry.dryness());
+        assertEquals(0.25, sweet.dryness());
+        assertEquals(null, neutral.dryness());
+
+        SommelierService service = mock(SommelierService.class);
+        TenantContext tenant = new TenantContext(1L, 1L, 1L, List.of(1L), Set.of("ROLE_ADMIN"));
+        RecommendCard inferred = card("Best Match", "Local Riesling", "18.00", false, null, "UNVERIFIED", true);
+        when(service.recommend(any(), any())).thenReturn(new RecommendResponse(null, List.of(inferred), null));
+        String answer = new SommelierChatBrief(service).brief(
+                "推荐一款不太甜、预算50澳元以内的现货酒", tenant);
+
+        assertTrue(answer.contains("口味偏好：少甜/偏干"));
+        assertTrue(answer.contains("干甜度资料为推断值"));
+    }
+
+    @Test
     void unavailableCatalogueIsExplicitAndDoesNotInventRecommendations() {
         SommelierService service = mock(SommelierService.class);
         TenantContext tenant = new TenantContext(1L, 1L, 1L, List.of(1L), Set.of("ROLE_ADMIN"));
@@ -148,10 +171,16 @@ class SommelierChatBriefTest {
 
     private static RecommendCard card(String badge, String name, String price,
                                       boolean onPromotion, String promotionEndsAt, String endDateStatus) {
+        return card(badge, name, price, onPromotion, promotionEndsAt, endDateStatus, false);
+    }
+
+    private static RecommendCard card(String badge, String name, String price,
+                                      boolean onPromotion, String promotionEndsAt, String endDateStatus,
+                                      boolean profileInferred) {
         return new RecommendCard(
                 1L, name, "good", badge, new BigDecimal(price), new BigDecimal(price),
                 onPromotion, BigDecimal.ONE, null, 80, 50, 50, 50, 50, 80,
-                "red", null, null, null, List.of(), List.of(), List.of(), null, null, null, false,
+                "red", null, null, null, List.of(), List.of(), List.of(), null, null, null, profileInferred,
                 promotionEndsAt, endDateStatus);
     }
 }

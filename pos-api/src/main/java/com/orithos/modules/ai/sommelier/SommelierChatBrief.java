@@ -31,6 +31,13 @@ public class SommelierChatBrief {
     private static final Pattern WHITE = Pattern.compile("\\bwhite\\b|白葡萄酒|白酒", Pattern.CASE_INSENSITIVE);
     private static final Pattern SPARKLING = Pattern.compile(
             "\\bsparkling\\b|香槟|起泡(?:酒)?", Pattern.CASE_INSENSITIVE);
+    private static final Pattern LESS_SWEET = Pattern.compile(
+            "\\b(?:not too sweet|less sweet|not sweet|dry|drier|off[- ]dry)\\b|"
+                    + "不太甜|不要太甜|少甜|不甜|偏干|干型|干一点",
+            Pattern.CASE_INSENSITIVE);
+    private static final Pattern SWEETER = Pattern.compile(
+            "\\b(?:sweet|sweeter|sweet wine)\\b|偏甜|甜一点|喜欢甜|甜型",
+            Pattern.CASE_INSENSITIVE);
 
     private static final List<Map.Entry<String, Pattern>> FOOD_PAIRINGS = List.of(
             food("steak", "\\b(?:steak|beef)\\b|牛排|牛肉"),
@@ -81,10 +88,17 @@ public class SommelierChatBrief {
                 sb.append(chinese ? "，预算不超过 A$" : " under A$")
                         .append(AssistantDisplayText.money(request.budgetMax()));
             }
+            if (request.dryness() != null) {
+                sb.append(chinese
+                        ? (request.dryness() >= 0.7 ? "，口味偏好：少甜/偏干" : "，口味偏好：偏甜")
+                        : (request.dryness() >= 0.7 ? ", taste preference: less sweet/drier" : ", taste preference: sweeter"));
+            }
             sb.append(chinese ? "：\n" : ":\n");
             int n = Math.min(3, response.recommendations().size());
+            boolean inferredStyle = false;
             for (int i = 0; i < n; i++) {
                 RecommendCard card = response.recommendations().get(i);
+                inferredStyle |= card.inferred();
                 String badge = card.badge() == null || card.badge().isBlank()
                         ? (chinese ? "推荐" : "Pick") : chinese ? wineBadgeLabel(card.badge()) : card.badge();
                 String name = AssistantDisplayText.productName(card.name());
@@ -103,6 +117,11 @@ public class SommelierChatBrief {
                         }
                     }
                 }
+            }
+            if (request.dryness() != null && inferredStyle) {
+                sb.append(chinese
+                        ? "\n\n部分酒款的干甜度资料为推断值，请查看详情确认。"
+                        : "\n\nSome dryness details are inferred; check the bottle details to confirm.");
             }
             sb.append(chinese ? "\n\n打开品鉴推荐页面查看全部酒款。" : "\n\nTap below to open the full wine assistant.");
             return sb.toString();
@@ -157,12 +176,18 @@ public class SommelierChatBrief {
                 budgetMax = null;
             }
         }
+        Double dryness = null;
+        if (LESS_SWEET.matcher(q).find()) {
+            dryness = 0.8;
+        } else if (SWEETER.matcher(q).find()) {
+            dryness = 0.25;
+        }
         String occasion = q.toLowerCase(Locale.ROOT).contains("steak")
                 || q.contains("牛排") ? "steak dinner" : null;
         List<String> food = FOOD_PAIRINGS.stream()
                 .filter(entry -> entry.getValue().matcher(q).find())
                 .map(Map.Entry::getKey)
                 .toList();
-        return new RecommendRequest(wineType, null, budgetMax, null, null, null, null, null, food, occasion);
+        return new RecommendRequest(wineType, null, budgetMax, dryness, null, null, null, null, food, occasion);
     }
 }

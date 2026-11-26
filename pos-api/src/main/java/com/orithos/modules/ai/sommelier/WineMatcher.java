@@ -212,7 +212,8 @@ public final class WineMatcher {
     }
 
     static double closeness(Double wanted, Double actual) {
-        if (wanted == null || actual == null) return 1.0;
+        if (wanted == null) return 1.0;
+        if (actual == null) return 0.45;
         return clamp(1.0 - Math.abs(wanted - actual) / 0.9);
     }
 

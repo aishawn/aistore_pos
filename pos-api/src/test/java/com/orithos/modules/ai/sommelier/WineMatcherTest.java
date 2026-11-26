@@ -107,6 +107,22 @@ class WineMatcherTest {
         assertTrue(steak > fish);
     }
 
+    @Test
+    void missingRequestedTasteDataIsNeutralInsteadOfAPerfectMatch() {
+        assertEquals(0.45, WineMatcher.closeness(0.8, null));
+        assertEquals(1.0, WineMatcher.closeness(null, null));
+
+        WineCandidate unknownTaste = new WineCandidate(
+                60L, "Unknown style", null, null, "Wine", "Wine", null,
+                new BigDecimal("18.00"), new BigDecimal("18.00"), false,
+                new BigDecimal("5"), true, BigDecimal.ONE, null);
+        CustomerWineProfile profile = new CustomerWineProfile(
+                "not_sure", null, null, 0.8, null, null, null, null, List.of(), null);
+
+        assertTrue(matcher.score(wine(61, "Dry Shiraz", "red", "18.00", 5), profile).match()
+                > matcher.score(unknownTaste, profile).match());
+    }
+
     private static WineCandidate wine(long id, String name, String type, String price, int stock) {
         WineProfile profile = switch (type) {
             case "white" -> WineLexicon.infer(name.contains("Chard") ? "Chardonnay" : "Sauvignon Blanc", "Wine", "Wine", null);
