@@ -53,6 +53,8 @@ public class ReplenishmentWorkspaceService {
                 "SELECT COALESCE(NULLIF(TRIM(o.name), ''), 'Orithos') FROM outlet o WHERE o.id = ?",
                 String.class, outletId);
 
+        var salesZone = businessTimezone.zoneForVendor(tenant.vendorId());
+        var salesToday = LocalDate.now(salesZone);
         List<Row> rows = jdbc.query(connection -> {
             var statement = connection.prepareStatement(ReplenishmentSalesQuery.CTE + """
                 , barcode AS (
@@ -91,11 +93,10 @@ public class ReplenishmentWorkspaceService {
                 ORDER BY p.name, p.id
                 """);
             statement.setQueryTimeout(QUERY_TIMEOUT_SECONDS);
-            var zone = businessTimezone.zoneForVendor(tenant.vendorId());
-            statement.setObject(1, java.time.LocalDate.now(zone));
-            statement.setString(2, zone.getId());
+            statement.setObject(1, salesToday);
+            statement.setString(2, salesZone.getId());
             statement.setLong(3, outletId);
-            statement.setString(4, zone.getId());
+            statement.setString(4, salesZone.getId());
             statement.setLong(5, outletId);
             statement.setLong(6, outletId);
             statement.setBoolean(7, alcoholOnly);
@@ -143,7 +144,9 @@ public class ReplenishmentWorkspaceService {
                 exceptionOnly ? products.size() : 0,
                 false,
                 new ReplenishmentWorkspaceView.SalesHistory(
-                        businessTimezone.zoneForVendor(tenant.vendorId()).getId(), true, "SIGNED_NET_UNITS"),
+                        salesZone.getId(), true, "ORITHOS_COMPLETED_POS_SALES",
+                        salesToday.minusDays(HISTORY_DAYS - 1L), salesToday.plusDays(1), false,
+                        "SIGNED_NET_UNITS"),
                 reviewRequired,
                 reviewIssueCounts,
                 Instant.now().toString(),

@@ -53,6 +53,10 @@ public record ReplenishmentWorkspaceView(
     public record SalesHistory(
             String timezone,
             boolean timezoneVerified,
+            String source,
+            java.time.LocalDate startDate,
+            java.time.LocalDate endDateExclusive,
+            boolean completeDaysOnly,
             String refunds
     ) { }
 

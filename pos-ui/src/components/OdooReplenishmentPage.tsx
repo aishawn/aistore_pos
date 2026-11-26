@@ -99,6 +99,7 @@ type ReplenishmentData = {
   salesHistory?: {
     timezone: string;
     timezoneVerified: boolean;
+    source?: string;
     startDate?: string;
     endDateExclusive?: string;
     completeDaysOnly?: boolean;
@@ -637,7 +638,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
               <div className="mt-2 space-y-1 leading-5">
                 <p>Forecast {data.forecast.status.toLowerCase()} · model {data.forecast.modelVersion ?? data.forecast.modelSelection ?? "unknown"}.</p>
                 <p role="status">
-                  Sales: {data.forecast.sourceVersion?.startsWith("odoo_pos_order_line_local_complete_days") ? "POS order lines" : "source unavailable"} · {data.salesHistory?.startDate ?? "—"} to before {data.salesHistory?.endDateExclusive ?? "—"} · {data.historyDays} {data.salesHistory?.completeDaysOnly ? "complete days" : "days"} · {data.salesHistory?.timezone ?? "—"}
+                  Sales: {data.salesHistory?.source === "ORITHOS_COMPLETED_POS_SALES" ? "Orithos completed POS sales" : data.forecast.sourceVersion?.startsWith("odoo_pos_order_line_local_complete_days") ? "POS order lines" : "source unavailable"} · {data.salesHistory?.startDate ?? "—"} to before {data.salesHistory?.endDateExclusive ?? "—"} · {data.historyDays} {data.salesHistory?.completeDaysOnly ? "complete days" : "days, including today (possibly incomplete)"} · {data.salesHistory?.timezone ?? "—"}
                   {data.salesHistory?.refunds === "SIGNED_NET_UNITS" ? " · refunds netted" : ""}.
                 </p>
                 <p role="status">

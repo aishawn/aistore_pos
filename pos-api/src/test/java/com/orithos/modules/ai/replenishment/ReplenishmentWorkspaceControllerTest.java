@@ -44,13 +44,19 @@ class ReplenishmentWorkspaceControllerTest {
                     creator.createPreparedStatement(connection);
                     return List.of();
                 });
-        new ReplenishmentWorkspaceService(jdbc, "false", zones)
+        var plan = new ReplenishmentWorkspaceService(jdbc, "false", zones)
                 .plan(new TenantContext(1L, 2L, 3L, List.of(3L), Set.of()), 21, false, false);
         var sql = org.mockito.ArgumentCaptor.forClass(String.class);
         org.mockito.Mockito.verify(connection).prepareStatement(sql.capture());
         assertTrue(sql.getValue().contains("BETWEEN period.today - 6 AND period.today"));
         assertTrue(sql.getValue().contains("BETWEEN period.today - 27 AND period.today"));
         assertTrue(sql.getValue().contains("BETWEEN period.today - 55 AND period.today - 28"));
+        var history = plan.salesHistory();
+        var today = java.time.LocalDate.now(java.time.ZoneId.of("Australia/Melbourne"));
+        assertEquals("ORITHOS_COMPLETED_POS_SALES", history.source());
+        assertEquals(today.minusDays(55), history.startDate());
+        assertEquals(today.plusDays(1), history.endDateExclusive());
+        assertEquals(false, history.completeDaysOnly());
     }
 
     @Test
@@ -227,7 +233,9 @@ class ReplenishmentWorkspaceControllerTest {
                 .thenReturn(new ReplenishmentWorkspaceView(
                         "SKR", 56, 21, 21, List.of(),
                         false, 0, false,
-                        new ReplenishmentWorkspaceView.SalesHistory("Australia/Melbourne", true, "SIGNED_NET_UNITS"),
+                        new ReplenishmentWorkspaceView.SalesHistory("Australia/Melbourne", true,
+                                "ORITHOS_COMPLETED_POS_SALES", java.time.LocalDate.now().minusDays(55),
+                                java.time.LocalDate.now().plusDays(1), false, "SIGNED_NET_UNITS"),
                         0, java.util.Map.of(), java.time.Instant.now().toString(),
                         new ReplenishmentWorkspaceView.InventoryHistory("REVIEW", null, "Australia/Melbourne",
                                 1, 1, 1d, null, null, null, java.util.Map.of(), null, null),
