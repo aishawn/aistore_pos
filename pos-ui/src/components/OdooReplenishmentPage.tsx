@@ -627,11 +627,11 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
             {inventoryQualityGaps && <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-900">Data quality check</span>}
             <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${draftRfqEnabled ? "bg-sky-50 text-sky-800" : "bg-slate-100 text-slate-700"}`}>{draftRfqEnabled ? "Draft RFQ" : "Preview"}</span>
           </p>
-          {data?.forecast?.enabled && data?.forecast?.status === "AVAILABLE" && (
+          {data?.forecast && (
             <details className="mt-1 text-xs text-[var(--oh-muted)]">
               <summary className="cursor-pointer font-medium text-[var(--oh-text-secondary)] hover:text-[var(--oh-text)]">Forecast inputs & assumptions</summary>
               <div className="mt-2 space-y-1 leading-5">
-                <p>Forecast {data.forecast.status.toLowerCase()} · model {data.forecast.modelVersion ?? "unknown"}.</p>
+                <p>Forecast {data.forecast.status.toLowerCase()} · model {data.forecast.modelVersion ?? data.forecast.modelSelection ?? "unknown"}.</p>
                 <p role="status">
                   Sales: {data.forecast.sourceVersion?.startsWith("odoo_pos_order_line_local_complete_days") ? "POS order lines" : "source unavailable"} · {data.salesHistory?.startDate ?? "—"} to before {data.salesHistory?.endDateExclusive ?? "—"} · {data.historyDays} {data.salesHistory?.completeDaysOnly ? "complete days" : "days"} · {data.salesHistory?.timezone ?? "—"}
                   {data.salesHistory?.refunds === "SIGNED_NET_UNITS" ? " · refunds netted" : ""}.
