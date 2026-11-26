@@ -83,6 +83,8 @@ class WorkflowRouteRouterTest {
         assertRoute("What should I price Shiraz at?", "/stock/price-suggestions");
         assertRoute("What price should I set for Shiraz?", "/stock/price-suggestions");
         assertRoute("What is a fair price for Shiraz?", "/stock/price-suggestions");
+        assertRoute("这款 Shiraz 价格合不合理？", "/stock/price-suggestions");
+        assertRoute("这瓶酒的价格合理吗？", "/stock/price-suggestions");
         assertRoute("Which prices look off?", "/stock/price-suggestions");
         assertRoute("Should I raise the Shiraz price?", "/stock/price-suggestions");
         assertRoute("Which prices need attention?", "/stock/price-suggestions");
