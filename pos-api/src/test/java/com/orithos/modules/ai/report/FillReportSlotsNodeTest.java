@@ -99,4 +99,28 @@ class FillReportSlotsNodeTest {
         assertEquals("wine", slots.get("category"));
         assertEquals("Shiraz", slots.get("query"));
     }
+
+    @Test
+    void currentWeekUsesResolvedDateSpanInsteadOfModelDays() {
+        ReportPeriodResolver resolver = new ReportPeriodResolver();
+        AiReportQuotaService quotaService = mock(AiReportQuotaService.class);
+        FillReportSlotsNode node = new FillReportSlotsNode(resolver, quotaService);
+        OverAllState state = mock(OverAllState.class);
+        LocalDate today = AustraliaTime.today();
+        LocalDate monday = today.with(java.time.DayOfWeek.MONDAY);
+        when(state.value(anyString())).thenReturn(Optional.empty());
+        when(state.value("slots")).thenReturn(Optional.<Object>of(Map.of("days", "30")));
+        when(state.value("question", String.class)).thenReturn(Optional.of("本周哪类商品卖得最好"));
+        when(state.value("intent", String.class)).thenReturn(Optional.of("report_top_category"));
+        when(state.value("last_intent", String.class)).thenReturn(Optional.empty());
+
+        Map<String, Object> result = node.apply(state);
+        @SuppressWarnings("unchecked")
+        Map<String, String> slots = (Map<String, String>) result.get("slots");
+        int expectedDays = (int) (today.toEpochDay() - monday.toEpochDay() + 1);
+
+        assertEquals(monday.toString(), slots.get("from"));
+        assertEquals(today.toString(), slots.get("to"));
+        assertEquals(String.valueOf(expectedDays), slots.get("days"));
+    }
 }

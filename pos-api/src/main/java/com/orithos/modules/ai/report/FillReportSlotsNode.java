@@ -45,14 +45,9 @@ public class FillReportSlotsNode implements NodeAction {
         ReportPeriodResolver.Window window = periodResolver.resolve(slots, question, defaultDays, AustraliaTime.ZONE);
         slots.put("from", window.from().toLocalDate().format(ISO));
         slots.put("to", window.toExclusive().minusSeconds(1).toLocalDate().format(ISO));
-        if ("report_dead_stock".equals(intent)) {
-            int days = (int) (window.toExclusive().toLocalDate().toEpochDay()
-                    - window.from().toLocalDate().toEpochDay());
-            slots.put("days", String.valueOf(Math.max(1, days)));
-        } else if (!slots.containsKey("days") || slots.get("days") == null || slots.get("days").isBlank()) {
-            int days = window.days() > 0 ? window.days() : 30;
-            slots.put("days", String.valueOf(days));
-        }
+        int days = (int) (window.toExclusive().toLocalDate().toEpochDay()
+                - window.from().toLocalDate().toEpochDay());
+        slots.put("days", String.valueOf(Math.max(1, days)));
         Map<String, Object> out = new HashMap<>();
         out.put("slots", slots);
         out.put("report_from", window.from());
