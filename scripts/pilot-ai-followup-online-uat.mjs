@@ -123,8 +123,9 @@ try {
     const slots = followUpData.slots ?? {};
     const singleDayRange = /^\d{4}-\d{2}-\d{2}$/.test(String(slots.from ?? ""))
       && slots.from === slots.to && String(slots.days ?? "") === "1";
+    const seedDays = Number(seedData.slots?.days ?? 1);
     const staleDaysCleared = String(slots.days ?? "") === "1"
-      && String(seedData.slots?.days ?? "") !== String(slots.days);
+      && (!Number.isFinite(seedDays) || seedDays <= 1 || seedDays !== Number(slots.days));
     const previousDayMatches = sample.expectDayOffset === undefined
       || (slots.from === shiftIsoDate(seedData.slots?.from, sample.expectDayOffset) && slots.to === slots.from);
     const retainedFilters = ["category", "query"]

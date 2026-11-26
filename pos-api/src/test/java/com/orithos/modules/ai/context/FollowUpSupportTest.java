@@ -15,6 +15,8 @@ class FollowUpSupportTest {
         assertTrue(FollowUpSupport.isRelativeFollowUp("那昨天呢"));
         assertTrue(FollowUpSupport.isRelativeFollowUp("and yesterday?"));
         assertTrue(FollowUpSupport.isRelativeFollowUp("and the day before?"));
+        assertTrue(FollowUpSupport.isRelativeFollowUp("and two days before that?"));
+        assertTrue(FollowUpSupport.isRelativeFollowUp("那再往前两天呢"));
         assertTrue(FollowUpSupport.isRelativeFollowUp("那前一天呢"));
         assertTrue(FollowUpSupport.isRelativeFollowUp("昨天"));
         assertFalse(FollowUpSupport.isRelativeFollowUp("今天销售额"));
@@ -83,6 +85,23 @@ class FollowUpSupportTest {
         assertEquals("Shiraz", merged.get("query"));
         assertEquals("wine", merged.get("category"));
         assertFalse(merged.containsKey("days"));
+    }
+
+    @Test
+    void twoDaysBeforeFollowUpMovesBackFromThePriorReportDateAndKeepsFilters() {
+        Map<String, String> previous = Map.of("query", "Shiraz", "category", "wine",
+                "days", "1", "from", "2026-10-20", "to", "2026-10-20");
+
+        for (String question : new String[] {"and two days before that?", "那再往前两天呢"}) {
+            Map<String, String> merged = FollowUpSupport.mergeFollowUpSlots(
+                    question, "report_sales", Map.of(), previous);
+
+            assertEquals("2026-10-18", merged.get("from"), question);
+            assertEquals("2026-10-18", merged.get("to"), question);
+            assertEquals("Shiraz", merged.get("query"), question);
+            assertEquals("wine", merged.get("category"), question);
+            assertFalse(merged.containsKey("days"), question);
+        }
     }
 
     @Test

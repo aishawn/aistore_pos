@@ -70,4 +70,33 @@ class FillReportSlotsNodeTest {
         assertEquals(dayBefore, slots.get("to"));
         assertEquals("1", slots.get("days"));
     }
+
+    @Test
+    void twoDaysBeforeFollowUpUsesThePreviousReportsDateAsItsAnchor() {
+        ReportPeriodResolver resolver = new ReportPeriodResolver();
+        AiReportQuotaService quotaService = mock(AiReportQuotaService.class);
+        FillReportSlotsNode node = new FillReportSlotsNode(resolver, quotaService);
+        OverAllState state = mock(OverAllState.class);
+        LocalDate today = AustraliaTime.today();
+        String expected = today.minusDays(3).toString();
+        String yesterday = today.minusDays(1).toString();
+        when(state.value(anyString())).thenReturn(Optional.empty());
+        when(state.value("slots")).thenReturn(Optional.<Object>of(Map.of("category", "wine", "query", "Shiraz")));
+        when(state.value("last_slots")).thenReturn(Optional.<Object>of(Map.of(
+                "category", "wine", "query", "Shiraz", "days", "1",
+                "from", yesterday, "to", yesterday)));
+        when(state.value("question", String.class)).thenReturn(Optional.of("那再往前两天呢"));
+        when(state.value("intent", String.class)).thenReturn(Optional.of("report_sales"));
+        when(state.value("last_intent", String.class)).thenReturn(Optional.of("report_sales"));
+
+        Map<String, Object> result = node.apply(state);
+        @SuppressWarnings("unchecked")
+        Map<String, String> slots = (Map<String, String>) result.get("slots");
+
+        assertEquals(expected, slots.get("from"));
+        assertEquals(expected, slots.get("to"));
+        assertEquals("1", slots.get("days"));
+        assertEquals("wine", slots.get("category"));
+        assertEquals("Shiraz", slots.get("query"));
+    }
 }

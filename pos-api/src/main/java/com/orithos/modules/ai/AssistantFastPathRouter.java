@@ -16,7 +16,7 @@ public final class AssistantFastPathRouter {
                     + "how much did we (?:make|take|sell) today|what did we (?:make|take|sell) today|how were (?:sales|we) today|"
                     + "what(?:'s| is) (?:our )?(?:sales|revenue|takings|turnover) today|"
                     + "what(?:'s| is) today'?s? (?:sales|revenue|takings|turnover)|"
-                    + "今日销售额?|今天销售额?|今天卖了多少(?:钱|金额)?|今天营业额?|今天流水|今天收入多少|今日收入多少|今天赚了多少)[?.!。！？]*$",
+                    + "今日销售额?|今天销售额?|今天卖了多少(?:钱|金额)?|今天营业额?(?:是)?(?:多少)?|今天流水|今天收入多少|今日收入多少|今天赚了多少)[?.!。！？]*$",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern YESTERDAY_SALES = Pattern.compile(
             "^(?:yesterday'?s?\\s+sales|sales\\s+yesterday|show(?:\\s+me)?\\s+yesterday'?s?\\s+sales|"
@@ -241,8 +241,8 @@ public final class AssistantFastPathRouter {
                     + "^(?:怎么|如何|怎样)(?:关闭|关掉|结算)(?:收银台|收银机|班次)[？?。！!]*$",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern FORGED_ROUTE = Pattern.compile(
-            "(?:ignore\\s+(?:all\\s+)?previous instructions|忽略之前的指令).*(?:/(?:admin|platform|internal|debug)(?:/|\\b)|后台秘密)|"
-                    + "(?:/(?:admin|platform|internal|debug)(?:/|\\b)|后台秘密)",
+            "(?:ignore\\s+(?:all\\s+)?previous instructions|忽略之前的指令).*(?:/(?:api/(?:admin|secrets)|admin|platform|internal|debug)(?:/|\\b)|后台秘密)|"
+                    + "(?:/(?:api/(?:admin|secrets)|admin|platform|internal|debug)(?:/|\\b)|后台秘密)",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern PROMPT_INJECTION = Pattern.compile(
             "(?:ignore|disregard)\\s+(?:(?:all|the)\\s+)?(?:previous|prior|above|earlier)\\s+(?:system\\s+)?instructions?|"

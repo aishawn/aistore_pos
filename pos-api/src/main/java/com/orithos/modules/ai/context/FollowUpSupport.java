@@ -13,7 +13,7 @@ public final class FollowUpSupport {
     private static final Pattern RELATIVE_FOLLOW_UP = Pattern.compile(
             "^(?:and\\s+|那|还有|再看|换成)?\\s*"
                     + "(?:昨天|昨日|yesterday|今天|今日|today|前天|day before yesterday|"
-                    + "前一天|(?:the\\s+)?day before|previous day|"
+                    + "前一天|(?:再)?往前\\s*两天|(?:and\\s+)?two\\s+days\\s+before(?:\\s+that)?|(?:the\\s+)?day before|previous day|"
                     + "上周|上星期|last\\s+week|本周|this\\s+week|"
                     + "上个月|last\\s+month|本月|this\\s+month|"
                     + "(?:近|最近|过去)\\s*\\d+\\s*天|(?:last|past|previous)\\s+\\d+\\s+days?)"
@@ -22,6 +22,11 @@ public final class FollowUpSupport {
     private static final Pattern PREVIOUS_DAY_FOLLOW_UP = Pattern.compile(
             "^(?:and\\s+|那|还有|再看|换成)?\\s*"
                     + "(?:前一天|(?:the\\s+)?day before|previous day)(?:呢|吗|啊)?[?.!。！？]*$",
+            Pattern.CASE_INSENSITIVE);
+    private static final Pattern TWO_DAYS_BEFORE_FOLLOW_UP = Pattern.compile(
+            "^(?:(?:and\\s+|那|还有|再看|换成)?\\s*(?:再)?往前\\s*两天"
+                    + "|(?:and\\s+)?two\\s+days\\s+before(?:\\s+that)?)"
+                    + "(?:呢|吗|啊)?[?.!。！？]*$",
             Pattern.CASE_INSENSITIVE);
 
     private FollowUpSupport() {}
@@ -89,6 +94,17 @@ public final class FollowUpSupport {
             }
         }
         Map<String, String> out = mergeMissingSlots(current, priorFilters);
+        if (isTwoDaysBeforeFollowUp(question)) {
+            try {
+                LocalDate twoDaysBefore = LocalDate.parse(previous.get("from")).minusDays(2);
+                out.put("from", twoDaysBefore.toString());
+                out.put("to", twoDaysBefore.toString());
+                out.remove("days");
+            } catch (DateTimeParseException | NullPointerException ignored) {
+                // Keep the current slots when the prior report has no valid date anchor.
+            }
+            return out;
+        }
         if (isPreviousDayFollowUp(question)) {
             try {
                 LocalDate dayBefore = LocalDate.parse(previous.get("from")).minusDays(1);
@@ -104,6 +120,10 @@ public final class FollowUpSupport {
 
     private static boolean isPreviousDayFollowUp(String question) {
         return question != null && PREVIOUS_DAY_FOLLOW_UP.matcher(question.trim()).matches();
+    }
+
+    private static boolean isTwoDaysBeforeFollowUp(String question) {
+        return question != null && TWO_DAYS_BEFORE_FOLLOW_UP.matcher(question.trim()).matches();
     }
 
     public static String normalizeSurface(String surface) {
