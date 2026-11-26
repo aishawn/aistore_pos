@@ -20,13 +20,18 @@ export function summarizeTranscriptionUatResults(results) {
       language: result.language,
       scenario: result.scenario,
       requested: 0,
+      attempted: 0,
       passed: 0,
       failed: 0,
       blocked: 0,
+      notRun: 0,
       latencies: [],
     };
     group.requested++;
-    group[result.status === "PASS" ? "passed" : result.status === "FAIL" ? "failed" : "blocked"]++;
+    const statusField = { PASS: "passed", FAIL: "failed", BLOCKED: "blocked", NOT_RUN: "notRun" }[result.status];
+    if (!statusField) throw new RangeError(`unsupported transcription status: ${result.status}`);
+    group[statusField]++;
+    if (result.status !== "NOT_RUN") group.attempted++;
     if (Number.isFinite(result.latencyMs)) group.latencies.push(result.latencyMs);
     groups.set(key, group);
   }
@@ -38,7 +43,7 @@ export function summarizeTranscriptionUatResults(results) {
       : null;
     return {
       ...group,
-      errorRate: group.requested ? (group.failed + group.blocked) / group.requested : null,
+      errorRate: group.attempted ? (group.failed + group.blocked) / group.attempted : null,
       latencyMs: {
         samples: sorted.length,
         p50: percentile(0.5),

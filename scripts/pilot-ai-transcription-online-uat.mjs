@@ -121,29 +121,29 @@ try {
 
   const runnableCases = transcriptionUatCasesForRuntime(cases, backendCommit === evidence.sourceCommit, evidence.worktreeDirty);
   if (!evidence.runtimeMatchesSourceCommit) {
-    for (const testCase of cases) recordSample(testCase, "BLOCKED");
+    for (const testCase of cases) recordSample(testCase, "NOT_RUN");
   } else {
     const configResponse = await context.request.get(`${base}/api/ai/config/client`);
     const configBody = await configResponse.json().catch(() => ({}));
     const config = configBody.data ?? {};
     if (!configResponse.ok() || configBody.code !== 0) {
       record("transcription capability config", "FAIL", `status=${configResponse.status()}`);
-      for (const testCase of runnableCases) recordSample(testCase, "BLOCKED");
+      for (const testCase of runnableCases) recordSample(testCase, "NOT_RUN");
     } else if (!config.transcriptionAvailable) {
       record("transcription capability config", "BLOCKED", "transcription is unavailable for this store");
-      for (const testCase of runnableCases) recordSample(testCase, "BLOCKED");
+      for (const testCase of runnableCases) recordSample(testCase, "NOT_RUN");
     } else {
       record("transcription capability config", "PASS", "available=true");
     }
 
     for (const testCase of runnableCases) {
       if (providerQuotaExhausted) {
-        recordSample(testCase, "BLOCKED");
+        recordSample(testCase, "NOT_RUN");
         continue;
       }
       if (!config.transcriptionAvailable) continue;
       if (!testCase.fixture || !fs.existsSync(testCase.fixture)) {
-        recordSample(testCase, "BLOCKED");
+        recordSample(testCase, "NOT_RUN");
         continue;
       }
       const bytes = fs.readFileSync(testCase.fixture);
@@ -179,14 +179,15 @@ try {
 }
 
 for (const testCase of cases) {
-  if (!classifiedSampleIds.has(testCase.id)) recordSample(testCase, "BLOCKED");
+  if (!classifiedSampleIds.has(testCase.id)) recordSample(testCase, "NOT_RUN");
 }
 
 if (benchmarkManifest) {
+  const completedCaseIds = new Set(benchmarkTranscripts.map(({ caseId }) => caseId));
   const qualityMetrics = evaluateTranscriptionBenchmark(cases, benchmarkTranscripts);
   const qualityGate = evaluateTranscriptionQualityGate({
     cases,
-    completedCaseIds: benchmarkTranscripts.map(({ caseId }) => caseId),
+    completedCaseIds,
     metrics: qualityMetrics,
   });
   record("ASR quality thresholds", qualityGate.status, {
@@ -201,10 +202,11 @@ if (benchmarkManifest) {
 evidence.transcriptionResults = {
   requested: cases.length,
   classified: sampleResults.length,
-  attempted: sampleResults.filter(({ latencyMs }) => Number.isFinite(latencyMs)).length,
+  attempted: sampleResults.filter(({ status }) => status !== "NOT_RUN").length,
   passed: sampleResults.filter(({ status }) => status === "PASS").length,
   failed: sampleResults.filter(({ status }) => status === "FAIL").length,
   blocked: sampleResults.filter(({ status }) => status === "BLOCKED").length,
+  notRun: sampleResults.filter(({ status }) => status === "NOT_RUN").length,
   providerQuotaExhausted,
   groups: summarizeTranscriptionUatResults(sampleResults),
 };

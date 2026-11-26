@@ -31,16 +31,19 @@ test("online transcription reports aggregate status and latency without sample d
   const summary = summarizeTranscriptionUatResults([
     { caseId: "private-id", transcript: "private transcript", language: "en-AU", scenario: "product", status: "PASS", latencyMs: 100 },
     { caseId: "private-id-2", transcript: "private transcript 2", language: "en-AU", scenario: "product", status: "BLOCKED", latencyMs: 300 },
+    { language: "en-AU", scenario: "product", status: "NOT_RUN" },
     { language: "zh-CN", scenario: "barcode", status: "FAIL", latencyMs: 200 },
   ]);
   assert.deepEqual(summary, [
     {
       language: "en-AU",
       scenario: "product",
-      requested: 2,
+      requested: 3,
+      attempted: 2,
       passed: 1,
       failed: 0,
       blocked: 1,
+      notRun: 1,
       errorRate: 0.5,
       latencyMs: { samples: 2, p50: 100, p95: 300 },
     },
@@ -48,9 +51,11 @@ test("online transcription reports aggregate status and latency without sample d
       language: "zh-CN",
       scenario: "barcode",
       requested: 1,
+      attempted: 1,
       passed: 0,
       failed: 1,
       blocked: 0,
+      notRun: 0,
       errorRate: 1,
       latencyMs: { samples: 1, p50: 200, p95: 200 },
     },

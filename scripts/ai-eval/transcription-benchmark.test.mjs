@@ -48,6 +48,17 @@ test("benchmark reports language WER and critical-entity accuracy without transc
   assert.equal(wrongProduct["zh-CN"].criticalEntityAccuracy, 1);
 });
 
+test("partial ASR batches score only cases with returned transcriptions", () => {
+  const sample = transcriptionBenchmarkCases.filter((testCase) => ["en-01", "zh-01"].includes(testCase.id));
+  const metrics = evaluateTranscriptionBenchmark(sample, [
+    { caseId: "en-01", transcript: sample.find((testCase) => testCase.id === "en-01").expectedText },
+  ]);
+  assert.equal(metrics["en-AU"].cases, 1);
+  assert.equal(metrics["en-AU"].wer, 0);
+  assert.equal(metrics["zh-CN"].cases, 0);
+  assert.equal(metrics["zh-CN"].wer, null);
+});
+
 test("critical number and date accuracy accepts equivalent spoken and numeric forms", () => {
   const cases = [
     { id: "en-number", lang: "en-AU", expectedText: "twenty-seven", category: "numbers", criticalEntities: { numbers: ["twenty-seven"] } },

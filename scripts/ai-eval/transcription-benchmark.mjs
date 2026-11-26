@@ -265,7 +265,7 @@ export function evaluateTranscriptionBenchmark(cases, transcripts) {
   const transcriptById = new Map(transcripts.map((result) => [result.caseId, result.transcript ?? ""]));
   const metrics = {};
   for (const lang of ["en-AU", "zh-CN"]) {
-    const languageCases = cases.filter((testCase) => testCase.lang === lang);
+    const languageCases = cases.filter((testCase) => testCase.lang === lang && transcriptById.has(testCase.id));
     let edits = 0;
     let referenceTokens = 0;
     let checkedEntities = 0;
