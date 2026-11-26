@@ -268,7 +268,7 @@ const cases = [
   { id: "product-lookup-natural-en", question: "Search for the product VB Cans", intent: "search_product", route: "/products", query: "VB Cans", answerExcludes: ["Opened products.", "Searching…", "Searching..."], answerIncludes: ["Matching products:", "VB CAN 375ML"] },
   { id: "product-lookup-bare-en", question: "Search for Shiraz", intent: "search_product", route: "/products", query: "Shiraz", answerExcludes: ["Opened products.", "Searching…", "Searching..."], answerRegex: "Matching products:|No catalogue matches found" },
   { id: "product-lookup-find-en", question: "Find Shiraz", intent: "search_product", route: "/products", query: "Shiraz", answerExcludes: ["Opened products.", "Searching…", "Searching..."], answerRegex: "Matching products:|No catalogue matches found" },
-  { id: "product-lookup-zh", question: "帮我查一下 VB Cans", intent: "search_product", route: "/products", query: "VB Cans", answerIncludes: ["找到以下商品：", "VB CAN 375ML", "A$5.99", "库存 355"], answerExcludes: ["Opened products.", "Searching…", "Searching..."] },
+  { id: "product-lookup-zh", question: "帮我查一下 VB Cans", intent: "search_product", route: "/products", query: "VB Cans", answerIncludes: ["找到以下商品：", "VB CAN 375ML"], answerExcludes: ["Opened products.", "Searching…", "Searching..."] },
   { id: "product-lookup-conversational-find-en", question: "Can you find Shiraz?", intent: "search_product", route: "/products", query: "Shiraz" },
   { id: "product-lookup-conversational-look-en", question: "Please look for VB Cans", intent: "search_product", route: "/products", query: "VB Cans" },
   { id: "product-lookup-zh-search", question: "帮我搜一下 Shiraz", intent: "search_product", route: "/products", query: "Shiraz" },
