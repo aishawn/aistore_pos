@@ -197,7 +197,9 @@ use `PILOT_TRANSCRIPTION_CASE_OFFSET` and a small max-case count. The default is
 only two requests. Review aggregate WER by language and critical-entity
 accuracy for product identifiers, barcodes, numbers, and dates; do not retain
 raw audio or full transcripts in shared reports. Runtime SHA mismatch or a dirty
-source checkout blocks requests and cannot count as acceptance.
+source checkout blocks requests and cannot count as acceptance. Online reports
+store only aggregate request outcomes and p50/p95 latency by language and
+scenario; transcripts are used in memory for scoring and omitted from reports.
 
 The synthetic English voice is en-AU (Microsoft Edge Natasha Neural), matching
 the recognition locale. This supports repeatable synthetic coverage, not real

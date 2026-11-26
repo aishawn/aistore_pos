@@ -3,7 +3,11 @@ import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
-import { selectTranscriptionUatCases, transcriptionUatCasesForRuntime } from "./ai-eval/transcription-uat-contract.mjs";
+import {
+  selectTranscriptionUatCases,
+  summarizeTranscriptionUatResults,
+  transcriptionUatCasesForRuntime,
+} from "./ai-eval/transcription-uat-contract.mjs";
 import { evaluateTranscriptionBenchmark, evaluateTranscriptionQualityGate } from "./ai-eval/transcription-benchmark.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -78,6 +82,17 @@ const evidence = {
 };
 const record = (name, status, detail) => evidence.checks.push({ name, status, detail });
 const benchmarkTranscripts = [];
+const sampleResults = [];
+const classifiedSampleIds = new Set();
+const recordSample = (testCase, status, latencyMs) => {
+  classifiedSampleIds.add(testCase.id);
+  sampleResults.push({
+    language: testCase.lang,
+    scenario: testCase.category ?? "smoke",
+    status,
+    ...(Number.isFinite(latencyMs) ? { latencyMs } : {}),
+  });
+};
 
 if (!password) throw new Error("MISSING_ADMIN_PASSWORD");
 
@@ -104,17 +119,17 @@ try {
 
   const runnableCases = transcriptionUatCasesForRuntime(cases, backendCommit === evidence.sourceCommit, evidence.worktreeDirty);
   if (!evidence.runtimeMatchesSourceCommit) {
-    for (const testCase of cases) {
-      record(testCase.id, "BLOCKED", "source and deployed runtime SHA do not match; transcription request skipped");
-    }
+    for (const testCase of cases) recordSample(testCase, "BLOCKED");
   } else {
     const configResponse = await context.request.get(`${base}/api/ai/config/client`);
     const configBody = await configResponse.json().catch(() => ({}));
     const config = configBody.data ?? {};
     if (!configResponse.ok() || configBody.code !== 0) {
       record("transcription capability config", "FAIL", `status=${configResponse.status()}`);
+      for (const testCase of runnableCases) recordSample(testCase, "BLOCKED");
     } else if (!config.transcriptionAvailable) {
       record("transcription capability config", "BLOCKED", "transcription is unavailable for this store");
+      for (const testCase of runnableCases) recordSample(testCase, "BLOCKED");
     } else {
       record("transcription capability config", "PASS", "available=true");
     }
@@ -122,10 +137,11 @@ try {
     for (const testCase of runnableCases) {
       if (!config.transcriptionAvailable) continue;
       if (!testCase.fixture || !fs.existsSync(testCase.fixture)) {
-        record(testCase.id, "BLOCKED", "synthetic speech fixture was not supplied");
+        recordSample(testCase, "BLOCKED");
         continue;
       }
       const bytes = fs.readFileSync(testCase.fixture);
+      const startedAt = Date.now();
       const response = await context.request.post(`${base}/api/ai/transcribe`, {
         multipart: {
           file: { name: path.basename(testCase.fixture), mimeType: "audio/wav", buffer: bytes },
@@ -134,6 +150,7 @@ try {
         headers: { Origin: base },
         timeout: 120000,
       });
+      const latencyMs = Date.now() - startedAt;
       const body = await response.json().catch(() => ({}));
       const transcript = typeof body.data?.text === "string" ? body.data.text.trim() : "";
       const matches = body.code === 0 && (testCase.expectedText
@@ -143,24 +160,19 @@ try {
       if (body.code === 0 && testCase.expectedText) {
         benchmarkTranscripts.push({ caseId: testCase.id, transcript });
       }
-      record(testCase.id, matches ? "PASS" : unavailable ? "BLOCKED" : "FAIL", {
-        httpStatus: response.status(),
-        apiCode: body.code ?? null,
-        blockReason: body.code === 42901 ? "AI provider or gateway quota exhausted" : undefined,
-        language: body.data?.lang ?? testCase.lang,
-        transcriptMatchedExpectedTerm: matches,
-        transcriptLength: transcript.length,
-        transcriptOmitted: true,
-      });
+      recordSample(testCase, matches ? "PASS" : unavailable ? "BLOCKED" : "FAIL", latencyMs);
     }
   }
-} catch (error) {
-  record("read-only transcription run", "BLOCKED",
-    error instanceof Error ? error.message.replace(/LOGIN_FAILED_\d+/, "LOGIN_UNAVAILABLE") : "UAT_UNAVAILABLE");
+} catch {
+  record("read-only transcription run", "BLOCKED", "authentication or transcription service unavailable");
 } finally {
   await context.request.post(`${base}/api/auth/logout`, { headers: { Origin: base } }).catch(() => {});
   await context.close();
   await browser.close();
+}
+
+for (const testCase of cases) {
+  if (!classifiedSampleIds.has(testCase.id)) recordSample(testCase, "BLOCKED");
 }
 
 if (benchmarkManifest) {
@@ -178,6 +190,16 @@ if (benchmarkManifest) {
     transcriptsOmitted: true,
   });
 }
+
+evidence.transcriptionResults = {
+  requested: cases.length,
+  classified: sampleResults.length,
+  attempted: sampleResults.filter(({ latencyMs }) => Number.isFinite(latencyMs)).length,
+  passed: sampleResults.filter(({ status }) => status === "PASS").length,
+  failed: sampleResults.filter(({ status }) => status === "FAIL").length,
+  blocked: sampleResults.filter(({ status }) => status === "BLOCKED").length,
+  groups: summarizeTranscriptionUatResults(sampleResults),
+};
 
 evidence.passed = evidence.checks.filter((check) => check.status === "PASS").length;
 evidence.blocked = evidence.checks.filter((check) => check.status === "BLOCKED").length;
