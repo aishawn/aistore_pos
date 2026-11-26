@@ -22,9 +22,23 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.eq;
 
 @ExtendWith(OutputCaptureExtension.class)
 class ReplenishmentChatBriefTest {
+
+    @Test
+    void nextWeekAlcoholQuestionUsesSevenDayAlcoholScopedPlan() {
+        NativeReplenishmentService client = mock(NativeReplenishmentService.class);
+        TenantContext tenant = new TenantContext(1L, 1L, 1L, List.of(1L), Set.of("ROLE_ADMIN"));
+        when(client.plan(eq(tenant), eq(7), eq(3), eq(true))).thenReturn(new ReplenishmentPlan(7, 0, List.of()));
+
+        String answer = new ReplenishmentChatBrief(client).brief("哪些酒快卖完了，下周需要进多少？", tenant);
+
+        assertTrue(answer.contains("商品范围") || answer.contains("酒类范围按商品名称"));
+        assertTrue(answer.contains("覆盖未来 7 天"));
+        verify(client).plan(tenant, 7, 3, true);
+    }
 
     @Test
     void briefListsTopSuggestionsAndCta() {
@@ -60,7 +74,7 @@ class ReplenishmentChatBriefTest {
 
         assertTrue(text.contains("建议补货（覆盖 21 天）：5 个商品需要补货。"));
         assertTrue(text.contains("\n• Shiraz — 建议订购 12（2 箱，每箱 6 件）（约剩 5.0 天）"));
-        assertTrue(text.contains("数据来源：Orithos POS 销售与库存账本；销售窗口：未知 至 未知"));
+        assertTrue(text.contains("数据来源：Orithos POS 销售与库存账本；商品范围：本店全部纳入库存管理的商品；销售窗口：未知 至 未知"));
         assertTrue(text.contains("销售数据更新时间：未知；库存最新更新时间：未知"));
         assertTrue(text.contains("节假日和门店活动日历未纳入"));
         assertTrue(text.contains("打开补货页面审核数量并确认订单。"));

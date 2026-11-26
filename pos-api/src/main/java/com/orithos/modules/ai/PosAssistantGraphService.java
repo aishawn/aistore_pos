@@ -259,13 +259,14 @@ public class PosAssistantGraphService {
     static List<AssistantCard> cardsFor(
             String intent, UiAction ui, String answer, String question, String fastPathId) {
         String route = ui == null ? null : ui.route();
+        String routePath = route == null ? null : route.split("\\?", 2)[0];
         String type = "historical_stock_unavailable".equals(fastPathId) ? "stock_history"
                 : "product_count".equals(intent) ? "product_count"
                 : "guided_action".equals(intent) ? "guided_action"
-                : "/sommelier".equals(route) ? "sommelier"
-                : "/recommend/grocery".equals(route) ? "recommend"
-                : "/stock/replenishment".equals(route) ? "replenishment"
-                : "/stock/capped-pricing".equals(route) || "/stock/price-suggestions".equals(route) ? "pricing" : null;
+                : "/sommelier".equals(routePath) ? "sommelier"
+                : "/recommend/grocery".equals(routePath) ? "recommend"
+                : "/stock/replenishment".equals(routePath) ? "replenishment"
+                : "/stock/capped-pricing".equals(routePath) || "/stock/price-suggestions".equals(routePath) ? "pricing" : null;
         if (type == null) return List.of();
 
         String text = answer == null ? "" : answer;
@@ -328,10 +329,10 @@ public class PosAssistantGraphService {
         String routeTarget = "product_count".equals(type) ? "/products"
                 : "stock_history".equals(type) ? "/stock/list"
                 : "guided_action".equals(type) ? route == null || route.isBlank() ? "/" : normalizeAssistantRoute(route)
-                : "/sommelier".equals(route) ? "/sommelier"
-                : "/recommend/grocery".equals(route) ? "/recommend/grocery"
-                : "/stock/capped-pricing".equals(route) || "/stock/price-suggestions".equals(route) ? "/stock/price-suggestions"
-                : "/stock/replenishment";
+                : "/sommelier".equals(routePath) ? "/sommelier"
+                : "/recommend/grocery".equals(routePath) ? "/recommend/grocery"
+                : "/stock/capped-pricing".equals(routePath) || "/stock/price-suggestions".equals(routePath) ? "/stock/price-suggestions"
+                : routePath != null && "/stock/replenishment".equals(routePath) ? route : "/stock/replenishment";
         List<Map<String, Object>> items = unavailable || empty ? List.of() : parsedItems;
         String source = "sommelier".equals(type) || "recommend".equals(type) ? "catalogue"
                 : "guided_action".equals(type) ? "assistant" : "orithos";

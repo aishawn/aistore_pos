@@ -414,7 +414,7 @@ public class ClassifyQueryNode implements NodeAction {
             if (brief != null) return brief.brief(question, tenant);
             return isChinese(question) ? "正在打开品鉴推荐页面。" : "Opening Sommelier recommendations.";
         }
-        if ("/stock/replenishment".equals(route) && replenishmentChatBrief != null) {
+        if (route != null && "/stock/replenishment".equals(route.split("\\?", 2)[0]) && replenishmentChatBrief != null) {
             ReplenishmentChatBrief brief = replenishmentChatBrief.getIfAvailable();
             if (brief != null) {
                 return brief.brief(question, tenant);

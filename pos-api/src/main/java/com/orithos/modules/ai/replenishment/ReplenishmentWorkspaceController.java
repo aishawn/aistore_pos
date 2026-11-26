@@ -33,6 +33,7 @@ public class ReplenishmentWorkspaceController {
     public ApiResult<ReplenishmentWorkspaceView> plan(
             @RequestParam(defaultValue = "21") int coverageDays,
             @RequestParam(required = false) String mode,
+            @RequestParam(required = false) String scope,
             HttpServletRequest request) {
         permissions.requirePermission("stock.replenishment");
         var tenant = tenantContextFactory.fromSecurity();
@@ -40,11 +41,15 @@ public class ReplenishmentWorkspaceController {
             throw new BusinessException(40010, "Select a store before loading replenishment.");
         }
         boolean exceptionOnly = mode != null && "exceptions".equalsIgnoreCase(mode.trim());
+        if (scope != null && !scope.isBlank() && !"alcohol".equalsIgnoreCase(scope.trim())) {
+            throw new BusinessException(40010, "Unsupported replenishment scope.");
+        }
+        boolean alcoholOnly = "alcohol".equalsIgnoreCase(scope == null ? "" : scope.trim());
         String host = request.getHeader("x-forwarded-host");
         if (host == null || host.isBlank()) host = request.getHeader("host");
         if (host != null && host.contains(",")) host = host.split(",")[0].trim();
         boolean draftEnabled = purchaseDraftGate.draftEnabledForHost(host);
-        ReplenishmentWorkspaceView view = service.plan(tenant, coverageDays, exceptionOnly, draftEnabled);
+        ReplenishmentWorkspaceView view = service.plan(tenant, coverageDays, exceptionOnly, draftEnabled, alcoholOnly);
         return ApiResult.ok(view);
     }
 }

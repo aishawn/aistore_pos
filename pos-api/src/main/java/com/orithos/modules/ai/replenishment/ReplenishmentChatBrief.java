@@ -33,18 +33,22 @@ public class ReplenishmentChatBrief {
     public String brief(String question, TenantContext tenant) {
         long startedAt = System.nanoTime();
         boolean chinese = isChinese(question);
+        boolean alcoholOnly = isAlcoholScoped(question);
+        int coverageDays = asksForNextWeek(question) ? 7 : 21;
         if (tenant == null) {
             logFailureOutcome("tenant_unavailable", startedAt);
             return unavailableMessage(question);
         }
         try {
-            ReplenishmentPlan plan = client.plan(tenant);
+            ReplenishmentPlan plan = alcoholOnly || coverageDays != 21
+                    ? client.plan(tenant, coverageDays, 3, alcoholOnly)
+                    : client.plan(tenant);
             if (plan == null) {
                 logFailureOutcome("service_unavailable", startedAt);
                 return unavailableMessage(question);
             }
             int dataGapCount = plan.dataGapCount();
-            String sourceNote = sourceNote(plan, chinese);
+            String sourceNote = sourceNote(plan, chinese, alcoholOnly);
             if ("NO_DATA".equalsIgnoreCase(plan.dataQualityStatus())) {
                 logOutcome("no_sales_data", dataGapCount, startedAt);
                 return chinese
@@ -66,8 +70,8 @@ public class ReplenishmentChatBrief {
             if (plan.itemsNeedingOrder() <= 0 || plan.top() == null || plan.top().isEmpty()) {
                 logOutcome("success_empty", dataGapCount, startedAt);
                 return chinese
-                        ? "当前库存可覆盖目标周期，暂时没有补货数量建议。" + sourceNote + "打开补货页面查看。"
-                        : "No restock quantities are suggested right now — forecast stock covers the target window. "
+                        ? "当前库存可覆盖未来 " + plan.coverageDays() + " 天，暂时没有补货数量建议。" + sourceNote + "打开补货页面查看。"
+                        : "No restock quantities are suggested right now — forecast stock covers the " + plan.coverageDays() + "-day target window. "
                                 + sourceNote + " Tap below to open replenishment.";
             }
             StringBuilder sb = new StringBuilder();
@@ -230,6 +234,14 @@ public class ReplenishmentChatBrief {
         return text != null && text.matches("(?s).*[\\u3400-\\u9fff].*");
     }
 
+    static boolean isAlcoholScoped(String text) {
+        return text != null && text.matches("(?is).*(\\balcohol\\b|\\bwines?\\b|\\bbeers?\\b|\\bliquors?\\b|\\bspirits?\\b|\\bwhisk(?:y|e)y\\b|\\bciders?\\b|酒|葡萄酒|红酒|白酒|啤酒|洋酒|烈酒|果酒|米酒|清酒|伏特加|威士忌|鸡尾酒).*");
+    }
+
+    static boolean asksForNextWeek(String text) {
+        return text != null && text.matches("(?is).*(下周|未来一周|接下来一周|未来7天|未来 7 天|next week|coming week|next 7 days|next seven days).*");
+    }
+
     private static String formatQty(double qty) {
         if (Math.abs(qty - Math.rint(qty)) < 1e-6) {
             return String.valueOf((long) Math.rint(qty));
@@ -267,19 +279,23 @@ public class ReplenishmentChatBrief {
         return value == null ? (chinese ? "未知" : "unknown") : DateTimeFormatter.ISO_INSTANT.format(value);
     }
 
-    private static String sourceNote(ReplenishmentPlan plan, boolean chinese) {
+    private static String sourceNote(ReplenishmentPlan plan, boolean chinese, boolean alcoholOnly) {
         String from = localDate(plan.periodFrom(), chinese);
         String to = localDate(plan.periodTo(), chinese);
         String zone = plan.timeZone() == null || plan.timeZone().isBlank()
                 ? (chinese ? "未知" : "unknown") : plan.timeZone();
         if (chinese) {
-            return "数据来源：Orithos POS 销售与库存账本；销售窗口：" + from + " 至 " + to
+            return "数据来源：Orithos POS 销售与库存账本；" + (alcoholOnly
+                    ? "酒类范围按商品名称、品类和系列中的可识别关键词匹配，未识别商品不纳入；"
+                    : "商品范围：本店全部纳入库存管理的商品；") + "销售窗口：" + from + " 至 " + to
                     + "（最近 28 天与此前 28 天对比；两段均有销量时按 70%/30% 加权，门店时区 " + zone + "）；"
                     + "销售数据更新时间：" + dataDate(plan.salesDataAsOf(), true)
                     + "；库存最新更新时间：" + dataDate(plan.inventoryDataAsOf(), true)
                     + "。库存缺失、为负或超过 24 小时未更新的商品不生成订购数量；节假日和门店活动日历未纳入。";
         }
-        return "Source: Orithos POS sales and inventory ledger; sales window " + from + " to " + to
+        return "Source: Orithos POS sales and inventory ledger; " + (alcoholOnly
+                ? "alcohol scope matches recognized keywords in product, category and family names; unclassified products are excluded; "
+                : "scope: all inventory-tracked store products; ") + "sales window " + from + " to " + to
                 + " (latest 28 days compared with the prior 28 days; weighted 70/30 when both have sales, store timezone "
                 + zone + "); sales data updated " + dataDate(plan.salesDataAsOf(), false)
                 + "; latest inventory update " + dataDate(plan.inventoryDataAsOf(), false)

@@ -2,6 +2,13 @@ package com.orithos.modules.ai.replenishment;
 
 /** Shared sales windows for the store preview and purchase workspace. */
 final class ReplenishmentSalesQuery {
+    static final String ALCOHOL_SCOPE_PREDICATE = """
+            (NOT ? OR (
+                concat_ws(' ', p.name, c.name, f.name) ~* '(wine|beer|lager|ale|cider|spirits?|liquor|whisk(y|e)y|bourbon|scotch|gin|vodka|rum|tequila|mezcal|brandy|cognac|liqueur|sake|soju|alcohol|hard seltzer|premix|premixed|rtd|\u8461\u8404\u9152|\u7ea2\u9152|\u767d\u9152|\u5564\u9152|\u6d0b\u9152|\u70c8\u9152|\u679c\u9152|\u7c73\u9152|\u6e05\u9152|\u9152\u7c7b|\u9152\u7cbe\u996e\u6599)'
+                AND concat_ws(' ', p.name, c.name, f.name) !~* '(vinegar|wine gum|cider vinegar|\u918b|\u9152\u5fc3\u7cd6)'
+            ))
+            """;
+
     static final String CTE = """
                 WITH period AS (
                     SELECT ?::date AS today

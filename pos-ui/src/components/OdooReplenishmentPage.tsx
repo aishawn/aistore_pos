@@ -205,10 +205,13 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
   const Container = embedded ? "section" : "main";
   const { user, ready: authReady } = useAuth();
   const [data, setData] = useState<ReplenishmentData | null>(null);
-  const [coverageDays, setCoverageDays] = useState(21);
+  const searchParams = useSearchParams();
+  const requestedCoverage = Number(searchParams.get("coverageDays"));
+  const alcoholOnly = searchParams.get("scope") === "alcohol";
+  const [coverageDays, setCoverageDays] = useState(() => coverageOptions.includes(requestedCoverage) ? requestedCoverage : 21);
   const [exceptionOnly, setExceptionOnly] = useState(false);
   const [supplierFilter, setSupplierFilter] = useState("");
-  const requestedReview = useSearchParams().get("review");
+  const requestedReview = searchParams.get("review");
   const [listFilter, setListFilter] = useState<ListFilter>(() => requestedReview === "negative-stock" ? "negative_stock" : "suggestions");
   const [query, setQuery] = useState("");
   const [showMoreColumns, setShowMoreColumns] = useState(false);
@@ -247,7 +250,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
   useDialogFocus(methodOpen, () => setMethodOpen(false), "method-help", methodCloseRef, helpButtonRef);
 
   const browserIdentity = user ? [user.id, user.vendorId ?? "", user.outletId ?? "", user.roleCode ?? "", user.isAdmin ? "admin" : "staff", [...(user.permissions ?? [])].sort().join(",")].join(":") : "anonymous";
-  const cacheKey = `${REPLENISHMENT_CACHE_PREFIX}${typeof window === "undefined" ? "server" : window.location.host}:${browserIdentity}:${coverageDays}:${exceptionOnly ? "exceptions" : "all"}`;
+  const cacheKey = `${REPLENISHMENT_CACHE_PREFIX}${typeof window === "undefined" ? "server" : window.location.host}:${browserIdentity}:${coverageDays}:${alcoholOnly ? "alcohol" : "all-products"}:${exceptionOnly ? "exceptions" : "all"}`;
   const previousBrowserIdentity = useRef(browserIdentity);
 
   useEffect(() => {
@@ -290,6 +293,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
     setError(null);
     try {
       const params = new URLSearchParams({ coverageDays: String(coverageDays) });
+      if (alcoholOnly) params.set("scope", "alcohol");
       if (exceptionOnly) params.set("mode", "exceptions");
       if (refresh) params.set("refresh", "true");
       const response = await fetch(`/api/replenishment/plan?${params}`, { credentials: "same-origin", cache: "no-store", signal: controller.signal });
@@ -318,7 +322,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
       }
       window.clearTimeout(timeout);
     }
-  }, [cacheKey, coverageDays, exceptionOnly]);
+  }, [cacheKey, coverageDays, exceptionOnly, alcoholOnly]);
 
   useEffect(() => {
     if (!authReady) return;
@@ -613,6 +617,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
             </button>
           </div>
           <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[var(--oh-muted)]">
+            {alcoholOnly ? <span>Alcohol scope · recognized product, category and family keywords; unclassified products excluded</span> : null}
             <span>{planCoverageDays}-day coverage</span>
             {data?.generatedAt ? <span>· Updated {formatStoreDateTime(data.generatedAt, storeTimezone)}</span> : null}
             {data?.forecast && <span>· {data.forecast.enabled && data.forecast.status === "AVAILABLE" ? `AI forecast · ${data.forecast.modelVersion ?? "available"}` : "Rules preview · AI forecast unavailable"}</span>}

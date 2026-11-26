@@ -222,7 +222,8 @@ class ReplenishmentWorkspaceControllerTest {
         doNothing().when(permissions).requirePermission(anyString());
         when(tenantFactory.fromSecurity()).thenReturn(new TenantContext(1L, 2L, 3L, List.of(3L), Set.of()));
         when(service.plan(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyInt(),
-                org.mockito.ArgumentMatchers.anyBoolean(), org.mockito.ArgumentMatchers.anyBoolean()))
+                org.mockito.ArgumentMatchers.anyBoolean(), org.mockito.ArgumentMatchers.anyBoolean(),
+                org.mockito.ArgumentMatchers.anyBoolean()))
                 .thenReturn(new ReplenishmentWorkspaceView(
                         "SKR", 56, 21, 21, List.of(),
                         false, 0, false,
@@ -238,7 +239,7 @@ class ReplenishmentWorkspaceControllerTest {
                 service, tenantFactory, permissions, gate);
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.addHeader("host", "skr.orithos.com.au");
-        var result = controller.plan(21, null, request);
+        var result = controller.plan(21, null, null, request);
         assertTrue(result.data().purchaseWorkflow().draftEnabled());
     }
 }

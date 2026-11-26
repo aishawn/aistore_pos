@@ -112,7 +112,7 @@ class NativeReplenishmentServiceTest {
         when(timezones.zoneForVendor(55L)).thenReturn(ZoneId.of("Australia/Adelaide"));
         long instant = Instant.parse("2026-11-22T13:45:00Z").toEpochMilli();
         ReplenishmentPlan plan = new NativeReplenishmentService(jdbc, () -> instant, timezones)
-                .plan(tenant(55L, 87L));
+                .plan(tenant(55L, 87L), 7, 3, true);
         assertEquals(java.time.LocalDate.parse("2026-09-29"), plan.periodFrom());
         assertEquals(java.time.LocalDate.parse("2026-11-23"), plan.periodTo());
         assertEquals("Australia/Adelaide", plan.timeZone());
@@ -128,6 +128,8 @@ class NativeReplenishmentServiceTest {
         assertTrue(sql.getValue().contains("core.id, CASE WHEN links.link_count = 1 THEN links.only_id END"));
         assertTrue(sql.getValue().contains("ps.supplier_id = chosen.id"));
         assertTrue(sql.getValue().contains("p.track_inventory = 1"));
+        assertTrue(sql.getValue().contains("LEFT JOIN category c"));
+        assertTrue(sql.getValue().contains("concat_ws(' ', p.name, c.name, f.name)"));
         assertTrue(sql.getValue().contains("ORDER BY COALESCE(s.sold_7d, 0) DESC"));
         assertFalse(sql.getValue().contains("EXISTS (SELECT 1 FROM product_supplier"));
         verify(statement).setObject(1, java.time.LocalDate.parse("2026-11-23"));
@@ -135,6 +137,7 @@ class NativeReplenishmentServiceTest {
         verify(statement).setLong(3, 87L);
         verify(statement).setString(4, "Australia/Adelaide");
         verify(statement).setLong(5, 87L);
+        verify(statement).setBoolean(6, true);
     }
 
     @Test

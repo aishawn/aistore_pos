@@ -246,7 +246,7 @@ public final class WorkflowRouteRouter {
         if ((REPLENISHMENT.matcher(normalized).find() || REPLENISHMENT_NATURAL.matcher(normalized).find())
                 && !READ_ONLY_ACTION.matcher(normalized).find()
                 && !WORKFLOW_REPORT_CONTEXT.matcher(normalized).find()) {
-            return new Override("navigate", "/stock/replenishment");
+            return new Override("navigate", replenishmentRoute(normalized));
         }
         if ((PRICING.matcher(normalized).find() || PRICING_NATURAL.matcher(normalized).find())
                 && !READ_ONLY_ACTION.matcher(normalized).find()
@@ -272,6 +272,19 @@ public final class WorkflowRouteRouter {
             return new Override("navigate", "/recommend");
         }
         return null;
+    }
+
+    private static String replenishmentRoute(String question) {
+        boolean nextWeek = question.matches("(?is).*(下周|未来一周|接下来一周|未来\\s*7\\s*天|next week|coming week|next 7 days|next seven days).*");
+        boolean alcohol = question.matches("(?is).*(\\balcohol\\b|\\bwines?\\b|\\bbeers?\\b|\\bliquors?\\b|\\bspirits?\\b|\\bwhisk(?:y|e)y\\b|\\bciders?\\b|酒|葡萄酒|红酒|白酒|啤酒|洋酒|烈酒|果酒|米酒|清酒|伏特加|威士忌|鸡尾酒).*");
+        if (!nextWeek && !alcohol) return "/stock/replenishment";
+        StringBuilder route = new StringBuilder("/stock/replenishment?");
+        if (nextWeek) route.append("coverageDays=7");
+        if (alcohol) {
+            if (nextWeek) route.append('&');
+            route.append("scope=alcohol");
+        }
+        return route.toString();
     }
 
     /**

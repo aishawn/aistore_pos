@@ -43,6 +43,10 @@ public class ReplenishmentWorkspaceService {
     }
 
     public ReplenishmentWorkspaceView plan(TenantContext tenant, int coverageDays, boolean exceptionOnly, boolean draftEnabled) {
+        return plan(tenant, coverageDays, exceptionOnly, draftEnabled, false);
+    }
+
+    public ReplenishmentWorkspaceView plan(TenantContext tenant, int coverageDays, boolean exceptionOnly, boolean draftEnabled, boolean alcoholOnly) {
         long outletId = tenant.requireOutletId();
         int cover = coverageDays > 0 ? Math.min(coverageDays, 180) : 21;
         String company = jdbc.queryForObject(
@@ -76,11 +80,14 @@ public class ReplenishmentWorkspaceService {
                 FROM product p
                 LEFT JOIN product_inventory pi ON pi.product_id = p.id AND pi.outlet_id = p.outlet_id
                 LEFT JOIN product_cost pc ON pc.product_id = p.id AND pc.outlet_id = p.outlet_id
+                LEFT JOIN category c ON c.id = p.category_id AND c.outlet_id = p.outlet_id AND c.deleted_at IS NULL
+                LEFT JOIN family f ON f.id = p.family_id AND f.outlet_id = p.outlet_id AND f.deleted_at IS NULL
                 LEFT JOIN sales s ON s.product_id = p.id
                 LEFT JOIN barcode b ON b.product_id = p.id
                 """ + ReplenishmentSalesQuery.SUPPLIER_JOINS + """
                 WHERE p.outlet_id = ? AND p.deleted_at IS NULL AND p.status = 'ACTIVE'
                   AND p.track_inventory = 1
+                  AND """ + ReplenishmentSalesQuery.ALCOHOL_SCOPE_PREDICATE + """
                 ORDER BY p.name, p.id
                 """);
             statement.setQueryTimeout(QUERY_TIMEOUT_SECONDS);
@@ -91,6 +98,7 @@ public class ReplenishmentWorkspaceService {
             statement.setString(4, zone.getId());
             statement.setLong(5, outletId);
             statement.setLong(6, outletId);
+            statement.setBoolean(7, alcoholOnly);
             return statement;
         }, (rs, rowNum) -> mapRow(rs));
 

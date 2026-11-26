@@ -67,6 +67,10 @@ public class NativeReplenishmentService {
     }
 
     public ReplenishmentPlan plan(TenantContext tenant, int coverageDays, int suggestionLimit) {
+        return plan(tenant, coverageDays, suggestionLimit, false);
+    }
+
+    public ReplenishmentPlan plan(TenantContext tenant, int coverageDays, int suggestionLimit, boolean alcoholOnly) {
         long startedAt = System.nanoTime();
         String correlationId = CorrelationIdContext.current();
         if (tenant == null || tenant.requireOutletId() == null) {
@@ -84,7 +88,7 @@ public class NativeReplenishmentService {
         long now = currentTimeMillis.getAsLong();
         ZoneId zone = businessTimezone == null ? AustraliaTime.ZONE : businessTimezone.zoneForVendor(tenant.vendorId());
         LocalDate today = Instant.ofEpochMilli(now).atZone(zone).toLocalDate();
-        CacheKey key = new CacheKey(tenant.vendorId(), tenant.requireOutletId(), cover, limit, today, zone);
+        CacheKey key = new CacheKey(tenant.vendorId(), tenant.requireOutletId(), cover, limit, alcoholOnly, today, zone);
         cache.entrySet().removeIf(entry -> entry.getValue().expiresAtMillis() <= now);
         CachedPlan cached = cache.get(key);
         if (cached != null && cached.expiresAtMillis() > now) {
@@ -93,7 +97,7 @@ public class NativeReplenishmentService {
         }
         if (cached != null) cache.remove(key, cached);
         try {
-            ReplenishmentPlan plan = cache.computeIfAbsent(key, ignored -> new CachedPlan(calculate(tenant, cover, limit, today, zone),
+            ReplenishmentPlan plan = cache.computeIfAbsent(key, ignored -> new CachedPlan(calculate(tenant, cover, limit, today, zone, alcoholOnly),
                     currentTimeMillis.getAsLong() + CACHE_TTL_MILLIS)).plan();
             logPlan(correlationId, startedAt, plan, false);
             return plan;
@@ -125,7 +129,7 @@ public class NativeReplenishmentService {
         return "service";
     }
 
-    private ReplenishmentPlan calculate(TenantContext tenant, int cover, int limit, LocalDate today, ZoneId zone) {
+    private ReplenishmentPlan calculate(TenantContext tenant, int cover, int limit, LocalDate today, ZoneId zone, boolean alcoholOnly) {
         LocalDate from = today.minusDays(2L * PERIOD_DAYS - 1);
         List<Row> rows = jdbc.query(connection -> {
             var statement = connection.prepareStatement(ReplenishmentSalesQuery.CTE + """
@@ -142,9 +146,12 @@ public class NativeReplenishmentService {
                 LEFT JOIN product_inventory i ON i.product_id = p.id AND i.outlet_id = p.outlet_id
                 LEFT JOIN sales s ON s.product_id = p.id
                 LEFT JOIN ai_rpt_inventory_cost cost ON cost.product_id = p.id AND cost.outlet_id = p.outlet_id
+                LEFT JOIN category c ON c.id = p.category_id AND c.outlet_id = p.outlet_id AND c.deleted_at IS NULL
+                LEFT JOIN family f ON f.id = p.family_id AND f.outlet_id = p.outlet_id AND f.deleted_at IS NULL
                 """ + ReplenishmentSalesQuery.SUPPLIER_JOINS + """
                 WHERE p.outlet_id = ? AND p.deleted_at IS NULL AND p.status = 'ACTIVE'
                   AND p.track_inventory = 1
+                  AND """ + ReplenishmentSalesQuery.ALCOHOL_SCOPE_PREDICATE + """
                 ORDER BY COALESCE(s.sold_7d, 0) DESC, COALESCE(s.recent_units, 0) DESC, p.name, p.id
                 """);
             statement.setQueryTimeout(QUERY_TIMEOUT_SECONDS);
@@ -153,6 +160,7 @@ public class NativeReplenishmentService {
             statement.setLong(3, tenant.requireOutletId());
             statement.setString(4, zone.getId());
             statement.setLong(5, tenant.requireOutletId());
+            statement.setBoolean(6, alcoholOnly);
             return statement;
         }, (rs, rowNum) -> new Row(rs.getLong("id"), rs.getString("name"),
                 rs.getDouble("case_quantity"), asDouble(rs.getObject("on_hand")), rs.getDouble("on_order"),
@@ -242,7 +250,7 @@ public class NativeReplenishmentService {
                        double minimumOrder, Integer leadTimeDays,
                        Instant salesDataAsOf, Instant inventoryDataAsOf) { }
 
-    private record CacheKey(long vendorId, long outletId, int coverageDays, int suggestionLimit,
+    private record CacheKey(long vendorId, long outletId, int coverageDays, int suggestionLimit, boolean alcoholOnly,
                             LocalDate today, ZoneId zone) { }
     private record CachedPlan(ReplenishmentPlan plan, long expiresAtMillis) { }
 
