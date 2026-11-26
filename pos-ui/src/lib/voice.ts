@@ -2,17 +2,35 @@
 
 export type VoiceLang = "en-AU" | "zh-CN";
 
+export type VoiceInputMode = "cloud" | "browser" | "unavailable";
+
+export function resolveVoiceInputMode(cloudAvailable: boolean, browserAvailable: boolean): VoiceInputMode {
+  if (cloudAvailable) return "cloud";
+  return browserAvailable ? "browser" : "unavailable";
+}
+
+export function mergeVoiceTranscript(draft: string, transcript: string): string {
+  return [draft.trim(), transcript.trim()].filter(Boolean).join(" ");
+}
+
 const VOICE_LANG_KEY = "orithos.voice.lang";
 
 export function getStoredVoiceLang(): VoiceLang {
   if (typeof window === "undefined") return "en-AU";
-  const v = localStorage.getItem(VOICE_LANG_KEY);
-  return v === "zh-CN" ? "zh-CN" : "en-AU";
+  try {
+    return localStorage.getItem(VOICE_LANG_KEY) === "zh-CN" ? "zh-CN" : "en-AU";
+  } catch {
+    return "en-AU";
+  }
 }
 
 export function setStoredVoiceLang(lang: VoiceLang) {
   if (typeof window === "undefined") return;
-  localStorage.setItem(VOICE_LANG_KEY, lang);
+  try {
+    localStorage.setItem(VOICE_LANG_KEY, lang);
+  } catch {
+    // Voice input still works when browser storage is unavailable.
+  }
 }
 
 /** Map UI BCP-47 to the remote ASR language codes (omit auto on server). */
@@ -39,7 +57,7 @@ export type SpeechRecognitionLike = {
   lang: string;
   interimResults: boolean;
   maxAlternatives: number;
-  onresult: ((event: { results: { [i: number]: { [j: number]: { transcript: string } } } }) => void) | null;
+  onresult: ((event: { results: { length: number; [i: number]: { [j: number]: { transcript: string } } } }) => void) | null;
   onerror: ((event?: { error?: string }) => void) | null;
   onend: (() => void) | null;
   start: () => void;
@@ -290,7 +308,7 @@ export async function startMediaRecording(opts: {
 }
 
 /** One-shot Web Speech recognition. */
-export function recognizeWithWebSpeech(lang: VoiceLang): {
+export function recognizeWithWebSpeech(lang: VoiceLang, options: { maxMs?: number } = {}): {
   stop: () => void;
   done: Promise<string>;
 } {
@@ -309,21 +327,31 @@ export function recognizeWithWebSpeech(lang: VoiceLang): {
 
   let transcript = "";
   let settled = false;
+  let timeout: ReturnType<typeof setTimeout> | null = null;
 
   const done = new Promise<string>((resolve, reject) => {
+    const clearTimeoutIfNeeded = () => {
+      if (timeout) clearTimeout(timeout);
+      timeout = null;
+    };
     const finish = (value: string) => {
       if (settled) return;
       settled = true;
+      clearTimeoutIfNeeded();
       resolve(value);
     };
     const fail = (err: Error) => {
       if (settled) return;
       settled = true;
+      clearTimeoutIfNeeded();
       reject(err);
     };
 
     recognition.onresult = (event) => {
-      transcript = event.results[0]?.[0]?.transcript?.trim() ?? "";
+      const segments = Array.from({ length: event.results.length }, (_, index) =>
+        event.results[index]?.[0]?.transcript?.trim() ?? "",
+      ).filter(Boolean);
+      transcript = segments.join(lang === "zh-CN" ? "" : " ");
     };
     recognition.onerror = (event) => {
       const err = event?.error ?? "speech-error";
@@ -336,12 +364,22 @@ export function recognizeWithWebSpeech(lang: VoiceLang): {
     recognition.onend = () => {
       finish(transcript);
     };
+
+    timeout = setTimeout(() => {
+      fail(new Error("Browser voice recognition timed out."));
+      try { recognition.stop(); } catch { /* Session may already be closed. */ }
+    }, options.maxMs ?? 15_000);
+    try {
+      recognition.start();
+    } catch (error) {
+      fail(error instanceof Error ? error : new Error("Browser voice recognition could not start."));
+    }
   });
 
-  recognition.start();
-
   return {
-    stop: () => recognition.stop(),
+    stop: () => {
+      try { recognition.stop(); } catch { /* Recognition may have ended already. */ }
+    },
     done,
   };
 }

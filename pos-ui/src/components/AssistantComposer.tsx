@@ -3,7 +3,18 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { Mic, Paperclip, Send, Square, X } from "lucide-react";
 import { transcribeAudio } from "@/lib/api";
-import { canUseMediaRecorder, startMediaRecording } from "@/lib/voice";
+import {
+  canUseMediaRecorder,
+  canUseWebSpeech,
+  getStoredVoiceLang,
+  mergeVoiceTranscript,
+  recognizeWithWebSpeech,
+  resolveVoiceInputMode,
+  setStoredVoiceLang,
+  startMediaRecording,
+  toAsrLang,
+  type VoiceLang,
+} from "@/lib/voice";
 
 /** Shared, editable composer. Attachments are included as text in the chat request. */
 export function AssistantComposer({ value, onChange, onSend, onCancel, cancelable = false, disabled = false, voiceAvailable, inputRef, placeholder = "Ask Orithos AI…" }: {
@@ -30,6 +41,15 @@ export function AssistantComposer({ value, onChange, onSend, onCancel, cancelabl
   const session = useRef(0);
   const voiceBusy = useRef(false);
   const sendBusy = useRef(false);
+  const latestValue = useRef(value);
+  const [voiceLang, setVoiceLang] = useState<VoiceLang>("en-AU");
+  const [browserSpeechAvailable, setBrowserSpeechAvailable] = useState(false);
+
+  useEffect(() => { latestValue.current = value; }, [value]);
+  useEffect(() => {
+    setVoiceLang(getStoredVoiceLang());
+    setBrowserSpeechAvailable(canUseWebSpeech());
+  }, []);
 
   useEffect(() => () => { session.current++; stop.current?.(); }, []);
   useEffect(() => {
@@ -45,9 +65,14 @@ export function AssistantComposer({ value, onChange, onSend, onCancel, cancelabl
 
   async function voice() {
     if (recording) { stop.current?.(); return; }
-    if (disabled || voiceBusy.current || voiceAvailable !== true) return;
+    const mode = resolveVoiceInputMode(voiceAvailable === true, browserSpeechAvailable);
+    if (disabled || voiceBusy.current || mode === "unavailable") return;
     setError(null);
-    if (!canUseMediaRecorder()) {
+    if (mode === "browser" || !canUseMediaRecorder()) {
+      if (browserSpeechAvailable) {
+        await runBrowserSpeech();
+        return;
+      }
       setError("Microphone recording requires HTTPS or localhost and a supported browser.");
       return;
     }
@@ -68,15 +93,50 @@ export function AssistantComposer({ value, onChange, onSend, onCancel, cancelabl
       if (!hadSpeech && blob.size < 1500) throw new Error("No speech captured. Please try again.");
       setStatus("Transcribing…");
       const ext = mimeType.includes("mp4") ? "mp4" : mimeType.includes("ogg") ? "ogg" : "webm";
-      const result = await transcribeAudio(blob, undefined, `voice.${ext}`);
+      const result = await transcribeAudio(blob, toAsrLang(voiceLang), `voice.${ext}`);
       if (id !== session.current) return;
-      onChange([value.trim(), result.text.trim()].filter(Boolean).join(" "));
+      onChange(mergeVoiceTranscript(latestValue.current, result.text));
       field.current?.focus();
     } catch (e) {
       if (id === session.current) setError(e instanceof Error ? e.message : "Voice input failed. Please try again.");
     } finally {
       if (id === session.current) { voiceBusy.current = false; setVoiceBusyState(false); setRecording(false); setStatus(null); }
     }
+  }
+
+  async function runBrowserSpeech() {
+    if (disabled || voiceBusy.current || !browserSpeechAvailable) return;
+    voiceBusy.current = true;
+    setVoiceBusyState(true);
+    setError(null);
+    const id = ++session.current;
+    try {
+      setStatus("Listening… click again to finish");
+      setRecording(true);
+      const recognition = recognizeWithWebSpeech(voiceLang);
+      stop.current = recognition.stop;
+      const transcript = await recognition.done;
+      if (id !== session.current) return;
+      stop.current = null;
+      if (!transcript.trim()) throw new Error("No speech was recognised. Please try again.");
+      onChange(mergeVoiceTranscript(latestValue.current, transcript));
+      field.current?.focus();
+    } catch (e) {
+      if (id === session.current) setError(e instanceof Error ? e.message : "Browser voice input failed. Please try again.");
+    } finally {
+      if (id === session.current) {
+        stop.current = null;
+        voiceBusy.current = false;
+        setVoiceBusyState(false);
+        setRecording(false);
+        setStatus(null);
+      }
+    }
+  }
+
+  function changeVoiceLang(lang: VoiceLang) {
+    setVoiceLang(lang);
+    setStoredVoiceLang(lang);
   }
 
   async function send() {
@@ -100,9 +160,14 @@ export function AssistantComposer({ value, onChange, onSend, onCancel, cancelabl
   }
 
   const locked = disabled || sending;
+  const voiceEnabled = resolveVoiceInputMode(voiceAvailable === true, browserSpeechAvailable) !== "unavailable";
   const button = "flex h-11 w-11 shrink-0 items-center justify-center rounded-full cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-40";
   return (
     <div className="w-full min-w-0" data-assistant-composer>
+      {voiceEnabled && <div className="mb-2 flex justify-end" role="group" aria-label="Voice input language">
+        <button type="button" disabled={locked || voiceBusyState} aria-pressed={voiceLang === "en-AU"} onClick={() => changeVoiceLang("en-AU")} className={`h-9 min-w-12 rounded-l border px-3 text-xs disabled:opacity-50 ${voiceLang === "en-AU" ? "border-[var(--oh-primary)] bg-[var(--oh-orange-light)] text-[var(--oh-primary)]" : "border-[var(--oh-border)] bg-white text-[var(--oh-muted)]"}`}>EN</button>
+        <button type="button" disabled={locked || voiceBusyState} aria-pressed={voiceLang === "zh-CN"} onClick={() => changeVoiceLang("zh-CN")} className={`h-9 min-w-12 rounded-r border border-l-0 px-3 text-xs disabled:opacity-50 ${voiceLang === "zh-CN" ? "border-[var(--oh-primary)] bg-[var(--oh-orange-light)] text-[var(--oh-primary)]" : "border-[var(--oh-border)] bg-white text-[var(--oh-muted)]"}`}>中文</button>
+      </div>}
       {files.length > 0 && <div className="mb-2 flex flex-wrap gap-2 px-3">{files.map((file, index) => <span key={index} className="flex max-w-full items-center gap-1 rounded-full border border-[var(--oh-border)] bg-white px-3 text-xs text-[var(--oh-text)]"><span className="truncate">{file.name}</span><button type="button" disabled={locked} aria-label={`Remove ${file.name}`} onClick={() => setFiles(files.filter((_, i) => i !== index))} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"><X size={14} /></button></span>)}</div>}
       <form className="flex min-w-0 items-center gap-1 rounded-full border border-[var(--oh-border)] bg-white p-1.5 shadow-sm focus-within:border-[var(--oh-primary)] focus-within:ring-2 focus-within:ring-[var(--oh-orange-muted)] sm:gap-2" onSubmit={event => { event.preventDefault(); void send(); }}>
         <input ref={picker} type="file" multiple accept=".txt,.csv,.md,.json,.tsv,.log" className="hidden" aria-label="Choose attachments" onChange={event => {
@@ -115,7 +180,7 @@ export function AssistantComposer({ value, onChange, onSend, onCancel, cancelabl
         }} />
         <button type="button" aria-label="Attach files" title="Attach text, CSV, Markdown or JSON (20 KB total; message limit 4,000 characters)" disabled={locked || voiceBusyState} onClick={() => picker.current?.click()} className={`${button} text-[var(--oh-muted)] hover:bg-[var(--oh-orange-light)]`}><Paperclip size={18} /></button>
         <input ref={field} aria-label="Ask Orithos AI" value={value} disabled={locked || !!status} onChange={event => onChange(event.target.value)} onKeyDown={event => { if (event.key === "Enter" && event.nativeEvent.isComposing) event.preventDefault(); }} placeholder={placeholder} className="h-11 min-w-0 flex-1 bg-transparent text-[14px] text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-placeholder)]" />
-        <button type="button" aria-label={recording ? "Stop voice input" : "Voice input"} aria-pressed={recording} title={voiceAvailable === true ? "Click to speak; click again to finish" : voiceAvailable == null ? "Checking voice availability…" : "Voice transcription is unavailable for this store"} disabled={locked || voiceAvailable !== true || (!!status && !recording)} onClick={() => void voice()} className={`${button} ${recording ? "bg-[var(--oh-orange-light)] text-[var(--oh-primary)]" : "text-[var(--oh-muted)] hover:bg-[var(--oh-orange-light)]"}`}>{recording ? <Square size={17} /> : <Mic size={18} />}</button>
+        <button type="button" aria-label={recording ? "Stop voice input" : "Voice input"} aria-pressed={recording} title={voiceEnabled ? "Click to speak; click again to finish" : voiceAvailable == null ? "Checking voice availability…" : "Voice transcription is unavailable for this store"} disabled={locked || !voiceEnabled || (!!status && !recording)} onClick={() => void voice()} className={`${button} ${recording ? "bg-[var(--oh-orange-light)] text-[var(--oh-primary)]" : "text-[var(--oh-muted)] hover:bg-[var(--oh-orange-light)]"}`}>{recording ? <Square size={17} /> : <Mic size={18} />}</button>
         {cancelable ? (
           <button type="button" aria-label="Cancel request" title="Cancel request" onClick={onCancel} className={`${button} bg-[var(--oh-danger)] text-white hover:opacity-90`}><Square size={16} fill="currentColor" /></button>
         ) : (
@@ -123,7 +188,10 @@ export function AssistantComposer({ value, onChange, onSend, onCancel, cancelabl
         )}
       </form>
       {status && <p role="status" className="px-4 pt-2 text-xs text-[var(--oh-primary)]">{status}</p>}
-      {error && <p role="alert" className="px-4 pt-2 text-xs text-[var(--oh-danger)]">{error}</p>}
+      {error && <div className="flex flex-wrap items-center gap-2 px-4 pt-2">
+        <p role="alert" className="text-xs text-[var(--oh-danger)]">{error}</p>
+        {browserSpeechAvailable && voiceAvailable === true && <button type="button" title="Uses your browser's speech recognition service." disabled={locked || voiceBusyState} onClick={() => void runBrowserSpeech()} className="min-h-9 text-xs font-medium text-[var(--oh-primary)] underline">Use browser voice recognition</button>}
+      </div>}
     </div>
   );
 }
