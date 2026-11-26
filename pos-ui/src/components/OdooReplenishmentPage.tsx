@@ -363,6 +363,10 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
     !(typeof product.unitCost === "number" && Number.isFinite(product.unitCost) && product.unitCost > 0)
     || !(typeof product.leadTimeDays === "number" && Number.isFinite(product.leadTimeDays) && product.leadTimeDays >= 0),
   ).length;
+  const knownLeadTimeCount = (data?.products ?? []).filter((product) =>
+    typeof product.leadTimeDays === "number" && Number.isFinite(product.leadTimeDays) && product.leadTimeDays >= 0,
+  ).length;
+  const unknownLeadTimeCount = (data?.products.length ?? 0) - knownLeadTimeCount;
   const hasRecentSales = data?.products.some((product) => product.soldUnits > 0) ?? false;
 
   const supplierGroups = useMemo(() => {
@@ -635,6 +639,12 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
                 <p role="status">
                   Sales: {data.forecast.sourceVersion?.startsWith("odoo_pos_order_line_local_complete_days") ? "POS order lines" : "source unavailable"} · {data.salesHistory?.startDate ?? "—"} to before {data.salesHistory?.endDateExclusive ?? "—"} · {data.historyDays} {data.salesHistory?.completeDaysOnly ? "complete days" : "days"} · {data.salesHistory?.timezone ?? "—"}
                   {data.salesHistory?.refunds === "SIGNED_NET_UNITS" ? " · refunds netted" : ""}.
+                </p>
+                <p role="status">
+                  Inventory: {({ FRESH: "current", STALE: "stale", REVIEW: "coverage needs review", UNAVAILABLE: "not verified" })[data.inventoryHistory?.status ?? "UNAVAILABLE"]} · last successful snapshot {data.inventoryHistory?.lastSuccessAt ? formatStoreEpoch(Date.parse(data.inventoryHistory.lastSuccessAt), data.inventoryHistory.businessTimezone ?? storeTimezone) : "unknown"} · {data.inventoryHistory?.capturedProducts?.toLocaleString("en-AU") ?? "—"}/{data.inventoryHistory?.expectedProducts?.toLocaleString("en-AU") ?? "—"} product quantities. This plan shows recorded on-hand and on-order quantities; separate sellable or reserved quantities are not reported.
+                </p>
+                <p role="status">
+                  Supplier lead time: {knownLeadTimeCount} products with a recorded value · {unknownLeadTimeCount} unknown. Unknown values use the coverage target and must be confirmed before approval.
                 </p>
                 <p>Seasonal, holiday and store event calendars are not included in this forecast.</p>
                 {data.products.length > 0 && (
