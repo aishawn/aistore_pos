@@ -3,6 +3,7 @@ import { test } from "node:test";
 import {
   selectTranscriptionUatCases,
   summarizeTranscriptionUatResults,
+  transcriptionRequestShouldStop,
   transcriptionUatCasesForRuntime,
 } from "./transcription-uat-contract.mjs";
 
@@ -18,6 +19,12 @@ test("online transcription evaluation has an explicit bounded request budget", (
   assert.deepEqual(selectTranscriptionUatCases(cases, 10, 3), cases.slice(10, 13));
   assert.throws(() => selectTranscriptionUatCases(cases, 0, 101), /between 1 and 100/);
   assert.throws(() => selectTranscriptionUatCases(cases, -1, 2), /nonnegative integer/);
+});
+
+test("online ASR requests stop after provider quota exhaustion", () => {
+  assert.equal(transcriptionRequestShouldStop(42901), true);
+  assert.equal(transcriptionRequestShouldStop(50301), false);
+  assert.equal(transcriptionRequestShouldStop(0), false);
 });
 
 test("online transcription reports aggregate status and latency without sample data", () => {

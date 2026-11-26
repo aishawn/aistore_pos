@@ -6,6 +6,7 @@ import { chromium } from "playwright";
 import {
   selectTranscriptionUatCases,
   summarizeTranscriptionUatResults,
+  transcriptionRequestShouldStop,
   transcriptionUatCasesForRuntime,
 } from "./ai-eval/transcription-uat-contract.mjs";
 import { evaluateTranscriptionBenchmark, evaluateTranscriptionQualityGate } from "./ai-eval/transcription-benchmark.mjs";
@@ -84,6 +85,7 @@ const record = (name, status, detail) => evidence.checks.push({ name, status, de
 const benchmarkTranscripts = [];
 const sampleResults = [];
 const classifiedSampleIds = new Set();
+let providerQuotaExhausted = false;
 const recordSample = (testCase, status, latencyMs) => {
   classifiedSampleIds.add(testCase.id);
   sampleResults.push({
@@ -135,6 +137,10 @@ try {
     }
 
     for (const testCase of runnableCases) {
+      if (providerQuotaExhausted) {
+        recordSample(testCase, "BLOCKED");
+        continue;
+      }
       if (!config.transcriptionAvailable) continue;
       if (!testCase.fixture || !fs.existsSync(testCase.fixture)) {
         recordSample(testCase, "BLOCKED");
@@ -157,6 +163,7 @@ try {
         ? transcript.length > 0
         : testCase.expected.test(transcript));
       const unavailable = body.code === 50301 || body.code === 50211 || body.code === 42901;
+      if (transcriptionRequestShouldStop(body.code)) providerQuotaExhausted = true;
       if (body.code === 0 && testCase.expectedText) {
         benchmarkTranscripts.push({ caseId: testCase.id, transcript });
       }
@@ -198,6 +205,7 @@ evidence.transcriptionResults = {
   passed: sampleResults.filter(({ status }) => status === "PASS").length,
   failed: sampleResults.filter(({ status }) => status === "FAIL").length,
   blocked: sampleResults.filter(({ status }) => status === "BLOCKED").length,
+  providerQuotaExhausted,
   groups: summarizeTranscriptionUatResults(sampleResults),
 };
 
