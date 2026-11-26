@@ -445,6 +445,57 @@ async def test_inventory_fetch_releases_sqlite_write_transaction(db_session, mon
 
 
 @pytest.mark.asyncio
+async def test_full_inventory_snapshot_rejects_active_catalog_product_missing_from_scan(db_session, monkeypatch):
+    store = Store(store_key="skr", vendor="skr")
+    previous_snapshot_at = datetime(2026, 10, 31, tzinfo=timezone.utc)
+    db_session.add_all([
+        store,
+        InventorySnapshotManifest(
+            store_key="skr", source_product_ids=["previous-product"],
+            snapshot_at=previous_snapshot_at, complete=True,
+        ),
+        InventorySnapshot(
+            store_key="skr", shopfront_product_id="previous-product",
+            outlet_id="outlet-1", quantity=Decimal("7"),
+        ),
+    ])
+    db_session.commit()
+
+    class FakeClient:
+        async def fetch_outlets(self, *args): return []
+        async def fetch_sales_graphql(self, *args): return []
+        async def fetch_sales(self, *args): return []
+        async def fetch_products(self, *args):
+            return [{"id": "active-product", "name": "Active product", "status": "ACTIVE"}]
+        async def fetch_inventory(self, *args, **kwargs):
+            rows = [{"id": "other-product", "inventory": []}]
+            await kwargs["page_callback"]("products", rows, None, False)
+            return rows
+        async def close(self): return None
+
+    client = FakeClient()
+    async def fake_access_token(*args): return "token"
+    monkeypatch.setattr(sync, "access_token", fake_access_token)
+    monkeypatch.setattr(sync, "get_client", lambda *args: client)
+
+    run = await sync.sync_store(
+        db_session, Settings(), store, date(2026, 11, 1), date(2026, 11, 1), refresh_inventory=True,
+    )
+
+    assert run.counts["inventory_sync_complete"] is False
+    assert any("omitted 1 current catalog products" in warning["message"] for warning in run.counts["warnings"])
+    manifest = db_session.scalar(select(InventorySnapshotManifest).where(
+        InventorySnapshotManifest.store_key == "skr",
+    ))
+    assert manifest.complete is True
+    assert manifest.source_product_ids == ["previous-product"]
+    assert manifest.snapshot_at.replace(tzinfo=timezone.utc) == previous_snapshot_at
+    assert db_session.scalar(select(InventorySnapshot).where(
+        InventorySnapshot.shopfront_product_id == "previous-product",
+    )).quantity == Decimal("7.0000")
+
+
+@pytest.mark.asyncio
 async def test_inventory_scan_resumes_from_last_committed_page(db_session, monkeypatch):
     store = Store(store_key="skr", vendor="skr")
     prior_snapshot_at = datetime(2026, 10, 31, tzinfo=timezone.utc)

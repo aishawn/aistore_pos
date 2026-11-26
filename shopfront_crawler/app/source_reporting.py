@@ -107,6 +107,16 @@ def merge_incremental_inventory_manifest(
     return sorted(merged)
 
 
+def missing_catalog_inventory_products(
+    catalog_product_ids: list[Any] | set[Any],
+    inventory_product_ids: list[Any] | set[Any],
+) -> list[str]:
+    """Return current catalog products omitted by a full inventory scan."""
+    catalog_ids = {str(value).strip() for value in catalog_product_ids if str(value).strip()}
+    inventory_ids = {str(value).strip() for value in inventory_product_ids if str(value).strip()}
+    return sorted(catalog_ids - inventory_ids)
+
+
 def inventory_manifest_status(
     manifest_product_ids: list[Any] | None,
     inventory_product_ids: list[Any],

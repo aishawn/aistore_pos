@@ -71,6 +71,15 @@ def test_incremental_inventory_manifest_fails_closed_if_inventory_field_is_missi
     assert merge_incremental_inventory_manifest(["old"], [{"id": "new"}]) is None
 
 
+def test_full_inventory_scan_detects_current_catalog_products_missing_from_scan():
+    from app.source_reporting import missing_catalog_inventory_products
+
+    assert missing_catalog_inventory_products(
+        ["active-a", "active-b", "retired"],
+        ["active-a", "retired", "unexpected"],
+    ) == ["active-b"]
+
+
 def test_inventory_manifest_status_fails_closed_on_unlisted_inventory_product():
     status = inventory_manifest_status(["p1"], ["p1", "p2"], True)
     assert status["complete"] is False

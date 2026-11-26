@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 from .config import Settings
 from .models import DailySalesSummary, InventorySnapshot, InventorySnapshotManifest, InventorySnapshotScan, InventorySnapshotStage, Product, Sale, SaleItem, ShopfrontCustomer, ShopfrontExtendedRecord, ShopfrontPurchaseOrder, ShopfrontSupplier, ShopfrontToken, Store, SyncRun
 from .pos import OrithosClient, PosIntegrationError
-from .source_reporting import merge_incremental_inventory_manifest
+from .source_reporting import merge_incremental_inventory_manifest, missing_catalog_inventory_products
 from .shopfront import ShopfrontClient, ShopfrontError
 
 
@@ -1216,6 +1216,16 @@ async def sync_store(
                             raise ShopfrontError("Shopfront inventory snapshot contains duplicate product/outlet rows")
                         snapshot_keys.add((product_id, outlet_id))
                         inventory_rows.append((product_id, outlet_id, str(outlet_name) if outlet_name is not None else None, quantity, inventory_row))
+
+                if include_catalog and catalog_sync_complete and not products_updated_after and seen_catalog_ids:
+                    missing_catalog_products = missing_catalog_inventory_products(seen_catalog_ids, inventory_product_ids)
+                    counts["inventory_catalog_products_expected"] = len(seen_catalog_ids)
+                    counts["inventory_catalog_products_missing"] = len(missing_catalog_products)
+                    if missing_catalog_products:
+                        counts["inventory_catalog_products_missing_sample"] = missing_catalog_products[:20]
+                        raise ShopfrontError(
+                            f"Full inventory scan omitted {len(missing_catalog_products)} current catalog products"
+                        )
 
                 existing_rows = db.scalars(select(InventorySnapshot).where(
                     InventorySnapshot.store_key == store.store_key,
