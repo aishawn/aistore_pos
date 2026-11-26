@@ -63,16 +63,26 @@ test("voice transcripts append to a draft without losing words or adding empty s
 test("browser speech recognition receives the selected language and returns its transcript", async () => {
   const originalWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
   class MockSpeechRecognition implements SpeechRecognitionLike {
-    static instance: MockSpeechRecognition | null = null;
-    lang = "";
-    interimResults = true;
-    maxAlternatives = 0;
-    onresult: SpeechRecognitionLike["onresult"] = null;
-    onerror: SpeechRecognitionLike["onerror"] = null;
-    onend: SpeechRecognitionLike["onend"] = null;
+    static lang = "";
+    static interimResults = true;
+    static maxAlternatives = 0;
+    static onresult: SpeechRecognitionLike["onresult"] = null;
+    static onerror: SpeechRecognitionLike["onerror"] = null;
+    static onend: SpeechRecognitionLike["onend"] = null;
+    get lang() { return MockSpeechRecognition.lang; }
+    set lang(value: string) { MockSpeechRecognition.lang = value; }
+    get interimResults() { return MockSpeechRecognition.interimResults; }
+    set interimResults(value: boolean) { MockSpeechRecognition.interimResults = value; }
+    get maxAlternatives() { return MockSpeechRecognition.maxAlternatives; }
+    set maxAlternatives(value: number) { MockSpeechRecognition.maxAlternatives = value; }
+    get onresult() { return MockSpeechRecognition.onresult; }
+    set onresult(value: SpeechRecognitionLike["onresult"]) { MockSpeechRecognition.onresult = value; }
+    get onerror() { return MockSpeechRecognition.onerror; }
+    set onerror(value: SpeechRecognitionLike["onerror"]) { MockSpeechRecognition.onerror = value; }
+    get onend() { return MockSpeechRecognition.onend; }
+    set onend(value: SpeechRecognitionLike["onend"]) { MockSpeechRecognition.onend = value; }
     start() {}
     stop() {}
-    constructor() { MockSpeechRecognition.instance = this; }
   }
 
   Object.defineProperty(globalThis, "window", {
@@ -81,11 +91,11 @@ test("browser speech recognition receives the selected language and returns its 
   });
   try {
     const result = recognizeWithWebSpeech("zh-CN");
-    assert.equal(MockSpeechRecognition.instance?.lang, "zh-CN");
-    assert.equal(MockSpeechRecognition.instance?.interimResults, false);
-    assert.equal(MockSpeechRecognition.instance?.maxAlternatives, 1);
-    MockSpeechRecognition.instance?.onresult?.({ results: { length: 2, 0: { 0: { transcript: "库存还有" } }, 1: { 0: { transcript: "多少？" } } } });
-    MockSpeechRecognition.instance?.onend?.();
+    assert.equal(MockSpeechRecognition.lang, "zh-CN");
+    assert.equal(MockSpeechRecognition.interimResults, false);
+    assert.equal(MockSpeechRecognition.maxAlternatives, 1);
+    MockSpeechRecognition.onresult?.({ results: { length: 2, 0: { 0: { transcript: "库存还有" } }, 1: { 0: { transcript: "多少？" } } } });
+    MockSpeechRecognition.onend?.();
     assert.equal(await result.done, "库存还有多少？");
   } finally {
     if (originalWindow) Object.defineProperty(globalThis, "window", originalWindow);
@@ -96,16 +106,26 @@ test("browser speech recognition receives the selected language and returns its 
 test("browser speech recognition keeps every final segment with language-appropriate spacing", async () => {
   const originalWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
   class MockSpeechRecognition implements SpeechRecognitionLike {
-    static instance: MockSpeechRecognition | null = null;
-    lang = "";
-    interimResults = true;
-    maxAlternatives = 0;
-    onresult: SpeechRecognitionLike["onresult"] = null;
-    onerror: SpeechRecognitionLike["onerror"] = null;
-    onend: SpeechRecognitionLike["onend"] = null;
+    static lang = "";
+    static interimResults = true;
+    static maxAlternatives = 0;
+    static onresult: SpeechRecognitionLike["onresult"] = null;
+    static onerror: SpeechRecognitionLike["onerror"] = null;
+    static onend: SpeechRecognitionLike["onend"] = null;
+    get lang() { return MockSpeechRecognition.lang; }
+    set lang(value: string) { MockSpeechRecognition.lang = value; }
+    get interimResults() { return MockSpeechRecognition.interimResults; }
+    set interimResults(value: boolean) { MockSpeechRecognition.interimResults = value; }
+    get maxAlternatives() { return MockSpeechRecognition.maxAlternatives; }
+    set maxAlternatives(value: number) { MockSpeechRecognition.maxAlternatives = value; }
+    get onresult() { return MockSpeechRecognition.onresult; }
+    set onresult(value: SpeechRecognitionLike["onresult"]) { MockSpeechRecognition.onresult = value; }
+    get onerror() { return MockSpeechRecognition.onerror; }
+    set onerror(value: SpeechRecognitionLike["onerror"]) { MockSpeechRecognition.onerror = value; }
+    get onend() { return MockSpeechRecognition.onend; }
+    set onend(value: SpeechRecognitionLike["onend"]) { MockSpeechRecognition.onend = value; }
     start() {}
     stop() {}
-    constructor() { MockSpeechRecognition.instance = this; }
   }
 
   Object.defineProperty(globalThis, "window", {
@@ -114,13 +134,13 @@ test("browser speech recognition keeps every final segment with language-appropr
   });
   try {
     const english = recognizeWithWebSpeech("en-AU");
-    MockSpeechRecognition.instance?.onresult?.({ results: { length: 2, 0: { 0: { transcript: "sales yesterday" } }, 1: { 0: { transcript: "and today" } } } });
-    MockSpeechRecognition.instance?.onend?.();
+    MockSpeechRecognition.onresult?.({ results: { length: 2, 0: { 0: { transcript: "sales yesterday" } }, 1: { 0: { transcript: "and today" } } } });
+    MockSpeechRecognition.onend?.();
     assert.equal(await english.done, "sales yesterday and today");
 
     const chinese = recognizeWithWebSpeech("zh-CN");
-    MockSpeechRecognition.instance?.onresult?.({ results: { length: 2, 0: { 0: { transcript: "昨天销售" } }, 1: { 0: { transcript: "和今天" } } } });
-    MockSpeechRecognition.instance?.onend?.();
+    MockSpeechRecognition.onresult?.({ results: { length: 2, 0: { 0: { transcript: "昨天销售" } }, 1: { 0: { transcript: "和今天" } } } });
+    MockSpeechRecognition.onend?.();
     assert.equal(await chinese.done, "昨天销售和今天");
   } finally {
     if (originalWindow) Object.defineProperty(globalThis, "window", originalWindow);
