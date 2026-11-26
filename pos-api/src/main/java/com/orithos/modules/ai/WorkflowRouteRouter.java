@@ -28,7 +28,8 @@ public final class WorkflowRouteRouter {
                     + "(?:red|white|rose|sparkling)? ?wine for .*|suggest something(?: in stock)? for .*|something (?:light|fresh|crisp) under .*|"
                     + "suggest a wine|recommend a wine|find me (?:a )?wine|"
                     + "葡萄酒推荐|推荐.*葡萄酒|推荐.*红酒|推荐.*白酒|红酒配牛排|白酒配海鲜|"
-                    + "配餐|搭配.*酒|.*配.*酒|适合.*酒|清爽.*酒|晚餐喝什么酒|红酒推荐|白葡萄酒推荐",
+                    + "配餐|搭配.*酒|.*配.*酒|适合.*酒|清爽.*酒|晚餐喝什么酒|红酒推荐|白葡萄酒推荐|"
+                    + "(?:推荐|帮我(?:推荐|挑选|选)|找).{0,24}(?:酒款|葡萄酒|红酒|白酒|起泡酒|酒)",
             Pattern.CASE_INSENSITIVE);
     /** In-stock grocery / beer / snacks — checked before wine when no wine keywords. */
     private static final Pattern GROCERY_RECOMMEND = Pattern.compile(

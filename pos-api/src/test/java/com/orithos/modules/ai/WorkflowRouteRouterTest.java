@@ -108,6 +108,7 @@ class WorkflowRouteRouterTest {
         assertRoute("牛排配什么酒", "/sommelier");
         assertRoute("红酒配牛排", "/sommelier");
         assertRoute("晚餐喝什么酒", "/sommelier");
+        assertRoute("推荐一款不太甜、预算50澳元以内的现货酒", "/sommelier");
         assertRoute("Recommend beer for a BBQ under $20", "/recommend/grocery");
         assertRoute("Find me some snacks", "/recommend/grocery");
         assertRoute("推荐啤酒", "/recommend/grocery");
