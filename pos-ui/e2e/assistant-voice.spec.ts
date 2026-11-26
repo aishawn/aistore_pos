@@ -1,0 +1,117 @@
+import { expect, test } from "@playwright/test";
+import { useLocalPreviewSession } from "./fixtures/local-preview";
+
+test("voice input stays editable and only queries after manual confirmation", async ({ page }) => {
+  await useLocalPreviewSession(page);
+  await page.addInitScript(() => {
+    localStorage.setItem("sf_user", JSON.stringify({
+      id: "voice-e2e-user",
+      name: "Voice E2E User",
+      username: "voice-e2e",
+      isAdmin: true,
+      roleCode: "ADMIN",
+      permissions: ["ai.assistant"],
+    }));
+    localStorage.setItem("orithos.voice.lang", "en-AU");
+
+    Object.defineProperty(navigator, "mediaDevices", {
+      configurable: true,
+      value: {
+        getUserMedia: async () => ({ getTracks: () => [{ stop() {} }] }),
+      },
+    });
+
+    class MockMediaRecorder {
+      state = "inactive";
+      mimeType = "audio/webm";
+      ondataavailable: ((event: { data: Blob }) => void) | null = null;
+      onerror: (() => void) | null = null;
+      onstop: (() => void) | null = null;
+      static isTypeSupported() { return true; }
+      constructor() {}
+      start() { this.state = "recording"; }
+      stop() {
+        this.state = "inactive";
+        setTimeout(() => {
+          this.ondataavailable?.({ data: new Blob([new Uint8Array(2048)]) });
+          this.onstop?.();
+        }, 0);
+      }
+    }
+    Object.defineProperty(window, "MediaRecorder", { configurable: true, value: MockMediaRecorder });
+
+    class MockSpeechRecognition {
+      lang = "";
+      interimResults = true;
+      maxAlternatives = 0;
+      onresult: ((event: { results: { length: number; 0: { 0: { transcript: string } } } }) => void) | null = null;
+      onerror: ((event: { error: string }) => void) | null = null;
+      onend: (() => void) | null = null;
+      start() { (window as Window & { __voiceRecognitionLang?: string }).__voiceRecognitionLang = this.lang; }
+      stop() {
+        this.onresult?.({ results: { length: 1, 0: { 0: { transcript: "库存还有多少？" } } } });
+        this.onend?.();
+      }
+    }
+    Object.defineProperty(window, "SpeechRecognition", { configurable: true, value: MockSpeechRecognition });
+  });
+
+  let assistantRequests = 0;
+  let transcriptionRequest = "";
+  await page.route("**/api/ai/config/client", (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({ code: 0, message: "ok", data: {
+      enabled: true,
+      assistantAvailable: true,
+      transcriptionAvailable: true,
+      aiTriggerKeywords: [],
+    } }),
+  }));
+  await page.route("**/api/ai/transcribe", async (route) => {
+    transcriptionRequest = route.request().postData() ?? "";
+    await route.fulfill({ status: 502, json: { code: 50211, message: "Transcription unavailable" } });
+  });
+  await page.route("**/api/ai/assistant", async (route) => {
+    assistantRequests++;
+    await route.fulfill({ status: 200, json: { code: 0, message: "ok", data: { answer: "查询已接收", intent: "qa" } } });
+  });
+
+  await page.goto("/assistant");
+  const composer = page.locator("[data-assistant-composer]").last();
+  await expect(composer.getByRole("group", { name: "Voice input language" })).toBeVisible();
+  await composer.getByRole("button", { name: "中文", exact: true }).click();
+  await composer.getByLabel("Ask Orithos AI").fill("库存");
+  await composer.getByRole("button", { name: "Voice input" }).click();
+  await expect(composer.getByRole("button", { name: "Stop voice input" })).toBeEnabled();
+  await composer.getByRole("button", { name: "Stop voice input" }).click();
+
+  await expect(composer.getByRole("alert")).toBeVisible();
+  expect(transcriptionRequest).toContain('name="lang"\r\n\r\nzh');
+  expect(assistantRequests).toBe(0);
+
+  await composer.getByRole("button", { name: "Use browser voice recognition" }).click();
+  await expect(composer.getByRole("button", { name: "Stop voice input" })).toBeEnabled();
+  await composer.getByRole("button", { name: "Stop voice input" }).click();
+  const input = composer.getByLabel("Ask Orithos AI");
+  await expect(input).toHaveValue("库存 库存还有多少？");
+  expect(await page.evaluate(() => (window as Window & { __voiceRecognitionLang?: string }).__voiceRecognitionLang)).toBe("zh-CN");
+  expect(assistantRequests).toBe(0);
+
+  await composer.getByRole("button", { name: "EN", exact: true }).click();
+  await expect(composer.getByRole("button", { name: "EN", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await composer.getByRole("button", { name: "Voice input" }).click();
+  await composer.getByRole("button", { name: "Stop voice input" }).click();
+  await expect(composer.getByRole("alert")).toBeVisible();
+  expect(transcriptionRequest).toContain('name="lang"\r\n\r\nen');
+  await composer.getByRole("button", { name: "Use browser voice recognition" }).click();
+  await composer.getByRole("button", { name: "Stop voice input" }).click();
+  await expect(input).toHaveValue("库存 库存还有多少？ 库存还有多少？");
+  expect(await page.evaluate(() => (window as Window & { __voiceRecognitionLang?: string }).__voiceRecognitionLang)).toBe("en-AU");
+  expect(assistantRequests).toBe(0);
+
+  await input.fill("修正后的库存问题");
+  await expect(composer.getByRole("button", { name: "Send message" })).toBeEnabled();
+  await composer.getByRole("button", { name: "Send message" }).click();
+  await expect.poll(() => assistantRequests).toBe(1);
+});

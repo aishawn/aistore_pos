@@ -3,7 +3,8 @@ import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
-import { transcriptionUatCasesForRuntime } from "./ai-eval/transcription-uat-contract.mjs";
+import { selectTranscriptionUatCases, transcriptionUatCasesForRuntime } from "./ai-eval/transcription-uat-contract.mjs";
+import { evaluateTranscriptionBenchmark, evaluateTranscriptionQualityGate } from "./ai-eval/transcription-benchmark.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 let envDirectory = root;
@@ -33,7 +34,7 @@ const fixtureDirectory = path.join(root, "scripts", "fixtures", "ai-transcriptio
 const outputPath = process.env.PILOT_UAT_OUTPUT_PATH
   ? path.resolve(root, process.env.PILOT_UAT_OUTPUT_PATH)
   : path.join(root, ".local", "ai-eval", "UAT_AI_TRANSCRIPTION_ONLINE.json");
-const cases = [
+const smokeCases = [
   {
     id: "asr-en-store-question",
     fixture: process.env.PILOT_AUDIO_FIXTURE_EN || path.join(fixtureDirectory, "sales-question-en.wav"),
@@ -47,6 +48,20 @@ const cases = [
     expected: /营业额|销售额|销售/i,
   },
 ];
+const benchmarkManifestPath = process.env.PILOT_TRANSCRIPTION_MANIFEST
+  ? path.resolve(root, process.env.PILOT_TRANSCRIPTION_MANIFEST)
+  : null;
+const benchmarkManifest = benchmarkManifestPath && fs.existsSync(benchmarkManifestPath)
+  ? JSON.parse(fs.readFileSync(benchmarkManifestPath, "utf8"))
+  : null;
+if (benchmarkManifestPath && !benchmarkManifest) throw new Error("TRANSCRIPTION_MANIFEST_NOT_FOUND");
+const benchmarkCases = benchmarkManifest?.cases.map((testCase) => ({
+  ...testCase,
+  fixture: path.join(path.dirname(benchmarkManifestPath), testCase.audioFile),
+})) ?? smokeCases;
+const caseOffset = Number(process.env.PILOT_TRANSCRIPTION_CASE_OFFSET ?? 0);
+const requestLimit = Number(process.env.PILOT_TRANSCRIPTION_MAX_CASES ?? 2);
+const cases = selectTranscriptionUatCases(benchmarkCases, caseOffset, requestLimit);
 const evidence = {
   generatedAt: new Date().toISOString(),
   sourceCommit: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(),
@@ -57,8 +72,12 @@ const evidence = {
   scope: "authenticated synthetic speech transcription only; no assistant submission or business writes",
   writeBusinessData: false,
   checks: [],
+  requestedCaseCount: cases.length,
+  caseOffset,
+  ...(benchmarkManifest ? { benchmark: { synthetic: benchmarkManifest.synthetic === true, voiceLocales: [...new Set(benchmarkManifest.cases.map((testCase) => testCase.voiceLocale))] } } : {}),
 };
 const record = (name, status, detail) => evidence.checks.push({ name, status, detail });
+const benchmarkTranscripts = [];
 
 if (!password) throw new Error("MISSING_ADMIN_PASSWORD");
 
@@ -117,8 +136,13 @@ try {
       });
       const body = await response.json().catch(() => ({}));
       const transcript = typeof body.data?.text === "string" ? body.data.text.trim() : "";
-      const matches = body.code === 0 && testCase.expected.test(transcript);
+      const matches = body.code === 0 && (testCase.expectedText
+        ? transcript.length > 0
+        : testCase.expected.test(transcript));
       const unavailable = body.code === 50301 || body.code === 50211 || body.code === 42901;
+      if (body.code === 0 && testCase.expectedText) {
+        benchmarkTranscripts.push({ caseId: testCase.id, transcript });
+      }
       record(testCase.id, matches ? "PASS" : unavailable ? "BLOCKED" : "FAIL", {
         httpStatus: response.status(),
         apiCode: body.code ?? null,
@@ -137,6 +161,22 @@ try {
   await context.request.post(`${base}/api/auth/logout`, { headers: { Origin: base } }).catch(() => {});
   await context.close();
   await browser.close();
+}
+
+if (benchmarkManifest) {
+  const qualityMetrics = evaluateTranscriptionBenchmark(cases, benchmarkTranscripts);
+  const qualityGate = evaluateTranscriptionQualityGate({
+    cases,
+    completedCaseIds: benchmarkTranscripts.map(({ caseId }) => caseId),
+    metrics: qualityMetrics,
+  });
+  record("ASR quality thresholds", qualityGate.status, {
+    reason: qualityGate.reason,
+    voiceLocaleCoverage: qualityGate.voiceLocaleCoverage,
+    thresholds: { enAuWerMax: 0.15, zhCnWerMax: 0.2, criticalEntityAccuracyMin: 0.95 },
+    metrics: qualityMetrics,
+    transcriptsOmitted: true,
+  });
 }
 
 evidence.passed = evidence.checks.filter((check) => check.status === "PASS").length;

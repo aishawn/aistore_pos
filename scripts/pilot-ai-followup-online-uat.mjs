@@ -3,9 +3,11 @@ import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
+import { assistantFollowupCases, evaluateSalesFollowup } from "./ai-eval/assistant-followup-cases.mjs";
 import { assistantRuntimePreflight } from "./ai-eval/stock-clarification-acceptance.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const STORE_TIME_ZONE = "Australia/Melbourne";
 const envPath = path.join(root, ".env");
 const env = fs.existsSync(envPath)
   ? Object.fromEntries(fs.readFileSync(envPath, "utf8").split(/\r?\n/)
@@ -63,13 +65,8 @@ try {
   const loginBody = await login.json().catch(() => ({}));
   if (!login.ok() || loginBody.code !== 0) throw new Error(`LOGIN_FAILED_${login.status()}`);
 
-  for (const sample of [
-    { id: "en", question: "sales last 7 days", followUp: "and yesterday?", surface: "sell", kind: "sales" },
-    { id: "en-previous-day", question: "sales yesterday", followUp: "and the day before?", surface: "reports", kind: "sales", expectPreviousDay: true },
-    { id: "zh", question: "近7天销售额", followUp: "那昨天呢", surface: "reports", kind: "sales" },
-    { id: "stock-en", question: "current stock for Shiraz", followUp: "and yesterday?", repeatFollowUp: "and the day before?", surface: "stock", kind: "stock-history" },
-    { id: "stock-zh", question: "西拉现在有多少库存", followUp: "那昨天呢", repeatFollowUp: "那前一天呢", surface: "stock", kind: "stock-history" },
-  ]) {
+  for (const sample of assistantFollowupCases) {
+    if (!sample.readOnly) throw new Error(`NON_READ_ONLY_FOLLOWUP_CASE_${sample.id}`);
     const seed = await context.request.post(`${base}/api/ai/assistant`, {
       data: { question: sample.question, surface: sample.surface },
       headers: { Origin: base },
@@ -128,8 +125,8 @@ try {
       && slots.from === slots.to && String(slots.days ?? "") === "1";
     const staleDaysCleared = String(slots.days ?? "") === "1"
       && String(seedData.slots?.days ?? "") !== String(slots.days);
-    const previousDayMatches = !sample.expectPreviousDay
-      || (slots.from === shiftIsoDate(seedData.slots?.from, -1) && slots.to === slots.from);
+    const previousDayMatches = sample.expectDayOffset === undefined
+      || (slots.from === shiftIsoDate(seedData.slots?.from, sample.expectDayOffset) && slots.to === slots.from);
     const retainedFilters = ["category", "query"]
       .filter((key) => typeof seedData.slots?.[key] === "string" && seedData.slots[key].trim())
       .every((key) => slots[key] === seedData.slots[key]);
@@ -164,13 +161,27 @@ try {
         writeRequests: followUpData.writeRequests ?? null,
       };
     } else {
+      const nativeReportResponse = await context.request.get(
+        `${base}/api/reports/native-overview?from=${encodeURIComponent(String(slots.from ?? ""))}&to=${encodeURIComponent(String(slots.to ?? ""))}`,
+        { headers: { Origin: base }, timeout: 60000 },
+      );
+      const nativeReportBody = await nativeReportResponse.json().catch(() => ({}));
+      const nativeReport = nativeReportBody.data ?? {};
+      const salesAcceptance = evaluateSalesFollowup({
+        assistant: followUpData,
+        report: nativeReport,
+        expectedFrom: String(slots.from ?? ""),
+        expectedTo: String(slots.to ?? ""),
+        timeZone: STORE_TIME_ZONE,
+      });
       followUpOk = followUp.ok() && followUpBody.code === 0
         && followUpData.threadId === threadId
         && followUpData.intent === "report_sales"
         && singleDayRange && retainedFilters && previousDayMatches && answer.length > 0
-        && Array.isArray(followUpData.writeRequests) && followUpData.writeRequests.length === 0;
+        && nativeReportResponse.ok() && nativeReportBody.code === 0 && salesAcceptance.passed;
       followUpEvidence = {
         httpStatus: followUp.status(),
+        nativeReportHttpStatus: nativeReportResponse.status(),
         intent: followUpData.intent ?? null,
         sameThread: followUpData.threadId === threadId,
         singleDayRange,
@@ -178,7 +189,7 @@ try {
         previousDayMatches,
         retainedFilters,
         answerPresent: answer.length > 0,
-        writeRequests: followUpData.writeRequests ?? null,
+        salesAcceptance,
       };
     }
     record(`${sample.id}-followup-after-history-open`, followUpOk ? "PASS" : "FAIL", followUpEvidence);

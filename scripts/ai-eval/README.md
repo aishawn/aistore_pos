@@ -171,6 +171,37 @@ gate fails. Low-frequency products with fewer than 14 selling days are not
 scored by the seasonal baseline and remain blocked pending intermittent-demand
 model evaluation.
 
+## Bilingual speech benchmark and online acceptance
+
+Build the synthetic benchmark corpus locally. It contains 50 Chinese and 50
+English prompts across product names, barcodes, numbers, dates, noise, pauses,
+and code-switching. The generated audio and manifest are local evaluation data;
+do not commit them or treat synthetic WER as real-user accuracy. Run the
+generator with Node 24 or newer on `PATH`; when multiple runtimes are installed,
+set `ASR_NODE_BIN` to the Node 24 executable:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/ai-eval/generate-synthetic-transcription-audio.ps1
+node --test scripts/ai-eval/transcription-benchmark.test.mjs scripts/ai-eval/transcription-uat-contract.test.mjs
+```
+
+After publishing a clean candidate, verify both stores report its exact backend
+commit before sending any audio. Set `PILOT_BASE_URL`, credentials,
+`PILOT_TRANSCRIPTION_MANIFEST`, and `PILOT_TRANSCRIPTION_MAX_CASES=100`, then
+run `node scripts/pilot-ai-transcription-online-uat.mjs`. For bounded diagnosis,
+use `PILOT_TRANSCRIPTION_CASE_OFFSET` and a small max-case count. The default is
+only two requests. Review aggregate WER by language and critical-entity
+accuracy for product identifiers, barcodes, numbers, and dates; do not retain
+raw audio or full transcripts in shared reports. Runtime SHA mismatch or a dirty
+source checkout blocks requests and cannot count as acceptance.
+
+The synthetic English voice is en-US while the recognition locale is en-AU.
+Before claiming Australian speech coverage, add an approved en-AU corpus and
+evaluate it separately. The quality gate blocks the en-AU result until at
+least 50 completed cases use an en-AU voice locale. Keep human-reviewed,
+consented/de-identified recordings as a separately labeled set so synthetic
+and real-speech scores are never combined.
+
 ## Daily native inventory snapshot
 
 Use the native Odoo collector for daily inventory history. It reads

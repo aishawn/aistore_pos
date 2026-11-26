@@ -18,3 +18,24 @@ export function compareStockAnswer(answer, product) {
       && Math.abs(parsed.quantity - expected) < 0.000001,
   };
 }
+
+export function evaluateStockOracleAnswer(answer, query, products, oracleRequestsOk = true) {
+  const parsed = parseStockAnswer(answer);
+  const normalize = normalizeProductName;
+  const exactProducts = Array.isArray(products)
+    ? products.filter((product) => normalize(product?.name) === normalize(query))
+    : [];
+  const product = exactProducts.length === 1 ? exactProducts[0] : null;
+  const noMatchAnswer = /no matching stock found|没有找到匹配库存/i.test(String(answer ?? ""));
+  const noMatchConfirmed = noMatchAnswer && exactProducts.length === 0;
+  const comparison = compareStockAnswer(answer, product);
+  return {
+    parsed,
+    product,
+    matches: Boolean(oracleRequestsOk && (parsed ? comparison.matches : noMatchConfirmed)),
+    noMatchAnswer,
+    noMatchConfirmed,
+    oracleRequestsOk: Boolean(oracleRequestsOk),
+    exactProductCount: exactProducts.length,
+  };
+}
