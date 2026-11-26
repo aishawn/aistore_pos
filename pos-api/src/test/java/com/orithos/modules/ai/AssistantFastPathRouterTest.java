@@ -355,6 +355,18 @@ class AssistantFastPathRouterTest {
         assertEquals("report_stock", chineseAvailableStock.intent());
         assertEquals("VB CAN 10PK 375ML", chineseAvailableStock.slots().get("query"));
 
+        AssistantFastPathRouter.Match englishCurrentStock = AssistantFastPathRouter.maybeMatch(
+                "Check current stock for VB CAN 10PK 375ML");
+        assertNotNull(englishCurrentStock);
+        assertEquals("report_stock", englishCurrentStock.intent());
+        assertEquals("VB CAN 10PK 375ML", englishCurrentStock.slots().get("query"));
+
+        AssistantFastPathRouter.Match chineseCurrentStock = AssistantFastPathRouter.maybeMatch(
+                "查一下 VB CAN 10PK 375ML 当前库存");
+        assertNotNull(chineseCurrentStock);
+        assertEquals("report_stock", chineseCurrentStock.intent());
+        assertEquals("VB CAN 10PK 375ML", chineseCurrentStock.slots().get("query"));
+
         AssistantFastPathRouter.Match chineseRemainingUnits = AssistantFastPathRouter.maybeMatch(
                 "VB CAN 10PK 375ML 还剩多少件？");
         assertNotNull(chineseRemainingUnits);

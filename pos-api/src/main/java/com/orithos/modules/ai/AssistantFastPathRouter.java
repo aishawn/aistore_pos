@@ -323,7 +323,9 @@ public final class AssistantFastPathRouter {
                     + "^(?:找|搜索|查询)(?:一下)?\\s*(?:SKU|sku)\\s*[:：]?\\s*([A-Za-z0-9_-]{2,})[？?。.!]*$|"
                     + "^(?:check|look up|search|find)(?:\\s+the)?\\s+(?:barcode)\\s*[:#]?\\s*([A-Za-z0-9-]{4,})[?.!]*$|"
                     + "^(?:check|look up|search|find)(?:\\s+the)?\\s+(?:SKU|sku)\\s*[:#]?\\s*([A-Za-z0-9_-]{2,})[?.!]*$|"
-                    + "^(?:current|on[ -]?hand)\\s+(?:stock|inventory)(?:\\s+(?:level|quantity))?\\s+(?:of|for)\\s+(.+?)[?.!]*$",
+                    + "^(?:current|on[ -]?hand)\\s+(?:stock|inventory)(?:\\s+(?:level|quantity))?\\s+(?:of|for)\\s+(.+?)[?.!]*$|"
+                    + "^(?:check|look up|find|search)(?:\\s+the)?\\s+(?:(?:current|on[ -]?hand)\\s+)?(?:stock|inventory)(?:\\s+(?:level|quantity))?\\s+(?:of|for)\\s+(.+?)[?.!]*$|"
+                    + "^(?:查(?:一下)?|查询|查看)\\s*(.+?)\\s*(?:当前|现在)(?:的)?库存(?:有多少|是多少|还剩多少)?[？?。.!]*$",
             Pattern.CASE_INSENSITIVE);
 
     private AssistantFastPathRouter() {}
@@ -601,7 +603,8 @@ public final class AssistantFastPathRouter {
                     directStockQuery.group(1), directStockQuery.group(2), directStockQuery.group(3),
                     directStockQuery.group(4), directStockQuery.group(5), directStockQuery.group(6),
                     directStockQuery.group(7), directStockQuery.group(8), directStockQuery.group(9),
-                    directStockQuery.group(10), directStockQuery.group(11)));
+                    directStockQuery.group(10), directStockQuery.group(11), directStockQuery.group(12),
+                    directStockQuery.group(13)));
             if (query != null) {
                 return new Match("report_stock", "Stock report", Map.of("query", query), "", "", "", "");
             }
