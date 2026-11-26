@@ -3,7 +3,7 @@ import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
-import { assistantFollowupCases, evaluateSalesFollowup } from "./ai-eval/assistant-followup-cases.mjs";
+import { assistantFollowupCases, evaluateSalesFollowup, resolveFollowupCredentials } from "./ai-eval/assistant-followup-cases.mjs";
 import { assistantRuntimePreflight } from "./ai-eval/stock-clarification-acceptance.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -18,8 +18,11 @@ const env = fs.existsSync(envPath)
     }))
   : {};
 const base = (process.env.PILOT_BASE_URL || "https://demo.orithos.com.au").replace(/\/+$/, "");
-const username = process.env.PILOT_USERNAME || "admin";
-const password = process.env.INITIAL_ADMIN_PASSWORD || env.INITIAL_ADMIN_PASSWORD;
+const { username, password } = resolveFollowupCredentials({
+  baseUrl: base,
+  processEnv: process.env,
+  fileEnv: env,
+});
 if (!password) throw new Error("MISSING_ADMIN_PASSWORD");
 
 function shiftIsoDate(value, days) {

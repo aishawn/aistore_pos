@@ -11,6 +11,18 @@ export const assistantFollowupCases = [
   { id: "stock-history-carlton-en", question: "How many Carlton Draught do we have?", followUp: "and yesterday?", repeatFollowUp: "and the day before?", surface: "stock", kind: "stock-history", language: "en", readOnly: true },
 ];
 
+export function resolveFollowupCredentials({ baseUrl, processEnv = {}, fileEnv = {} }) {
+  const isSkr = new URL(baseUrl).hostname.startsWith("skr.");
+  return {
+    username: processEnv.PILOT_USERNAME
+      || (isSkr ? processEnv.ORITHOS_SKR_USER || processEnv.SKR_USER || fileEnv.ORITHOS_SKR_USER || fileEnv.SKR_USER : "admin"),
+    password: processEnv.PILOT_PASSWORD
+      || (isSkr
+        ? processEnv.ORITHOS_SKR_PASS || processEnv.SKR_PASS || fileEnv.ORITHOS_SKR_PASS || fileEnv.SKR_PASS
+        : processEnv.INITIAL_ADMIN_PASSWORD || fileEnv.INITIAL_ADMIN_PASSWORD),
+  };
+}
+
 function businessDateAt(nowMs, timeZone) {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone,
