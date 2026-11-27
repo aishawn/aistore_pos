@@ -854,7 +854,7 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
             )}
           </h1>
           <p className="oh-type-label mt-1 text-[var(--oh-muted)]">
-            {tab === "stocktake" ? "Count physical stock and apply Orithos adjustments when write is enabled." : inventoryReport ? "Active, saleable Odoo variants and on-hand inventory for this company and warehouse." : "Manage your catalogue, check stock and resolve product issues."}
+            {tab === "stocktake" ? "Count physical stock and apply Orithos adjustments when write is enabled." : inventoryReport ? "Active, saleable Orithos products and on-hand inventory for this company and warehouse." : "Manage your catalogue, check stock and resolve product issues."}
           </p>
           {!inventoryReport && lastLoadedAt !== null && <p className="oh-type-meta mt-1 text-[var(--oh-muted)]">Catalogue updated {formatStoreEpoch(lastLoadedAt, storeTimezone)}</p>}
           {tab === "catalogue" && showImportDisplayNote && (
@@ -997,15 +997,15 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
                 <option value="">All categories</option>
                 {categoryOptions.map((category) => <option key={category.id} value={category.id}>{category.parent_id ? `${category.parent_id[1]} / ` : ""}{category.name}</option>)}
               </select>
-              <label className="grid shrink-0 gap-1 text-xs font-medium text-[var(--oh-muted)]">Odoo stock status
-                <select aria-label="Filter inventory by Odoo stock status" value={inventoryFilter} onChange={(event) => {
+              <label className="grid shrink-0 gap-1 text-xs font-medium text-[var(--oh-muted)]">Orithos stock status
+                <select aria-label="Filter inventory by Orithos stock status" value={inventoryFilter} onChange={(event) => {
                   const value = event.target.value as "all" | "zero" | "negative";
                   setInventoryFilter(value);
                   const params = new URLSearchParams(searchParams.toString());
                   if (value === "all") params.delete("stock"); else params.set("stock", value);
                   router.replace(`/reports/inventory${params.size ? `?${params}` : ""}`, { scroll: false });
                 }} className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm text-[var(--oh-text)]">
-                  <option value="all">All Odoo stock</option><option value="zero">Zero Odoo stock</option><option value="negative">Negative Odoo stock</option>
+                  <option value="all">All Orithos stock</option><option value="zero">Zero Orithos stock</option><option value="negative">Negative Orithos stock</option>
                 </select>
               </label>
             </div>
@@ -1051,7 +1051,7 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
                   {inventoryColumns.includes("quantity") && sortHeader(inventoryReport ? "shopfront_quantity" : "qty_available", inventoryReport ? "On hand" : "Inventory")}
                   {inventoryReport && inventoryColumns.includes("odoo_quantity") && sortHeader("qty_available", "Orithos inventory")}
                   {inventoryReport && inventoryColumns.includes("unit") && <th scope="col" className="px-4 py-3">Unit</th>}
-                  {inventoryColumns.includes("price") && sortHeader("price_included", inventoryReport ? "Odoo sale price · AUD" : "Price")}
+                  {inventoryColumns.includes("price") && sortHeader("price_included", inventoryReport ? "Orithos sale price · AUD" : "Price")}
                   {inventoryReport && inventoryColumns.includes("pos") && <th scope="col" className="px-4 py-3">POS</th>}
                   {!inventoryReport && <><th scope="col" className="px-4 py-3">Performance</th><th scope="col" className="px-4 py-3 text-right">Actions</th></>}
                 </tr>

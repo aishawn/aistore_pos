@@ -268,7 +268,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
     setAuditEntries(readReplenishmentAudit());
   }, []);
 
-  // Hydrate the last successful plan immediately. Odoo can then refresh in the
+  // Hydrate the last successful plan immediately. Orithos can then refresh in the
   // background without ever replacing a usable screen with an error state.
   useEffect(() => {
     if (!authReady || !user) return;
@@ -706,7 +706,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
 
       {data && data.products.length > 0 && !hasRecentSales && <div role="status" className="flex flex-wrap items-start justify-between gap-3 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"><div className="flex items-start gap-2"><AlertCircle size={17} className="mt-0.5 shrink-0" /><p><strong>No recent sales found.</strong> There are no completed POS sales in the last {data.historyDays} days, so this plan cannot forecast demand. Zero suggested orders does not mean stock is sufficient.</p></div><Link href="/history" className="shrink-0 font-semibold text-amber-950 underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-800">Review Orithos sales history</Link></div>}
 
-      {data && (data.excludedProductCount ?? 0) > 0 && <div role="status" className="flex items-start gap-2 rounded-md border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-950"><AlertCircle size={17} className="mt-0.5 shrink-0" /><p><strong>{data.excludedProductCount} products excluded.</strong> Only stockable and purchasable Odoo products are eligible for replenishment suggestions.</p></div>}
+      {data && (data.excludedProductCount ?? 0) > 0 && <div role="status" className="flex items-start gap-2 rounded-md border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-950"><AlertCircle size={17} className="mt-0.5 shrink-0" /><p><strong>{data.excludedProductCount} products excluded.</strong> Only stockable and purchasable Orithos products are eligible for replenishment suggestions.</p></div>}
 
       {createdRfq && (
         <div
