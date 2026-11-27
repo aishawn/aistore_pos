@@ -2347,13 +2347,12 @@ public class ShopfrontIntegrationController {
                      SELECT 1 FROM shopfront_product_mapping m
                      WHERE m.store_key=? AND m.pos_product_id=pi.product_id AND m.status='MAPPED'
                    )) AS unmapped_count,
-                  (SELECT COUNT(*) FROM shopfront_product_mapping m
-                   JOIN product p ON p.id=m.pos_product_id AND p.outlet_id=? AND p.deleted_at IS NULL
+                  (SELECT COUNT(*) FROM product p
                    LEFT JOIN product_inventory pi ON pi.product_id=p.id AND pi.outlet_id=?
-                   WHERE m.store_key=? AND m.status='MAPPED'
+                   WHERE p.outlet_id=? AND p.deleted_at IS NULL
                      AND UPPER(COALESCE(p.status,''))='ACTIVE' AND COALESCE(p.track_inventory,0)<>0
                      AND pi.product_id IS NULL) AS missing_on_hand_count
-                """, outletId, outletId, outletId, storeKey, outletId, outletId, storeKey);
+                """, outletId, outletId, outletId, storeKey, outletId, outletId);
         List<Map<String, Object>> foreignOutlet = jdbc.queryForList("""
                 SELECT pi.product_id, p.name AS product_name, p.outlet_id AS product_outlet_id, pi.quantity
                 FROM product_inventory pi JOIN product p ON p.id=pi.product_id
@@ -2370,15 +2369,16 @@ public class ShopfrontIntegrationController {
                 ORDER BY pi.product_id LIMIT ?
                 """, outletId, storeKey, preview);
         List<Map<String, Object>> missingOnHand = jdbc.queryForList("""
-                SELECT m.source_product_id, p.id AS product_id, p.name AS product_name
-                FROM shopfront_product_mapping m
-                JOIN product p ON p.id=m.pos_product_id AND p.outlet_id=? AND p.deleted_at IS NULL
+                SELECT (SELECT MIN(m.source_product_id) FROM shopfront_product_mapping m
+                        WHERE m.store_key=? AND m.pos_product_id=p.id AND m.status='MAPPED') AS source_product_id,
+                       p.id AS product_id, p.name AS product_name
+                FROM product p
                 LEFT JOIN product_inventory pi ON pi.product_id=p.id AND pi.outlet_id=?
-                WHERE m.store_key=? AND m.status='MAPPED'
+                WHERE p.outlet_id=? AND p.deleted_at IS NULL
                   AND UPPER(COALESCE(p.status,''))='ACTIVE' AND COALESCE(p.track_inventory,0)<>0
                   AND pi.product_id IS NULL
-                ORDER BY m.source_product_id LIMIT ?
-                """, outletId, outletId, storeKey, preview);
+                ORDER BY p.id LIMIT ?
+                """, storeKey, outletId, outletId, preview);
 
         long foreignCount = longValue(counts.get("foreign_outlet_count"));
         long unmappedCount = longValue(counts.get("unmapped_count"));

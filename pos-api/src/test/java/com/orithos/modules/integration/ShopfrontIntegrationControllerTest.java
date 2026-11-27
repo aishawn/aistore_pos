@@ -56,7 +56,7 @@ class ShopfrontIntegrationControllerTest {
                 Map.of("product_id", 10L, "product_name", "Foreign product", "product_outlet_id", 87L,
                         "quantity", new BigDecimal("-1"))));
         when(jdbc.queryForList(contains("NOT EXISTS"), any(Object[].class))).thenReturn(List.of());
-        when(jdbc.queryForList(contains("SELECT m.source_product_id"), any(Object[].class))).thenReturn(List.of(
+        when(jdbc.queryForList(contains("SELECT (SELECT MIN(m.source_product_id)"), any(Object[].class))).thenReturn(List.of(
                 Map.of("source_product_id", "source-1", "product_id", 11L, "product_name", "Missing stock")));
 
         var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true);
@@ -67,6 +67,7 @@ class ShopfrontIntegrationControllerTest {
         assertEquals(1L, ((Map<?, ?>) response.data().get("foreign_outlet_inventory")).get("count"));
         assertEquals(2L, ((Map<?, ?>) response.data().get("unmapped_inventory")).get("count"));
         assertEquals(1L, ((Map<?, ?>) response.data().get("active_tracked_missing_on_hand")).get("count"));
+        verify(jdbc).queryForList(contains("FROM product p"), eq("demo"), eq(1L), eq(1L), eq(100));
         verify(jdbc, never()).update(anyString(), any(Object[].class));
     }
 
