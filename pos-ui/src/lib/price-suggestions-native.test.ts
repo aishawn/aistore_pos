@@ -4,6 +4,20 @@ import { buildSuggestion, canBulkEditPriceSuggestion } from "./price-suggestions
 
 const product = { id: 1, name: "GST-free groceries", price: 15, cost: 10, taxRateId: 2 };
 
+test("preserves POS identity and beverage attributes for competitor review", () => {
+  const result = buildSuggestion({
+    ...product,
+    barcodes: [{ code: "9320000100755" }],
+    abv: "4.6",
+    volumeMl: 375,
+    vintage: "NV",
+  }, 0.3, [{ id: 2, amount: 0 }]);
+  assert.equal(result.sku, "9320000100755");
+  assert.equal(result.abv, 4.6);
+  assert.equal(result.volumeMl, 375);
+  assert.equal(result.vintage, "NV");
+});
+
 test("uses a product's zero-percent GST rate without inventing GST", () => {
   const result = buildSuggestion(product, 0.3, [{ id: 2, amount: 0 }]);
   assert.equal(result.currentNetPrice, 15);

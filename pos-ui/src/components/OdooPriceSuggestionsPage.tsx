@@ -13,6 +13,10 @@ import {
   type SuggestionStatus,
 } from "@/lib/price-suggestions-native";
 import { loadStoreCompanyProfile } from "@/lib/store-company-settings";
+import { CompetitorSourcesPanel } from "@/components/CompetitorSourcesPanel";
+import { CompetitorPriceEditor } from "@/components/CompetitorPriceEditor";
+import { logPriceSuggestionInteraction } from "@/lib/competitor-prices";
+import { getCompetitorSources, type CompetitorSource } from "@/lib/competitor-prices";
 
 const money = new Intl.NumberFormat("en-AU", { style: "currency", currency: "AUD" });
 const number = new Intl.NumberFormat("en-AU", { maximumFractionDigits: 1 });
@@ -65,6 +69,7 @@ function downloadSuggestions(products: PriceSuggestionProduct[]) {
 export function OdooPriceSuggestionsPage() {
   const [data, setData] = useState<PriceSuggestionData | null>(null);
   const [marginTarget, setMarginTarget] = useState(0.3);
+  const [competitorSources, setCompetitorSources] = useState<CompetitorSource[]>([]);
   const nextOffset = useRef<number | null>(0);
   const requestBusy = useRef(false);
   const failedAppend = useRef(false);
@@ -139,6 +144,8 @@ export function OdooPriceSuggestionsPage() {
     return () => observer.disconnect();
   }, [data?.nextOffset, loading, loadingMore, refreshing, error, load]);
 
+  useEffect(() => { void getCompetitorSources().then(setCompetitorSources).catch(() => setCompetitorSources([])); }, []);
+
   const actionItems = useMemo(
     () => data?.products.filter((product) => product.status === "raise" || product.status === "review_stock" || product.status === "review_cost" || product.status === "review_tax" || product.status === "missing_cost" || product.status === "fixed_price") ?? [],
     [data],
@@ -157,6 +164,24 @@ export function OdooPriceSuggestionsPage() {
       return matchesQuery && matchesStatus;
     });
   }, [baseItems, query, statusFilter]);
+
+  function trackSuggestion(product: PriceSuggestionProduct, eventType: "VIEW" | "OPEN_PRODUCT" | "OPEN_BULK_EDIT") {
+    if (!data) return;
+    void logPriceSuggestionInteraction({
+      productId: product.id,
+      eventType,
+      currentPrice: product.currentPrice,
+      suggestedPrice: product.suggestedPrice,
+      marginTarget: data.marginTarget,
+      pageGeneratedAt: data.generatedAt,
+    }).catch(() => undefined);
+  }
+
+  function toggleSuggestion(product: PriceSuggestionProduct) {
+    const closing = expandedId === product.id;
+    setExpandedId(closing ? null : product.id);
+    if (!closing) trackSuggestion(product, "VIEW");
+  }
 
   if (loading && !data) {
     return (
@@ -187,7 +212,7 @@ export function OdooPriceSuggestionsPage() {
           <p className="text-xs font-semibold uppercase tracking-[.12em] text-[var(--oh-muted)]">AI Workspace</p>
           <h1 className="mt-1 text-xl font-semibold text-[var(--oh-text)]">Price Suggestions</h1>
           <p className="mt-1 max-w-2xl text-sm text-[var(--oh-muted)]">
-            Suggested shelf prices use Orithos cost, tax and target net margin. Recent 28-day POS sales rank review items; public manufacturer and competitor prices are not connected, so this is not a market-price comparison.
+            Shelf suggestions use each product&apos;s Orithos tax rate and a target margin on net sales excluding tax.
             You apply any change in Products or Bulk Price Edit — this page never writes prices.
             {lastLoadedAt !== null && (
               <span className="ml-2">Last refreshed {formatStoreEpoch(lastLoadedAt, storeTimezone)}.</span>
@@ -222,6 +247,8 @@ export function OdooPriceSuggestionsPage() {
       <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm leading-5 text-amber-950">
         Suggestions only. Orithos does not update Orithos list prices from this screen. Missing costs stay without a suggestion — costs are never invented.
       </p>
+
+      <CompetitorSourcesPanel />
 
       {error && (
         <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-900">
@@ -331,6 +358,11 @@ export function OdooPriceSuggestionsPage() {
                       {product.currentMargin != null ? ` (${(product.currentMargin * 100).toFixed(1)}%)` : ""}
                       {product.suggestedPrice != null ? ` · Suggested ${money.format(product.suggestedPrice)}` : ""}
                     </p>
+                    <button type="button" onClick={() => toggleSuggestion(product)} className="mt-2 min-h-9 text-left text-xs font-medium text-[var(--oh-primary)] underline underline-offset-2">
+                      {product.competitorPrices.some((item) => item.reviewStatus === "VERIFIED")
+                        ? `${product.competitorPrices.filter((item) => item.reviewStatus === "VERIFIED").length} verified competitor price reference(s)`
+                        : "No recent verified competitor price · Record or review"}
+                    </button>
                   </div>
                   <div className="flex shrink-0 flex-col items-stretch gap-2 sm:items-end">
                     <span className="inline-flex justify-center rounded-full bg-[var(--oh-orange-light)] px-2.5 py-1 text-xs font-bold text-[var(--oh-orange-dark)]">
@@ -338,19 +370,21 @@ export function OdooPriceSuggestionsPage() {
                     </span>
                     <Link
                       href={`/products?q=${encodeURIComponent(product.sku || product.name)}`}
+                      onClick={() => trackSuggestion(product, "OPEN_PRODUCT")}
                       className="inline-flex min-h-11 items-center justify-center rounded-md border border-[var(--oh-border)] px-3 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
                     >
                       Open product
                     </Link>
                     {canBulkEditPriceSuggestion(product) && <Link
                       href={`/stock/bulk-price-edit?search=${encodeURIComponent(product.sku || product.name)}${product.status === "raise" && product.suggestedListPrice != null ? `&productId=${product.id}&suggestedPrice=${product.suggestedListPrice}&expectedPrice=${product.currentListPrice}` : ""}`}
+                      onClick={() => trackSuggestion(product, "OPEN_BULK_EDIT")}
                       className="inline-flex min-h-11 items-center justify-center rounded-md border border-[var(--oh-border)] px-3 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
                     >
                       Bulk edit this product
                     </Link>}
                     <button
                       type="button"
-                      onClick={() => setExpandedId((current) => (current === product.id ? null : product.id))}
+                      onClick={() => toggleSuggestion(product)}
                       aria-expanded={expandedId === product.id}
                       aria-controls={`price-suggestion-explanation-${product.id}`}
                       className="min-h-11 rounded-md px-2 text-sm font-semibold text-[var(--oh-orange-dark)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
@@ -360,9 +394,21 @@ export function OdooPriceSuggestionsPage() {
                   </div>
                 </div>
                 {expandedId === product.id && (
-                  <p id={`price-suggestion-explanation-${product.id}`} className="mt-2 rounded-md bg-[var(--oh-surface)] px-3 py-2 text-sm leading-5 text-[var(--oh-text-secondary)]">
-                    {product.reason}
-                  </p>
+                  <div id={`price-suggestion-explanation-${product.id}`} className="mt-2 rounded-md bg-[var(--oh-surface)] px-3 py-2 text-sm leading-5 text-[var(--oh-text-secondary)]">
+                    <p>{product.reason}</p>
+                    <CompetitorPriceEditor
+                      productId={product.id}
+                      productName={product.name}
+                      productSku={product.sku}
+                      productVolumeMl={product.volumeMl}
+                      productVintage={product.vintage}
+                      productAbv={product.abv}
+                      storeTimezone={storeTimezone}
+                      sources={competitorSources}
+                      observations={product.competitorPrices}
+                      onChanged={() => void load(true)}
+                    />
+                  </div>
                 )}
               </li>
             ))}

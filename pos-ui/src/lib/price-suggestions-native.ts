@@ -1,5 +1,6 @@
 import { api, ApiError, type Page } from "@/lib/api";
 import { netMargin, simpleTaxTotals, suggestedListPrice, type SuggestionTax } from "@/lib/price-suggestion-math";
+import { getCompetitorObservations, type CompetitorObservation } from "@/lib/competitor-prices";
 
 export type SuggestionStatus = "ok" | "raise" | "review_stock" | "review_cost" | "review_tax" | "missing_cost" | "fixed_price" | "unsaleable";
 
@@ -7,6 +8,9 @@ export type PriceSuggestionProduct = {
   id: number;
   name: string;
   sku: string;
+  abv: number | null;
+  volumeMl: number | null;
+  vintage: string | null;
   unit: string;
   soldUnits: number | null;
   onHand: number;
@@ -23,6 +27,7 @@ export type PriceSuggestionProduct = {
   suggestedGst?: number | null;
   currentListPrice?: number | null;
   suggestedListPrice?: number | null;
+  competitorPrices: CompetitorObservation[];
 };
 
 export function canBulkEditPriceSuggestion(product: Pick<PriceSuggestionProduct, "status">) {
@@ -52,6 +57,9 @@ type ProductRow = {
   stockQuantity?: number | null;
   performance30d?: Array<number | string | null> | null;
   barcodes?: Array<{ code?: string | null }> | null;
+  abv?: number | string | null;
+  volumeMl?: number | null;
+  vintage?: string | null;
 };
 
 type TaxRateRow = { id: number; amount?: number | string | null };
@@ -81,6 +89,9 @@ export function buildSuggestion(product: ProductRow, marginTarget: number, taxRa
     id: Number(product.id),
     name: product.name,
     sku: sku(product),
+    abv: product.abv == null ? null : Number(product.abv),
+    volumeMl: product.volumeMl == null ? null : Number(product.volumeMl),
+    vintage: product.vintage?.trim() || null,
     unit: "units",
     soldUnits: soldUnitsLast28Days(product.performance30d),
     onHand,
@@ -93,6 +104,7 @@ export function buildSuggestion(product: ProductRow, marginTarget: number, taxRa
     reason: "Shelf price is on target for the selected margin, or cost is not available for a suggestion.",
     currentListPrice: shelf,
     suggestedListPrice: null,
+    competitorPrices: [],
   };
   if (shelf == null || shelf <= 0) {
     return { ...base, status: "unsaleable", reason: "No GST-inclusive shelf price is configured in Orithos." };
@@ -163,7 +175,11 @@ export async function fetchPriceSuggestions(
       api.get<Page<ProductRow>>("/api/products", { page, size: PAGE_SIZE, status: "ACTIVE" }),
       api.get<TaxRateRow[]>("/api/tax-rates"),
     ]);
-    const items = products.items.map((product) => buildSuggestion(product, marginTarget, taxRates));
+    const observations = await getCompetitorObservations(products.items.map((product) => Number(product.id)), true);
+    const items = products.items.map((product) => ({
+      ...buildSuggestion(product, marginTarget, taxRates),
+      competitorPrices: observations.filter((observation) => observation.productId === Number(product.id)),
+    }));
     const nextOffset = page * PAGE_SIZE < products.total ? offset + PAGE_SIZE : null;
     return {
       company: me.name || "Store",
