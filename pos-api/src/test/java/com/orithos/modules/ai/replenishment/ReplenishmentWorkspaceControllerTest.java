@@ -105,6 +105,8 @@ class ReplenishmentWorkspaceControllerTest {
         when(row.getObject("supplier_id", Long.class)).thenReturn(7L);
         when(row.getObject("unit_cost")).thenReturn(2d);
         when(row.getTimestamp("inventory_updated_at")).thenReturn(java.sql.Timestamp.from(java.time.Instant.now()));
+        when(jdbc.queryForObject(anyString(), org.mockito.ArgumentMatchers.eq(Integer.class),
+                org.mockito.ArgumentMatchers.any(Object[].class))).thenReturn(0);
         when(jdbc.query(org.mockito.ArgumentMatchers.any(org.springframework.jdbc.core.PreparedStatementCreator.class),
                 org.mockito.ArgumentMatchers.any(org.springframework.jdbc.core.RowMapper.class)))
                 .thenAnswer(invocation -> {
@@ -118,6 +120,7 @@ class ReplenishmentWorkspaceControllerTest {
         org.junit.jupiter.api.Assertions.assertEquals("REVIEW_DATA", product.recommendationStatus());
         org.junit.jupiter.api.Assertions.assertEquals(0d, product.suggestedQuantity());
         assertTrue(product.dataIssues().contains("NEGATIVE_STOCK"));
+        assertTrue(plan.purchaseWorkflow().disabledReason().contains("Reconcile negative stock"));
     }
 
     @Test
@@ -240,7 +243,7 @@ class ReplenishmentWorkspaceControllerTest {
                         new ReplenishmentWorkspaceView.InventoryHistory("REVIEW", null, "Australia/Melbourne",
                                 1, 1, 1d, null, null, null, java.util.Map.of(), null, null),
                         new ReplenishmentWorkspaceView.Forecast(false, "rules_v1_weighted_velocity", "UNAVAILABLE", null),
-                        new ReplenishmentWorkspaceView.PurchaseWorkflow(true, "DRAFT_RFQ"),
+                        new ReplenishmentWorkspaceView.PurchaseWorkflow(true, "DRAFT_RFQ", null),
                         new ReplenishmentWorkspaceView.CatalogueCoverage("COMPLETE", 0, 0, 0)));
 
         ReplenishmentWorkspaceController controller = new ReplenishmentWorkspaceController(

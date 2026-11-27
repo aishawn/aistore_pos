@@ -132,6 +132,7 @@ type ReplenishmentData = {
   purchaseWorkflow?: {
     draftEnabled: boolean;
     mode: "DRAFT_RFQ" | "READ_ONLY_PREVIEW";
+    disabledReason?: string | null;
   };
 };
 
@@ -851,7 +852,9 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
               type="button"
               onClick={openRfqDialog}
               disabled={!canCreateRfq}
-              title={!draftRfqEnabled ? "Draft RFQ creation is disabled in this environment" : undefined}
+              title={!draftRfqEnabled
+                ? data?.purchaseWorkflow?.disabledReason ?? "Draft RFQ creation is disabled in this environment"
+                : undefined}
               className="inline-flex h-10 w-full shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white outline-none hover:bg-[var(--oh-primary-hover)] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-50 lg:ml-auto lg:w-auto"
             >
               <ShoppingCart size={16} aria-hidden="true" /> {draftRfqEnabled ? "Create draft RFQ" : "Draft RFQ disabled"} <span className="rounded-full bg-black/15 px-1.5 py-0.5 text-xs tabular-nums">{rfqLineCount}</span>

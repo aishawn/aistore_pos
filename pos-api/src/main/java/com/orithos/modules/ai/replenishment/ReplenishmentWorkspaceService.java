@@ -157,8 +157,9 @@ public class ReplenishmentWorkspaceService {
                         "UNAVAILABLE",
                         null),
                 new ReplenishmentWorkspaceView.PurchaseWorkflow(
-                        draftEnabled,
-                        draftEnabled ? "DRAFT_RFQ" : "READ_ONLY_PREVIEW"),
+                        draftEnabled && inventoryMeta.draftEligible(),
+                        draftEnabled && inventoryMeta.draftEligible() ? "DRAFT_RFQ" : "READ_ONLY_PREVIEW",
+                        draftBlockReason(draftEnabled, inventoryMeta)),
                 new ReplenishmentWorkspaceView.CatalogueCoverage(
                         "COMPLETE", rows.size(), rows.size(), forecastEnabled ? 0 : 0));
     }
@@ -318,6 +319,8 @@ public class ReplenishmentWorkspaceService {
         Map<String, Integer> missing = new HashMap<>();
         if (negative > 0) missing.put("availableQty", negative);
         if (staleOrUnverified > 0) missing.put("staleInventory", staleOrUnverified);
+        int allOutletAnomalies = allOutletInventoryAnomalies(outletId);
+        if (allOutletAnomalies > 0) missing.put("outletInventoryAnomalies", allOutletAnomalies);
         SnapshotHistory snapshots = snapshotHistory(outletId, timezone);
 
         ReplenishmentWorkspaceView.InventoryHistory history = new ReplenishmentWorkspaceView.InventoryHistory(
@@ -333,7 +336,53 @@ public class ReplenishmentWorkspaceService {
                 missing.isEmpty() ? Map.of() : Map.copyOf(missing),
                 snapshots.firstBusinessDate(),
                 snapshots.latestBusinessDate());
-        return new InventoryMeta(history);
+        boolean snapshotsReady = snapshots.observedDays() >= RECENT_PERIOD_DAYS
+                && snapshots.gapDays() == 0 && snapshots.invalidSnapshots() == 0;
+        boolean draftEligible = allOutletAnomalies == 0 && negative == 0
+                && captured == expected && everyRecordFresh && snapshotsReady;
+        return new InventoryMeta(history, draftEligible);
+    }
+
+    private int allOutletInventoryAnomalies(long outletId) {
+        Integer count = jdbc.queryForObject("""
+                SELECT COUNT(*) FROM (
+                  SELECT pi.product_id FROM product_inventory pi
+                  JOIN product p ON p.id=pi.product_id
+                  WHERE pi.outlet_id=? AND p.outlet_id<>?
+                  UNION
+                  SELECT pi.product_id FROM product_inventory pi
+                  WHERE pi.outlet_id=? AND NOT EXISTS (
+                    SELECT 1 FROM shopfront_product_mapping m
+                    WHERE m.store_key=(SELECT store_key FROM shopfront_store_mapping
+                                       WHERE outlet_id=? AND enabled=TRUE ORDER BY store_key LIMIT 1)
+                      AND m.pos_product_id=pi.product_id AND m.status='MAPPED')
+                  UNION
+                  SELECT p.id FROM product p
+                  LEFT JOIN product_inventory pi ON pi.product_id=p.id AND pi.outlet_id=?
+                  WHERE p.outlet_id=? AND p.deleted_at IS NULL AND p.status='ACTIVE'
+                    AND COALESCE(p.track_inventory,0)<>0 AND pi.product_id IS NULL
+                ) anomalies
+                """, Integer.class, outletId, outletId, outletId, outletId, outletId, outletId);
+        return count == null ? Integer.MAX_VALUE : Math.max(0, count);
+    }
+
+    private static String draftBlockReason(boolean enabled, InventoryMeta inventory) {
+        if (!enabled) return "Draft RFQ creation is disabled in this environment.";
+        if (inventory.history().missingFields().containsKey("outletInventoryAnomalies")) {
+            return "Resolve outlet inventory mapping and coverage anomalies before creating a draft.";
+        }
+        if (inventory.history().missingFields().containsKey("availableQty")) {
+            return "Reconcile negative stock before creating a replenishment draft.";
+        }
+        if (inventory.history().missingFields().containsKey("staleInventory")
+                || !"FRESH".equals(inventory.history().status())) {
+            return "Refresh complete, current inventory records before creating a replenishment draft.";
+        }
+        if (inventory.history().observedDays() < RECENT_PERIOD_DAYS
+                || inventory.history().gapDays() > 0 || inventory.history().invalidSnapshots() > 0) {
+            return "Collect 28 consecutive complete daily inventory snapshots before creating a draft.";
+        }
+        return null;
     }
 
     private SnapshotHistory snapshotHistory(long outletId, String timezone) {
@@ -418,7 +467,7 @@ public class ReplenishmentWorkspaceService {
                        Instant inventoryUpdatedAt, double sold7d, double recentUnits, double previousUnits,
                        Double unitCost, Double unitPrice, Long supplierId, String supplierName, long supplierLinkCount, double minimumOrder, Integer leadTimeDays) { }
 
-    private record InventoryMeta(ReplenishmentWorkspaceView.InventoryHistory history) { }
+    private record InventoryMeta(ReplenishmentWorkspaceView.InventoryHistory history, boolean draftEligible) { }
     private record SnapshotHistory(int observedDays, int gapDays, int invalidSnapshots,
                                    LocalDate firstBusinessDate, LocalDate latestBusinessDate) { }
 }

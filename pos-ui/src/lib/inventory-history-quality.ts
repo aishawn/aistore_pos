@@ -28,6 +28,7 @@ export function inventoryHistoryFieldLabel(field: string): string {
     cost: "cost",
     leadTimeDays: "supplier lead time",
     staleInventory: "stale or unverified stock records",
+    outletInventoryAnomalies: "cross-outlet, unmapped or missing stock records",
   };
   return labels[field] ?? field;
 }

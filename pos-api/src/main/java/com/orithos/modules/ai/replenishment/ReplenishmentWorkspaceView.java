@@ -82,7 +82,7 @@ public record ReplenishmentWorkspaceView(
             String modelVersion
     ) { }
 
-    public record PurchaseWorkflow(boolean draftEnabled, String mode) { }
+    public record PurchaseWorkflow(boolean draftEnabled, String mode, String disabledReason) { }
 
     public record CatalogueCoverage(String status, int loadedProducts, int eligibleProducts, int forecastedProducts) { }
 }
