@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   mergeVoiceTranscript,
+  getBrowserVoiceLang,
   getStoredVoiceLang,
   recognizeWithWebSpeech,
   resolveVoiceInputMode,
@@ -13,6 +14,23 @@ import {
 test("voice language hints map Australian English and Simplified Chinese to ASR codes", () => {
   assert.equal(toAsrLang("en-AU"), "en");
   assert.equal(toAsrLang("zh-CN"), "zh");
+  assert.equal(toAsrLang("auto"), null);
+});
+
+test("explicit voice language overrides browser preference while auto follows it", () => {
+  const originalNavigator = Object.getOwnPropertyDescriptor(globalThis, "navigator");
+  try {
+    Object.defineProperty(globalThis, "navigator", {
+      configurable: true,
+      value: { language: "en-AU", languages: ["zh-CN", "en-AU"] },
+    });
+    assert.equal(getBrowserVoiceLang("auto"), "zh-CN");
+    assert.equal(getBrowserVoiceLang("en-AU"), "en-AU");
+    assert.equal(getBrowserVoiceLang("zh-CN"), "zh-CN");
+  } finally {
+    if (originalNavigator) Object.defineProperty(globalThis, "navigator", originalNavigator);
+    else Reflect.deleteProperty(globalThis, "navigator");
+  }
 });
 
 test("cloud transcription is preferred and browser speech is a fallback", () => {
@@ -44,8 +62,9 @@ test("voice language preference persists and unavailable browser storage falls b
         setItem: () => { throw new Error("storage disabled"); },
       },
     });
+    assert.equal(getStoredVoiceLang(), "zh-CN");
+    assert.doesNotThrow(() => setStoredVoiceLang("en-AU"));
     assert.equal(getStoredVoiceLang(), "en-AU");
-    assert.doesNotThrow(() => setStoredVoiceLang("zh-CN"));
   } finally {
     if (originalWindow) Object.defineProperty(globalThis, "window", originalWindow);
     else Reflect.deleteProperty(globalThis, "window");

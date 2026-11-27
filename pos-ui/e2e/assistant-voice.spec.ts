@@ -12,7 +12,7 @@ test("voice input stays editable and only queries after manual confirmation", as
       roleCode: "ADMIN",
       permissions: ["ai.assistant"],
     }));
-    localStorage.setItem("orithos.voice.lang", "en-AU");
+    localStorage.setItem("orithos.voice.lang", "auto");
 
     Object.defineProperty(navigator, "mediaDevices", {
       configurable: true,
@@ -85,15 +85,18 @@ test("voice input stays editable and only queries after manual confirmation", as
 
   await page.goto("/assistant");
   const composer = page.locator("[data-assistant-composer]").last();
-  await expect(composer.getByRole("group", { name: "Voice input language" })).toBeVisible();
+  const language = composer.getByRole("group", { name: "Voice input language" });
+  await expect(language).toBeVisible();
+  await expect(language.getByRole("button", { name: "Auto", exact: true })).toHaveAttribute("aria-pressed", "true");
   await composer.getByRole("button", { name: "中文", exact: true }).click();
+  await expect(composer.getByRole("button", { name: "中文", exact: true })).toHaveAttribute("aria-pressed", "true");
   await composer.getByLabel("Ask Orithos AI").fill("库存");
   await composer.getByRole("button", { name: "Voice input" }).click();
   await expect(composer.getByRole("button", { name: "Stop voice input" })).toBeEnabled();
   await composer.getByRole("button", { name: "Stop voice input" }).click();
 
   await expect(composer.getByRole("alert")).toBeVisible();
-  expect(transcriptionRequest).toContain('name="lang"\r\n\r\nzh');
+  expect(transcriptionRequest).toMatch(/name="lang"\s+zh/);
   expect(assistantRequests).toBe(0);
 
   await composer.getByRole("button", { name: "Use browser voice recognition" }).click();
@@ -109,16 +112,18 @@ test("voice input stays editable and only queries after manual confirmation", as
   await composer.getByRole("button", { name: "Voice input" }).click();
   await composer.getByRole("button", { name: "Stop voice input" }).click();
   await expect(composer.getByRole("alert")).toBeVisible();
-  expect(transcriptionRequest).toContain('name="lang"\r\n\r\nen');
+  expect(transcriptionRequest).toMatch(/name="lang"\s+en/);
   await composer.getByRole("button", { name: "Use browser voice recognition" }).click();
   await composer.getByRole("button", { name: "Stop voice input" }).click();
   await expect(input).toHaveValue("库存 库存还有多少？ 库存还有多少？");
   expect(await page.evaluate(() => (window as Window & { __voiceRecognitionLang?: string }).__voiceRecognitionLang)).toBe("en-AU");
   expect(assistantRequests).toBe(0);
 
+  await composer.getByRole("button", { name: "Auto", exact: true }).click();
   await composer.getByRole("button", { name: "Voice input" }).click();
   await composer.getByRole("button", { name: "Stop voice input" }).click();
   await expect(input).toHaveValue("库存 库存还有多少？ 库存还有多少？ Today's sales");
+  expect(transcriptionRequest).not.toContain('name="lang"');
   expect(assistantRequests).toBe(0);
 
   await input.fill("修正后的库存问题");
