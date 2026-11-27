@@ -6,6 +6,7 @@
     <sql id="catalogSelect">
         SELECT p.id,
                p.name,
+               (SELECT pb.code FROM product_barcode pb WHERE pb.product_id = p.id ORDER BY pb.id LIMIT 1) AS barcode,
                p.description,
                p.image,
                p.region AS product_region,

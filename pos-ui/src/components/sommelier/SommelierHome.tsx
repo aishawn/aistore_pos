@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Camera, Search, Sparkles } from "lucide-react";
+import { BookOpenCheck, Camera, Search, Sparkles } from "lucide-react";
 import { SommelierShell } from "@/components/sommelier/SommelierShell";
 import { useOptionalAiAssistant } from "@/lib/ai-assistant";
 import { fetchAiClientConfig } from "@/lib/api";
@@ -59,6 +59,14 @@ export function SommelierHome({ showPosAssistant = false }: { showPosAssistant?:
           <p className="mt-2 text-[14px] leading-6 text-[var(--oh-muted)]">
             Ask a few questions, then recommend three in-stock options at different prices.
           </p>
+        </Link>
+
+        <Link
+          href="/sommelier/profiles"
+          className="flex min-h-12 items-center gap-3 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-4 py-3 text-[14px] text-[var(--oh-text)] transition hover:border-[var(--oh-primary)]"
+        >
+          <BookOpenCheck size={18} className="text-[var(--oh-primary)]" />
+          <span className="font-medium">Wine knowledge · submit and review profiles</span>
         </Link>
 
         <Link

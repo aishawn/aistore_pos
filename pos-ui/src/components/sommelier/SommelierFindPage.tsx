@@ -93,6 +93,7 @@ export function SommelierFindPage() {
   const [error, setError] = useState<string | null>(null);
   const [cards, setCards] = useState<SommelierRecommendCard[]>([]);
   const [emptyReason, setEmptyReason] = useState<string | null>(null);
+  const [knowledgeSummary, setKnowledgeSummary] = useState<number | null>(null);
 
   const idx = STEPS.indexOf(step);
   const profile: SommelierProfilePayload = {
@@ -117,6 +118,7 @@ export function SommelierFindPage() {
       const res = await sommelierRecommend(profile);
       setCards(res.recommendations ?? []);
       setEmptyReason(res.emptyReason);
+      setKnowledgeSummary(res.knowledgeBased ? res.verifiedProfileCount ?? 0 : null);
       setStep("results");
     } catch (e) {
       setError(apiFailureMessage(e, "Could not recommend wines.", "Please sign in again."));
@@ -245,6 +247,11 @@ export function SommelierFindPage() {
 
       {step === "results" && (
         <div className="space-y-4">
+          {knowledgeSummary !== null ? (
+            <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-[13px] font-medium text-emerald-900">
+              Ranked with approved wine knowledge · {knowledgeSummary} verified {knowledgeSummary === 1 ? "profile" : "profiles"}
+            </p>
+          ) : null}
           {emptyReason && cards.length === 0 ? (
             <p className="rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-4 text-[14px] text-[var(--oh-text)]">{emptyReason}</p>
           ) : null}

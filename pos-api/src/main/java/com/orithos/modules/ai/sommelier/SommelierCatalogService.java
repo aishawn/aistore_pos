@@ -101,7 +101,8 @@ public class SommelierCatalogService {
                 nz(row.getStockQuantity()),
                 track,
                 row.getCaseQuantity() == null ? BigDecimal.ONE : row.getCaseQuantity(),
-                profile
+                profile,
+                row.getBarcode()
         );
     }
 

@@ -32,6 +32,7 @@ public interface SommelierProductMapper {
     class CatalogRow {
         private Long id;
         private String name;
+        private String barcode;
         private String description;
         private String image;
         private String productRegion;

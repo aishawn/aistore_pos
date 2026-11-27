@@ -54,6 +54,8 @@ services:
       AI_PROVIDER: ${AI_PROVIDER:-remote}
       AI_SERVICE_BASE_URL: ${AI_SERVICE_BASE_URL:-https://ai.orithos.com.au}
       AI_SERVICE_TOKEN: ${AI_SERVICE_TOKEN:-}
+      AI_WINE_KNOWLEDGE_ENABLED: ${AI_WINE_KNOWLEDGE_ENABLED:-false}
+      AI_WINE_TENANT_HMAC_SECRET: ${AI_WINE_TENANT_HMAC_SECRET:-}
       AI_FORECAST_SERVICE_TOKEN: ${AI_SERVICE_TOKEN:-}
       # AI command parsing/preview is safe to expose for manual testing; execution remains off by default.
       AI_COMMANDS_ENABLED: ${AI_COMMANDS_ENABLED:-true}

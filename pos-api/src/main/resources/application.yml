@@ -125,6 +125,8 @@ app:
   ai:
     # Set true and configure AI_SERVICE_TOKEN to enable the remote AI features.
     enabled: ${AI_ENABLED:false}
+    wine-knowledge:
+      enabled: ${AI_WINE_KNOWLEDGE_ENABLED:false}
     commands:
       enabled: ${AI_COMMANDS_ENABLED:true}
       # Preview can be enabled for manual testing; execution stays off until Orithos UAT,

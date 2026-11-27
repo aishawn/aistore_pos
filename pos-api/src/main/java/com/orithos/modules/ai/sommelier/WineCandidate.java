@@ -16,8 +16,17 @@ public record WineCandidate(
         BigDecimal stockQuantity,
         boolean trackInventory,
         BigDecimal caseQuantity,
-        WineProfile profile
+        WineProfile profile,
+        String gtin
 ) {
+    public WineCandidate(Long productId, String name, String description, String image, String categoryName,
+                         String familyName, String brandName, BigDecimal listPrice, BigDecimal sellPrice,
+                         boolean onPromotion, BigDecimal stockQuantity, boolean trackInventory,
+                         BigDecimal caseQuantity, WineProfile profile) {
+        this(productId, name, description, image, categoryName, familyName, brandName, listPrice, sellPrice,
+                onPromotion, stockQuantity, trackInventory, caseQuantity, profile, null);
+    }
+
     public BigDecimal effectivePrice() {
         return sellPrice != null ? sellPrice : (listPrice != null ? listPrice : BigDecimal.ZERO);
     }

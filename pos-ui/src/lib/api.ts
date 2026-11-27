@@ -1412,6 +1412,66 @@ export interface SommelierRecommendResponse {
   profile: SommelierProfilePayload;
   recommendations: SommelierRecommendCard[];
   emptyReason: string | null;
+  knowledgeBased?: boolean;
+  verifiedProfileCount?: number;
+}
+
+export interface WineProfileProductOption {
+  productId: number;
+  gtin: string | null;
+  name: string;
+  brandName: string | null;
+}
+
+export interface WineKnowledgeClaim {
+  value: string | number | string[];
+  claimId?: string;
+  sourceName?: string;
+  sourceUrl?: string | null;
+  licenseBasis?: string;
+  confidence?: number;
+}
+
+export interface WineKnowledgeProfile {
+  id: string;
+  productId: number | null;
+  gtin: string | null;
+  productName: string;
+  brandName: string | null;
+  vintage: string | null;
+  claims: Record<string, WineKnowledgeClaim>;
+  status: "PENDING" | "APPROVED" | "REJECTED" | "REVOKED";
+  submittedAt: string;
+  reviewReason: string | null;
+}
+
+export function searchWineProfileProducts(q: string) {
+  return api.get<WineProfileProductOption[]>("/api/ai/sommelier/profiles/products", { q });
+}
+
+export function listWineKnowledgeProfiles(status: WineKnowledgeProfile["status"]) {
+  return api.get<{ items: WineKnowledgeProfile[] }>("/api/ai/sommelier/profiles", { status });
+}
+
+export function submitWineKnowledgeProfile(payload: {
+  productId: number;
+  gtin?: string;
+  productName: string;
+  brandName?: string;
+  claims: Array<{
+    field: string;
+    value: string | number | string[];
+    sourceName: string;
+    sourceUrl?: string;
+    licenseBasis: string;
+    confidence: number;
+  }>;
+}) {
+  return api.post<{ id: string; status: string }>("/api/ai/sommelier/profiles", payload);
+}
+
+export function reviewWineKnowledgeProfile(id: string, decision: "APPROVE" | "REJECT" | "REVOKE", reason?: string) {
+  return api.post<{ id: string; status: string }>(`/api/ai/sommelier/profiles/${encodeURIComponent(id)}/review`, { decision, reason });
 }
 
 export interface SommelierWine {

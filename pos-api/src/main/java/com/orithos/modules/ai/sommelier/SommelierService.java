@@ -31,6 +31,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 @Service
 public class SommelierService {
@@ -43,13 +44,23 @@ public class SommelierService {
     private final ObjectMapper objectMapper;
     private final ShopfrontProductOfferService shopfrontOffers;
     private final BusinessTimezoneService timezones;
+    private final WineKnowledgeClient wineKnowledgeClient;
     private final WineMatcher matcher = new WineMatcher();
 
     public SommelierService(SommelierCatalogService catalog,
                             WinePitchService pitchService,
                             SommelierProductMapper mapper,
                             ObjectMapper objectMapper) {
-        this(catalog, pitchService, mapper, objectMapper, null, null);
+        this(catalog, pitchService, mapper, objectMapper, null, null, null);
+    }
+
+    public SommelierService(SommelierCatalogService catalog,
+                            WinePitchService pitchService,
+                            SommelierProductMapper mapper,
+                            ObjectMapper objectMapper,
+                            ShopfrontProductOfferService shopfrontOffers,
+                            BusinessTimezoneService timezones) {
+        this(catalog, pitchService, mapper, objectMapper, shopfrontOffers, timezones, null);
     }
 
     @Autowired
@@ -58,31 +69,155 @@ public class SommelierService {
                             SommelierProductMapper mapper,
                             ObjectMapper objectMapper,
                             ShopfrontProductOfferService shopfrontOffers,
-                            BusinessTimezoneService timezones) {
+                            BusinessTimezoneService timezones,
+                            WineKnowledgeClient wineKnowledgeClient) {
         this.catalog = catalog;
         this.pitchService = pitchService;
         this.mapper = mapper;
         this.objectMapper = objectMapper;
         this.shopfrontOffers = shopfrontOffers;
         this.timezones = timezones;
+        this.wineKnowledgeClient = wineKnowledgeClient;
     }
 
     public RecommendResponse recommend(RecommendRequest request, TenantContext tenant) {
         CustomerWineProfile profile = toProfile(request);
         List<WineCandidate> wines = applySingleBottleOffers(catalog.listWines(tenant), tenant);
         List<WineMatcher.ScoredWine> scored = matcher.match(wines, profile);
+        boolean knowledgeBased = false;
+        int verifiedProfileCount = 0;
+        if (wineKnowledgeClient != null && wineKnowledgeClient.enabled() && tenant != null) {
+            try {
+                List<WineCandidate> eligible = knowledgeCandidates(wines, profile);
+                if (!eligible.isEmpty()) {
+                    Map<String, Object> knowledge = wineKnowledgeClient.recommend(
+                            tenant, knowledgePreferences(profile), knowledgeCandidatePayload(eligible));
+                    KnowledgeRanking ranking = applyKnowledgeRanking(eligible, profile, knowledge);
+                    if (ranking != null && !ranking.items().isEmpty()) {
+                        scored = ranking.items();
+                        knowledgeBased = ranking.verifiedProfileCount() > 0;
+                        verifiedProfileCount = ranking.verifiedProfileCount();
+                    }
+                }
+            } catch (RuntimeException unavailable) {
+                log.info("Wine knowledge service unavailable; using catalogue wine matching");
+            }
+        }
         if (scored.isEmpty()) {
             String reason = wines.isEmpty()
                     ? "No wine products are in this store's catalogue yet."
                     : "Nothing in stock matches that type and budget. Try widening the price range.";
-            return new RecommendResponse(profile, List.of(), reason);
+            return new RecommendResponse(profile, List.of(), reason, knowledgeBased, verifiedProfileCount);
         }
         WineMatcher.TierPick pick = matcher.pickThree(scored);
         List<RecommendCard> cards = new ArrayList<>();
         addCard(cards, pick.goodValue(), "good", "Great Value", profile, pick, tenant);
         addCard(cards, pick.bestMatch(), "best", "Best Match", profile, pick, tenant);
         addCard(cards, pick.premium(), "premium", "Premium Choice", profile, pick, tenant);
-        return new RecommendResponse(profile, List.copyOf(cards), null);
+        return new RecommendResponse(profile, List.copyOf(cards), null, knowledgeBased, verifiedProfileCount);
+    }
+
+    private record KnowledgeRanking(List<WineMatcher.ScoredWine> items, int verifiedProfileCount) {}
+
+    private List<WineCandidate> knowledgeCandidates(List<WineCandidate> wines, CustomerWineProfile profile) {
+        return wines.stream().filter(WineCandidate::inStock).filter(wine -> {
+            BigDecimal price = wine.effectivePrice();
+            return (profile.budgetMin() == null || price.compareTo(profile.budgetMin()) >= 0)
+                    && (profile.budgetMax() == null || price.compareTo(profile.budgetMax()) <= 0);
+        }).toList();
+    }
+
+    private Map<String, Object> knowledgePreferences(CustomerWineProfile profile) {
+        LinkedHashMap<String, Object> preferences = new LinkedHashMap<>();
+        if (profile.hasTypeFilter()) preferences.put("wine_type", profile.wineType());
+        if (profile.dryness() != null) preferences.put("dryness", profile.dryness());
+        if (profile.body() != null) preferences.put("body", profile.body());
+        if (profile.fruitiness() != null) preferences.put("fruitiness", profile.fruitiness());
+        if (profile.oak() != null) preferences.put("oak", profile.oak());
+        if (profile.tannin() != null) preferences.put("tannin", profile.tannin());
+        if (!profile.food().isEmpty()) preferences.put("food_tags", profile.food());
+        return preferences;
+    }
+
+    private List<Map<String, Object>> knowledgeCandidatePayload(List<WineCandidate> wines) {
+        return wines.stream().<Map<String, Object>>map(wine -> {
+            LinkedHashMap<String, Object> candidate = new LinkedHashMap<>();
+            candidate.put("productId", wine.productId());
+            candidate.put("gtin", wine.gtin());
+            candidate.put("name", wine.name());
+            candidate.put("price", wine.effectivePrice().doubleValue());
+            return candidate;
+        }).toList();
+    }
+
+    private KnowledgeRanking applyKnowledgeRanking(List<WineCandidate> candidates, CustomerWineProfile customer,
+                                                    Map<String, Object> response) {
+        if (response == null || !(response.get("recommendations") instanceof List<?> rows)) return null;
+        Map<Long, WineCandidate> byId = new LinkedHashMap<>();
+        candidates.forEach(wine -> byId.put(wine.productId(), wine));
+        List<WineMatcher.ScoredWine> ranked = new ArrayList<>();
+        int verified = 0;
+        for (Object row : rows) {
+            if (!(row instanceof Map<?, ?> item)) continue;
+            Long productId = number(item.get("productId")) == null ? null : number(item.get("productId")).longValue();
+            WineCandidate candidate = productId == null ? null : byId.get(productId);
+            if (candidate == null) continue;
+            boolean approved = "APPROVED".equals(item.get("profileStatus"));
+            WineCandidate enriched = approved ? withVerifiedProfile(candidate, item.get("profile")) : candidate;
+            WineMatcher.ScoredWine baseline = matcher.score(enriched, customer);
+            double match = number(item.get("score")) == null ? 0 : number(item.get("score")).doubleValue() / 100.0;
+            ranked.add(new WineMatcher.ScoredWine(enriched, match, baseline.drynessMatch(), baseline.bodyMatch(),
+                    baseline.foodMatch(), baseline.tasteMatch(), baseline.businessFit(), baseline.confidence()));
+            if (approved) verified++;
+        }
+        return ranked.isEmpty() ? null : new KnowledgeRanking(List.copyOf(ranked), verified);
+    }
+
+    private WineCandidate withVerifiedProfile(WineCandidate wine, Object rawProfile) {
+        Map<?, ?> claims = rawProfile instanceof Map<?, ?> map ? map : Map.of();
+        WineProfile old = wine.profile() == null ? WineProfile.empty(null) : wine.profile();
+        String wineType = claimString(claims, "wine_type", old.wineType());
+        String varietal = claimString(claims, "varietal", old.varietal());
+        String region = claimString(claims, "region", old.region());
+        String vintage = claimString(claims, "vintage", old.vintage());
+        Double dryness = claimNumber(claims, "dryness", old.dryness());
+        Double body = claimNumber(claims, "body", old.body());
+        Double fruitiness = claimNumber(claims, "fruitiness", old.fruitiness());
+        Double oak = claimNumber(claims, "oak", old.oak());
+        Double tannin = claimNumber(claims, "tannin", old.tannin());
+        List<String> aroma = claimTags(claims, "aroma_tags", old.aromaTags());
+        List<String> palate = claimTags(claims, "palate_tags", old.palateTags());
+        List<String> food = claimTags(claims, "food_tags", old.foodTags());
+        String finish = claimString(claims, "finish_note", old.finishNote());
+        boolean inferred = old.inferred() && !claims.keySet().containsAll(
+                List.of("wine_type", "varietal", "region", "vintage", "dryness", "body", "fruitiness", "oak", "tannin"));
+        WineProfile profile = new WineProfile(wineType, varietal, region, vintage, dryness, body, fruitiness,
+                oak, tannin, aroma, palate, food, finish, inferred);
+        return new WineCandidate(wine.productId(), wine.name(), wine.description(), wine.image(), wine.categoryName(),
+                wine.familyName(), wine.brandName(), wine.listPrice(), wine.sellPrice(), wine.onPromotion(),
+                wine.stockQuantity(), wine.trackInventory(), wine.caseQuantity(), profile, wine.gtin());
+    }
+
+    private static String claimString(Map<?, ?> claims, String field, String fallback) {
+        Object claim = claims.get(field);
+        return claim instanceof Map<?, ?> map && map.get("value") instanceof String value ? value : fallback;
+    }
+
+    private static Double claimNumber(Map<?, ?> claims, String field, Double fallback) {
+        Object claim = claims.get(field);
+        Object value = claim instanceof Map<?, ?> map ? map.get("value") : null;
+        return value instanceof Number number ? number.doubleValue() : fallback;
+    }
+
+    private static List<String> claimTags(Map<?, ?> claims, String field, List<String> fallback) {
+        Object claim = claims.get(field);
+        Object value = claim instanceof Map<?, ?> map ? map.get("value") : null;
+        if (!(value instanceof List<?> items)) return fallback;
+        return items.stream().filter(String.class::isInstance).map(String.class::cast).toList();
+    }
+
+    private static Number number(Object value) {
+        return value instanceof Number number ? number : null;
     }
 
     public IdentifyResponse identify(String q, TenantContext tenant) {
@@ -190,15 +325,19 @@ public class SommelierService {
             throw new BusinessException(40000, "reaction must be liked, rejected, or bought");
         }
         requireWine(request.productId(), tenant);
-        String json = null;
-        try {
-            if (request.profile() != null) {
-                json = objectMapper.writeValueAsString(request.profile());
+        if (wineKnowledgeClient != null && wineKnowledgeClient.enabled()) {
+            String aggregateReaction = switch (reaction) {
+                case "liked" -> "helpful";
+                case "rejected" -> "not_fit";
+                case "bought" -> "chosen";
+                default -> throw new IllegalStateException("validated reaction is missing a mapping");
+            };
+            try {
+                wineKnowledgeClient.feedback(tenant, request.productId(), aggregateReaction);
+            } catch (RuntimeException unavailable) {
+                log.info("Wine feedback aggregation unavailable");
             }
-        } catch (Exception e) {
-            log.debug("Could not serialize sommelier profile type={}", e.getClass().getSimpleName());
         }
-        mapper.insertFeedback(tenant.requireOutletId(), tenant.userId(), request.productId(), reaction, json);
     }
 
     private void addCard(List<RecommendCard> cards, WineMatcher.ScoredWine scored, String tier, String badge,
@@ -346,7 +485,7 @@ public class SommelierService {
         if (offerPrice.compareTo(currentSellPrice) >= 0) return wine;
         return new WineCandidate(wine.productId(), wine.name(), wine.description(), wine.image(),
                 wine.categoryName(), wine.familyName(), wine.brandName(), wine.listPrice(), offerPrice, true,
-                wine.stockQuantity(), wine.trackInventory(), wine.caseQuantity(), wine.profile());
+                wine.stockQuantity(), wine.trackInventory(), wine.caseQuantity(), wine.profile(), wine.gtin());
     }
 
     private WineCandidate requireWine(Long id, TenantContext tenant) {
