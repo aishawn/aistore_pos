@@ -22,6 +22,14 @@ test("synthetic ASR benchmark has 50 utterances per target language and five per
   }
 });
 
+test("code-switch ASR cases use automatic language detection like the default voice input", () => {
+  const mixedLanguageCases = transcriptionBenchmarkCases.filter(({ category }) => category === "code-switch");
+  assert.equal(mixedLanguageCases.length, 10);
+  assert.ok(mixedLanguageCases.every(({ languageHint }) => languageHint === "auto"));
+  assert.ok(transcriptionBenchmarkCases.filter(({ category }) => category !== "code-switch")
+    .every(({ languageHint, lang }) => languageHint === lang));
+});
+
 test("benchmark reports language WER and critical-entity accuracy without transcript output", () => {
   const exact = transcriptionBenchmarkCases.map((testCase) => ({ caseId: testCase.id, transcript: testCase.expectedText }));
   const metrics = evaluateTranscriptionBenchmark(transcriptionBenchmarkCases, exact);

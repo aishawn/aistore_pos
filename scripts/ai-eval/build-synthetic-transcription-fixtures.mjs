@@ -15,9 +15,10 @@ fs.writeFileSync(manifestPath, `${JSON.stringify({
   generatedAt: new Date().toISOString(),
   audioStorage: "local ignored directory",
   notes: ["English uses the en-AU Microsoft Edge Natasha neural voice; Chinese uses the installed zh-CN Microsoft Huihui voice."],
-  cases: transcriptionBenchmarkCases.map(({ id, lang, voiceLocale, category, utterance, expectedText, criticalEntities }) => ({
+  cases: transcriptionBenchmarkCases.map(({ id, lang, languageHint, voiceLocale, category, utterance, expectedText, criticalEntities }) => ({
     id,
     lang,
+    languageHint,
     voiceLocale,
     category,
     utterance,

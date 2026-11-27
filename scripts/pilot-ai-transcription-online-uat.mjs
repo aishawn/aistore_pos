@@ -169,7 +169,7 @@ try {
       const response = await context.request.post(`${base}/api/ai/transcribe`, {
         multipart: {
           file: { name: path.basename(testCase.fixture), mimeType, buffer: bytes },
-          lang: testCase.lang,
+          lang: testCase.languageHint ?? testCase.lang,
         },
         headers: { Origin: base },
         timeout: 120000,

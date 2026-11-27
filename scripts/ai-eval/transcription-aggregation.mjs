@@ -48,13 +48,13 @@ export function transcriptionAudioFingerprints(cases, directory) {
 }
 
 export function transcriptionDatasetId(cases, audioFingerprints = {}) {
-  const dataset = cases.map(({ id, lang, voiceLocale, category, expectedText, criticalEntities, audioFile }) => {
+  const dataset = cases.map(({ id, lang, languageHint, voiceLocale, category, expectedText, criticalEntities, audioFile }) => {
     const audioFingerprint = audioFile ? audioFingerprints[id] : null;
     if (audioFile && (typeof audioFingerprint !== "string" || !audioFingerprint.trim())) {
       throw new Error(`audio fingerprint is required for case ${id}`);
     }
     return {
-      id, lang, voiceLocale, category, expectedText, criticalEntities: criticalEntities ?? {}, audioFingerprint,
+      id, lang, languageHint: languageHint ?? lang, voiceLocale, category, expectedText, criticalEntities: criticalEntities ?? {}, audioFingerprint,
     };
   });
   return `sha256:${createHash("sha256").update(stableStringify(dataset)).digest("hex")}`;

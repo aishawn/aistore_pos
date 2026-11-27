@@ -108,6 +108,7 @@ export const transcriptionBenchmarkCases = [
   ...enCases.map(([category, utterance, criticalEntities], index) => ({
     id: `en-${String(index + 1).padStart(2, "0")}`,
     lang: "en-AU",
+    languageHint: category === "code-switch" ? "auto" : "en-AU",
     voiceLocale: "en-AU",
     category,
     utterance,
@@ -117,6 +118,7 @@ export const transcriptionBenchmarkCases = [
   ...zhCases.map(([category, utterance, criticalEntities], index) => ({
     id: `zh-${String(index + 1).padStart(2, "0")}`,
     lang: "zh-CN",
+    languageHint: category === "code-switch" ? "auto" : "zh-CN",
     voiceLocale: "zh-CN",
     category,
     utterance,

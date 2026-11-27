@@ -61,6 +61,10 @@ test("dataset identity changes when an audio fixture changes and requires its fi
     transcriptionDatasetId(cases, { "en-audio": "sha256:audio-one" }),
     transcriptionDatasetId(cases, { "en-audio": "sha256:audio-two" }),
   );
+  assert.notEqual(
+    transcriptionDatasetId([{ ...cases[0], languageHint: "auto" }], { "en-audio": "sha256:audio-one" }),
+    transcriptionDatasetId([{ ...cases[0], languageHint: "en-AU" }], { "en-audio": "sha256:audio-one" }),
+  );
 });
 
 test("conflicting duplicate case statistics are rejected", () => {
