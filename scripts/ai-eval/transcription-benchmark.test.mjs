@@ -78,6 +78,35 @@ test("critical number and date accuracy accepts equivalent spoken and numeric fo
   assert.equal(metrics["zh-CN"].criticalEntityTypes.dates.accuracy, 1);
 });
 
+test("critical English date accuracy accepts ordinal digits and weekday ordinals", () => {
+  const cases = [
+    {
+      id: "month-ordinal",
+      lang: "en-AU",
+      expectedText: "Show stock as of the third of August twenty twenty-six.",
+      category: "dates",
+      criticalEntities: { dates: ["third of August twenty twenty-six"] },
+    },
+    {
+      id: "weekday-ordinal",
+      lang: "en-AU",
+      expectedText: "Compare sales from Monday the eighth to Friday the twelfth of September.",
+      category: "dates",
+      criticalEntities: { dates: ["Monday the eighth", "Friday the twelfth of September"] },
+    },
+  ];
+  const equivalent = evaluateTranscriptionBenchmark(cases, [
+    { caseId: "month-ordinal", transcript: "Show stock as of August 3rd 2026." },
+    { caseId: "weekday-ordinal", transcript: "Compare sales from Monday 8th to Friday 12th September." },
+  ]);
+  assert.equal(equivalent["en-AU"].criticalEntityTypes.dates.accuracy, 1);
+
+  const wrongWeekday = evaluateTranscriptionBenchmark([cases[1]], [
+    { caseId: "weekday-ordinal", transcript: "Compare sales from Tuesday 8th to Friday 12th September." },
+  ]);
+  assert.equal(wrongWeekday["en-AU"].criticalEntityTypes.dates.accuracy, 0.5);
+});
+
 test("quality gate passes target-locale samples and blocks mismatched English synthesis", () => {
   const transcripts = transcriptionBenchmarkCases.map((testCase) => ({ caseId: testCase.id, transcript: testCase.expectedText }));
   const metrics = evaluateTranscriptionBenchmark(transcriptionBenchmarkCases, transcripts);

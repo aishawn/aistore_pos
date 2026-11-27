@@ -219,11 +219,38 @@ for (let day = 21; day <= 31; day++) {
   ordinalNumbers.set(day === 30 ? "thirtieth" : day === 31 ? "thirty first" : `${tens} ${unitWord}`, day);
 }
 
+function parseEnglishDateDay(text) {
+  const value = String(text).toLocaleLowerCase("en-AU").trim();
+  const numericOrdinal = value.match(/^(\d{1,2})(?:st|nd|rd|th)$/);
+  if (numericOrdinal) return Number(numericOrdinal[1]);
+  return Number(value) || ordinalNumbers.get(value) || parseEnglishNumber(value);
+}
+
 function dateKeys(text, lang) {
   const source = String(text).normalize("NFKC").toLocaleLowerCase(lang);
   const keys = new Set();
   const english = source.replace(/\bof\b|\bthe\b/g, " ").replace(/[,]/g, " ");
   const monthPattern = [...monthNumbers.keys()].join("|");
+  const weekdays = new Map([
+    ["sunday", 0], ["sun", 0], ["monday", 1], ["mon", 1], ["tuesday", 2], ["tue", 2], ["tues", 2],
+    ["wednesday", 3], ["wed", 3], ["thursday", 4], ["thu", 4], ["thur", 4], ["thurs", 4],
+    ["friday", 5], ["fri", 5], ["saturday", 6], ["sat", 6],
+  ]);
+  const weekdayPattern = [...weekdays.keys()].sort((left, right) => right.length - left.length).join("|");
+  const dayPattern = [...ordinalNumbers.keys()].sort((left, right) => right.length - left.length).join("|");
+  const weekdayDatePattern = new RegExp("\\b(" + weekdayPattern + ")\\s+(?:the\\s+)?(" + dayPattern + "|\\d{1,2}(?:st|nd|rd|th)?)\\b", "g");
+  for (const match of english.matchAll(weekdayDatePattern)) {
+    const day = parseEnglishDateDay(match[2]);
+    if (day >= 1 && day <= 31) keys.add("weekday-" + weekdays.get(match[1]) + "-" + day);
+  }
+  for (const match of english.matchAll(new RegExp("(" + monthPattern + ")\\s+(\\d{1,2})(?:st|nd|rd|th)", "g"))) {
+    const day = Number(match[2]);
+    if (day >= 1 && day <= 31) keys.add(monthNumbers.get(match[1]) + "-" + day);
+  }
+  for (const match of english.matchAll(new RegExp("(\\d{1,2})(?:st|nd|rd|th)\\s+(" + monthPattern + ")", "g"))) {
+    const day = Number(match[1]);
+    if (day >= 1 && day <= 31) keys.add(monthNumbers.get(match[2]) + "-" + day);
+  }
   for (const match of english.matchAll(new RegExp(`(${monthPattern})\\s+(\\d{1,2}|[a-z]+(?:\\s+[a-z]+)?)|([a-z]+(?:\\s+[a-z]+)?)\\s+(${monthPattern})`, "g"))) {
     const month = monthNumbers.get(match[1] ?? match[4]);
     const dayText = (match[2] ?? match[3]).replace(/\b\w+\b/g, (word) => word);
