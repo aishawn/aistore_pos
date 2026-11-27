@@ -15,6 +15,10 @@ public final class ShardRoutingDataSource extends AbstractRoutingDataSource impl
         this.shardPools = Map.copyOf(shardPools);
     }
 
+    Map<String, HikariDataSource> businessShardDataSources() {
+        return shardPools;
+    }
+
     @Override
     protected Object determineCurrentLookupKey() {
         TenantHolder.ResolvedTenant tenant = TenantHolder.get();
