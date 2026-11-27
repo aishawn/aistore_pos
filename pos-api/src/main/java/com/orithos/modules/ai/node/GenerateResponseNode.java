@@ -34,6 +34,10 @@ public class GenerateResponseNode implements NodeAction {
             If tools are unavailable, explain which screen to use instead.
             """;
 
+    private static final String TURN_LANGUAGE_POLICY = """
+            Respond in the same language as the latest user message. If the user explicitly asks for a different response language, follow that request for this turn.
+            """;
+
     private final ChatClient chatClient;
     private final IntentConfigService configService;
     private final AiProperties properties;
@@ -100,9 +104,10 @@ public class GenerateResponseNode implements NodeAction {
         }
 
         var snapshot = configService == null ? null : configService.getSnapshot();
-        String system = snapshot == null
+        String configuredSystem = snapshot == null
                 ? FALLBACK_RESPOND
                 : snapshot.promptContent(IntentConfigService.PROMPT_RESPOND, FALLBACK_RESPOND);
+        String system = configuredSystem + "\n" + TURN_LANGUAGE_POLICY;
         String history = state.value("conversation_history", String.class).orElse("");
         String storeContext = state.value("store_context", String.class).orElse("");
 

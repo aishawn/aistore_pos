@@ -6,14 +6,11 @@ import { transcribeAudio } from "@/lib/api";
 import {
   canUseMediaRecorder,
   canUseWebSpeech,
-  getStoredVoiceLang,
+  getBrowserVoiceLang,
   mergeVoiceTranscript,
   recognizeWithWebSpeech,
   resolveVoiceInputMode,
-  setStoredVoiceLang,
   startMediaRecording,
-  toAsrLang,
-  type VoiceLang,
 } from "@/lib/voice";
 
 /** Shared, editable composer. Attachments are included as text in the chat request. */
@@ -42,12 +39,10 @@ export function AssistantComposer({ value, onChange, onSend, onCancel, cancelabl
   const voiceBusy = useRef(false);
   const sendBusy = useRef(false);
   const latestValue = useRef(value);
-  const [voiceLang, setVoiceLang] = useState<VoiceLang>("en-AU");
   const [browserSpeechAvailable, setBrowserSpeechAvailable] = useState(false);
 
   useEffect(() => { latestValue.current = value; }, [value]);
   useEffect(() => {
-    setVoiceLang(getStoredVoiceLang());
     setBrowserSpeechAvailable(canUseWebSpeech());
   }, []);
 
@@ -93,7 +88,7 @@ export function AssistantComposer({ value, onChange, onSend, onCancel, cancelabl
       if (!hadSpeech && blob.size < 1500) throw new Error("No speech captured. Please try again.");
       setStatus("Transcribing…");
       const ext = mimeType.includes("mp4") ? "mp4" : mimeType.includes("ogg") ? "ogg" : "webm";
-      const result = await transcribeAudio(blob, toAsrLang(voiceLang), `voice.${ext}`);
+      const result = await transcribeAudio(blob, null, `voice.${ext}`);
       if (id !== session.current) return;
       onChange(mergeVoiceTranscript(latestValue.current, result.text));
       field.current?.focus();
@@ -113,7 +108,7 @@ export function AssistantComposer({ value, onChange, onSend, onCancel, cancelabl
     try {
       setStatus("Listening… click again to finish");
       setRecording(true);
-      const recognition = recognizeWithWebSpeech(voiceLang);
+      const recognition = recognizeWithWebSpeech(getBrowserVoiceLang());
       stop.current = recognition.stop;
       const transcript = await recognition.done;
       if (id !== session.current) return;
@@ -132,11 +127,6 @@ export function AssistantComposer({ value, onChange, onSend, onCancel, cancelabl
         setStatus(null);
       }
     }
-  }
-
-  function changeVoiceLang(lang: VoiceLang) {
-    setVoiceLang(lang);
-    setStoredVoiceLang(lang);
   }
 
   async function send() {
@@ -164,10 +154,6 @@ export function AssistantComposer({ value, onChange, onSend, onCancel, cancelabl
   const button = "flex h-11 w-11 shrink-0 items-center justify-center rounded-full cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-40";
   return (
     <div className="w-full min-w-0" data-assistant-composer>
-      {voiceEnabled && <div className="mb-2 flex justify-end" role="group" aria-label="Voice input language">
-        <button type="button" disabled={locked || voiceBusyState} aria-pressed={voiceLang === "en-AU"} onClick={() => changeVoiceLang("en-AU")} className={`h-9 min-w-12 rounded-l border px-3 text-xs disabled:opacity-50 ${voiceLang === "en-AU" ? "border-[var(--oh-primary)] bg-[var(--oh-orange-light)] text-[var(--oh-primary)]" : "border-[var(--oh-border)] bg-white text-[var(--oh-muted)]"}`}>EN</button>
-        <button type="button" disabled={locked || voiceBusyState} aria-pressed={voiceLang === "zh-CN"} onClick={() => changeVoiceLang("zh-CN")} className={`h-9 min-w-12 rounded-r border border-l-0 px-3 text-xs disabled:opacity-50 ${voiceLang === "zh-CN" ? "border-[var(--oh-primary)] bg-[var(--oh-orange-light)] text-[var(--oh-primary)]" : "border-[var(--oh-border)] bg-white text-[var(--oh-muted)]"}`}>中文</button>
-      </div>}
       {files.length > 0 && <div className="mb-2 flex flex-wrap gap-2 px-3">{files.map((file, index) => <span key={index} className="flex max-w-full items-center gap-1 rounded-full border border-[var(--oh-border)] bg-white px-3 text-xs text-[var(--oh-text)]"><span className="truncate">{file.name}</span><button type="button" disabled={locked} aria-label={`Remove ${file.name}`} onClick={() => setFiles(files.filter((_, i) => i !== index))} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"><X size={14} /></button></span>)}</div>}
       <form className="flex min-w-0 items-center gap-1 rounded-full border border-[var(--oh-border)] bg-white p-1.5 shadow-sm focus-within:border-[var(--oh-primary)] focus-within:ring-2 focus-within:ring-[var(--oh-orange-muted)] sm:gap-2" onSubmit={event => { event.preventDefault(); void send(); }}>
         <input ref={picker} type="file" multiple accept=".txt,.csv,.md,.json,.tsv,.log" className="hidden" aria-label="Choose attachments" onChange={event => {

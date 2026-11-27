@@ -38,6 +38,13 @@ export function toAsrLang(lang: VoiceLang): string {
   return lang.startsWith("zh") ? "zh" : "en";
 }
 
+/** The browser speech fallback needs a locale; cloud transcription auto-detects. */
+export function getBrowserVoiceLang(): VoiceLang {
+  if (typeof navigator === "undefined") return "en-AU";
+  const preferredLanguage = navigator.languages?.[0] || navigator.language;
+  return preferredLanguage?.toLowerCase().startsWith("zh") ? "zh-CN" : "en-AU";
+}
+
 export function pickRecorderMimeType(): string | undefined {
   if (typeof MediaRecorder === "undefined") return undefined;
   const candidates = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg"];
