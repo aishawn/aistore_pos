@@ -7,6 +7,7 @@ import {
   selectTranscriptionUatCases,
   summarizeTranscriptionUatResults,
   transcriptionRequestShouldStop,
+  transcriptionMimeTypeForFile,
   transcriptionRuntimeMatchesSource,
   transcriptionUatCasesForRuntime,
 } from "./ai-eval/transcription-uat-contract.mjs";
@@ -156,10 +157,18 @@ try {
         continue;
       }
       const bytes = fs.readFileSync(testCase.fixture);
+      let mimeType;
+      try {
+        mimeType = transcriptionMimeTypeForFile(testCase.fixture);
+      } catch {
+        record("audio fixture format", "FAIL", `unsupported audio extension for case=${testCase.id}`);
+        recordSample(testCase, "FAIL");
+        continue;
+      }
       const startedAt = Date.now();
       const response = await context.request.post(`${base}/api/ai/transcribe`, {
         multipart: {
-          file: { name: path.basename(testCase.fixture), mimeType: "audio/wav", buffer: bytes },
+          file: { name: path.basename(testCase.fixture), mimeType, buffer: bytes },
           lang: testCase.lang,
         },
         headers: { Origin: base },

@@ -1,3 +1,23 @@
+import path from "node:path";
+
+const AUDIO_MIME_TYPES = new Map([
+  [".wav", "audio/wav"],
+  [".webm", "audio/webm"],
+  [".mp3", "audio/mpeg"],
+  [".mp4", "audio/mp4"],
+  [".m4a", "audio/mp4"],
+  [".ogg", "audio/ogg"],
+  [".aac", "audio/aac"],
+  [".flac", "audio/flac"],
+]);
+
+export function transcriptionMimeTypeForFile(filename) {
+  const extension = path.extname(filename).toLowerCase();
+  const mimeType = AUDIO_MIME_TYPES.get(extension);
+  if (!mimeType) throw new RangeError(`unsupported audio file extension: ${extension || "<none>"}`);
+  return mimeType;
+}
+
 export function transcriptionRuntimeMatchesSource(version, sourceCommit, worktreeDirty = false) {
   if (!version || worktreeDirty || typeof sourceCommit !== "string" || !sourceCommit) return false;
   const expected = sourceCommit.toLowerCase();

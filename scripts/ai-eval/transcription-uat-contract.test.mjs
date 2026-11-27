@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   selectTranscriptionUatCases,
+  transcriptionMimeTypeForFile,
   summarizeTranscriptionUatResults,
   transcriptionRequestShouldStop,
   transcriptionRuntimeMatchesSource,
@@ -30,6 +31,21 @@ test("online transcription evaluation has an explicit bounded request budget", (
   assert.deepEqual(selectTranscriptionUatCases(cases, 10, 3), cases.slice(10, 13));
   assert.throws(() => selectTranscriptionUatCases(cases, 0, 101), /between 1 and 100/);
   assert.throws(() => selectTranscriptionUatCases(cases, -1, 2), /nonnegative integer/);
+});
+
+test("online transcription uploads use a supported MIME type inferred from the audio extension", () => {
+  for (const [filename, mimeType] of [
+    ["sample.wav", "audio/wav"],
+    ["sample.WEBM", "audio/webm"],
+    ["sample.mp3", "audio/mpeg"],
+    ["sample.mp4", "audio/mp4"],
+    ["sample.m4a", "audio/mp4"],
+    ["sample.ogg", "audio/ogg"],
+    ["sample.aac", "audio/aac"],
+    ["sample.flac", "audio/flac"],
+  ]) assert.equal(transcriptionMimeTypeForFile(filename), mimeType);
+  assert.throws(() => transcriptionMimeTypeForFile("sample.unknown"), /unsupported audio file extension/);
+  assert.throws(() => transcriptionMimeTypeForFile("no-extension"), /unsupported audio file extension/);
 });
 
 test("online ASR requests stop after provider quota exhaustion", () => {
