@@ -1081,6 +1081,61 @@ export function askAssistant(
   );
 }
 
+export interface AiManagerDailyBrief {
+  id: number;
+  businessDate: string;
+  timezone: string;
+  dataAsOf: string | null;
+  dataQuality: {
+    status: string;
+    expectedProducts: number | null;
+    capturedProducts: number | null;
+    productCoverage: number | null;
+    observedDays: number | null;
+    gapDays: number | null;
+    invalidSnapshots: number | null;
+  };
+  revision: number;
+  modelStatus: string;
+  summaryEn: string;
+  summaryZh: string;
+  cards: AiManagerDailyBriefCard[];
+  createdAt: string | null;
+}
+
+export interface AiManagerDailyBriefCard {
+  id: string;
+  type: string;
+  priority: number;
+  titleEn: string;
+  titleZh: string;
+  summaryEn: string;
+  summaryZh: string;
+  productId: number | null;
+  productName: string | null;
+  evidence: Record<string, unknown>;
+  detailsHref: string;
+  actionEn: string;
+  actionZh: string;
+  requiresReview: boolean;
+}
+
+export function fetchAiManagerDailyBrief(): Promise<AiManagerDailyBrief> {
+  return api.get<AiManagerDailyBrief>("/api/ai/manager/daily-brief");
+}
+
+export function refreshAiManagerDailyBrief(): Promise<AiManagerDailyBrief> {
+  return api.post<AiManagerDailyBrief>("/api/ai/manager/daily-brief/refresh");
+}
+
+export function sendAiManagerDailyBriefFeedback(
+  briefId: number,
+  cardId: string,
+  status: "CONFIRMED" | "INVALID" | "RESOLVED",
+): Promise<void> {
+  return api.post<void>(`/api/ai/manager/daily-brief/${briefId}/feedback`, { cardId, status });
+}
+
 export interface AiChatThreadSummary {
   id: number | string;
   sessionKey: string;

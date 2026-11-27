@@ -45,6 +45,10 @@ public class AiReportSchemaMigrator implements CommandLineRunner {
             log.info("AI report views applied.");
             ensureAuditTable();
             seedPermissions();
+            ResourceDatabasePopulator briefPopulator = new ResourceDatabasePopulator();
+            briefPopulator.setSeparator(";");
+            briefPopulator.addScript(new ClassPathResource("db/migration_ai_manager_brief.sql"));
+            DatabasePopulatorUtils.execute(briefPopulator, dataSource);
             ensureSnapshotTable();
             if (provisioner.shouldProvisionAllOnStartup()) {
                 provisionTenantSchemas();
@@ -61,12 +65,14 @@ public class AiReportSchemaMigrator implements CommandLineRunner {
             st.executeUpdate("""
                     INSERT INTO permission (id, name, safe_name, section)
                     VALUES (9101, 'AI Report Query', 'ai.report.query', 'AI'),
-                           (9102, 'AI Report Cost', 'ai.report.cost', 'AI')
+                           (9102, 'AI Report Cost', 'ai.report.cost', 'AI'),
+                           (9270, 'AI manager daily brief', 'ai.manager.brief.read', 'AI')
                     ON CONFLICT DO NOTHING
                     """);
             st.executeUpdate("""
                     INSERT INTO role_permission (role_id, permission_id)
-                    SELECT r.id, 9101 FROM role r
+                    SELECT r.id, permission_id FROM role r CROSS JOIN (VALUES (9101), (9270)) p(permission_id)
+                    WHERE p.permission_id = 9101 OR UPPER(COALESCE(r.managed_id, '')) IN ('MANAGER', 'ADMIN')
                     ON CONFLICT DO NOTHING
                     """);
         }

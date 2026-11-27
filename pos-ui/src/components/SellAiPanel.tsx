@@ -9,6 +9,7 @@ import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react"
 import { AssistantComposer } from "@/components/AssistantComposer";
 import { AssistantShopfrontSync } from "@/components/AssistantShopfrontSync";
 import { AiCommandPreviewCard } from "@/components/ai/AiCommandPreviewCard";
+import { ManagerDailyBriefPanel } from "@/components/ai/ManagerDailyBriefPanel";
 import { OrithosLogo } from "@/components/OrithosLogo";
 import { createPortal } from "react-dom";
 import Link from "next/link";
@@ -1513,6 +1514,7 @@ export function SellAiPanel({
         {historyError && <p role="alert" className="relative z-10 px-4 py-2 text-sm text-rose-700">{historyError}</p>}
         {historyLoading && <p role="status" className="relative z-10 px-4 py-2 text-sm">Loading chat…</p>}
         <div ref={scrollRef} aria-live="polite" aria-atomic="false" className="relative z-10 min-h-0 flex-1 overflow-y-auto px-4 pb-32 sm:px-8 lg:px-10">
+          {workspace && pagePresentation && <ManagerDailyBriefPanel />}
           {historyOpen ? <HistoryView loading={historyLoading || busy} error={historyError} threads={historyThreads} onBack={() => setHistoryOpen(false)} onSelect={(id) => void loadHistoryThread(id)} onRefresh={() => void openHistory()} /> : (
             <div className={cn("mx-auto flex min-h-full w-full max-w-[1080px] flex-col py-6", messages.length > 1 ? "justify-start" : "justify-center sm:py-12")}>
               {messages.length <= 1 && <div className="mb-5 text-center sm:mb-10"><div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full border border-white/80 bg-[var(--oh-surface-elevated)]/55 text-[#ef681b] shadow-[0_12px_40px_rgba(245,120,55,.16)] backdrop-blur sm:mb-5 sm:h-20 sm:w-20"><Sparkles size={32} strokeWidth={1.7} /></div><h1 className="text-[28px] font-semibold tracking-[-0.04em] text-[#142239] dark:text-[var(--oh-text)] sm:text-[42px]">Hello, I’m <span className="text-[var(--oh-primary)]">Orithos AI</span></h1><p className="mt-1.5 text-[16px] text-[#52627a] dark:text-[var(--oh-text-secondary)] sm:mt-2 sm:text-[22px]">How can I help with your store today?</p></div>}

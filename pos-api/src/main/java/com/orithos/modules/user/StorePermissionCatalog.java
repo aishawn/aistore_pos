@@ -58,6 +58,7 @@ public final class StorePermissionCatalog {
             new Def(9263, "AI customer changes", "ai.command.customer", "AI"),
             new Def(9264, "AI price changes", "ai.command.price", "AI"),
             new Def(9265, "AI replenishment suggestions", "ai.command.replenishment", "AI"),
+            new Def(9270, "AI manager daily brief", "ai.manager.brief.read", "AI"),
             new Def(9101, "AI Report Query", "ai.report.query", "AI"),
             new Def(9102, "AI Report Cost", "ai.report.cost", "AI"),
 
