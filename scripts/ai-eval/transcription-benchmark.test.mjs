@@ -102,9 +102,13 @@ test("critical English date accuracy accepts ordinal digits and weekday ordinals
   assert.equal(equivalent["en-AU"].criticalEntityTypes.dates.accuracy, 1);
 
   const wrongWeekday = evaluateTranscriptionBenchmark([cases[1]], [
-    { caseId: "weekday-ordinal", transcript: "Compare sales from Tuesday 8th to Friday 12th September." },
+    { caseId: "weekday-ordinal", transcript: "Compare sales from Monday 8th to Saturday 12th September." },
   ]);
   assert.equal(wrongWeekday["en-AU"].criticalEntityTypes.dates.accuracy, 0.5);
+  const wrongMonth = evaluateTranscriptionBenchmark([cases[1]], [
+    { caseId: "weekday-ordinal", transcript: "Compare sales from Monday 8th to Friday 12th October." },
+  ]);
+  assert.equal(wrongMonth["en-AU"].criticalEntityTypes.dates.accuracy, 0.5);
 });
 
 test("quality gate passes target-locale samples and blocks mismatched English synthesis", () => {

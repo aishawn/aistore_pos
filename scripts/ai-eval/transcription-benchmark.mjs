@@ -251,6 +251,10 @@ function dateKeys(text, lang) {
     const day = Number(match[1]);
     if (day >= 1 && day <= 31) keys.add(monthNumbers.get(match[2]) + "-" + day);
   }
+  for (const match of english.matchAll(new RegExp("\\b(" + dayPattern + ")\\s+(" + monthPattern + ")\\b", "g"))) {
+    const day = parseEnglishDateDay(match[1]);
+    if (day >= 1 && day <= 31) keys.add(monthNumbers.get(match[2]) + "-" + day);
+  }
   for (const match of english.matchAll(new RegExp(`(${monthPattern})\\s+(\\d{1,2}|[a-z]+(?:\\s+[a-z]+)?)|([a-z]+(?:\\s+[a-z]+)?)\\s+(${monthPattern})`, "g"))) {
     const month = monthNumbers.get(match[1] ?? match[4]);
     const dayText = (match[2] ?? match[3]).replace(/\b\w+\b/g, (word) => word);
@@ -276,6 +280,11 @@ function entityMatches(transcript, value, lang, entityType) {
   if (entityType === "dates") {
     const expectedKeys = dateKeys(value, lang);
     const transcriptKeys = dateKeys(transcript, lang);
+    const expectedWeekday = [...expectedKeys].find((key) => key.startsWith("weekday-"));
+    const expectedCalendarDate = [...expectedKeys].find((key) => /^\d{1,2}-\d{1,2}$/.test(key));
+    if (expectedWeekday && expectedCalendarDate) {
+      return transcriptKeys.has(expectedWeekday) && transcriptKeys.has(expectedCalendarDate);
+    }
     if (expectedKeys.size && [...expectedKeys].some((key) => transcriptKeys.has(key))) return true;
   }
   if (!/^\d+$/.test(String(value))) return false;
