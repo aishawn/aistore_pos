@@ -28,7 +28,7 @@ $env:ASR_FIXTURE_DIRECTORY = $FixtureDirectory
 & $nodeExe $manifestBuilder
 if ($LASTEXITCODE -ne 0) { throw "Could not create the synthetic ASR manifest." }
 
-$manifest = Get-Content -LiteralPath (Join-Path $fixturePath "manifest.json") -Raw | ConvertFrom-Json
+$manifest = Get-Content -LiteralPath (Join-Path $fixturePath "manifest.json") -Encoding UTF8 -Raw | ConvertFrom-Json
 Add-Type -AssemblyName System.Speech
 $synth = New-Object System.Speech.Synthesis.SpeechSynthesizer
 $voices = @($synth.GetInstalledVoices() | ForEach-Object { $_.VoiceInfo })
