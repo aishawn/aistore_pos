@@ -200,11 +200,11 @@ public interface CompetitorPriceMapper {
               AND vp.access_mode = 'MANUAL_ONLY'
               AND vp.terms_url IS NOT NULL AND vp.terms_reviewed_at IS NOT NULL AND vp.terms_reviewed_by IS NOT NULL
               AND o.price_tax_basis = 'INCLUDES_GST'
-              AND o.observed_timezone <> 'UNKNOWN'
-              AND o.evidence_url IS NOT NULL AND BTRIM(o.evidence_url) <> ''
+              AND o.observed_timezone &lt;&gt; 'UNKNOWN'
+              AND o.evidence_url IS NOT NULL AND BTRIM(o.evidence_url) &lt;&gt; ''
               AND (o.price_type = 'STANDARD' OR (
-                o.promotion_terms IS NOT NULL AND BTRIM(o.promotion_terms) <> ''
-                AND (o.promotion_starts_at IS NULL OR o.promotion_starts_at <= (CURRENT_TIMESTAMP AT TIME ZONE 'UTC'))
+                o.promotion_terms IS NOT NULL AND BTRIM(o.promotion_terms) &lt;&gt; ''
+                AND (o.promotion_starts_at IS NULL OR o.promotion_starts_at &lt;= (CURRENT_TIMESTAMP AT TIME ZONE 'UTC'))
                 AND (o.promotion_ends_at IS NULL OR o.promotion_ends_at >= (CURRENT_TIMESTAMP AT TIME ZONE 'UTC'))
               ))
               AND o.price_tax_basis = 'INCLUDES_GST'

@@ -12,8 +12,7 @@ test("voice input stays editable and only queries after manual confirmation", as
       roleCode: "ADMIN",
       permissions: ["ai.assistant"],
     }));
-    Object.defineProperty(navigator, "languages", { configurable: true, value: ["zh-CN", "en-AU"] });
-    Object.defineProperty(navigator, "language", { configurable: true, value: "zh-CN" });
+    localStorage.setItem("orithos.voice.lang", "auto");
 
     Object.defineProperty(navigator, "mediaDevices", {
       configurable: true,
@@ -73,7 +72,7 @@ test("voice input stays editable and only queries after manual confirmation", as
   await page.route("**/api/ai/transcribe", async (route) => {
     transcriptionAttempts++;
     transcriptionRequest = route.request().postData() ?? "";
-    if (transcriptionAttempts === 2) {
+    if (transcriptionAttempts === 3) {
       await route.fulfill({ status: 200, json: { code: 0, message: "ok", data: { text: "Today's sales", lang: "en" } } });
       return;
     }
@@ -86,14 +85,18 @@ test("voice input stays editable and only queries after manual confirmation", as
 
   await page.goto("/assistant");
   const composer = page.locator("[data-assistant-composer]").last();
-  await expect(composer.getByRole("group", { name: "Voice input language" })).toHaveCount(0);
+  const language = composer.getByRole("group", { name: "Voice input language" });
+  await expect(language).toBeVisible();
+  await expect(language.getByRole("button", { name: "Auto", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await composer.getByRole("button", { name: "中文", exact: true }).click();
+  await expect(composer.getByRole("button", { name: "中文", exact: true })).toHaveAttribute("aria-pressed", "true");
   await composer.getByLabel("Ask Orithos AI").fill("库存");
   await composer.getByRole("button", { name: "Voice input" }).click();
   await expect(composer.getByRole("button", { name: "Stop voice input" })).toBeEnabled();
   await composer.getByRole("button", { name: "Stop voice input" }).click();
 
   await expect(composer.getByRole("alert")).toBeVisible();
-  expect(transcriptionRequest).not.toContain('name="lang"');
+  expect(transcriptionRequest).toMatch(/name="lang"\s+zh/);
   expect(assistantRequests).toBe(0);
 
   await composer.getByRole("button", { name: "Use browser voice recognition" }).click();
@@ -104,9 +107,22 @@ test("voice input stays editable and only queries after manual confirmation", as
   expect(await page.evaluate(() => (window as Window & { __voiceRecognitionLang?: string }).__voiceRecognitionLang)).toBe("zh-CN");
   expect(assistantRequests).toBe(0);
 
+  await composer.getByRole("button", { name: "EN", exact: true }).click();
+  await expect(composer.getByRole("button", { name: "EN", exact: true })).toHaveAttribute("aria-pressed", "true");
   await composer.getByRole("button", { name: "Voice input" }).click();
   await composer.getByRole("button", { name: "Stop voice input" }).click();
-  await expect(input).toHaveValue("库存 库存还有多少？ Today's sales");
+  await expect(composer.getByRole("alert")).toBeVisible();
+  expect(transcriptionRequest).toMatch(/name="lang"\s+en/);
+  await composer.getByRole("button", { name: "Use browser voice recognition" }).click();
+  await composer.getByRole("button", { name: "Stop voice input" }).click();
+  await expect(input).toHaveValue("库存 库存还有多少？ 库存还有多少？");
+  expect(await page.evaluate(() => (window as Window & { __voiceRecognitionLang?: string }).__voiceRecognitionLang)).toBe("en-AU");
+  expect(assistantRequests).toBe(0);
+
+  await composer.getByRole("button", { name: "Auto", exact: true }).click();
+  await composer.getByRole("button", { name: "Voice input" }).click();
+  await composer.getByRole("button", { name: "Stop voice input" }).click();
+  await expect(input).toHaveValue("库存 库存还有多少？ 库存还有多少？ Today's sales");
   expect(transcriptionRequest).not.toContain('name="lang"');
   expect(assistantRequests).toBe(0);
 
@@ -205,7 +221,6 @@ test("mobile voice input keeps its draft through a network outage and recovers o
 
   let assistantRequests = 0;
   let transcriptionAttempts = 0;
-  let transcriptionRequest = "";
   await page.route("**/api/ai/config/client", (route) => route.fulfill({
     status: 200,
     contentType: "application/json",
@@ -218,7 +233,6 @@ test("mobile voice input keeps its draft through a network outage and recovers o
   }));
   await page.route("**/api/ai/transcribe", async (route) => {
     transcriptionAttempts++;
-    transcriptionRequest = route.request().postData() ?? "";
     if (transcriptionAttempts === 1) {
       await route.abort("internetdisconnected");
       return;
@@ -245,6 +259,5 @@ test("mobile voice input keeps its draft through a network outage and recovers o
   await expect(input).toHaveValue("保留原来的库存草稿 库存查询已恢复");
   expect(assistantRequests).toBe(0);
   expect(transcriptionAttempts).toBe(2);
-  expect(transcriptionRequest).not.toContain('name="lang"');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });

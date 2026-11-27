@@ -1,6 +1,7 @@
 /** Browser voice helpers: MediaRecorder + VAD end-of-speech (cloud STT). */
 
 export type VoiceLang = "en-AU" | "zh-CN";
+export type VoiceLanguagePreference = VoiceLang | "auto";
 
 export type VoiceInputMode = "cloud" | "browser" | "unavailable";
 
@@ -13,8 +14,51 @@ export function mergeVoiceTranscript(draft: string, transcript: string): string 
   return [draft.trim(), transcript.trim()].filter(Boolean).join(" ");
 }
 
-/** Cloud transcription auto-detects; browser fallback follows the preferred browser locale. */
-export function getBrowserVoiceLang(): VoiceLang {
+const VOICE_LANG_KEY = "orithos.voice.lang";
+const VOICE_LANG_CHANGE_EVENT = "orithos:voice-language-change";
+let memoryVoiceLang: VoiceLanguagePreference = "auto";
+
+export function subscribeToVoiceLang(onChange: () => void): () => void {
+  if (typeof window === "undefined") return () => undefined;
+  window.addEventListener(VOICE_LANG_CHANGE_EVENT, onChange);
+  window.addEventListener("storage", onChange);
+  return () => {
+    window.removeEventListener(VOICE_LANG_CHANGE_EVENT, onChange);
+    window.removeEventListener("storage", onChange);
+  };
+}
+
+export function getStoredVoiceLang(): VoiceLanguagePreference {
+  if (typeof window === "undefined") return "auto";
+  try {
+    const stored = localStorage.getItem(VOICE_LANG_KEY);
+    memoryVoiceLang = stored === "zh-CN" || stored === "en-AU" ? stored : "auto";
+    return memoryVoiceLang;
+  } catch {
+    return memoryVoiceLang;
+  }
+}
+
+export function setStoredVoiceLang(lang: VoiceLanguagePreference) {
+  memoryVoiceLang = lang;
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(VOICE_LANG_KEY, lang);
+  } catch {
+    // Voice input still works when browser storage is unavailable.
+  }
+  if (typeof window.dispatchEvent === "function") window.dispatchEvent(new Event(VOICE_LANG_CHANGE_EVENT));
+}
+
+/** Map UI BCP-47 to the remote ASR language codes (omit auto on server). */
+export function toAsrLang(lang: VoiceLanguagePreference): string | null {
+  if (lang === "auto") return null;
+  return lang.startsWith("zh") ? "zh" : "en";
+}
+
+/** The browser speech fallback needs a locale; cloud transcription auto-detects. */
+export function getBrowserVoiceLang(preference: VoiceLanguagePreference = "auto"): VoiceLang {
+  if (preference !== "auto") return preference;
   if (typeof navigator === "undefined") return "en-AU";
   const preferredLanguage = navigator.languages?.[0] || navigator.language;
   return preferredLanguage?.toLowerCase().startsWith("zh") ? "zh-CN" : "en-AU";

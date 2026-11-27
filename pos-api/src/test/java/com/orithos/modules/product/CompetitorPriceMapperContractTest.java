@@ -1,12 +1,15 @@
 package com.orithos.modules.product;
 
 import com.orithos.modules.product.mapper.CompetitorPriceMapper;
+import org.apache.ibatis.session.Configuration;
+import org.apache.ibatis.scripting.xmltags.XMLLanguageDriver;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
 import org.apache.ibatis.annotations.Insert;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class CompetitorPriceMapperContractTest {
@@ -109,5 +112,14 @@ class CompetitorPriceMapperContractTest {
         assertTrue(sourceList.contains("s.source_type AS sourceType"));
         assertTrue(observationList.contains("s.source_type AS sourceType"));
         assertTrue(migration.contains("source_type IN ('MANUFACTURER', 'RETAILER')"));
+    }
+
+    @Test
+    void verifiedProductQueryIsValidMyBatisXmlScript() throws Exception {
+        String script = String.join(" ", CompetitorPriceMapper.class
+                .getMethod("verifiedForProducts", Long.class, Long.class, java.util.List.class, boolean.class)
+                .getAnnotation(Select.class).value());
+
+        assertDoesNotThrow(() -> new XMLLanguageDriver().createSqlSource(new Configuration(), script, java.util.Map.class));
     }
 }
