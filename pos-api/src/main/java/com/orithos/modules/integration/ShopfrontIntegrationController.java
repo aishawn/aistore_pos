@@ -2313,6 +2313,86 @@ public class ShopfrontIntegrationController {
         return ApiResult.ok(result);
     }
 
+    @GetMapping("/inventory:anomalies")
+    public ApiResult<Map<String, Object>> inventoryAnomalies(
+            @RequestHeader("X-Shopfront-Integration-Token") String supplied,
+            @RequestParam String storeKey,
+            @RequestParam(defaultValue = "100") int preview) {
+        authorize(supplied);
+        if (!STORE_KEY.matcher(storeKey).matches()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Valid storeKey is required");
+        }
+        if (preview < 1 || preview > 500) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "preview must be between 1 and 500");
+        }
+        List<Map<String, Object>> mappings = jdbc.queryForList(
+                "SELECT outlet_id, enabled FROM shopfront_store_mapping WHERE store_key = ?", storeKey);
+        Map<String, Object> mapping = mappings.stream()
+                .filter(row -> isEnabled(row.get("enabled")))
+                .findFirst()
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "No enabled POS outlet mapping for store_key=" + storeKey));
+        long outletId = longValue(mapping.get("outlet_id"));
+        if (outletId <= 0) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "POS outlet mapping has no numeric outlet_id");
+        }
+
+        Map<String, Object> counts = jdbc.queryForMap("""
+                SELECT
+                  (SELECT COUNT(*) FROM product_inventory pi
+                   JOIN product p ON p.id=pi.product_id
+                   WHERE pi.outlet_id=? AND p.outlet_id<>?) AS foreign_outlet_count,
+                  (SELECT COUNT(*) FROM product_inventory pi
+                   WHERE pi.outlet_id=? AND NOT EXISTS (
+                     SELECT 1 FROM shopfront_product_mapping m
+                     WHERE m.store_key=? AND m.pos_product_id=pi.product_id AND m.status='MAPPED'
+                   )) AS unmapped_count,
+                  (SELECT COUNT(*) FROM shopfront_product_mapping m
+                   JOIN product p ON p.id=m.pos_product_id AND p.outlet_id=? AND p.deleted_at IS NULL
+                   LEFT JOIN product_inventory pi ON pi.product_id=p.id AND pi.outlet_id=?
+                   WHERE m.store_key=? AND m.status='MAPPED'
+                     AND UPPER(COALESCE(p.status,''))='ACTIVE' AND COALESCE(p.track_inventory,0)<>0
+                     AND pi.product_id IS NULL) AS missing_on_hand_count
+                """, outletId, outletId, outletId, storeKey, outletId, outletId, storeKey);
+        List<Map<String, Object>> foreignOutlet = jdbc.queryForList("""
+                SELECT pi.product_id, p.name AS product_name, p.outlet_id AS product_outlet_id, pi.quantity
+                FROM product_inventory pi JOIN product p ON p.id=pi.product_id
+                WHERE pi.outlet_id=? AND p.outlet_id<>?
+                ORDER BY pi.product_id LIMIT ?
+                """, outletId, outletId, preview);
+        List<Map<String, Object>> unmapped = jdbc.queryForList("""
+                SELECT pi.product_id, p.name AS product_name, pi.quantity
+                FROM product_inventory pi LEFT JOIN product p ON p.id=pi.product_id
+                WHERE pi.outlet_id=? AND NOT EXISTS (
+                  SELECT 1 FROM shopfront_product_mapping m
+                  WHERE m.store_key=? AND m.pos_product_id=pi.product_id AND m.status='MAPPED'
+                )
+                ORDER BY pi.product_id LIMIT ?
+                """, outletId, storeKey, preview);
+        List<Map<String, Object>> missingOnHand = jdbc.queryForList("""
+                SELECT m.source_product_id, p.id AS product_id, p.name AS product_name
+                FROM shopfront_product_mapping m
+                JOIN product p ON p.id=m.pos_product_id AND p.outlet_id=? AND p.deleted_at IS NULL
+                LEFT JOIN product_inventory pi ON pi.product_id=p.id AND pi.outlet_id=?
+                WHERE m.store_key=? AND m.status='MAPPED'
+                  AND UPPER(COALESCE(p.status,''))='ACTIVE' AND COALESCE(p.track_inventory,0)<>0
+                  AND pi.product_id IS NULL
+                ORDER BY m.source_product_id LIMIT ?
+                """, outletId, outletId, storeKey, preview);
+
+        long foreignCount = longValue(counts.get("foreign_outlet_count"));
+        long unmappedCount = longValue(counts.get("unmapped_count"));
+        long missingCount = longValue(counts.get("missing_on_hand_count"));
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("store_key", storeKey);
+        result.put("outlet_id", outletId);
+        result.put("foreign_outlet_inventory", Map.of("count", foreignCount, "rows", foreignOutlet));
+        result.put("unmapped_inventory", Map.of("count", unmappedCount, "rows", unmapped));
+        result.put("active_tracked_missing_on_hand", Map.of("count", missingCount, "rows", missingOnHand));
+        result.put("inventory_scope_complete", foreignCount == 0 && unmappedCount == 0 && missingCount == 0);
+        return ApiResult.ok(result);
+    }
+
     @GetMapping("/match-status")
     public ApiResult<Map<String, Object>> matchStatus(
             @RequestHeader("X-Shopfront-Integration-Token") String supplied,

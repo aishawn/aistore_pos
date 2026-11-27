@@ -44,6 +44,45 @@ import static org.mockito.Mockito.when;
 class ShopfrontIntegrationControllerTest {
 
     @Test
+    void inventoryAnomalyAuditIsOutletScopedReadOnlyAndFailsCompletenessOnAnyException() {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        when(jdbc.queryForList(contains("SELECT outlet_id, enabled FROM shopfront_store_mapping"), eq("demo")))
+                .thenReturn(List.of(Map.of("outlet_id", 1L, "enabled", true)));
+        when(jdbc.queryForMap(contains("foreign_outlet_count"), any(Object[].class))).thenReturn(Map.of(
+                "foreign_outlet_count", 1L,
+                "unmapped_count", 2L,
+                "missing_on_hand_count", 1L));
+        when(jdbc.queryForList(contains("p.outlet_id<>?"), any(Object[].class))).thenReturn(List.of(
+                Map.of("product_id", 10L, "product_name", "Foreign product", "product_outlet_id", 87L,
+                        "quantity", new BigDecimal("-1"))));
+        when(jdbc.queryForList(contains("NOT EXISTS"), any(Object[].class))).thenReturn(List.of());
+        when(jdbc.queryForList(contains("SELECT m.source_product_id"), any(Object[].class))).thenReturn(List.of(
+                Map.of("source_product_id", "source-1", "product_id", 11L, "product_name", "Missing stock")));
+
+        var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true);
+        var response = controller.inventoryAnomalies("token", "demo", 100);
+
+        assertEquals(1L, response.data().get("outlet_id"));
+        assertEquals(false, response.data().get("inventory_scope_complete"));
+        assertEquals(1L, ((Map<?, ?>) response.data().get("foreign_outlet_inventory")).get("count"));
+        assertEquals(2L, ((Map<?, ?>) response.data().get("unmapped_inventory")).get("count"));
+        assertEquals(1L, ((Map<?, ?>) response.data().get("active_tracked_missing_on_hand")).get("count"));
+        verify(jdbc, never()).update(anyString(), any(Object[].class));
+    }
+
+    @Test
+    void inventoryAnomalyAuditRejectsInvalidPreviewBeforeQuerying() {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true);
+
+        var error = assertThrows(ResponseStatusException.class,
+                () -> controller.inventoryAnomalies("token", "skr", 501));
+
+        assertEquals(HttpStatus.BAD_REQUEST, error.getStatusCode());
+        verify(jdbc, never()).queryForList(anyString(), any(Object[].class));
+    }
+
+    @Test
     void stagesOnlyMappedOutletPromotionsForAnalytics() throws Exception {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
         when(jdbc.queryForList(contains("shopfront_store_mapping"), eq("skr"))).thenReturn(
