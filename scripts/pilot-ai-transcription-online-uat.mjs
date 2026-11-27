@@ -7,9 +7,11 @@ import {
   selectTranscriptionUatCases,
   summarizeTranscriptionUatResults,
   transcriptionRequestShouldStop,
+  transcriptionRuntimeMatchesSource,
   transcriptionUatCasesForRuntime,
 } from "./ai-eval/transcription-uat-contract.mjs";
 import { evaluateTranscriptionBenchmark, evaluateTranscriptionQualityGate } from "./ai-eval/transcription-benchmark.mjs";
+import { buildTranscriptionSufficientStatistics, createTranscriptionPartialReport, transcriptionAudioFingerprints, transcriptionDatasetId } from "./ai-eval/transcription-aggregation.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 let envDirectory = root;
@@ -83,6 +85,8 @@ const evidence = {
 };
 const record = (name, status, detail) => evidence.checks.push({ name, status, detail });
 const benchmarkTranscripts = [];
+let asrModel = null;
+let asrConfigId = null;
 const sampleResults = [];
 const classifiedSampleIds = new Set();
 let providerQuotaExhausted = false;
@@ -112,20 +116,25 @@ try {
 
   const versionResponse = await context.request.get(`${base}/api/public/version`, { timeout: 30000 });
   const versionBody = await versionResponse.json().catch(() => ({}));
-  const backendCommit = versionBody.backend?.commit ?? null;
+  const version = versionBody.data ?? versionBody;
+  const frontendCommit = version.frontend?.commit ?? null;
+  const backendCommit = version.backend?.commit ?? version.backend?.sourceCommit ?? null;
+  evidence.frontendCommit = frontendCommit;
   evidence.runtimeCommit = backendCommit;
-  evidence.runtimeMatchesSourceCommit = backendCommit === evidence.sourceCommit && !evidence.worktreeDirty;
+  evidence.runtimeMatchesSourceCommit = transcriptionRuntimeMatchesSource(version, evidence.sourceCommit, evidence.worktreeDirty);
   evidence.deploymentShaVerified = evidence.runtimeMatchesSourceCommit;
   record("runtime identity", evidence.runtimeMatchesSourceCommit ? "PASS" : "BLOCKED",
-    `backendCommit=${backendCommit ?? "unavailable"} sourceCommit=${evidence.sourceCommit} worktreeDirty=${evidence.worktreeDirty}`);
+    `frontendCommit=${frontendCommit ?? "unavailable"} backendCommit=${backendCommit ?? "unavailable"} sourceCommit=${evidence.sourceCommit} worktreeDirty=${evidence.worktreeDirty}`);
 
-  const runnableCases = transcriptionUatCasesForRuntime(cases, backendCommit === evidence.sourceCommit, evidence.worktreeDirty);
+  const runnableCases = transcriptionUatCasesForRuntime(cases, version, evidence.sourceCommit, evidence.worktreeDirty);
   if (!evidence.runtimeMatchesSourceCommit) {
     for (const testCase of cases) recordSample(testCase, "NOT_RUN");
   } else {
     const configResponse = await context.request.get(`${base}/api/ai/config/client`);
     const configBody = await configResponse.json().catch(() => ({}));
     const config = configBody.data ?? {};
+    asrModel = typeof config.transcriptionModel === "string" ? config.transcriptionModel : null;
+    asrConfigId = typeof config.transcriptionConfigId === "string" ? config.transcriptionConfigId : null;
     if (!configResponse.ok() || configBody.code !== 0) {
       record("transcription capability config", "FAIL", `status=${configResponse.status()}`);
       for (const testCase of runnableCases) recordSample(testCase, "NOT_RUN");
@@ -197,6 +206,21 @@ if (benchmarkManifest) {
     metrics: qualityMetrics,
     transcriptsOmitted: true,
   });
+  if (evidence.runtimeMatchesSourceCommit && asrModel && asrConfigId) {
+    const audioFingerprints = transcriptionAudioFingerprints(benchmarkManifest.cases, path.dirname(benchmarkManifestPath));
+    const datasetId = transcriptionDatasetId(benchmarkManifest.cases, audioFingerprints);
+    const sufficientStatistics = buildTranscriptionSufficientStatistics(benchmarkManifest.cases, benchmarkTranscripts);
+    evidence.transcriptionBenchmarkPartialReport = createTranscriptionPartialReport({
+      sourceCommit: evidence.sourceCommit,
+      runtimeCommit: evidence.runtimeCommit,
+      target: base,
+      datasetId,
+      asrModel,
+      asrConfigId,
+    }, sufficientStatistics);
+  } else {
+    record("ASR aggregation identity", "BLOCKED", "matching source/runtime and non-empty transcriptionModel/transcriptionConfigId are required");
+  }
 }
 
 evidence.transcriptionResults = {

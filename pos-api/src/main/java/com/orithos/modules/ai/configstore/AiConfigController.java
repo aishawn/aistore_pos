@@ -5,6 +5,7 @@ import com.orithos.common.BusinessException;
 import com.orithos.modules.ai.AiProviderConfig;
 import com.orithos.modules.ai.AiTranscriptionService;
 import com.orithos.modules.ai.PosAssistantGraphService;
+import com.orithos.modules.ai.gateway.AiGatewayProperties;
 import com.orithos.modules.ai.invoice.InvoiceVisionService;
 import com.orithos.modules.ai.sommelier.WineLabelVisionService;
 import com.orithos.security.AdminAccess;
@@ -15,6 +16,10 @@ import org.springframework.web.bind.annotation.*;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
 
 /**
  * CRUD for DB-backed intents / slots / prompts. Changes take effect after cache invalidate.
@@ -32,6 +37,7 @@ public class AiConfigController {
     private final ObjectProvider<AiTranscriptionService> transcriptionService;
     private final ObjectProvider<WineLabelVisionService> labelVisionService;
     private final ObjectProvider<InvoiceVisionService> invoiceVisionService;
+    private final AiGatewayProperties aiGatewayProperties;
     private final boolean aiEnabled;
     @Value("${AI_SERVICE_BASE_URL:https://ai.orithos.com.au}")
     private String aiServiceBaseUrl;
@@ -47,6 +53,7 @@ public class AiConfigController {
                               ObjectProvider<AiTranscriptionService> transcriptionService,
                               ObjectProvider<WineLabelVisionService> labelVisionService,
                               ObjectProvider<InvoiceVisionService> invoiceVisionService,
+                              AiGatewayProperties aiGatewayProperties,
                               @Value("${app.ai.enabled:false}") boolean aiEnabled) {
         this.intentMapper = intentMapper;
         this.slotMapper = slotMapper;
@@ -57,6 +64,7 @@ public class AiConfigController {
         this.transcriptionService = transcriptionService;
         this.labelVisionService = labelVisionService;
         this.invoiceVisionService = invoiceVisionService;
+        this.aiGatewayProperties = aiGatewayProperties;
         this.aiEnabled = aiEnabled;
     }
 
@@ -83,11 +91,25 @@ public class AiConfigController {
         boolean providerReady = AiProviderConfig.isValidBaseUrl(aiServiceBaseUrl)
                 && aiServiceToken != null && !aiServiceToken.isBlank();
         data.put("assistantAvailable", aiEnabled && providerReady && graphService.getIfAvailable() != null);
-        data.put("transcriptionAvailable", aiEnabled && providerReady && transcriptionService.getIfAvailable() != null);
+        boolean transcriptionAvailable = aiEnabled && providerReady && transcriptionService.getIfAvailable() != null;
+        data.put("transcriptionAvailable", transcriptionAvailable);
+        data.put("transcriptionModel", transcriptionAvailable ? aiGatewayProperties.getTranscriptionModel() : null);
+        data.put("transcriptionConfigId", transcriptionAvailable ? transcriptionConfigId() : null);
         data.put("labelVisionAvailable", aiEnabled && providerReady && labelVisionService.getIfAvailable() != null);
         data.put("invoiceVisionAvailable", aiEnabled && providerReady && invoiceVisionService.getIfAvailable() != null);
         data.put("aiTriggerKeywords", snap.aiTriggerKeywords());
         return ApiResult.ok(data);
+    }
+
+    private String transcriptionConfigId() {
+        String config = "asr-request-v1\nmodel=" + aiGatewayProperties.getTranscriptionModel()
+                + "\nenable_itn=true\ngateway=" + aiGatewayProperties.getServiceBaseUrl();
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256").digest(config.getBytes(StandardCharsets.UTF_8));
+            return "sha256:" + HexFormat.of().formatHex(digest);
+        } catch (NoSuchAlgorithmException impossible) {
+            throw new IllegalStateException("SHA-256 is unavailable", impossible);
+        }
     }
 
     // --- intents ---

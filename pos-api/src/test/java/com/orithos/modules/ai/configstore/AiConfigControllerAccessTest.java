@@ -3,6 +3,7 @@ package com.orithos.modules.ai.configstore;
 import com.orithos.common.BusinessException;
 import com.orithos.modules.ai.AiTranscriptionService;
 import com.orithos.modules.ai.PosAssistantGraphService;
+import com.orithos.modules.ai.gateway.AiGatewayProperties;
 import com.orithos.modules.ai.invoice.InvoiceVisionService;
 import com.orithos.modules.ai.sommelier.WineLabelVisionService;
 import com.orithos.security.AuthUser;
@@ -39,7 +40,8 @@ class AiConfigControllerAccessTest {
         ObjectProvider<WineLabelVisionService> labelVision = mock(ObjectProvider.class);
         ObjectProvider<InvoiceVisionService> invoiceVision = mock(ObjectProvider.class);
         AiConfigController controller = new AiConfigController(
-                intents, slots, values, prompts, config, graph, transcription, labelVision, invoiceVision, false);
+                intents, slots, values, prompts, config, graph, transcription, labelVision, invoiceVision,
+                new AiGatewayProperties(), false);
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(
                         new AuthUser(7L, "clerk", false, 1L, 2L), null, List.of()));

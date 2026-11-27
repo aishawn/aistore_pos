@@ -4,14 +4,25 @@ import {
   selectTranscriptionUatCases,
   summarizeTranscriptionUatResults,
   transcriptionRequestShouldStop,
+  transcriptionRuntimeMatchesSource,
   transcriptionUatCasesForRuntime,
 } from "./transcription-uat-contract.mjs";
 
 test("online transcription cases run only against the exact source runtime", () => {
   const cases = [{ id: "en" }, { id: "zh" }];
-  assert.equal(transcriptionUatCasesForRuntime(cases, true), cases);
-  assert.deepEqual(transcriptionUatCasesForRuntime(cases, false), []);
-  assert.deepEqual(transcriptionUatCasesForRuntime(cases, true, true), []);
+  const version = { frontend: { commit: "abc" }, backend: { commit: "abc" } };
+  assert.equal(transcriptionUatCasesForRuntime(cases, version, "abc"), cases);
+  assert.deepEqual(transcriptionUatCasesForRuntime(cases, { ...version, backend: { commit: "old" } }, "abc"), []);
+  assert.deepEqual(transcriptionUatCasesForRuntime(cases, version, "abc", true), []);
+});
+
+test("online transcription runtime gate requires matching frontend and backend commits", () => {
+  const version = { frontend: { commit: "ABC" }, backend: { commit: "abc" } };
+  assert.equal(transcriptionRuntimeMatchesSource(version, "abc"), true);
+  assert.equal(transcriptionRuntimeMatchesSource({ ...version, frontend: { commit: "old" } }, "abc"), false);
+  assert.equal(transcriptionRuntimeMatchesSource({ ...version, backend: { commit: "old" } }, "abc"), false);
+  assert.equal(transcriptionRuntimeMatchesSource(version, "abc", true), false);
+  assert.equal(transcriptionRuntimeMatchesSource(null, "abc"), false);
 });
 
 test("online transcription evaluation has an explicit bounded request budget", () => {

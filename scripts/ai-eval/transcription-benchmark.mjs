@@ -261,6 +261,25 @@ function entityMatches(transcript, value, lang, entityType) {
   return spokenAliases.some((alias) => normalizedTranscript.includes(alias));
 }
 
+export function evaluateTranscriptionCase(testCase, transcript) {
+  const lang = testCase.lang;
+  const reference = tokens(testCase.expectedText, lang);
+  const hypothesis = tokens(transcript, lang);
+  const entities = {};
+  for (const [entityType, values] of Object.entries(testCase.criticalEntities ?? {})) {
+    const matched = values.filter((value) => entityMatches(transcript, value, lang, entityType)).length;
+    entities[entityType] = { matched, count: values.length };
+  }
+  return {
+    caseId: testCase.id,
+    language: lang,
+    category: testCase.category,
+    editCount: editDistance(reference, hypothesis),
+    referenceTokenCount: reference.length,
+    entities,
+  };
+}
+
 export function evaluateTranscriptionBenchmark(cases, transcripts) {
   const transcriptById = new Map(transcripts.map((result) => [result.caseId, result.transcript ?? ""]));
   const metrics = {};

@@ -1,5 +1,15 @@
-export function transcriptionUatCasesForRuntime(cases, runtimeMatchesSource, worktreeDirty = false) {
-  return runtimeMatchesSource && !worktreeDirty ? cases : [];
+export function transcriptionRuntimeMatchesSource(version, sourceCommit, worktreeDirty = false) {
+  if (!version || worktreeDirty || typeof sourceCommit !== "string" || !sourceCommit) return false;
+  const expected = sourceCommit.toLowerCase();
+  const frontend = version.frontend?.commit;
+  const backend = version.backend?.commit ?? version.backend?.sourceCommit;
+  return typeof frontend === "string" && typeof backend === "string"
+    && frontend.toLowerCase() === expected
+    && backend.toLowerCase() === expected;
+}
+
+export function transcriptionUatCasesForRuntime(cases, version, sourceCommit, worktreeDirty = false) {
+  return transcriptionRuntimeMatchesSource(version, sourceCommit, worktreeDirty) ? cases : [];
 }
 
 export function transcriptionRequestShouldStop(apiCode) {

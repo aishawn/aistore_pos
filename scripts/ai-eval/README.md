@@ -198,8 +198,22 @@ only two requests. Review aggregate WER by language and critical-entity
 accuracy for product identifiers, barcodes, numbers, and dates; do not retain
 raw audio or full transcripts in shared reports. Runtime SHA mismatch or a dirty
 source checkout blocks requests and cannot count as acceptance. Online reports
-store only aggregate request outcomes and p50/p95 latency by language and
-scenario; transcripts are used in memory for scoring and omitted from reports.
+store aggregate request outcomes and p50/p95 latency by language and scenario.
+When runtime model and config identities are available, benchmark reports also
+store per-case edit/token/entity sufficient statistics, without audio or text.
+Merge partial reports offline against the original manifest:
+
+```powershell
+node scripts/ai-eval/merge-transcription-reports.mjs `
+  .local/ai-eval/synthetic-asr/manifest.json `
+  .local/ai-eval/asr-merged.json `
+  .local/ai-eval/asr-run-1.json .local/ai-eval/asr-run-2.json
+```
+
+Merging requires matching source/runtime commits, target, dataset fingerprint
+(including local audio file hashes), ASR model, and ASR config. Exact duplicate
+cases count once; duplicates with different statistics are rejected. The gate remains `BLOCKED` below 50
+completed cases per language and only `PASS` when the original thresholds pass.
 
 The synthetic English voice is en-AU (Microsoft Edge Natasha Neural), matching
 the recognition locale. This supports repeatable synthetic coverage, not real
