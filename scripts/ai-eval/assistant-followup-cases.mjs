@@ -83,3 +83,22 @@ export function evaluateSalesFollowup({ assistant, report, expectedFrom, expecte
     dataAsOf: asOfValid ? dataAsOf : null,
   };
 }
+
+export function summarizeSalesFollowupEvidence(result) {
+  const checkNames = [
+    "passed",
+    "dateRange",
+    "nativeReport",
+    "answerMatchesNativeReport",
+    "dataSource",
+    "storeScope",
+    "timeZone",
+    "dataStatus",
+    "dataAsOfFresh",
+    "noWrites",
+  ];
+  return {
+    ...Object.fromEntries(checkNames.map((name) => [name, result?.[name] === true])),
+    reportStatus: typeof result?.reportStatus === "string" ? result.reportStatus : null,
+  };
+}

@@ -100,14 +100,15 @@ export function mergeTranscriptionPartialReports(reports, benchmarkCases, audioF
     }
   }
 
-  const metrics = aggregateMetrics([...byCaseId.values()]);
+  const metrics = aggregateTranscriptionSufficientStatistics([...byCaseId.values()]);
   const completedCaseIds = [...byCaseId.keys()];
   const gate = evaluateTranscriptionQualityGate({ cases: benchmarkCases, completedCaseIds, metrics });
   return { schemaVersion, identity: { ...identity }, caseCount: byCaseId.size, metrics, gate };
 }
 
 
-function aggregateMetrics(stats) {
+export function aggregateTranscriptionSufficientStatistics(stats) {
+  validateStats(stats);
   const metrics = {};
   for (const language of ["en-AU", "zh-CN"]) {
     const languageStats = stats.filter((stat) => stat.language === language);

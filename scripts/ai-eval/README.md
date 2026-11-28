@@ -215,11 +215,57 @@ Merging requires matching source/runtime commits, target, dataset fingerprint
 cases count once; duplicates with different statistics are rejected. The gate remains `BLOCKED` below 50
 completed cases per language and only `PASS` when the original thresholds pass.
 
+### Native system-context diagnostic
+
+Use the native Qwen3-ASR request path to compare the same synthetic cases with
+and without a first-message entity glossary. This is a provider diagnostic, not
+POS runtime acceptance. It needs the local `.env` `AI_SERVICE_TOKEN` or the same
+environment variable, the generated Opus 128 kbps manifest/audio, and sends at
+most four paired cases (eight requests) in one UTC hour:
+
+```powershell
+node --test scripts/ai-eval/transcription-context-pilot.test.mjs
+node scripts/ai-eval/transcription-context-pilot.mjs `
+  --case-ids en-01,zh-01 `
+  --manifest .local/ai-eval/synthetic-asr-opus128/manifest.json `
+  --audio-dir .local/ai-eval/synthetic-asr-opus128 `
+  --output .local/ai-eval/asr-context-paired.json
+
+node scripts/ai-eval/merge-transcription-context-pilot.mjs `
+  .local/ai-eval/synthetic-asr-opus128/manifest.json `
+  .local/ai-eval/asr-context-merged.json `
+  .local/ai-eval/asr-context-paired-run-1.json `
+  .local/ai-eval/asr-context-paired-run-2.json
+```
+
+The runner reserves each request in `.local/ai-eval/asr-request-budget.json`,
+serializes concurrent runs with a lock file, stops at the hourly cap or first
+provider error, and scores only cases with both baseline and context results.
+Completed pairs remain in a blocked batch; the failed or unfinished pair is
+excluded and can be combined with later complete reports. If interrupted,
+inspect the lock's PID before removing a stale lock.
+Reports contain case IDs, audio hashes, sanitized provider error classes,
+latency, aggregate WER/entity metrics, and per-case edit/token/entity sufficient
+statistics for offline merging by language and scenario. Audio and transcript
+text stay in memory. A diagnostic result cannot replace the 100-case bilingual
+acceptance gate. The merger verifies report identity, manifest hash, and local
+audio fixture hashes before aggregating; conflicting duplicate case results
+are rejected. Both the runner and merger refuse to overwrite an existing
+report, preserving earlier evaluation evidence.
+
 The synthetic English voice is en-AU (Microsoft Edge Natasha Neural), matching
 the recognition locale. This supports repeatable synthetic coverage, not real
 store speech accuracy. Keep human-reviewed, consented/de-identified recordings
 as a separately labeled set so synthetic and real-speech scores are never
 combined. Audio files use mono 16 kHz, 16-bit PCM WAV.
+
+To test the actual POS `RemoteAiGateway.transcriptionBody` request shape, add
+`--request-shape production`. This sends the production `messages` with
+`input_audio`, `asr_options`, and no `multiModel` field. The report records this
+shape in both `apiMode` and `asrConfiguration`; reports from native and
+production shapes cannot be merged. A glossary result in this mode remains a
+Gateway diagnostic until the corresponding POS candidate is deployed and its
+exact source/runtime SHA is verified.
 
 ## Daily native inventory snapshot
 

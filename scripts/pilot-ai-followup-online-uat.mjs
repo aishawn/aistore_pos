@@ -3,7 +3,12 @@ import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
-import { assistantFollowupCases, evaluateSalesFollowup, resolveFollowupCredentials } from "./ai-eval/assistant-followup-cases.mjs";
+import {
+  assistantFollowupCases,
+  evaluateSalesFollowup,
+  resolveFollowupCredentials,
+  summarizeSalesFollowupEvidence,
+} from "./ai-eval/assistant-followup-cases.mjs";
 import { assistantRuntimePreflight } from "./ai-eval/stock-clarification-acceptance.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -193,7 +198,7 @@ try {
         previousDayMatches,
         retainedFilters,
         answerPresent: answer.length > 0,
-        salesAcceptance,
+        salesAcceptance: summarizeSalesFollowupEvidence(salesAcceptance),
       };
     }
     record(`${sample.id}-followup-after-history-open`, followUpOk ? "PASS" : "FAIL", followUpEvidence);
